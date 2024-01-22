@@ -1,6 +1,6 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-Author(s): Shilpi Goel
+Author(s): Shilpi Goel, Yan Peng
 -/
 import Arm.BitVec
 import Arm.Memory
@@ -92,5 +92,85 @@ instance : ToString LogicalShiftedRegType where toString a := toString (repr a)
 def zero_flag_spec (bv : BitVec n) : BitVec 1 :=
   if bv = Std.BitVec.zero n then 1#1 else 0#1
 
+----------------------------------------------------------------------
+
+inductive LogicalImmType where
+  | AND : LogicalImmType
+  | ORR : LogicalImmType
+  | EOR : LogicalImmType
+  | ANDS : LogicalImmType
+deriving DecidableEq, Repr
+
+instance : ToString LogicalImmType where toString a := toString (repr a)
+
+def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
+  let mut acc := none
+  for i in List.reverse $ List.range n do
+    if extractLsb i i bv = 1
+    then acc := some i
+         break
+  return acc
+
+def invalid_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immediate : Bool)
+  (M : Nat) : Bool :=
+  let len := highest_set_bit $ immN ++ ~~~imms
+  match len with
+  | none => true
+  | some len =>
+    if len < 1 ∧ M < (1 <<< len) then true
+    else
+      let levels := zeroExtend 6 (allOnes len)
+      if immediate ∧ (imms &&& levels = levels) then true
+      else
+        let esize := 1 <<< len
+        if esize * (M / esize) ≠ M then true else false
+
+theorem option_get_of_some (v : Nat) :
+  Option.get! (some v) = v := by
+    unfold Option.get!; simp
+
+theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec 6)
+  (immediate : Bool) (M : Nat):
+  ¬ invalid_bit_masks immN imms immediate M →
+  let len := highest_set_bit $ immN ++ ~~~imms
+  let esize := 1 <<< len.get!
+  esize * (M / esize) = M := by
+    unfold invalid_bit_masks
+    simp
+    split
+    . simp
+    . simp_all; rw [option_get_of_some]; split
+      . simp
+      . split
+        . simp
+        . simp
+    done
+
+-- Resouces on Arm bitmask immediate:
+--   https://developer.arm.com/documentation/dui0802/b/A64-General-Instructions/MOV--bitmask-immediate-
+--   https://kddnewton.com/2022/08/11/aarch64-bitmask-immediates.html
+-- Arm Implementation:
+--   https://tiny.amazon.com/c57v7i1u/devearmdocuddi02023Sharaarc
+def decode_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immr : BitVec 6)
+  (immediate : Bool) (M : Nat) : Option (BitVec M × BitVec M) :=
+  if h0 : invalid_bit_masks immN imms immediate M then none
+  else
+    let len := Option.get! $ highest_set_bit $ immN ++ ~~~imms
+    let levels := zeroExtend 6 (allOnes len)
+    let s := imms &&& levels
+    let r := immr &&& levels
+    let diff := s - r
+    let esize := 1 <<< len
+    let d := extractLsb (len - 1) 0 diff
+    let welem := zeroExtend esize (allOnes (s.toNat + 1))
+    let telem := zeroExtend esize (allOnes (d.toNat + 1))
+    let wmask := replicate (M/esize) $ rotateRight welem r.toNat
+    let tmask := replicate (M/esize) telem
+    have h : esize * (M / esize) = M := by
+      apply M_divisible_by_esize_of_valid_bit_masks immN imms immediate M
+      simp_all
+    some (h ▸ wmask, h ▸ tmask)
+
+----------------------------------------------------------------------
 
 end Common

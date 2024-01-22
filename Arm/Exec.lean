@@ -14,6 +14,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     DPI.exec_add_sub_imm i s
   | DPI (DataProcImmInst.PC_rel_addressing i) =>
     DPI.exec_pc_rel_addressing i s
+  | DPI (DataProcImmInst.Logical_imm i) =>
+    DPI.exec_logical_imm i s
 
   | BR (BranchInst.Compare_branch i) =>
     BR.exec_compare_branch i s
