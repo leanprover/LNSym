@@ -23,6 +23,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     BR.exec_uncond_branch_imm i s
   | BR (BranchInst.Uncond_branch_reg i) =>
     BR.exec_uncond_branch_reg i s
+  | BR (BranchInst.Cond_branch_imm i) =>
+    BR.exec_cond_branch_imm i s
 
   | DPR (DataProcRegInst.Add_sub_carry i) =>
     DPR.exec_add_sub_carry i s

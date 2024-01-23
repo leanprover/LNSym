@@ -61,6 +61,8 @@ def decode_branch (i : BitVec 32) : Option ArmInst :=
     BR (Uncond_branch_imm {op, imm26})
   | [1101011, opc:4, op2:5, op3:6, Rn:5, op4:5] =>
     BR (Uncond_branch_reg {opc, op2, op3, Rn, op4})
+  | [01010100, imm19:19, o0:1, cond:4] =>
+    BR (Cond_branch_imm {imm19, o0, cond})
   | _ => none
 
 def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=
@@ -239,6 +241,12 @@ example : decode_raw_inst 0x9a841021#32 =
 example : decode_raw_inst 0x14000001#32 =
           (ArmInst.BR (BranchInst.Uncond_branch_imm
                { op := 0x0#1, imm26 := 0x0000001#26 })) := by
+        rfl
+
+-- b.le ...
+example : decode_raw_inst 0x5400000d#32 =
+          (ArmInst.BR (BranchInst.Cond_branch_imm
+               { imm19 := 0x00000#19, o0 := 0, cond := 0xd#4})) := by
         rfl
 
 -- ret

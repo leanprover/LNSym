@@ -1,6 +1,6 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-Author(s): Shilpi Goel
+Author(s): Shilpi Goel, Yan Peng
 -/
 import Arm.BitVec
 
@@ -44,6 +44,15 @@ deriving DecidableEq, Repr
 
 instance : ToString Uncond_branch_reg_inst where toString a := toString (repr a)
 
+structure Cond_branch_imm_inst where
+  _fixed : BitVec 8 := 0b01010100#8 -- [31:24]
+  imm19  : BitVec 19                -- [23:5]
+  o0     : BitVec 1                 -- [4:4]
+  cond   : BitVec 4                 -- [3:0]
+deriving DecidableEq, Repr
+
+instance : ToString Cond_branch_imm_inst where toString a := toString (repr a)
+
 inductive BranchInst where
   | Compare_branch :
     Compare_branch_inst → BranchInst
@@ -51,6 +60,8 @@ inductive BranchInst where
     Uncond_branch_imm_inst → BranchInst
   | Uncond_branch_reg :
     Uncond_branch_reg_inst → BranchInst
+  | Cond_branch_imm :
+    Cond_branch_imm_inst → BranchInst
 deriving DecidableEq, Repr
 
 instance : ToString BranchInst where toString a := toString (repr a)
