@@ -75,8 +75,8 @@ set_option auto.smt.savepath "/tmp/sha512h_rule_1.smt2" in
 theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let elements := 2
   let esize := 64
-  let inner_sum := (vector_op 0 elements esize Std.BitVec.add c d (Std.BitVec.zero 128) H)
-  let outer_sum := (vector_op 0 elements esize Std.BitVec.add inner_sum e (Std.BitVec.zero 128) H)
+  let inner_sum := (add_vector_op 0 elements esize Std.BitVec.add c d (Std.BitVec.zero 128) H)
+  let outer_sum := (add_vector_op 0 elements esize Std.BitVec.add inner_sum e (Std.BitVec.zero 128) H)
   let a0 := BitVec.extract a 63 0
   let a1 := BitVec.extract a 127 64
   let b0 := BitVec.extract b 63 0
@@ -91,7 +91,7 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let lo64_spec := compression_update_t1 (b0 + hi64_spec) b1 a0 c0 d0 e0
   sha512h a b outer_sum = hi64_spec ++ lo64_spec := by
   simp_all! only [Nat.sub_zero];
-  repeat (unfold vector_op; simp)
+  repeat (unfold add_vector_op; simp)
   unfold BitVec.extract BitVec.partInstall
   unfold sha512h compression_update_t1 sigma_big_1 ch BitVec.extract allOnes
   auto
@@ -162,14 +162,14 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   let d1 := BitVec.extract d 127 64
   let e0 := BitVec.extract e 63 0
   let e1 := BitVec.extract e 127 64
-  let inner_sum := vector_op 0 2 64 Std.BitVec.add d e (Std.BitVec.zero 128) h1
+  let inner_sum := add_vector_op 0 2 64 Std.BitVec.add d e (Std.BitVec.zero 128) h1
   let concat := inner_sum ++ inner_sum
   let operand := BitVec.extract concat 191 64
   let hi64_spec := compression_update_t1 b1 a0 a1 c1 d0 e0
   let lo64_spec := compression_update_t1 (b0 + hi64_spec) b1 a0 c0 d1 e1
-  sha512h a b (vector_op 0 2 64 Std.BitVec.add c operand (Std.BitVec.zero 128) h2) =
+  sha512h a b (add_vector_op 0 2 64 Std.BitVec.add c operand (Std.BitVec.zero 128) h2) =
   hi64_spec ++ lo64_spec := by
-  repeat (unfold vector_op; simp)
+  repeat (unfold add_vector_op; simp)
   repeat (unfold BitVec.partInstall; simp)
   unfold sha512h compression_update_t1 sigma_big_1 ch BitVec.extract allOnes
   auto
