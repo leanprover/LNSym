@@ -52,9 +52,13 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
   | LDST (LDSTInst.Reg_imm_post_indexed i) =>
     LDST.exec_reg_imm_post_indexed i s
   | LDST (LDSTInst.Reg_unsigned_imm i) =>
-    LDST.exec_reg_unsigned_imm i s
+    LDST.exec_reg_imm_unsigned_offset i s
   | LDST (LDSTInst.Reg_pair_pre_indexed i) =>
     LDST.exec_reg_pair_pre_indexed i s
+  | LDST (LDSTInst.Reg_pair_post_indexed i) =>
+    LDST.exec_reg_pair_post_indexed i s
+  | LDST (LDSTInst.Reg_pair_signed_offset i) =>
+    LDST.exec_reg_pair_signed_offset i s
   | LDST (LDSTInst.Advanced_simd_multiple_struct i) =>
     LDST.exec_advanced_simd_multiple_struct i s
   | LDST (LDSTInst.Advanced_simd_multiple_struct_post_indexed i) =>

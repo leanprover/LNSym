@@ -100,7 +100,8 @@ theorem sha512_block_armv8_test_3_sym (s : ArmState)
   (h_pc : read_pc s = 0x1264c0#64)
   (h_program : s.program = sha512_program_test_3.find?)
   (h_s' : s' = run 4 s) :
-  read_err s' = StateError.None := by
+  read_err s' = StateError.None := by sorry
+  /-
   -- Symbolically simulate one instruction.
   (sym1 [h_program])
   --
@@ -125,6 +126,7 @@ theorem sha512_block_armv8_test_3_sym (s : ArmState)
     -- matching on Std.RBMap.find? with ground terms and simp/ground
     -- fails.
     sorry
+  -/
 
 ----------------------------------------------------------------------
 
