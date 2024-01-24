@@ -348,6 +348,20 @@ theorem mem_subset_same_address_different_sizes
   simp [mem_subset_and_mem_subset_for_auto, le_and_bitvec_le]
   auto d[mem_subset_for_auto]
 
+-- set_option auto.smt.savepath "/tmp/test.smt2" in
+-- theorem test (h0 : 0 < n1) (h1 : n1 ≤ 2 ^ 64)
+--   (h2 : 0 < n2) (h3 : n2 <= 2^64)
+--   (h4 : addr1 < addr1 + (n1 - 1)#64)
+--   (h5 : addr2 < addr2 + (n2 - 1)#64)
+--   (h6 : addr1 ≠ addr2)
+--   (h7 : mem_subset addr2 (addr2 + (n2 - 1)#64) addr1 (addr1 + (n1 - 1)#64)) :
+--   addr2 - addr1 < (2^64 - 1)#64 := by
+--   revert h0 h1 h2 h3 h4 h5 h6 h7
+--   have _ : 2^64 = 18446744073709551616 := by decide
+--   have _ : 2^64 - 1 = 18446744073709551615 := by decide
+--   simp_all [mem_subset_and_mem_subset_for_auto]
+--   auto d[mem_subset_for_auto]
+
 ----------------------------------------------------------------------
 
 end MemoryProofs

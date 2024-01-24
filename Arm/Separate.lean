@@ -28,14 +28,14 @@ open Std.BitVec
 -- Here is some intuition for this definition: in the first two
 -- disjuncts, the frame of reference on the number line (which is
 -- really a circle for modular arithmetic) is a1, and in the last two
--- disjuncts, the frame is b1. 
+-- disjuncts, the frame is b1.
 --
 -- Here are some examples:
 --
 -- Example 1: The first part of B overlaps with the second part of A;
 -- no region wraps around.
 --
--- Original number line: 
+-- Original number line:
 --
 --   0     a1    b1    a2    b2
 --   |-----|-----|-----|-----|-----...
@@ -60,7 +60,7 @@ open Std.BitVec
 --
 -- Example 3: A and B overlap, and B wraps around again.
 --
--- Original number line: 
+-- Original number line:
 --
 --   0     a1    a2    b2    b1
 --   |-----|-----|-----|-----|-----...
@@ -87,7 +87,6 @@ def mem_separate (a1 a2 b1 b2 : BitVec 64) : Bool :=
 
 ----------------------------------------------------------------------
 -- `mem_subset`: returns true when A is a subset of B.
-
 def mem_subset (a1 a2 b1 b2 : BitVec 64) : Bool :=
   (b2 - b1 = (2^64 - 1)#64) ||
   ((a2 - b1 <= b2 - b1 && a1 - b1 <= a2 - b1))
@@ -110,6 +109,10 @@ example : mem_subset 0#64 (2^64 - 1)#64 (2^64 - 1)#64 0#64 = false := rfl
 example : mem_subset (2^64 - 1)#64 0#64 0#64 (2^64 - 1)#64 = true := rfl
 
 ----------------------------------------------------------------------
+-- `mem_legal`: returns true when the specified region does not wrap
+-- around.
+def mem_legal (a1 a2 : BitVec 64) : Bool :=
+  a1 <= a2
 
 end Separate
 
