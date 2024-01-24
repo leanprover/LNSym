@@ -125,13 +125,15 @@ theorem mem_overlap_and_mem_overlap_for_auto :
   simp [le_and_bitvec_le]
 
 def mem_subset_for_auto (a1 a2 b1 b2 : BitVec 64) : Bool :=
-  Std.BitVec.ule (a2 - b1) (b2 - b1) &&
-  Std.BitVec.ule (a1 - b1) (a2 - b1)
+  ((b2 - b1) = 18446744073709551615#64) ||
+  (Std.BitVec.ule (a2 - b1) (b2 - b1) &&
+   Std.BitVec.ule (a1 - b1) (a2 - b1))
 
 theorem mem_subset_and_mem_subset_for_auto :
   mem_subset a1 a2 b1 b2 = mem_subset_for_auto a1 a2 b1 b2 := by
   unfold mem_subset mem_subset_for_auto
-  simp [le_and_bitvec_le]
+  have : 2^64 - 1 = 18446744073709551615 := by decide
+  simp [le_and_bitvec_le, this]
 
 set_option auto.smt.savepath "/tmp/mem_separate_commutative.smt2" in
 theorem mem_separate_commutative :
@@ -144,6 +146,11 @@ theorem mem_separate_starting_addresses_neq :
   mem_separate a1 a2 b1 b2 → a1 ≠ b1 := by
   simp [mem_separate, mem_overlap_and_mem_overlap_for_auto]
   auto d[mem_overlap_for_auto]
+
+set_option auto.smt.savepath "/tmp/mem_subset_same_address_eq.smt2" in
+theorem mem_subset_same_address_eq : mem_subset a a b b = (a = b)  := by
+  simp [mem_subset_and_mem_subset_for_auto]
+  auto d[mem_subset_for_auto]
 
 set_option auto.smt.savepath "/tmp/mem_subset_refl.smt2" in
 theorem mem_subset_refl : mem_subset a1 a2 a1 a2 := by
@@ -174,34 +181,68 @@ theorem first_address_add_one_is_subset_of_region (n : Nat) (addr : BitVec 64)
   simp [this] at h_ub
   auto d[mem_subset_for_auto]
 
+set_option auto.smt.savepath "/tmp/first_addresses_add_one_is_subset_of_region_general.smt2" in
+theorem first_addresses_add_one_is_subset_of_region_general
+  (h0 : 0 < m) (h1 : m < 2 ^ 64) (h2 : n < 2 ^ 64)
+  (h3 : mem_subset addr1 (addr1 + m#64) addr2 (addr2 + n#64)) :
+  mem_subset (addr1 + 1#64) (addr1 + m#64) addr2 (addr2 + n#64) := by  
+  -- auto creates an uninterpreted function for the exponentiation, so
+  -- we evaluate it here.
+  have : (2^64 = 0x10000000000000000) := by decide
+  simp_all [this]
+  revert h3
+  simp [mem_subset_and_mem_subset_for_auto]
+  auto d[mem_subset_for_auto]
+
+set_option auto.smt.savepath "/tmp/first_addresses_add_one_preserves_subset_same_addr_helper.smt2" in
+private theorem first_addresses_add_one_preserves_subset_same_addr_helper (h1l : 0#64 < m) :
+  m - 1#64 ≤ (2 ^ 64 - 1)#64 - 1#64 := by
+  revert h1l
+  simp [lt_and_bitvec_lt, le_and_bitvec_le]
+  have : (2 ^ 64 - 1) = 18446744073709551615 := by decide
+  simp [this]
+  auto
+
 theorem first_addresses_add_one_preserves_subset_same_addr
   (h1l : 0 < m) (h1u : m < 2 ^ 64)
   (h2l : 0 < n) (h2u : n < 2 ^ 64)
   (h3 : mem_subset addr (addr + m#64) addr (addr + n#64)) :
   mem_subset (addr + 1#64) (addr + m#64) (addr + 1#64) (addr + n#64) := by
   simp [mem_subset]
+  apply Or.inr
   apply And.intro
   case left =>
     rw [BitVec.add_sub_add_left]
     rw [BitVec.add_sub_add_left]
     simp [mem_subset] at h3
-    have ⟨h3_0, h3_1⟩ := h3
-    rw [BitVec.add_sub_self_left_64] at h3_0
-    rw [BitVec.add_sub_self_left_64] at h3_0
-    rw [←BitVec.nat_bitvec_le] at h3_0
-    simp_all [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt]
-    apply (BitVec.nat_bitvec_le (m#64 - 1#64) (n#64 - 1#64)).mp
-    rw [nat_bitvec_sub1]; rw [nat_bitvec_sub1]
-    simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt]
-    · rw [Nat.mod_eq_of_lt h1u]
-      rw [Nat.mod_eq_of_lt h2u]
-      rw [Nat.mod_eq_of_lt (by exact tsub_lt_of_lt h1u)]
-      rw [Nat.mod_eq_of_lt (by exact tsub_lt_of_lt h2u)]
-      exact Nat.sub_le_sub_right h3_0 1
-    · simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt, h2u]
-      exact h2l
-    · simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt, h1u]
-      exact h1l
+    cases h3
+    case inl => 
+      rename_i h3
+      simp [BitVec.add_sub_self_left_64] at h3
+      rw [h3]
+      apply first_addresses_add_one_preserves_subset_same_addr_helper
+      rw [←BitVec.val_bitvec_lt]
+      simp [BitVec.bitvec_to_nat_of_nat]
+      simp_all [Nat.mod_eq_of_lt]
+    case inr =>
+      rename_i h3
+      have ⟨h3_0, h3_1⟩ := h3
+      rw [BitVec.add_sub_self_left_64] at h3_0
+      rw [BitVec.add_sub_self_left_64] at h3_0
+      rw [←BitVec.nat_bitvec_le] at h3_0
+      simp_all [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt]
+      apply (BitVec.nat_bitvec_le (m#64 - 1#64) (n#64 - 1#64)).mp
+      rw [nat_bitvec_sub1]; rw [nat_bitvec_sub1]
+      simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt]
+      · rw [Nat.mod_eq_of_lt h1u]
+        rw [Nat.mod_eq_of_lt h2u]
+        rw [Nat.mod_eq_of_lt (by exact tsub_lt_of_lt h1u)]
+        rw [Nat.mod_eq_of_lt (by exact tsub_lt_of_lt h2u)]
+        exact Nat.sub_le_sub_right h3_0 1
+      · simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt, h2u]
+        exact h2l
+      · simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt, h1u]
+        exact h1l
   case right =>
     rw [BitVec.add_sub_add_left]
     simp [BitVec.zero_le_sub]
@@ -221,15 +262,6 @@ theorem mem_subset_one_addr_region_lemma_alt (addr1 addr2 : BitVec 64)
   simp (config := {ground := true}) at h
   revert h
   simp [mem_subset_and_mem_subset_for_auto]
-  auto d[mem_subset_for_auto]
-
-set_option auto.smt.savepath "/tmp/mem_subset_bigger2.smt2" in
-theorem mem_subset_bigger2 (a1 a2 b1 b2 n : BitVec 64)
-  (hn : a2 - b1 <= b2 + n - b1)
-  (h : mem_subset a1 a2 b1 b2) :
-  mem_subset a1 a2 b1 (b2 + n) := by
-  revert hn h
-  simp [mem_subset_and_mem_subset_for_auto, le_and_bitvec_le]
   auto d[mem_subset_for_auto]
 
 set_option auto.smt.savepath "/tmp/mem_subset_same_region_lemma.smt2" in

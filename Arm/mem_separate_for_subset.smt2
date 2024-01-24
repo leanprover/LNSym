@@ -28,8 +28,10 @@
                     (b1 (_ BitVec 64))
                     (b2 (_ BitVec 64)))
   Bool
-  (and (bvule (bvsub a2 b1) (bvsub b2 b1))
-       (bvule (bvsub a1 b1) (bvsub a2 b1))))
+  (or
+   (= (bvsub b2 b1) (_ bv18446744073709551615 64))
+   (and (bvule (bvsub a2 b1) (bvsub b2 b1))
+        (bvule (bvsub a1 b1) (bvsub a2 b1)))))
 
 (push 1)
 

@@ -52,6 +52,7 @@ theorem read_mem_of_write_mem_bytes_different (hn1 : n <= 2^64)
         simp [BitVec.le_of_eq]
         rw [BitVec.add_sub_self_left_64 addr2 m#64]
         rw [BitVec.add_sub_self_left_64 addr2 1#64]
+        apply Or.inr
         apply BitVec.val_nat_le 1 m 64 hn (_ : 1 < 2^64) hn1
         decide
       · omega
@@ -284,18 +285,30 @@ theorem write_mem_bytes_of_write_mem_bytes_shadow_same_first_address
         · rw [mem_separate_contiguous_regions_one_address addr h1u]
   done
 
+
 set_option auto.smt.savepath "/tmp/mem_subset_neq_first_addr_small_second_region.smt2" in
 theorem mem_subset_neq_first_addr_small_second_region (n1 n' : ℕ) (addr1 addr2 : BitVec 64)
-  (h3 : mem_subset addr1 (addr1 + (n1 - 1)#64) addr2 (addr2 + n'#64))
+  (h1 : n' < 2 ^ 64 - 1)
+  (h2 : mem_subset addr1 (addr1 + (n1 - 1)#64) addr2 (addr2 + n'#64))
   (h_addr : ¬addr1 = addr2) :
   mem_subset addr1 (addr1 + (n1 - 1)#64) (addr2 + 1#64) (addr2 + n'#64) := by
+  have : 2^64 - 1 = 18446744073709551615 := by decide
   simp_all [mem_subset, lt_and_bitvec_lt, le_and_bitvec_le]
-  auto
+  cases h2
+  · rename_i h
+    simp [BitVec.add_sub_self_left_64] at h
+    have l1 : n' = 18446744073709551615 := by
+      rw [Std.BitVec.toNat_eq n'#64 18446744073709551615#64] at h
+      simp [BitVec.bitvec_to_nat_of_nat] at h
+      simp (config := {ground := true}) [Nat.mod_eq_of_lt] at h
+      omega
+    simp [l1] at h1
+  · rename_i h
+    apply Or.inr
+    auto
 
-
-@[simp]
-theorem write_mem_bytes_of_write_mem_bytes_shadow_general
-  (h1u : n1 <= 2^64) (h2l : 0 < n2) (h2u : n2 <= 2^64)
+theorem write_mem_bytes_of_write_mem_bytes_shadow_general_n2_lt
+  (h1u : n1 <= 2^64) (h2l : 0 < n2) (h2u : n2 < 2^64)
   (h3 : mem_subset addr1 (addr1 + (n1 - 1)#64) addr2 (addr2 + (n2 - 1)#64)) :
   write_mem_bytes n2 addr2 val2 (write_mem_bytes n1 addr1 val1 s) =
   write_mem_bytes n2 addr2 val2 s := by
@@ -319,13 +332,16 @@ theorem write_mem_bytes_of_write_mem_bytes_shadow_general
           have :=  mem_separate_contiguous_regions addr2 0#64 (n' - 1)#64
           simp [BitVec.sub_zero, Std.BitVec.add_zero] at this
           rw [this]
-          exact n_minus_1_lt_2_64_1 n' hn' h2u
+          exact n_minus_1_lt_2_64_1 n' hn' (by omega)
           done
       by_cases h_addr : addr1 = addr2
       case pos =>
         subst addr2
-        rw [write_mem_bytes_of_write_mem_bytes_shadow_same_first_address h1u _ h2u h3]
-        omega
+        rw [write_mem_bytes_of_write_mem_bytes_shadow_same_first_address]
+        · omega
+        · omega
+        · omega
+        · exact h3
       case neg => -- addr1 ≠ addr2
        repeat (conv =>
                 pattern write_mem_bytes (n' + 1) ..
@@ -335,9 +351,130 @@ theorem write_mem_bytes_of_write_mem_bytes_shadow_general
          · rw [write_mem_of_write_mem_bytes_commute (by omega)]
            assumption
          · rw [Nat.add_sub_cancel] at h3
-           rw [addr_add_one_add_m_sub_one n' addr2 hn' h2u]
-           rw [mem_subset_neq_first_addr_small_second_region n1 n' addr1 addr2 h3 h_addr]
+           rw [addr_add_one_add_m_sub_one n' addr2 hn' (by omega)]
+           rw [mem_subset_neq_first_addr_small_second_region
+                  n1 n' addr1 addr2 (by omega) h3 h_addr]
        · assumption
+  done
+
+-- (FIXME): Move to SeparateProofs.lean
+set_option auto.smt.savepath "/tmp/mem_separate_starting_addresses_neq_2.smt2" in
+theorem mem_separate_starting_addresses_neq_2 :
+  a1 ≠ a2 → mem_separate a1 a1 a2 a2 := by
+  simp [mem_separate, mem_overlap_and_mem_overlap_for_auto]
+  auto d[mem_overlap_for_auto]
+
+-- (FIXME): Move to SeparateProofs.lean
+set_option auto.smt.savepath "/tmp/mem_subset_one_addr_neq.smt2" in
+theorem mem_subset_one_addr_neq (h1 : a ≠ b1)
+  (h : mem_subset a a b1 b2) :
+  mem_subset a a (b1 + 1#64) b2 := by
+  revert h
+  simp_all [mem_subset_and_mem_subset_for_auto, le_and_bitvec_le, lt_and_bitvec_lt]
+  auto d[mem_subset_for_auto]
+
+theorem write_mem_bytes_of_write_mem
+  (h0 : 0 < n) (h1 : n <= 2^64)
+  (h2 : mem_subset addr1 addr1 addr2 (addr2 + (n - 1)#64)) :
+  write_mem_bytes n addr2 val2 (write_mem addr1 val1 s) =
+  write_mem_bytes n addr2 val2 s := by
+  induction n, h0 using Nat.le_induction generalizing addr1 addr2 val1 s
+  case base =>
+    simp [write_mem_bytes]
+    by_cases h₀ : addr1 = addr2
+    case pos => -- (addr1 = addr2)
+      subst addr2
+      simp [write_mem_of_write_mem_shadow]
+    case neg => -- (addr1 ≠ addr2)
+      simp at h2
+      simp [mem_subset_same_address_eq] at h2
+      contradiction
+  case succ =>
+    rename_i n' hn' n_ih
+    simp [write_mem_bytes]
+    by_cases h₀ : addr1 = addr2
+    case pos => -- (addr1 = addr2)
+      subst addr2
+      simp [write_mem_of_write_mem_shadow]
+    case neg =>
+      rw [write_mem_of_write_mem_commute]
+      · rw [n_ih (by omega)]
+        simp at h2
+        rw [addr_add_one_add_m_sub_one n' addr2 hn' h1]
+        rw [mem_subset_one_addr_neq h₀]
+        assumption
+      · rw [mem_separate_starting_addresses_neq_2]
+        exact ne_comm.mp h₀
+        done
+
+-- (FIXME): Move to SeparateProofs.lean
+set_option auto.smt.savepath "/tmp/mem_subset_first_address.smt2" in
+theorem mem_subset_first_address
+  (h : mem_subset a1 a2 b1 b2) :
+  mem_subset a1 a1 b1 b2 := by
+  revert h
+  simp_all [mem_subset_and_mem_subset_for_auto, le_and_bitvec_le, lt_and_bitvec_lt]
+  auto d[mem_subset_for_auto]
+
+theorem write_mem_bytes_of_write_mem_bytes_shadow_general_n2_eq
+  (h1u : n1 <= 2^64) (h2l : 0 < n2) (h2u : n2 = 2^64)
+  (h3 : mem_subset addr1 (addr1 + (n1 - 1)#64) addr2 (addr2 + (n2 - 1)#64)) :
+  write_mem_bytes n2 addr2 val2 (write_mem_bytes n1 addr1 val1 s) =
+  write_mem_bytes n2 addr2 val2 s := by
+  by_cases h₀ : n1 = 0
+  case pos =>
+    subst n1
+    simp [write_mem_bytes]
+  case neg => -- ¬(n1 = 0)
+    induction n1 generalizing addr1 val2 s
+    case zero =>
+      conv in write_mem_bytes 0 _ _ => simp [write_mem_bytes]
+    case succ =>
+      rename_i n n_ih
+      conv in write_mem_bytes (Nat.succ n) .. => simp [write_mem_bytes]
+      have n_ih' := @n_ih (addr1 + 1#64) val2 (zeroExtend (n * 8) (val1 >>> 8))
+                   (write_mem addr1 (BitVec.extract val1 7 0) s)
+                   (by omega)
+      simp at h3
+      by_cases h₁ : n = 0
+      case pos =>
+        subst n
+        simp [write_mem_bytes]
+        rw [write_mem_bytes_of_write_mem h2l]
+        · omega
+        · simp at h3; assumption
+      case neg => -- ¬(n = 0)
+        rw [n_ih']
+        · rw [write_mem_bytes_of_write_mem h2l]
+          · omega
+          · rw [mem_subset_first_address h3]
+        · rw [addr_add_one_add_m_sub_one n addr1]
+          · have l0 := @mem_subset_trans
+                        (addr1 + 1#64) (addr1 + n#64) addr1 (addr1 + n#64)
+                        addr2 (addr2 + (n2 - 1)#64)
+            simp [h3] at l0
+            rw [first_addresses_add_one_is_subset_of_region_general] at l0
+            simp at l0
+            · assumption
+            · omega
+            · omega
+            · omega
+            · simp [mem_subset_refl]
+          · omega
+          · omega
+        · exact h₁
+
+@[simp]
+theorem write_mem_bytes_of_write_mem_bytes_shadow_general
+  (h1u : n1 <= 2^64) (h2l : 0 < n2) (h2u : n2 <= 2^64)
+  (h3 : mem_subset addr1 (addr1 + (n1 - 1)#64) addr2 (addr2 + (n2 - 1)#64)) :
+  write_mem_bytes n2 addr2 val2 (write_mem_bytes n1 addr1 val1 s) =
+  write_mem_bytes n2 addr2 val2 s := by
+  by_cases h : n2 = 2^64
+  case pos => simp_all [write_mem_bytes_of_write_mem_bytes_shadow_general_n2_eq]
+  case neg =>
+    have h' : n2 < 2^64 := by omega
+    simp_all [write_mem_bytes_of_write_mem_bytes_shadow_general_n2_lt]
   done
 
 ----------------------------------------------------------------------
@@ -355,10 +492,12 @@ theorem read_mem_of_write_mem_bytes_same_first_address
     · rw [mem_separate_contiguous_regions_one_address addr h1]
   done
 
--- (FIXME) Argh, it's annoying to need this lemma.
-theorem cast_of_extract_eq (v : BitVec p) (h1 : n - 0 + 1 = m + 1) (h2 : m - 0 + 1 = m + 1) :
-  Std.BitVec.cast h1 (BitVec.extract v n 0) = Std.BitVec.cast h2 (BitVec.extract v m 0) := by
-  have l1 : n = m := by exact Nat.succ_inj.mp h1
+-- (FIXME) Argh, it's annoying to need this lemma, but using
+-- Std.BitVec.cast_eq directly was cumbersome.
+theorem cast_of_extract_eq (v : BitVec p)
+  (h1 : hi1 = hi2) (h2 : lo1 = lo2)
+  (h : hi1 - lo1 + 1 = hi2 - lo2 + 1) :
+  Std.BitVec.cast h (BitVec.extract v hi1 lo1) = (BitVec.extract v hi2 lo2) := by
   subst_vars
   simp only [Nat.sub_zero, Std.BitVec.cast_eq]
 
@@ -407,8 +546,8 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_same_first_address
             simp (config := {decide := true}) at l1
             rw [l1 (by omega) (by omega)]
             · simp only [Nat.add_eq, Nat.add_succ_sub_one, Nat.sub_zero, Std.BitVec.cast_cast]
-              apply cast_of_extract_eq
-              simp only [Nat.add_eq, Nat.mul_eq, tsub_zero]
+              apply @cast_of_extract_eq ((n1_1 + 1) * 8) (n * 8 - 1 + 1 + 7) ((n + 1) * 8 - 1) 0 0 <;>
+              omega
           · omega
         · have rw_lemma2 := @read_mem_of_write_mem_bytes_same_first_address
                               n1_1 (addr + 1#64)
@@ -423,44 +562,141 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_same_first_address
           · omega
   done
 
--- set_option trace.auto.smt.printCommands true in
-set_option auto.smt.savepath "/tmp/read_write_mem_subset_extract_width.smt2" in
-theorem read_write_mem_subset_check_extract_width (n : Nat) (a1 a2 : BitVec 64)
-  (h0 : 0 < n) (h1 : n <= 2^64) :
-  ((Std.BitVec.toNat (a2 - a1) + n) * 8 - 1 - Std.BitVec.toNat (a2 - a1) * 8 + 1) = n * 8 := by
-  rw [BitVec.nat_bitvec_sub]
-  have ha1_lt := a1.isLt
-  have ha2_lt := a2.isLt
-  revert h0 h1 ha1_lt ha2_lt
-  generalize Std.BitVec.toNat a1 = a1'
-  generalize Std.BitVec.toNat a2 = a2'
-  simp (config := {ground := true})
+set_option auto.smt.savepath "/tmp/mem_subset_address_neq_first_address_in_range.smt2" in
+theorem mem_subset_address_neq_first_address_in_range (h1 : a ≠ b)
+  (h2 : mem_subset a a b c) :
+  mem_subset a a (b + 1#64) c := by
+  revert h1 h2
+  simp [mem_subset_and_mem_subset_for_auto, le_and_bitvec_le]
+  auto d[mem_subset_for_auto]
+
+set_option auto.smt.savepath "/tmp/BitVec.sub_of_add_is_sub_sub.smt2" in
+theorem BitVec.sub_of_add_is_sub_sub (a b c : BitVec 64) :
+  (a - (b + c)) = a - b - c := by
   auto
 
--- @[simp]
--- theorem read_mem_bytes_of_write_mem_bytes_subset
---   (h0 : 0 < n1) (h1 : n1 <= 2^64) (h2 : n2 <= 2^64)
---   (h3 : mem_subset addr1 (addr1 + (n1 - 1)#64) addr2 (addr2 + (n2 - 1)#64))
---   (h : ((Std.BitVec.toNat (addr2 - addr1) + n1) * 8 - 1 - Std.BitVec.toNat (addr2 - addr1) * 8 + 1)
---         = n1 * 8) :
---   read_mem_bytes n1 addr1 (write_mem_bytes n2 addr2 val s) =
---    Std.BitVec.cast h
---     (BitVec.extract val ((((addr2 - addr1).toNat + n1) * 8) - 1) ((addr2 - addr1).toNat * 8)) := by
---   unfold BitVec.extract
---   sorry
+private theorem read_mem_of_write_mem_bytes_subset_helper_1 (a i : Nat) (h1 : 0 < a) (h2 : a < 2^64) :
+  (8 + ((a + (2 ^ 64 - 1)) % 2 ^ 64 * 8 + i)) = (a * 8 + i) := by
+  have l1 : a + (2^64 - 1) = a - 1 + 2^64 := by omega
+  simp [l1]
+  have l2 : a - 1 < 2 ^ 64 := by omega
+  simp [Nat.mod_eq_of_lt l2]
+  omega
+
+private theorem read_mem_of_write_mem_bytes_subset_helper_2 (a b : Nat)
+  (h1 : a < b * 8) :
+  a < (b + 1) * 8 := by omega
+
+private theorem a_sub_one_lemma (a : Nat) (h1 : 0 < a) (h2 : a < 2^64) :
+ (a + (2 ^ 64 - 1)) % 2 ^ 64 = (a - 1) := by
+ have l1 : a + (2^64 - 1) = a - 1 + 2^64 := by omega
+ simp [l1]
+ have l2 : a - 1 < 2 ^ 64 := by omega
+ simp [Nat.mod_eq_of_lt l2]
+ done
+
+private theorem read_mem_of_write_mem_bytes_subset_helper_3
+  (v a : Nat) (h_v_size : v < 2 ^ ((n' + 1) * 8)) (h_a_base : a ≠ 0) (h_a_size : a < 2 ^ 64) :
+  (v >>> 8 % 2 ^ ((n' + 1) * 8) % 2 ^ (n' * 8)) >>> ((a + (2 ^ 64 - 1)) % 2 ^ 64 * 8) % 2 ^ 8 = v >>> (a * 8) % 2 ^ 8 := by
+  apply Nat.eq_of_testBit_eq
+  intro i
+  simp [Nat.testBit_mod_two_pow]
+  by_cases h₂ : i < 8
+  case pos => -- (i < 8)
+    simp [h₂, Nat.testBit_shiftRight, Nat.testBit_mod_two_pow]
+    by_cases h₃ : ((a + (2 ^ 64 - 1)) % 2 ^ 64 * 8 + i < n' * 8)
+    case pos => -- (i < 8) and ((a + (2 ^ 64 - 1)) % 2 ^ 64 * 8 + i < n' * 8)
+      simp [h₃]
+      rw [read_mem_of_write_mem_bytes_subset_helper_1]
+      · have := read_mem_of_write_mem_bytes_subset_helper_2 ((a + (2 ^ 64 - 1)) % 2 ^ 64 * 8 + i) n' h₃
+        simp [this]
+      · exact Nat.pos_of_ne_zero h_a_base
+      · exact h_a_size
+    case neg => -- (i < 8) and (not ((a + (2 ^ 64 - 1)) % 2 ^ 64 * 8 + i < n' * 8))
+      simp [h₃]
+      rw [a_sub_one_lemma a (Nat.pos_of_ne_zero h_a_base) h_a_size] at h₃
+      simp at h₃
+      have : (n' + 1) * 8 ≤ a * 8 + i := by omega
+      rw [Nat.testBit_lt_two]
+      exact calc
+        _ < 2 ^ ((n' + 1) * 8) := by exact h_v_size
+        _ <= 2 ^ (a * 8 + i) := by apply Nat.pow_le_pow_right; decide; exact this
+      done
+  case neg => simp [h₂]
+  done
+
+set_option auto.smt.savepath "/tmp/BitVec.to_nat_zero_lt_sub_64.smt2" in
+theorem BitVec.to_nat_zero_lt_sub_64 (x y : BitVec 64) (_h : ¬x = y) :
+  (x - y).toNat ≠ 0 := by
+  simp [lt_and_bitvec_lt]
+  auto
+
+theorem read_mem_of_write_mem_bytes_subset
+  (h0 : 0 < n) (h1 : n <= 2^64)
+  (h2 : mem_subset addr2 addr2 addr1 (addr1 + (n - 1)#64))
+  (h : ((Std.BitVec.toNat (addr2 - addr1) + 1) * 8 - 1 - Std.BitVec.toNat (addr2 - addr1) * 8 + 1) = 8) :
+  read_mem addr2 (write_mem_bytes n addr1 val s) =
+  Std.BitVec.cast h
+    (BitVec.extract val
+      ((Std.BitVec.toNat (addr2 - addr1) + 1) * 8 - 1)
+      (Std.BitVec.toNat (addr2 - addr1) * 8)) := by
+  induction n generalizing addr1 addr2 s
+  case zero => contradiction
+  case succ =>
+    rename_i n' n_ih
+    simp_all [write_mem_bytes]
+    have cast_lemma := @cast_of_extract_eq
+    by_cases h₀ : n' = 0
+    case pos =>
+      simp_all [mem_subset_same_address_eq]
+      subst_vars
+      simp [write_mem_bytes, read_mem_of_write_mem_same]
+      rw [←cast_lemma] <;> simp
+    case neg => -- (n' ≠ 0)
+      by_cases h₁ : addr2 = addr1
+      case pos => -- (n' ≠ 0) and (addr2 = addr1)
+        subst_vars
+        rw [read_mem_of_write_mem_bytes_different (by omega)]
+        · simp [read_mem_of_write_mem_same]
+          rw [←cast_lemma] <;> simp
+        · rw [mem_separate_contiguous_regions_one_address _ (by omega)]
+      case neg => -- (addr2 ≠ addr1)
+        rw [n_ih]
+        · ext
+          simp [toNat_cast, BitVec.extract, extractLsb, extractLsb']
+          simp [BitVec.bitvec_to_nat_of_nat, toNat_zeroExtend]
+          simp [HShiftRight.hShiftRight, ushiftRight, ShiftRight.shiftRight, BitVec.bitvec_to_nat_of_nat]
+          simp [BitVec.sub_of_add_is_sub_sub]
+          have h_sub := BitVec.nat_bitvec_sub (addr2 - addr1) 1#64
+          simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt] at h_sub
+          simp [h_sub]
+          have h_a_size := (addr2 - addr1).isLt
+          have h_v_size := val.isLt
+          have h_a_base := BitVec.to_nat_zero_lt_sub_64 addr2 addr1 h₁
+          generalize Std.BitVec.toNat val = v at h_v_size
+          generalize Std.BitVec.toNat (addr2 - addr1) = a at h_a_size h_a_base
+          rw [read_mem_of_write_mem_bytes_subset_helper_3]
+          exact h_v_size
+          exact h_a_base
+          exact h_a_size
+        · omega
+        · omega
+        · rw [addr_add_one_add_m_sub_one _ _ (by omega) (by omega)]
+          rw [mem_subset_address_neq_first_address_in_range h₁ h2]
+        · omega
+    done
 
 ----------------------------------------------------------------------
 
--- @[simp]
--- theorem write_mem_bytes_irrelevant :
---   write_mem_bytes n addr (read_mem_bytes n addr s) s = s := by
---   induction n generalizing addr s
---   case zero => simp [write_mem_bytes]
---   case succ =>
---     rename_i n' n_ih
---     simp [write_mem_bytes]
---     sorry
-
+-- -- @[simp]
+-- -- theorem write_mem_bytes_irrelevant :
+-- --   write_mem_bytes n addr (read_mem_bytes n addr s) s = s := by
+-- --   induction n generalizing addr s
+-- --   case zero => simp [write_mem_bytes]
+-- --   case succ =>
+-- --     rename_i n' n_ih
+-- --     simp [write_mem_bytes]
+-- --     sorry
 ----------------------------------------------------------------------
 
 end MemoryProofs

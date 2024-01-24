@@ -11,13 +11,14 @@ open Std.BitVec
 ----------------------------------------------------------------------
 
 -- [x1, x2] denotes a memory region X whose first address is x1 and
--- last address is x2.
+-- last address is x2. Note that empty memory regions are ruled out by
+-- this formalization.
 
 -- All addresses are 64-bit bitvectors.
 
 -- Note that the `-` operation in the definitions in this file is
 -- bitvector subtraction, i.e.,
--- Let x and y be n-bit bitvectors:
+-- let x and y be n-bit bitvectors:
 -- BV2Nat (x - y) =
 -- (Nat.mod (Nat.add (BV2Nat x) (Nat.sub 2^n (BV2Nat y))) 2^n).
 
@@ -85,10 +86,28 @@ def mem_separate (a1 a2 b1 b2 : BitVec 64) : Bool :=
   not (mem_overlap a1 a2 b1 b2)
 
 ----------------------------------------------------------------------
--- `mem_subset`: returns true when A is a subset of B or vice versa.
+-- `mem_subset`: returns true when A is a subset of B.
 
 def mem_subset (a1 a2 b1 b2 : BitVec 64) : Bool :=
-  a2 - b1 <= b2 - b1 && a1 - b1 <= a2 - b1
+  (b2 - b1 = (2^64 - 1)#64) ||
+  ((a2 - b1 <= b2 - b1 && a1 - b1 <= a2 - b1))
+
+example : mem_subset 0#64 2#64 0#64 10#64 = true := rfl
+
+example : mem_subset 8#64 10#64 8#64 2#64 = true := rfl
+
+example : mem_subset 10#64 1#64 8#64 2#64 = true := rfl
+
+example : mem_subset 0#64 1#64 8#64 2#64 = true := rfl
+
+example : mem_subset 0#64 2#64 (2^64 - 1)#64 10#64 = true := rfl
+
+-- The second region is just 2 bytes long, but the first one spans the
+-- whole memory.
+example : mem_subset 0#64 (2^64 - 1)#64 (2^64 - 1)#64 0#64 = false := rfl
+
+-- Every region is a subset of the whole memory.
+example : mem_subset (2^64 - 1)#64 0#64 0#64 (2^64 - 1)#64 = true := rfl
 
 ----------------------------------------------------------------------
 
