@@ -110,6 +110,7 @@ def arm_cosim_test (input : regState) : IO String :=
   let flags'  := bitvec_to_hex input.nzcv
   let sfps'   := bitvec_to_hex_list input.sfp
   let args    := ([inst'] ++ gprs' ++ [flags'] ++ sfps').toArray
+  -- (FIXME): catch exception nicely
   IO.Process.run
   { cmd := "Arm/Insts/Cosim/armsimulate", args := args }
 

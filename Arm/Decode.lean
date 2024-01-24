@@ -352,6 +352,19 @@ example : decode_raw_inst 0xea918c7e#32 =
             Rd := 0x1e#5})) := by
         rfl
 
+-- eor x15, x28, #0xffffc00000000001
+example : decode_raw_inst 0xd2524b8f#32 =
+          (ArmInst.DPI (DataProcImmInst.Logical_imm
+          { sf := 0x1#1,
+            opc := 0x2#2,
+            _fixed := 0x24#6,
+            N := 0x1#1,
+            immr := 0x12#6,
+            imms := 0x12#6,
+            Rn := 0x1c#5,
+            Rd := 0x0f#5 })) := by
+        rfl
+
 -- Unimplemented
 example : decode_raw_inst 0x00000000#32 = none := by rfl
 
