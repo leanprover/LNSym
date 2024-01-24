@@ -7,4 +7,5 @@ import «Tests».SHA512SpecTest
 -- build/execute and also bloats the lnsym binary.
 -- import «Tests».SHA512StandardSpecTest
 import «Tests».SHA512ProgramTest
+import «Tests».LDSTTest
 

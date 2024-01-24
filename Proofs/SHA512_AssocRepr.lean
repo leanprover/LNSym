@@ -548,25 +548,26 @@ theorem sha512_block_armv8_new_program (s : ArmState)
   -- with a max. recursion depth error again.
   -- simp (config := {ground := true}) only
   -- (WORKAROUND) I manually split and attempt to make progress.
-  split
-  · rename_i h
-    simp (config := {ground := true}) at h
-  · rename_i h; simp (config := {ground := true}) at h
-    unfold run
-    simp [stepi]
-    rw [fetch_inst_from_assoclist h_program]
-    conv =>
-      pattern find? ..
-      simp (config := {ground := true}) only
-    simp [*]
-    conv =>
-      pattern decode_raw_inst ..
-      simp (config := {ground := true}) only
-    simp only
-    simp [exec_inst, *]
+  sorry
+  -- split
+  -- · rename_i h
+  --   simp (config := {ground := true}) at h
+  -- · rename_i h; simp (config := {ground := true}) at h
+  --   unfold run
+  --   simp [stepi]
+  --   rw [fetch_inst_from_assoclist h_program]
+  --   conv =>
+  --     pattern find? ..
+  --     simp (config := {ground := true}) only
+  --   simp [*]
+  --   conv =>
+  --     pattern decode_raw_inst ..
+  --     simp (config := {ground := true}) only
+  --   simp only
+  --   simp [exec_inst, *]
 
 
 
-    sorry
+  --   sorry
 
 end SHA512_proof

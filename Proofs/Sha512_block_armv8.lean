@@ -102,7 +102,7 @@ theorem sha512_block_armv8_test_3_sym (s : ArmState)
   read_err s' = StateError.None := by
   -- Symbolically simulate one instruction.
   (sym1 [h_program])
-  --
+  sorry
   -- (FIXME) At this point, I get an `if` term as the second argument
   -- of `run`. The if's condition consists of ground terms, and I
   -- hoped the `if` would be "evaluated away" to the true branch.
@@ -115,15 +115,15 @@ theorem sha512_block_armv8_test_3_sym (s : ArmState)
   -- simp (config := {ground := true}) only
   --
   -- (WOKRAROUND) I manually do a split here.
-  split
-  · rename_i h; simp (config := {ground := true}) at h
-  · unfold run
-    simp [stepi, *]
-    rw [fetch_inst_from_rbmap_program h_program]
-    -- (FIXME) Here I run into a similar situation, where we are
-    -- matching on Std.RBMap.find? with ground terms and simp/ground
-    -- fails.
-    sorry
+  -- split
+  -- · rename_i h; simp (config := {ground := true}) at h
+  -- · unfold run
+  --   simp [stepi, *]
+  --   -- rw [fetch_inst_from_rbmap_program h_program]
+  --   -- (FIXME) Here I run into a similar situation, where we are
+  --   -- matching on Std.RBMap.find? with ground terms and simp/ground
+  --   -- fails.
+  --  sorry
 
 ----------------------------------------------------------------------
 

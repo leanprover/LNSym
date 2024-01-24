@@ -185,4 +185,16 @@ deriving DecidableEq, Repr
 
 instance : ToString SIMDThreeSameLogicalType where toString a := toString (repr a)
 
+----------------------------------------------------------------------
+
+@[simp]
+def ldst_read (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (s : ArmState)
+  : BitVec width :=
+  if SIMD? then read_sfp width idx s else read_gpr width idx s
+
+@[simp]
+def ldst_write (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
+  : ArmState :=
+  if SIMD? then write_sfp width idx val s else write_gpr width idx val s
+
 end Common
