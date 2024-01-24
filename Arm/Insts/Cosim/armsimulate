@@ -1,0 +1,14 @@
+# Borrowed from the s2n-bignum project
+# https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/simulator.c
+# Author(s): John Harrison, Juneyoung Lee
+
+cd Arm/Insts/Cosim
+
+cat template.S | sed -e "s/ICODE/$1/" > instance.S
+gcc -c instance.S
+gcc -o simulator simulator.c instance.o
+
+shift 1
+./simulator $*
+
+####  rm *.o simulator
