@@ -125,9 +125,8 @@ def invalid_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immediate : Bool)
         let esize := 1 <<< len
         if esize * (M / esize) ≠ M then true else false
 
-theorem option_get_of_some (v : Nat) :
-  Option.get! (some v) = v := by
-    unfold Option.get!; simp
+theorem option_get_bang_of_some [Inhabited α] (v : α) :
+  Option.get! (some v) = v := by rfl
 
 theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec 6)
   (immediate : Bool) (M : Nat):
@@ -139,7 +138,7 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
     simp
     split
     . simp
-    . simp_all; rw [option_get_of_some]; split
+    . simp_all; rw [option_get_bang_of_some]; split
       . simp
       . split
         . simp
