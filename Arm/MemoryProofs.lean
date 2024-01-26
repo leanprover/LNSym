@@ -921,36 +921,7 @@ theorem read_mem_bytes_of_write_mem_bytes_subset
 ----------------------------------------------------------------------
 -- Key theorem : write_mem_bytes_irrelevant
 
-theorem BitVec.toNat_or (x y : BitVec n):
-  Std.BitVec.toNat (x ||| y) = Std.BitVec.toNat x ||| Std.BitVec.toNat y := by
-  rw [←Std.BitVec.or_eq]
-  simp [Std.BitVec.or]
-
-theorem leftshift_n_or_mod_2n :
-  (x <<< n ||| y) % 2 ^ n = y % 2 ^ n := by
-  simp [Nat.shiftLeft_eq]
-  apply Nat.eq_of_testBit_eq; intro i
-  simp [Nat.testBit_mod_two_pow]
-  by_cases h₀ : i < n
-  case pos =>
-    simp [h₀, Nat.testBit_or]
-    rw [@Nat.mul_comm x (2^n)]
-    simp [Nat.testBit_mul_pow_two]
-    have : ¬(n <= i) := by omega
-    simp [this]
-  case neg =>
-    simp [h₀]
-
-theorem BitVec.truncate_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitVec n) :
-  truncate n (x ++ y) = y := by
-  ext
-  simp [Std.BitVec.toNat_truncate, Std.BitVec.toNat_append]
-  apply Nat.eq_of_testBit_eq; intro i
-  have := y.isLt
-  rw [leftshift_n_or_mod_2n, Nat.mod_eq_of_lt]
-  exact this
-
-theorem rightshift_n_or_leftshift_n (x y : Nat) (h : y < 2^n) :
+theorem leftshift_n_or_rightshift_n (x y : Nat) (h : y < 2^n) :
   (x <<< n ||| y) >>> n = x := by
   apply Nat.eq_of_testBit_eq; intro i
   simp [Nat.testBit_shiftRight, Nat.testBit_or]
@@ -976,7 +947,7 @@ private theorem write_mem_bytes_irrelevant_helper (h : n * 8 + 8 = (n + 1) * 8) 
   generalize h_y : (Std.BitVec.toNat (read_mem addr s)) = y
   simp [h_x] at h_x_size
   simp [h_y] at h_y_size
-  rw [rightshift_n_or_leftshift_n _ _ h_y_size]
+  rw [leftshift_n_or_rightshift_n _ _ h_y_size]
   have l0 : 1 < 2 := by decide
   have l1 : n * 8 < (n + 1) * 8 := by omega
   have l2 := pow_lt_pow_right l0 l1

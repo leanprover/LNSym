@@ -203,6 +203,7 @@ theorem first_address_add_one_is_subset_of_region (n : Nat) (addr : BitVec 64)
   simp [this] at h_ub
   auto d[mem_subset_for_auto]
 
+set_option auto.smt.timeout 30 in
 set_option auto.smt.savepath "/tmp/first_addresses_add_one_is_subset_of_region_general.smt2" in
 theorem first_addresses_add_one_is_subset_of_region_general
   (h0 : 0 < m) (h1 : m < 2 ^ 64) (h2 : n < 2 ^ 64)
