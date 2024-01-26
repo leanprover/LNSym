@@ -146,9 +146,19 @@ private def addEntry (from_inst : InstType) (to_insts : List InstType)
          ("[ForwardGraph] Implementation Error: graph already contains " ++
           "an entry with PC {InstType.pc from_inst}! Here is the graph: ${cfg.graph}."))
 
+-- This function adds information for an Arm instruction into Cfg
+-- Inputs: pc -- current program counter
+--         arm_inst -- current Arm instruction
+--         cfg -- the control-flow graph
+-- outputs: haltp : Bool -- whether the program halts
+--          cfg : Cfg -- the updated control-flow graph
 protected def addArmInstToCfg (pc : BitVec 64) (arm_inst : ArmInst) (cfg : Cfg)
    : IO (Bool × Cfg) := do
    let default_to_pc ← pure (pc + 4#64)
+   -- variable pc_inst: the type of instruction InstType: Seq, BrOrg, BrTgt, Ret
+   -- variable to_insts: an over-approximation of possible next pcs,
+   --                    for a conditional branch, the to_insts include all
+   --                    possible branch targets
    let ((haltp : Bool), (pc_inst : InstType), (to_insts : List InstType)) :=
    open InstType ArmInst in
    match arm_inst with
@@ -176,6 +186,12 @@ protected def addArmInstToCfg (pc : BitVec 64) (arm_inst : ArmInst) (cfg : Cfg)
         -- indexed by inst.Rn, but we can figure that value out only
         -- after symbolic simulation.
         (true, Ret pc, [Ret pc])
+      | Cond_branch_imm inst =>
+        let branch_taken_pc := BR.Cond_branch_imm_inst.branch_taken_pc inst pc
+        let (condition_holds : CondHoldsFn) :=
+            (fun state => BR.Cond_branch_imm_inst.condition_holds inst state)
+        (false, BrOrg pc condition_holds,
+          [Seq default_to_pc, BrTgt branch_taken_pc condition_holds])
    let new_cfg ← addEntry pc_inst to_insts cfg
    pure (haltp, new_cfg)
 

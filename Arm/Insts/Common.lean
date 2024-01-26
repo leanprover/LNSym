@@ -172,4 +172,17 @@ def decode_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immr : BitVec 6)
 
 ----------------------------------------------------------------------
 
+inductive SIMDThreeSameLogicalType where
+  | AND  : SIMDThreeSameLogicalType
+  | BIC  : SIMDThreeSameLogicalType
+  | ORR  : SIMDThreeSameLogicalType
+  | ORN  : SIMDThreeSameLogicalType
+  | EOR  : SIMDThreeSameLogicalType
+  | BSL  : SIMDThreeSameLogicalType
+  | BIT : SIMDThreeSameLogicalType
+  | BIF : SIMDThreeSameLogicalType
+deriving DecidableEq, Repr
+
+instance : ToString SIMDThreeSameLogicalType where toString a := toString (repr a)
+
 end Common
