@@ -16,8 +16,7 @@ namespace DPSFP
 open Std.BitVec
 
 theorem add_vector_op_helper_lemma (x y : Nat) (h : 0 < y) :
-  x + y - 1 - x + 1 = y := by
-    rw [Nat.add_sub_assoc h, Nat.add_sub_cancel_left, Nat.sub_add_cancel h]
+  x + y - 1 - x + 1 = y := by omega
 
 def add_vector_op (e : Nat) (elems : Nat) (esize : Nat)
   (op : BitVec esize → BitVec esize → BitVec esize)
@@ -26,8 +25,7 @@ def add_vector_op (e : Nat) (elems : Nat) (esize : Nat)
   if h₀ : elems ≤ e then
     result
   else
-    have h₁ : e < elems := by
-      simp at h₀; exact h₀
+    have h₁ : e < elems := by omega
     let lo := e * esize
     let hi := lo + esize - 1
     let element1 := BitVec.extract x hi lo
@@ -36,8 +34,7 @@ def add_vector_op (e : Nat) (elems : Nat) (esize : Nat)
       simp; apply add_vector_op_helper_lemma; simp [*] at *
     let elem_result := op (h ▸ element1) (h ▸ element2)
     let result := BitVec.partInstall hi lo (h.symm ▸ elem_result) result
-    have ht1 : elems - (e + 1) < elems - e := by
-      apply Nat.sub_succ_lt_self elems e h₁
+    have ht1 : elems - (e + 1) < elems - e := by omega
     add_vector_op (e + 1) elems esize op x y result H
   termination_by add_vector_op e elems esize op x y result H => (elems - e)
 

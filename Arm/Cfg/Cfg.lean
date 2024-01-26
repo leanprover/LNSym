@@ -147,7 +147,7 @@ private def addEntry (from_inst : InstType) (to_insts : List InstType)
           "an entry with PC {InstType.pc from_inst}! Here is the graph: ${cfg.graph}."))
 
 -- This function adds information for an Arm instruction into Cfg
--- Inputs: pc -- current pr
+-- Inputs: pc -- current program counter
 --         arm_inst -- current Arm instruction
 --         cfg -- the control-flow graph
 -- outputs: haltp : Bool -- whether the program halts
