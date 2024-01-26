@@ -52,6 +52,17 @@ theorem BitVec.add_sub_add_left (a m n : BitVec 64) :
   a + m - (a + n) = m - n := by
   auto
 
+-- (FIXME) Prove without auto using general assoc/comm BitVec lemmas.
+set_option auto.smt.savepath "/tmp/BitVec.sub_of_add_is_sub_sub.smt2" in
+theorem BitVec.sub_of_add_is_sub_sub (a b c : BitVec 64) :
+  (a - (b + c)) = a - b - c := by
+  auto
+
+-- (FIXME) Prove without auto using general assoc/comm BitVec lemmas.
+set_option auto.smt.savepath "/tmp/BitVec.add_of_sub_sub_of_add.smt2" in
+theorem BitVec.add_of_sub_sub_of_add (a b c : BitVec 64) :
+  (a + b - c) = a - c + b := by
+  auto
 
 set_option auto.smt.savepath "/tmp/nat_bitvec_sub1.smt2" in
 theorem nat_bitvec_sub1 (x y : BitVec 64)
@@ -103,7 +114,7 @@ theorem addr_add_one_add_m_sub_one  (n : Nat) (addr : BitVec 64)
   done
 
 ----------------------------------------------------------------------
----- Separate and Overlapping Memory Regions ----
+---- mem_subset ----
 
 -- (FIXME) As for Dec. 2023, lean-auto cannot resolve <[=] to
 -- Std.BitVec.ul[t/e].
@@ -135,23 +146,6 @@ theorem mem_subset_and_mem_subset_for_auto :
   have : 2^64 - 1 = 18446744073709551615 := by decide
   simp [le_and_bitvec_le, this]
 
-set_option auto.smt.savepath "/tmp/mem_separate_commutative.smt2" in
-theorem mem_separate_commutative :
-  mem_separate a1 a2 b1 b2 = mem_separate b1 b2 a1 a2 := by
-  simp [mem_separate, mem_overlap_and_mem_overlap_for_auto]
-  auto d[mem_overlap_for_auto]
-
-set_option auto.smt.savepath "/tmp/mem_separate_starting_addresses_neq.smt2" in
-theorem mem_separate_starting_addresses_neq :
-  mem_separate a1 a2 b1 b2 → a1 ≠ b1 := by
-  simp [mem_separate, mem_overlap_and_mem_overlap_for_auto]
-  auto d[mem_overlap_for_auto]
-
-set_option auto.smt.savepath "/tmp/mem_subset_same_address_eq.smt2" in
-theorem mem_subset_same_address_eq : mem_subset a a b b = (a = b)  := by
-  simp [mem_subset_and_mem_subset_for_auto]
-  auto d[mem_subset_for_auto]
-
 set_option auto.smt.savepath "/tmp/mem_subset_refl.smt2" in
 theorem mem_subset_refl : mem_subset a1 a2 a1 a2 := by
   simp [mem_subset_and_mem_subset_for_auto]
@@ -163,6 +157,34 @@ theorem mem_subsets_overlap (h : mem_subset a1 a2 b1 b2) :
   revert h
   simp [mem_subset_and_mem_subset_for_auto, mem_overlap_and_mem_overlap_for_auto]
   auto d[mem_overlap_for_auto, mem_subset_for_auto]
+
+set_option auto.smt.savepath "/tmp/mem_subset_eq.smt2" in
+theorem mem_subset_eq : mem_subset a a b b = (a = b)  := by
+  simp [mem_subset_and_mem_subset_for_auto]
+  auto d[mem_subset_for_auto]
+
+set_option auto.smt.savepath "/tmp/mem_subset_first_address.smt2" in
+theorem mem_subset_first_address (h : mem_subset a b c d) :
+  mem_subset a a c d := by
+  revert h
+  simp_all [mem_subset_and_mem_subset_for_auto, le_and_bitvec_le, lt_and_bitvec_lt]
+  auto d[mem_subset_for_auto]
+
+set_option auto.smt.savepath "/tmp/mem_subset_one_addr_neq.smt2" in
+theorem mem_subset_one_addr_neq (h1 : a ≠ b1)
+  (h : mem_subset a a b1 b2) :
+  mem_subset a a (b1 + 1#64) b2 := by
+  revert h
+  simp_all [mem_subset_and_mem_subset_for_auto, le_and_bitvec_le, lt_and_bitvec_lt]
+  auto d[mem_subset_for_auto]
+
+set_option auto.smt.savepath "/tmp/mem_subset_same_address_different_sizes.smt2" in
+theorem mem_subset_same_address_different_sizes
+  (h : mem_subset addr (addr + n1) addr (addr + n2)) :
+  n1 <= n2 := by
+  revert h
+  simp [mem_subset_and_mem_subset_for_auto, le_and_bitvec_le]
+  auto d[mem_subset_for_auto]
 
 set_option auto.smt.savepath "/tmp/first_address_is_subset_of_region.smt2" in
 theorem first_address_is_subset_of_region :
@@ -274,7 +296,6 @@ theorem mem_subset_same_region_lemma
   simp [mem_subset_and_mem_subset_for_auto, le_and_bitvec_le]
   auto d[mem_subset_for_auto]
 
-
 -- (FIXME) This is a theorem; see
 -- Arm/mem_separate_for_subset.smt2. This can be solved by z3 in ~10s
 -- if only lean-auto would map Lean definitions to SMT definitions.
@@ -288,29 +309,26 @@ theorem mem_subset_trans
   -- auto d[mem_subset_for_auto]
   sorry
 
--- (FIXME) This is a theorem; see Arm/mem_separate_for_subset.smt2,
--- which was solved by z3 in ~130s (also: by bitwuzla in ~60s, which
--- is unsupported by lean-auto right now).  If only lean-auto would
--- map Lean definitions to SMT definitions instead of inlining them,
--- we'd be able to prove this theorem here.
--- Also note that mem_separate_for_subset2 is somehow easier to prove
--- than mem_separate_for_subset1 using SMT solvers.
-set_option auto.smt.savepath "/tmp/mem_separate_for_subset2.smt2" in
--- set_option trace.auto.smt.printCommands true in
--- set_option trace.Meta.synthInstance true in
-theorem mem_separate_for_subset2
-  (h1 : mem_separate a1 a2 b1 b2) (h2 : mem_subset c1 c2 b1 b2) :
-  mem_separate a1 a2 c1 c2 := by
-  revert h1 h2
-  simp [mem_subset_and_mem_subset_for_auto, mem_separate, mem_overlap_and_mem_overlap_for_auto]
-  -- auto d[mem_overlap_for_auto, mem_subset_for_auto]
-  sorry
+----------------------------------------------------------------------
+---- mem_separate ----
 
-theorem mem_separate_for_subset1
-  (h1 : mem_separate a1 a2 b1 b2) (h2 : mem_subset c1 c2 a1 a2) :
-  mem_separate c1 c2 b1 b2 := by
-  rw [mem_separate_commutative] at *
-  rw [@mem_separate_for_subset2 b1 b2 a1 a2 c1 c2 h1 h2]
+set_option auto.smt.savepath "/tmp/mem_separate_commutative.smt2" in
+theorem mem_separate_commutative :
+  mem_separate a1 a2 b1 b2 = mem_separate b1 b2 a1 a2 := by
+  simp [mem_separate, mem_overlap_and_mem_overlap_for_auto]
+  auto d[mem_overlap_for_auto]
+
+set_option auto.smt.savepath "/tmp/mem_separate_starting_addresses_neq.smt2" in
+theorem mem_separate_starting_addresses_neq :
+  mem_separate a1 a2 b1 b2 → a1 ≠ b1 := by
+  simp [mem_separate, mem_overlap_and_mem_overlap_for_auto]
+  auto d[mem_overlap_for_auto]
+
+set_option auto.smt.savepath "/tmp/mem_separate_neq.smt2" in
+theorem mem_separate_neq :
+  a ≠ b ↔ mem_separate a a b b := by
+  simp [mem_separate, mem_overlap_and_mem_overlap_for_auto]
+  auto d[mem_overlap_for_auto]
 
 set_option auto.smt.savepath "/tmp/mem_separate_contiguous_regions.smt2" in
 theorem mem_separate_contiguous_regions (a k n : BitVec 64)
@@ -340,13 +358,8 @@ theorem mem_separate_contiguous_regions_one_address (addr : BitVec 64) (h : n' <
   simp [h']
   auto d[mem_overlap_for_auto]
 
-set_option auto.smt.savepath "/tmp/mem_subset_same_address_different_sizes.smt2" in
-theorem mem_subset_same_address_different_sizes
-  (h : mem_subset addr (addr + n1) addr (addr + n2)) :
-  n1 <= n2 := by
-  revert h
-  simp [mem_subset_and_mem_subset_for_auto, le_and_bitvec_le]
-  auto d[mem_subset_for_auto]
+----------------------------------------------------------------------
+---- mem_subset and mem_separate -----
 
 -- set_option auto.smt.savepath "/tmp/test.smt2" in
 -- theorem test (h0 : 0 < n1) (h1 : n1 ≤ 2 ^ 64)
@@ -361,6 +374,31 @@ theorem mem_subset_same_address_different_sizes
 --   have _ : 2^64 - 1 = 18446744073709551615 := by decide
 --   simp_all [mem_subset_and_mem_subset_for_auto]
 --   auto d[mem_subset_for_auto]
+
+
+-- (FIXME) This is a theorem; see Arm/mem_separate_for_subset.smt2,
+-- which was solved by z3 in ~130s (also: by bitwuzla in ~60s, which
+-- is unsupported by lean-auto right now).  If only lean-auto would
+-- map Lean definitions to SMT definitions instead of inlining them,
+-- we'd be able to prove this theorem here.
+-- Also note that mem_separate_for_subset2 is somehow easier to prove
+-- than mem_separate_for_subset1 using SMT solvers.
+set_option auto.smt.savepath "/tmp/mem_separate_for_subset2.smt2" in
+-- set_option trace.auto.smt.printCommands true in
+-- set_option trace.Meta.synthInstance true in
+theorem mem_separate_for_subset2
+  (h1 : mem_separate a1 a2 b1 b2) (h2 : mem_subset c1 c2 b1 b2) :
+  mem_separate a1 a2 c1 c2 := by
+  revert h1 h2
+  simp [mem_subset_and_mem_subset_for_auto, mem_separate, mem_overlap_and_mem_overlap_for_auto]
+  -- auto d[mem_overlap_for_auto, mem_subset_for_auto]
+  sorry
+
+theorem mem_separate_for_subset1
+  (h1 : mem_separate a1 a2 b1 b2) (h2 : mem_subset c1 c2 a1 a2) :
+  mem_separate c1 c2 b1 b2 := by
+  rw [mem_separate_commutative] at *
+  rw [@mem_separate_for_subset2 b1 b2 a1 a2 c1 c2 h1 h2]
 
 ----------------------------------------------------------------------
 

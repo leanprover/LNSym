@@ -23,7 +23,7 @@ tests:
 	time -p $(LAKE) build Tests
 
 .PHONY: cosim
-cosim: tests	
+cosim:
 	time -p lake exe lnsym $(VERBOSE) --num_tests $(NUM_TESTS)
 
 .PHONY: clean clean_all
