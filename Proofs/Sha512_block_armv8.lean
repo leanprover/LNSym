@@ -73,8 +73,6 @@ def sha512_program_snippet2 : program :=
      (0x12654c#64 , 0xce608423#32)       --  sha512h2        q3, q1, v0
      ]
 
--- TIMES OUT: (deterministic) timeout at 'simp' when `sym1
--- [h_program]` is uncommented.
 -- set_option profiler true in
 theorem sha512_program_snippet2_sym (s : ArmState)
   (h_pc : read_pc s = 0x126538#64)
@@ -82,8 +80,7 @@ theorem sha512_program_snippet2_sym (s : ArmState)
   (h_s_ok : read_err s = StateError.None)
   (h_s' : s' = run 4 s) :
   read_err s' = StateError.None := by
-  -- sym1 [h_program]
-  sorry
+  iterate 4 (sym1 [h_program])
 
 ----------------------------------------------------------------------
 
@@ -135,7 +132,7 @@ theorem sha512_block_armv8_one_iteration (s : ArmState)
   (h_pc : read_pc s = 0x1264c0#64)
   (h_program : s.program = sha512_program_map.find?)
   (h_s' : s' = run 32 s) :
-  read_err s' = StateError.None := by
+  read_err s' = StateError.None := by  
   -- sym1 [h_program];
     -- sym1 [h_program];
     -- save;
@@ -168,7 +165,7 @@ theorem sha512_block_armv8_test3 (s : ArmState)
   (h_program : s.program = sha512_program_snippet3.find?)
   (h_s' : s' = run 4 s) :
   read_err s' = StateError.None := by
-  -- sym1 [h_program]
+  -- iterate 4 (sym1 [h_program])
   sorry
 
 end SHA512_proof
