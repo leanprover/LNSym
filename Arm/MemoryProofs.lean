@@ -26,35 +26,57 @@ open Std.BitVec
 ----------------------------------------------------------------------
 -- Key theorem: read_mem_bytes_of_write_mem_bytes_same
 
+/-
+theorem read_mem_of_write_mem_bytes_different1 (hn1 : n <= 2^64)
+  (h : mem_separate addr1 addr1 addr2 (addr2 + (n - 1)#64)) :
+  read_mem addr1 (write_mem_bytes n addr2 v s) = read_mem addr1 s := by
+  induction n generalizing addr2 s
+  case zero => simp [write_mem_bytes]
+  case succ =>
+    rename_i n n_ih
+    simp [write_mem_bytes]
+    rw [n_ih (by omega)]
+    · rw [read_mem_of_write_mem_different]
+      apply mem_separate_starting_addresses_neq h
+    · simp_all
+      sorry
+-/
+
+theorem mem_separate_preserved_second_start_addr_add_one
+  (h0 : 0 < m) (h1 : m < 2^64)
+  (h2 : mem_separate a b c (c + m#64)) :
+  mem_separate a b (c + 1#64) (c + m#64) := by
+  rw [mem_separate_for_subset2 h2]
+  unfold mem_subset; simp
+  simp [BitVec.le_of_eq]
+  rw [BitVec.add_sub_self_left_64 c m#64]
+  rw [BitVec.add_sub_self_left_64 c 1#64]
+  apply Or.inr
+  apply BitVec.val_nat_le 1 m 64 h0 (_ : 1 < 2^64) h1
+  decide
+
 theorem read_mem_of_write_mem_bytes_different (hn1 : n <= 2^64)
   (h : mem_separate addr1 addr1 addr2 (addr2 + (n - 1)#64)) :
   read_mem addr1 (write_mem_bytes n addr2 v s) = read_mem addr1 s := by
   by_cases hn0 : n = 0
-  case pos =>
-    subst n; unfold write_mem_bytes; rfl
+  case pos => -- n = 0
+    subst n; simp [write_mem_bytes]
   case neg => -- n ≠ 0
     have hn0' : 0 < n := by exact Nat.pos_of_ne_zero hn0
     induction n, hn0' using Nat.le_induction generalizing addr2 s
     case base =>
-      have h' : addr1 ≠ addr2 := by refine mem_separate_starting_addresses_neq h
+      have h' : addr1 ≠ addr2 := by apply mem_separate_starting_addresses_neq h
       simp [write_mem_bytes]
-      refine read_mem_of_write_mem_different h'
+      apply read_mem_of_write_mem_different h'
     case succ =>
       have h' : addr1 ≠ addr2 := by refine mem_separate_starting_addresses_neq h
       rename_i m hn n_ih
       simp_all [write_mem_bytes]
       rw [n_ih]
-      · refine read_mem_of_write_mem_different h'
+      · rw [read_mem_of_write_mem_different h']
       · omega
       · rw [addr_add_one_add_m_sub_one m addr2 hn hn1]
-        rw [mem_separate_for_subset2 h]
-        unfold mem_subset; simp
-        simp [BitVec.le_of_eq]
-        rw [BitVec.add_sub_self_left_64 addr2 m#64]
-        rw [BitVec.add_sub_self_left_64 addr2 1#64]
-        apply Or.inr
-        apply BitVec.val_nat_le 1 m 64 hn (_ : 1 < 2^64) hn1
-        decide
+        rw [mem_separate_preserved_second_start_addr_add_one hn hn1 h]
       · omega
   done
 
@@ -214,9 +236,7 @@ theorem write_mem_bytes_of_write_mem_bytes_commute
             have := @mem_subset_same_region_lemma n addr2
             apply this; omega; omega
           · assumption
-        · rw [separate_regions_first_address_separate
-               n#64 addr2 addr1 (addr1 + (n1 - 1)#64)]
-          assumption
+        · apply mem_separate_first_address_separate h3
     done
 
 ----------------------------------------------------------------------

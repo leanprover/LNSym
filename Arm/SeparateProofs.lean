@@ -208,7 +208,7 @@ set_option auto.smt.savepath "/tmp/first_addresses_add_one_is_subset_of_region_g
 theorem first_addresses_add_one_is_subset_of_region_general
   (h0 : 0 < m) (h1 : m < 2 ^ 64) (h2 : n < 2 ^ 64)
   (h3 : mem_subset addr1 (addr1 + m#64) addr2 (addr2 + n#64)) :
-  mem_subset (addr1 + 1#64) (addr1 + m#64) addr2 (addr2 + n#64) := by  
+  mem_subset (addr1 + 1#64) (addr1 + m#64) addr2 (addr2 + n#64) := by
   -- auto creates an uninterpreted function for the exponentiation, so
   -- we evaluate it here.
   have : (2^64 = 0x10000000000000000) := by decide
@@ -239,7 +239,7 @@ theorem first_addresses_add_one_preserves_subset_same_addr
     rw [BitVec.add_sub_add_left]
     simp [mem_subset] at h3
     cases h3
-    case inl => 
+    case inl =>
       rename_i h3
       simp [BitVec.add_sub_self_left_64] at h3
       rw [h3]
@@ -331,6 +331,13 @@ theorem mem_separate_neq :
   simp [mem_separate, mem_overlap_and_mem_overlap_for_auto]
   auto d[mem_overlap_for_auto]
 
+set_option auto.smt.savepath "/tmp/mem_separate_first_addresses_separate.smt2" in
+theorem mem_separate_first_address_separate (h : mem_separate a b c d) :
+  mem_separate a a c d := by
+  revert h
+  simp [mem_separate, mem_overlap_and_mem_overlap_for_auto, lt_and_bitvec_lt]
+  auto d[mem_overlap_for_auto]
+
 set_option auto.smt.savepath "/tmp/mem_separate_contiguous_regions.smt2" in
 theorem mem_separate_contiguous_regions (a k n : BitVec 64)
   (hn : n < ((Std.BitVec.ofNat 64 (2^64 - 1)) - k)) :
@@ -339,14 +346,6 @@ theorem mem_separate_contiguous_regions (a k n : BitVec 64)
   simp [mem_separate, mem_overlap_and_mem_overlap_for_auto, lt_and_bitvec_lt]
   have h' : (2 ^ 64 - 1)#64 = 18446744073709551615#64 := by rfl
   simp [h']
-  auto d[mem_overlap_for_auto]
-
-set_option auto.smt.savepath "/tmp/separate_regions_first_address_separate.smt2" in
-theorem separate_regions_first_address_separate (n x y z : BitVec 64)
-  (h : mem_separate x (x + n) y z) :
-  mem_separate x x y z := by
-  revert h
-  simp [mem_separate, mem_overlap_and_mem_overlap_for_auto, lt_and_bitvec_lt]
   auto d[mem_overlap_for_auto]
 
 -- TODO: Perhaps use/modify mem_separate_contiguous_regions instead?
