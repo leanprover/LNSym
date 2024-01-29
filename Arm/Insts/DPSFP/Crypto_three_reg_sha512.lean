@@ -19,14 +19,14 @@ open Std.BitVec
 def sha512h (x : BitVec 128) (y : BitVec 128) (w : BitVec 128)
   : BitVec 128 :=
   open sha512_helpers in
-  let y_127_64    := BitVec.extract y 127 64
-  let y_63_0      := BitVec.extract y 63 0
+  let y_127_64    := extractLsb 127 64 y
+  let y_63_0      := extractLsb 63 0 y
   let msigma1     := sigma_big_1 y_127_64
-  let x_63_0      := BitVec.extract x 63 0
-  let x_127_64    := BitVec.extract x 127 64
+  let x_63_0      := extractLsb 63 0 x
+  let x_127_64    := extractLsb 127 64 x
   let vtmp_127_64 := ch y_127_64 x_63_0 x_127_64
-  let w_127_64    := BitVec.extract w 127 64
-  let w_63_0      := BitVec.extract w 63 0
+  let w_127_64    := extractLsb 127 64 w
+  let w_63_0      := extractLsb 63 0 w
   let vtmp_127_64 := vtmp_127_64 + msigma1 + w_127_64
   let tmp         := vtmp_127_64 + y_63_0
   let msigma1     := sigma_big_1 tmp
@@ -38,16 +38,16 @@ def sha512h (x : BitVec 128) (y : BitVec 128) (w : BitVec 128)
 def sha512h2 (x : BitVec 128) (y : BitVec 128) (w : BitVec 128) :
     BitVec 128 :=
     open sha512_helpers in
-    let y_63_0      := BitVec.extract y 63 0
-    let y_127_64    := BitVec.extract y 127 64
+    let y_63_0      := extractLsb 63 0 y
+    let y_127_64    := extractLsb 127 64 y
     let nsigma0     := sigma_big_0 y_63_0
-    let x_63_0      := BitVec.extract x 63 0
+    let x_63_0      := extractLsb 63 0 x
     let vtmp_127_64 := maj x_63_0 y_127_64 y_63_0
-    let w_127_64    := BitVec.extract w 127 64
+    let w_127_64    := extractLsb 127 64 w
     let vtmp_127_64 := vtmp_127_64 + nsigma0 + w_127_64
     let nsigma0     := sigma_big_0 vtmp_127_64
     let vtmp_63_0   := maj vtmp_127_64 y_63_0 y_127_64
-    let w_63_0      := BitVec.extract w 63 0
+    let w_63_0      := extractLsb 63 0 w
     let vtmp_63_0   := vtmp_63_0 + nsigma0 + w_63_0
     let result      := vtmp_127_64 ++ vtmp_63_0
     result
@@ -55,15 +55,15 @@ def sha512h2 (x : BitVec 128) (y : BitVec 128) (w : BitVec 128) :
 def sha512su1 (x : BitVec 128) (y : BitVec 128) (w : BitVec 128)
   : BitVec 128 :=
   open sha512_helpers in
-  let x_127_64    := BitVec.extract x 127 64
+  let x_127_64    := extractLsb 127 64 x
   let sig1        := sigma_1 x_127_64
-  let w_127_64    := BitVec.extract w 127 64
-  let y_127_64    := BitVec.extract y 127 64
+  let w_127_64    := extractLsb 127 64 w
+  let y_127_64    := extractLsb 127 64 y
   let vtmp_127_64 := w_127_64 + sig1 + y_127_64
-  let x_63_0      := BitVec.extract x 63 0
+  let x_63_0      := extractLsb 63 0 x
   let sig1        := sigma_1 x_63_0
-  let w_63_0      := BitVec.extract w 63 0
-  let y_63_0      := BitVec.extract y 63 0
+  let w_63_0      := extractLsb 63 0 w
+  let y_63_0      := extractLsb 63 0 y
   let vtmp_63_0   := w_63_0 + sig1 + y_63_0
   let result      := vtmp_127_64 ++ vtmp_63_0
   result

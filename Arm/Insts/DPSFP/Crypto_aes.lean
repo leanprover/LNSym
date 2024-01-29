@@ -15,12 +15,12 @@ open Std.BitVec
 
 -- def aese (x : BitVec 128) : BitVec 128 :=
 --   open aes_helpers in
---   let w_127_64    := BitVec.extract w 127 64
---   let w_127_71    := BitVec.extract w 127 71
---   let w_63_0      := BitVec.extract w 63 0
+--   let w_127_64    := extractLsb 127 64 w
+--   let w_127_71    := extractLsb 127 71 w
+--   let w_63_0      := extractLsb 63 0 w
 --   let sig0        := sigma_0 w_127_64 w_127_71
---   let x_63_0      := BitVec.extract x 63 0
---   let x_63_7      := BitVec.extract x 63 7
+--   let x_63_0      := extractLsb 63 0 x
+--   let x_63_7      := extractLsb 63 7 x
 --   let vtmp_63_0   := w_63_0 + sig0
 --   let sig0        := sigma_0 x_63_0 x_63_7
 --   let vtmp_127_64 := w_127_64 + sig0

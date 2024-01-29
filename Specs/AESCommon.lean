@@ -9,22 +9,22 @@ namespace aes_helpers
 open Std.BitVec
 
 def aes_shift_rows (op : BitVec 128) : BitVec 128 :=
-  let op_7_0     := BitVec.extract op 7 0
-  let op_47_40   := BitVec.extract op 47 40
-  let op_87_80   := BitVec.extract op 87 80
-  let op_127_120 := BitVec.extract op 127 120
-  let op_39_32   := BitVec.extract op 39 32
-  let op_79_72   := BitVec.extract op 79 72
-  let op_119_112 := BitVec.extract op 119 112
-  let op_31_24   := BitVec.extract op 31 24
-  let op_71_64   := BitVec.extract op 71 64
-  let op_111_104 := BitVec.extract op 111 104
-  let op_23_16   := BitVec.extract op 23 16
-  let op_63_56   := BitVec.extract op 63 56
-  let op_103_96  := BitVec.extract op 103 96
-  let op_15_8    := BitVec.extract op 15 8
-  let op_55_48   := BitVec.extract op 55 48
-  let op_95_88   := BitVec.extract op 95 88
+  let op_7_0     := extractLsb 7 0 op
+  let op_47_40   := extractLsb 47 40 op
+  let op_87_80   := extractLsb 87 80 op
+  let op_127_120 := extractLsb 127 120 op
+  let op_39_32   := extractLsb 39 32 op
+  let op_79_72   := extractLsb 79 72 op
+  let op_119_112 := extractLsb 119 112 op
+  let op_31_24   := extractLsb 31 24 op
+  let op_71_64   := extractLsb 71 64 op
+  let op_111_104 := extractLsb 111 104 op
+  let op_23_16   := extractLsb 23 16 op
+  let op_63_56   := extractLsb 63 56 op
+  let op_103_96  := extractLsb 103 96 op
+  let op_15_8    := extractLsb 15 8 op
+  let op_55_48   := extractLsb 55 48 op
+  let op_95_88   := extractLsb 95 88 op
   (op_95_88 ++ op_55_48 ++ op_15_8 ++ op_103_96 ++ op_63_56 ++
   op_23_16 ++ op_111_104 ++ op_71_64 ++ op_31_24 ++ op_119_112 ++
   op_79_72 ++ op_39_32 ++ op_127_120 ++ op_87_80 ++ op_47_40 ++

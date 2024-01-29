@@ -28,8 +28,8 @@ def add_vector_op (e : Nat) (elems : Nat) (esize : Nat)
     have h₁ : e < elems := by omega
     let lo := e * esize
     let hi := lo + esize - 1
-    let element1 := BitVec.extract x hi lo
-    let element2 := BitVec.extract y hi lo
+    let element1 := extractLsb hi lo x
+    let element2 := extractLsb hi lo y
     have h : hi - lo + 1 = esize := by
       simp; apply add_vector_op_helper_lemma; simp [*] at *
     let elem_result := op (h ▸ element1) (h ▸ element2)

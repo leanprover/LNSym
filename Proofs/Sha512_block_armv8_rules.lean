@@ -25,33 +25,28 @@ set_option trace.auto.smt.proof false -- Do not print the proof.
 set_option auto.smt.savepath "/tmp/sha512_message_schedule_rule.smt2" in
 theorem sha512_message_schedule_rule (a b c d : BitVec 128) :
   sha512su1 a b (sha512su0 c d) =
-  let a1 := BitVec.extract a 127 64
-  let a0 := BitVec.extract a  63  0
-  let b1 := BitVec.extract b 127 64
-  let b0 := BitVec.extract b  63  0
-  let c0 := BitVec.extract c  63  0
-  let d1 := BitVec.extract d 127 64
-  let d0 := BitVec.extract d  63  0
+  let a1 := extractLsb 127 64 a
+  let a0 := extractLsb  63  0 a
+  let b1 := extractLsb 127 64 b
+  let b0 := extractLsb  63  0 b
+  let c0 := extractLsb  63  0 c
+  let d1 := extractLsb 127 64 d
+  let d0 := extractLsb  63  0 d
   message_schedule_word_aux a1 b1 c0 d1 ++
   message_schedule_word_aux a0 b0 d1 d0 := by
-  -- unfold sha512su1 sha512su0 message_schedule_word_aux
-  -- simp
-  -- unfold sigma_0 sigma_1 BitVec.extract BitVec.ror
   auto d[sha512su1, sha512su0,  message_schedule_word_aux]
 
 set_option auto.smt.savepath "/tmp/sha512h2_rule.smt2" in
 theorem sha512h2_rule (a b c : BitVec 128) :
   sha512h2 a b c =
-  let a0 := BitVec.extract a  63  0
-  let b1 := BitVec.extract b 127 64
-  let b0 := BitVec.extract b  63  0
-  let c0 := BitVec.extract c  63  0
-  let c1 := BitVec.extract c 127 64
+  let a0 := extractLsb  63  0  a
+  let b1 := extractLsb 127 64  b
+  let b0 := extractLsb  63  0  b
+  let c0 := extractLsb  63  0  c
+  let c1 := extractLsb 127 64  c
   ((compression_update_t2 b0 a0 b1) + c1) ++
   ((compression_update_t2 ((compression_update_t2 b0 a0 b1) + c1) b0 b1) + c0) := by
-  -- unfold compression_update_t2 sha512h2 BitVec.extract
-  -- simp
-  auto u[maj, compression_update_t2, sha512h2, BitVec.extract]
+  auto u[maj, compression_update_t2, sha512h2]
 
 -- sha512h2 q3, q1, v0.2d: 0xce608423#32
 -- theorem sha512h2_instruction_rewrite
@@ -77,23 +72,23 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let esize := 64
   let inner_sum := (add_vector_op 0 elements esize Std.BitVec.add c d (Std.BitVec.zero 128) H)
   let outer_sum := (add_vector_op 0 elements esize Std.BitVec.add inner_sum e (Std.BitVec.zero 128) H)
-  let a0 := BitVec.extract a 63 0
-  let a1 := BitVec.extract a 127 64
-  let b0 := BitVec.extract b 63 0
-  let b1 := BitVec.extract b 127 64
-  let c0 := BitVec.extract c 63 0
-  let c1 := BitVec.extract c 127 64
-  let d0 := BitVec.extract d 63 0
-  let d1 := BitVec.extract d 127 64
-  let e0 := BitVec.extract e 63 0
-  let e1 := BitVec.extract e 127 64
+  let a0 := extractLsb 63 0   a
+  let a1 := extractLsb 127 64 a
+  let b0 := extractLsb 63 0   b
+  let b1 := extractLsb 127 64 b
+  let c0 := extractLsb 63 0   c
+  let c1 := extractLsb 127 64 c
+  let d0 := extractLsb 63 0   d
+  let d1 := extractLsb 127 64 d
+  let e0 := extractLsb 63 0   e
+  let e1 := extractLsb 127 64 e
   let hi64_spec := compression_update_t1 b1 a0 a1 c1 d1 e1
   let lo64_spec := compression_update_t1 (b0 + hi64_spec) b1 a0 c0 d0 e0
   sha512h a b outer_sum = hi64_spec ++ lo64_spec := by
   simp_all! only [Nat.sub_zero];
   repeat (unfold add_vector_op; simp)
-  unfold BitVec.extract BitVec.partInstall
-  unfold sha512h compression_update_t1 sigma_big_1 ch BitVec.extract allOnes
+  unfold BitVec.partInstall
+  unfold sha512h compression_update_t1 sigma_big_1 ch allOnes
   auto
 
 -- (FIXME) Prove without auto.
@@ -152,26 +147,26 @@ theorem rev_vector_of_rev_vector_128_64_8 (x : Std.BitVec 128) :
 
 set_option auto.smt.savepath "/tmp/sha512h_rule_2.smt2" in
 theorem sha512h_rule_2 (a b c d e : BitVec 128) :
-  let a0 := BitVec.extract a 63 0
-  let a1 := BitVec.extract a 127 64
-  let b0 := BitVec.extract b 63 0
-  let b1 := BitVec.extract b 127 64
-  let c0 := BitVec.extract c 63 0
-  let c1 := BitVec.extract c 127 64
-  let d0 := BitVec.extract d 63 0
-  let d1 := BitVec.extract d 127 64
-  let e0 := BitVec.extract e 63 0
-  let e1 := BitVec.extract e 127 64
+  let a0 := extractLsb 63 0   a
+  let a1 := extractLsb 127 64 a
+  let b0 := extractLsb 63 0   b
+  let b1 := extractLsb 127 64 b
+  let c0 := extractLsb 63 0   c
+  let c1 := extractLsb 127 64 c
+  let d0 := extractLsb 63 0   d
+  let d1 := extractLsb 127 64 d
+  let e0 := extractLsb 63 0   e
+  let e1 := extractLsb 127 64 e
   let inner_sum := add_vector_op 0 2 64 Std.BitVec.add d e (Std.BitVec.zero 128) h1
   let concat := inner_sum ++ inner_sum
-  let operand := BitVec.extract concat 191 64
+  let operand := extractLsb 191 64 concat
   let hi64_spec := compression_update_t1 b1 a0 a1 c1 d0 e0
   let lo64_spec := compression_update_t1 (b0 + hi64_spec) b1 a0 c0 d1 e1
   sha512h a b (add_vector_op 0 2 64 Std.BitVec.add c operand (Std.BitVec.zero 128) h2) =
   hi64_spec ++ lo64_spec := by
   repeat (unfold add_vector_op; simp)
   repeat (unfold BitVec.partInstall; simp)
-  unfold sha512h compression_update_t1 sigma_big_1 ch BitVec.extract allOnes
+  unfold sha512h compression_update_t1 sigma_big_1 ch allOnes
   auto
 
 end sha512_block_armv8_rules

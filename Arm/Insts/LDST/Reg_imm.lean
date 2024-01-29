@@ -49,7 +49,7 @@ def exec_reg_unsigned_imm
   let wback := false
   let postindex := false
   have h_scale : (1 - 1 + 1 + 2) = 3 := by decide
-  let scale := (BitVec.extract inst.opc 1 1) ++ inst.size
+  let scale := (extractLsb 1 1 inst.opc) ++ inst.size
   let scale := (h_scale ▸ scale)
   -- (FIXME) Why can't I use scale > 4#3 here?
   if Std.BitVec.ult 4#3 scale then
@@ -61,7 +61,7 @@ def exec_reg_unsigned_imm
       simp_all! only [Nat.shiftLeft_eq, dvd_mul_right]
     -- State Updates
     let s' := reg_imm_operation s!"{inst}"
-              (BitVec.extract inst.opc 0 0) wback postindex datasize
+              (extractLsb 0 0 inst.opc) wback postindex datasize
               inst.Rn inst.Rt offset
               s (H)
     let s' := write_pc ((read_pc s) + 4#64) s'
@@ -74,7 +74,7 @@ def exec_reg_imm_post_indexed
   open Std.BitVec in
   let wback := true
   let postindex := true
-  let scale := (BitVec.extract inst.opc 1 1) ++ inst.size
+  let scale := (extractLsb 1 1 inst.opc) ++ inst.size
   -- (FIXME) Why can't I use scale > 4#3 here?
   if Std.BitVec.ult 4#3 scale then
     write_err (StateError.Illegal "Illegal instruction {inst} encountered!") s
@@ -85,7 +85,7 @@ def exec_reg_imm_post_indexed
       simp_all! only [Nat.shiftLeft_eq, dvd_mul_right]
     -- State Updates
     let s' := reg_imm_operation s!"{inst}"
-              (BitVec.extract inst.opc 0 0) wback postindex datasize
+              (extractLsb 0 0 inst.opc) wback postindex datasize
               inst.Rn inst.Rt offset
               s (H)
     let s' := write_pc ((read_pc s) + 4#64) s'

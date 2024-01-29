@@ -17,10 +17,10 @@ open Std.BitVec
 def sha512su0 (x : BitVec 128) (w : BitVec 128)
   : BitVec 128 :=
   open sha512_helpers in
-  let w_127_64    := BitVec.extract w 127 64
-  let w_63_0      := BitVec.extract w 63 0
+  let w_127_64    := extractLsb 127 64 w
+  let w_63_0      := extractLsb 63 0 w
   let sig0        := sigma_0 w_127_64
-  let x_63_0      := BitVec.extract x 63 0
+  let x_63_0      := extractLsb 63 0 x
   let vtmp_63_0   := w_63_0 + sig0
   let sig0        := sigma_0 x_63_0
   let vtmp_127_64 := w_127_64 + sig0

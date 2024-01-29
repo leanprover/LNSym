@@ -52,8 +52,8 @@ def reg_pair_scalar_operation (inst_str : String) (load_op : BitVec 1)
           rw [Nat.sub_add_cancel]
           trivial
         let full_data := read_mem_bytes (2 * (datasize / 8)) address s
-        let data1 := BitVec.extract full_data (datasize - 1) 0
-        let data2 := BitVec.extract full_data ((2 * datasize) - 1) datasize
+        let data1 := extractLsb (datasize - 1) 0 full_data
+        let data2 := extractLsb ((2 * datasize) - 1) datasize full_data
         if signed then
           let s := write_gpr 64 Rt (signExtend 64 data1) s
           write_gpr 64 Rt2 (signExtend 64 data2) s
@@ -73,10 +73,10 @@ def exec_reg_pair_pre_indexed
   open Std.BitVec in
   let wback := true
   let postindex := false
-  let signed := (BitVec.extract inst.opc 0 0) != 0#1
-  let scale := 2 + (Std.BitVec.toNat (BitVec.extract inst.opc 1 1))
+  let signed := (extractLsb 0 0 inst.opc) != 0#1
+  let scale := 2 + (Std.BitVec.toNat (extractLsb 1 1 inst.opc))
   have H0 : scale > 0 := by simp_all!
-  if (inst.L == 0#1 && BitVec.extract inst.opc 0 0 == 1#1) || (inst.opc == 0b11#2) then
+  if (inst.L == 0#1 && extractLsb 0 0 inst.opc == 1#1) || (inst.opc == 0b11#2) then
     write_err (StateError.Illegal "Illegal instruction {inst} encountered!") s
   else
     let datasize := 8 <<< scale
@@ -85,7 +85,7 @@ def exec_reg_pair_pre_indexed
       simp_all! only [gt_iff_lt, Nat.shiftLeft_eq, dvd_mul_right]
     have H2 : datasize > 0 := by
       simp_all! only [Nat.shiftLeft_eq, dvd_mul_right]
-      generalize (2 + Std.BitVec.toNat (BitVec.extract inst.opc 1 1)) = x
+      generalize (2 + Std.BitVec.toNat (extractLsb 1 1 inst.opc)) = x
       have hb : 2 ^ x > 0 := by exact Nat.pow_two_pos x
       exact Nat.mul_pos (by decide) hb
     -- State Updates

@@ -46,9 +46,6 @@ protected def rand (n : Nat) (lo := 0) (hi := 2^n - 1) : IO (BitVec n) := do
 def unsigned_compare (a b : BitVec n) : Ordering :=
   if Std.BitVec.ult a b then .lt else if a = b then .eq else .gt
 
-abbrev extract (bv : BitVec n) (hi : Nat) (lo : Nat) : BitVec (hi - lo + 1) :=
-  extractLsb hi lo bv
-
 abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
   rotateRight x r
 
@@ -297,14 +294,9 @@ theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
   rw [Nat.mod_eq_of_lt]
   assumption
 
-protected theorem extract_eq (x : BitVec n) (h : n = n - 1 + 1) :
-  extract x (n - 1) 0 = Std.BitVec.cast h x := by
-  simp [extract]
-  rw [extractLsb_eq]
-
 protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
-  BitVec.extract (zeroExtend i x) j 0 = zeroExtend (j + 1) x := by
-  simp [BitVec.extract, extractLsb, extractLsb']
+  extractLsb j 0 (zeroExtend i x) = zeroExtend (j + 1) x := by
+  simp [extractLsb, extractLsb']
   ext
   simp [toNat_zeroExtend]
   refine Nat.mod_mod_of_dvd (Std.BitVec.toNat x) ?h  
@@ -408,11 +400,11 @@ theorem append_of_extract_general_nat (high low n vn : ℕ) (h : vn < 2 ^ n) :
 theorem append_of_extract (n : Nat) (v : BitVec n)
   (hn0 : 0 < n) (high0 : high = n - low) (low0 : 1 <= low)
   (h : high + (low - 1 - 0 + 1) = n) :
-  Std.BitVec.cast h (zeroExtend high (v >>> low) ++ BitVec.extract v (low - 1) 0) = v := by
+  Std.BitVec.cast h (zeroExtend high (v >>> low) ++ extractLsb (low - 1) 0 v) = v := by
   ext
   subst high
   simp [Std.BitVec.toNat_cast, Std.BitVec.toNat_append, Std.BitVec.toNat_zeroExtend]
-  simp [BitVec.extract, extractLsb, extractLsb', Nat.sub_add_cancel low0]
+  simp [extractLsb, extractLsb', Nat.sub_add_cancel low0]
   simp [HShiftRight.hShiftRight, ushiftRight, ShiftRight.shiftRight]
   simp [HShiftLeft.hShiftLeft, Std.BitVec.shiftLeft, BitVec.bitvec_to_nat_of_nat]
   generalize hv : Std.BitVec.toNat v = vn
@@ -425,11 +417,11 @@ theorem append_of_extract_general (v : BitVec n)
   (hn0 : 0 < n) (low0 : 1 <= low)
   (h1 : high = width)
   (h2 : (high + low - 1 - 0 + 1) = (width + (low - 1 - 0 + 1))) :
-  Std.BitVec.cast h1 (zeroExtend high (v >>> low)) ++ BitVec.extract v (low - 1) 0 =
-  Std.BitVec.cast h2 (BitVec.extract v (high + low - 1) 0) := by
+  Std.BitVec.cast h1 (zeroExtend high (v >>> low)) ++ extractLsb (low - 1) 0 v =
+  Std.BitVec.cast h2 (extractLsb (high + low - 1) 0 v) := by
   ext
   simp [Std.BitVec.toNat_cast, Std.BitVec.toNat_append, Std.BitVec.toNat_zeroExtend]
-  simp [BitVec.extract, extractLsb, extractLsb', Nat.sub_add_cancel low0]
+  simp [extractLsb, extractLsb', Nat.sub_add_cancel low0]
   simp [HShiftRight.hShiftRight, ushiftRight, ShiftRight.shiftRight]
   simp [HShiftLeft.hShiftLeft, Std.BitVec.shiftLeft, BitVec.bitvec_to_nat_of_nat]
   generalize hv : Std.BitVec.toNat v = vn
@@ -552,7 +544,7 @@ def genBVPatMatchTest (var : Term) (pat : BVPat) : MacroM Term := do
   for c in pat.getComponents do
     let len := c.length
     if let some bv ← c.toBVLit? then
-      let test ← `(BitVec.extract $var $(quote (shift + (len - 1))) $(quote shift) == $bv)
+      let test ← `(extractLsb $(quote (shift + (len - 1))) $(quote shift) $var == $bv)
       result ← `($result && $test)
     shift := shift + len
   return result
@@ -574,7 +566,7 @@ def declBVPatVars (var : Term) (pat : BVPat) (rhs : Term) : MacroM Term := do
   for c in pat.getComponents do
     let len := c.length
     if let some y ← c.toBVVar? then
-      let rhs ← `(BitVec.extract $var $(quote (shift + (len - 1))) $(quote shift))
+      let rhs ← `(extractLsb $(quote (shift + (len - 1))) $(quote shift) $var)
       result ← `(let $y := $rhs; $result)
     shift := shift + len
   return result

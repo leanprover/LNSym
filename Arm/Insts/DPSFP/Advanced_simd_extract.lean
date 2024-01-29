@@ -21,7 +21,7 @@ def exec_advanced_simd_extract
   open Std.BitVec in
   if inst.op2 ≠ 0#2 then
     write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
-  else if inst.Q == 0b0#1 && BitVec.extract inst.imm4 3 3  == 0b1#1 then
+  else if inst.Q == 0b0#1 && extractLsb 3 3 inst.imm4 == 0b1#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let datasize := if inst.Q = 1#1 then 128 else 64
@@ -29,7 +29,7 @@ def exec_advanced_simd_extract
     let hi := read_sfp datasize inst.Rm s
     let lo := read_sfp datasize inst.Rn s
     let concat := hi ++ lo
-    let result := BitVec.extract concat (position + datasize - 1) position
+    let result := extractLsb (position + datasize - 1) position concat
     have h_datasize : 1 <= datasize := by simp_all!; split <;> decide
     have h : (position + datasize - 1 - position + 1) = datasize := by
       rw [Nat.add_sub_assoc, Nat.add_sub_self_left]

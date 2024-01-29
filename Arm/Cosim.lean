@@ -63,10 +63,10 @@ def init_sfps (sfps : List (BitVec 64)) (s : ArmState) : ArmState := Id.run do
 
 /-- Populate the PState in the ArmState s. -/
 def init_flags (flags : BitVec 4) (s : ArmState) : ArmState := Id.run do
-  let s := write_flag PFlag.N (BitVec.extract flags 3 3) s
-  let s := write_flag PFlag.Z (BitVec.extract flags 2 2) s
-  let s := write_flag PFlag.C (BitVec.extract flags 1 1) s
-  let s := write_flag PFlag.V (BitVec.extract flags 0 0) s
+  let s := write_flag PFlag.N (extractLsb 3 3 flags) s
+  let s := write_flag PFlag.Z (extractLsb 2 2 flags) s
+  let s := write_flag PFlag.C (extractLsb 1 1 flags) s
+  let s := write_flag PFlag.V (extractLsb 0 0 flags) s
   pure s
 
 /-- Initialize an ArmState for cosimulation from a given regState. -/
@@ -137,7 +137,7 @@ def sfp_list (s : ArmState) : List (BitVec 64) := Id.run do
   let mut acc := []
   for i in [0:32] do
     let reg := s.sfp (Std.BitVec.ofNat 5 i)
-    acc := acc ++ [(BitVec.extract reg 63 0), (BitVec.extract reg 127 64)]
+    acc := acc ++ [(extractLsb 63 0 reg), (extractLsb 127 64 reg)]
   pure acc
 
 /-- Get the flags in an ArmState as a 4-bit bitvector.-/
@@ -178,8 +178,8 @@ def sfp_mismatch (x1 x2 : List (BitVec 64)) : IO String := do
 def nzcv_mismatch (x1 x2 : BitVec 4) : IO String := do
   let mut acc := ""
   for i in [0:4] do
-    let f1 := BitVec.extract x1 i i
-    let f2 := BitVec.extract x2 i i
+    let f1 := extractLsb i i x1
+    let f2 := extractLsb i i x2
     if f1 == f2 then
       continue
     else

@@ -17,7 +17,7 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) : (BitVec n
   let signed_sum := Std.BitVec.toInt x + Std.BitVec.toInt y + carry_in_nat
   let result := (Std.BitVec.ofNat n unsigned_sum)
   have h: n - 1 - (n - 1) + 1 = 1 := by simp
-  let N := h ▸ (BitVec.extract result (n - 1) (n - 1))
+  let N := h ▸ (extractLsb (n - 1) (n - 1) result)
   let Z := if result = (Std.BitVec.zero n) then 1#1 else 0#1
   let C := if Std.BitVec.toNat result = unsigned_sum then 0#1 else 1#1
   let V := if Std.BitVec.toInt result = signed_sum then 0#1 else 1#1
@@ -26,7 +26,7 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) : (BitVec n
 def ConditionHolds (cond : BitVec 4) (pstate : PState) : Bool :=
   open PFlag in
   let result :=
-    match (BitVec.extract cond 3 1) with
+    match (extractLsb 3 1 cond) with
       | 0b000#3 => pstate Z == 1#1
       | 0b001#3 => pstate C == 1#1
       | 0b010#3 => pstate N == 1#1
@@ -35,7 +35,7 @@ def ConditionHolds (cond : BitVec 4) (pstate : PState) : Bool :=
       | 0b101#3 => pstate N == pstate V
       | 0b110#3 => pstate N == pstate V && pstate Z == 0#1
       | 0b111#3 => true
-  if (BitVec.extract cond 0 0) = 1#1 && cond ≠ 0b1111#4 then
+  if (extractLsb 0 0 cond) = 1#1 && cond ≠ 0b1111#4 then
     not result
   else
     result
@@ -48,7 +48,7 @@ def CheckSPAlignment (s : ArmState) : Bool :=
   let sp := read_gpr 64 31#5 s
   -- If the low 4 bits of SP are 0, then it is divisible by 16 and
   -- 16-aligned.
-  (BitVec.extract sp 3 0) &&& 0xF#4 == 0#4
+  (extractLsb 3 0 sp) &&& 0xF#4 == 0#4
 
 ----------------------------------------------------------------------
 
