@@ -26,22 +26,6 @@ open Std.BitVec
 ----------------------------------------------------------------------
 -- Key theorem: read_mem_bytes_of_write_mem_bytes_same
 
-/-
-theorem read_mem_of_write_mem_bytes_different1 (hn1 : n <= 2^64)
-  (h : mem_separate addr1 addr1 addr2 (addr2 + (n - 1)#64)) :
-  read_mem addr1 (write_mem_bytes n addr2 v s) = read_mem addr1 s := by
-  induction n generalizing addr2 s
-  case zero => simp [write_mem_bytes]
-  case succ =>
-    rename_i n n_ih
-    simp [write_mem_bytes]
-    rw [n_ih (by omega)]
-    · rw [read_mem_of_write_mem_different]
-      apply mem_separate_starting_addresses_neq h
-    · simp_all
-      sorry
--/
-
 theorem mem_separate_preserved_second_start_addr_add_one
   (h0 : 0 < m) (h1 : m < 2^64)
   (h2 : mem_separate a b c (c + m#64)) :
@@ -62,7 +46,7 @@ theorem read_mem_of_write_mem_bytes_different (hn1 : n <= 2^64)
   case pos => -- n = 0
     subst n; simp [write_mem_bytes]
   case neg => -- n ≠ 0
-    have hn0' : 0 < n := by exact Nat.pos_of_ne_zero hn0
+    have hn0' : 0 < n := by omega
     induction n, hn0' using Nat.le_induction generalizing addr2 s
     case base =>
       have h' : addr1 ≠ addr2 := by apply mem_separate_starting_addresses_neq h
