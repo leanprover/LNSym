@@ -6,5 +6,5 @@ import «Proofs».MultiInsts
 import «Proofs».Test
 import «Proofs».Sha512_block_armv8_rules
 import «Proofs».Sha512_block_armv8
-import «Proofs».Sha512_AssocRepr
+import «Proofs».SHA512_AssocRepr
 
