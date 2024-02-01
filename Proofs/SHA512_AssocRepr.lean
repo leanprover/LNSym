@@ -565,8 +565,8 @@ theorem sha512_block_armv8_new_program (s : ArmState)
     simp only
     simp [exec_inst, *]
 
-    unfold run
-    simp [stepi, h_pc]
+
+
     sorry
 
 end SHA512_proof

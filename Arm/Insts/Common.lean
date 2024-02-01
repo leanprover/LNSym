@@ -145,7 +145,7 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
         . simp
     done
 
--- Resouces on Arm bitmask immediate:
+-- Resources on Arm bitmask immediate:
 --   https://developer.arm.com/documentation/dui0802/b/A64-General-Instructions/MOV--bitmask-immediate-
 --   https://kddnewton.com/2022/08/11/aarch64-bitmask-immediates.html
 -- Arm Implementation:
