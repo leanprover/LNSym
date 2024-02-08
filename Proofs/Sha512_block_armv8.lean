@@ -93,37 +93,26 @@ def sha512_program_test_3 : program :=
     (0x1264cc#64 , 0x4cdf2034#32)       --  ld1     {v20.16b-v23.16b}, [x1], #64
   ]
 
-theorem sha512_block_armv8_test_3_sym (s : ArmState)
-  (h_s_ok : read_err s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s = true)
-  (h_pc : read_pc s = 0x1264c0#64)
-  (h_program : s.program = sha512_program_test_3.find?)
-  (h_s' : s' = run 4 s) :
-  read_err s' = StateError.None := by
-  -- Symbolically simulate one instruction.
-  (sym1 [h_program])
-  --
-  -- (FIXME) At this point, I get an `if` term as the second argument
-  -- of `run`. The if's condition consists of ground terms, and I
-  -- hoped the `if` would be "evaluated away" to the true branch.
-  -- However, the simp/ground below fails with a nested error:
-  -- "maximum recursion depth has been reached".
-  --
-  -- (Aside: I also wish simp/ground didn't leave such a verbose
-  -- output. Anything I can do to fix it?)
-  --
-  -- simp (config := {ground := true}) only
-  --
-  -- (WOKRAROUND) I manually do a split here.
-  split
-  · rename_i h; simp (config := {ground := true}) at h
-  · unfold run
-    simp [stepi, *]
-    rw [fetch_inst_from_rbmap_program h_program]
-    -- (FIXME) Here I run into a similar situation, where we are
-    -- matching on Std.RBMap.find? with ground terms and simp/ground
-    -- fails.
-    sorry
+theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
+  (h_s0_ok : read_err s0 = StateError.None)
+  (h_s0_sp_aligned : CheckSPAlignment s0 = true)
+  (h_s0_pc : read_pc s0 = 0x1264c0#64)
+  (h_program : s0.program = sha512_program_test_3.find?)
+  (h_run : s_final = run 4 s0) :
+  read_err s_final = StateError.None := by
+
+  unfold read_pc at h_s0_pc
+
+  -- Unroll one step from 'run (n+1)'
+  init_next_step h_run
+  rename_i s_1 h_step h_run
+  -- Simulate one instruction
+  fetch_and_decode_inst h_step h_s0_ok h_s0_pc h_program
+  exec_inst h_step h_s0_sp_aligned s_1
+  -- Update invariants
+  update_invariants s_1 h_s1_ok h_s1_pc h_s0_sp_aligned h_step
+
+  sorry
 
 ----------------------------------------------------------------------
 
