@@ -1,4 +1,5 @@
 # LNSym: Native Code Symbolic Simulator in Lean
+[![Makefile CI](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml/badge.svg)](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml)
 
 ## Project status
 
