@@ -34,7 +34,7 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
     have h3 : (esize + (n - esize)) = n := by
       simp_all only [ge_iff_le, add_tsub_cancel_of_le, h1]
     h3 ▸ (element ++ rest_ans)
-   termination_by rev_elems n esize x h₀ h₁ => n
+   termination_by n
 
 example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := rfl
 example : rev_elems 8 4 0xAB#8 (by decide) (by decide) = 0xBA#8 := rfl
@@ -71,7 +71,7 @@ def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
     have h2 : new_datasize + container_size = datasize := by
         rw [Nat.sub_add_cancel h₂]
     h2 ▸ (rest_ans ++ new_container)
-  termination_by rev_vector datasize container_size esize x _ _ _ _ _ => datasize
+  termination_by datasize
 
 example : rev_vector 32 16 8 0xaabbccdd#32 (by decide)
           (by decide) (by decide) (by decide) (by decide) =

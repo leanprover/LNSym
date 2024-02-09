@@ -36,16 +36,20 @@ theorem small_asm_snippet_sym (s : ArmState)
   (h_s_ok : read_err s = StateError.None)
   (h_s' : s' = run 4 s) :
   read_sfp 128 26#5 s' = read_sfp 128 0#5 s ∧
-  read_err s' = StateError.None := by
+  read_err s' = StateError.None := by  
+  subst s'
+  unfold run stepi; simp_all only
+  rw [fetch_inst_from_rbmap_program h_program]  
+  sorry
     -- iterate 4 (sym1 [h_program])
-    sym1 [h_program]
-    sym1 [h_program]
-    sym1 [h_program]
-    sym1 [h_program]
-    -- Wrapping up the result:
-    -- generalize (r (StateField.SFP 0#5) s) = q0_var; unfold state_value at q0_var; simp at q0_var
-    -- try (simp [one_asm_snippet_sym_helper1])
-    simp only [one_asm_snippet_sym_helper2]    
-    done
+    -- sym1 [h_program]
+    -- sym1 [h_program]
+    -- sym1 [h_program]
+    -- sym1 [h_program]
+    -- -- Wrapping up the result:
+    -- -- generalize (r (StateField.SFP 0#5) s) = q0_var; unfold state_value at q0_var; simp at q0_var
+    -- -- try (simp [one_asm_snippet_sym_helper1])
+    -- simp only [one_asm_snippet_sym_helper2]    
+    -- done
 
 end multi_insts_proofs

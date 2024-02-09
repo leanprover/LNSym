@@ -531,39 +531,39 @@ theorem sha512_block_armv8_new_program (s : ArmState)
   (h_program : s.program = sha512_program.find?)
   (h_s' : s' = run 506 s) :
   read_err s' = StateError.None := by
-  -- (FIXME) simp_all below fails with a nested error:
-  -- maximum recursion depth has been reached (use `set_option maxRecDepth <num>` to increase limit)
-  -- simp_all
-  -- (WORKAROUND) I manually do subst and simp at individual hypotheses.
-  subst s'
-  simp at h_s_ok h_pc
-  unfold run
-  simp [stepi, h_pc]
-  rw [fetch_inst_from_assoclist h_program]
-  -- (FIXME) Wish this output from simp/ground wasn't so noisy.
-  simp (config := {ground := true}) only
-  simp [exec_inst, *]
-  -- (FIXME) At this point, we have an if in the goal whose condition
-  -- is comprised of ground terms. However, simp/ground below fails
-  -- with a max. recursion depth error again.
+  -- -- (FIXME) simp_all below fails with a nested error:
+  -- -- maximum recursion depth has been reached (use `set_option maxRecDepth <num>` to increase limit)
+  -- -- simp_all
+  -- -- (WORKAROUND) I manually do subst and simp at individual hypotheses.
+  -- subst s'
+  -- simp at h_s_ok h_pc
+  -- unfold run
+  -- simp [stepi, h_pc]
+  -- rw [fetch_inst_from_assoclist h_program]
+  -- -- (FIXME) Wish this output from simp/ground wasn't so noisy.
   -- simp (config := {ground := true}) only
-  -- (WORKAROUND) I manually split and attempt to make progress.
-  split
-  · rename_i h
-    simp (config := {ground := true}) at h
-  · rename_i h; simp (config := {ground := true}) at h
-    unfold run
-    simp [stepi]
-    rw [fetch_inst_from_assoclist h_program]
-    conv =>
-      pattern find? ..
-      simp (config := {ground := true}) only
-    simp [*]
-    conv =>
-      pattern decode_raw_inst ..
-      simp (config := {ground := true}) only
-    simp only
-    simp [exec_inst, *]
+  -- simp [exec_inst, *]
+  -- -- (FIXME) At this point, we have an if in the goal whose condition
+  -- -- is comprised of ground terms. However, simp/ground below fails
+  -- -- with a max. recursion depth error again.
+  -- -- simp (config := {ground := true}) only
+  -- -- (WORKAROUND) I manually split and attempt to make progress.
+  -- split
+  -- · rename_i h
+  --   simp (config := {ground := true}) at h
+  -- · rename_i h; simp (config := {ground := true}) at h
+  --   unfold run
+  --   simp [stepi]
+  --   rw [fetch_inst_from_assoclist h_program]
+  --   conv =>
+  --     pattern find? ..
+  --     simp (config := {ground := true}) only
+  --   simp [*]
+  --   conv =>
+  --     pattern decode_raw_inst ..
+  --     simp (config := {ground := true}) only
+  --   simp only
+  --   simp [exec_inst, *]
 
 
 

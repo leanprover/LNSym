@@ -280,7 +280,7 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
                 "This does not seem to be the case with this program for the " ++
                 s!"successor of address {address}. Note that the highest " ++
                 s!"address is {max_address}."))
-  termination_by create' address max_address cfg program => (max_address - address).toFin
+  termination_by (max_address - address).toFin
 
 protected def create (program : program) : IO Cfg :=
   let maybe_start_address_entry := program.min

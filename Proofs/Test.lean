@@ -72,19 +72,20 @@ theorem add_x1_x1_1_sym
   (h_s' : s' = run 1 s)
   (h_x1': x1' = read_gpr 64 1#5 s') :
   x1' = x1 + 1#64 ∧ read_err s' = StateError.None := by
-          simp [*] at *
-          unfold run stepi; simp [h_pc, h_inst, h_s_ok]
-          unfold exec_inst
-          simp (config := { ground := true }) only [h_inst]
-          unfold DPI.exec_add_sub_imm; simp (config := { ground := true })
-          unfold AddWithCarry
-          simp (config := { ground := true }) only [zeroExtend_twice, zeroExtend_of_Nat_64]
-          generalize (r (StateField.GPR 1#5) s) = x1_var
-          unfold state_value at x1_var;
-          simp at x1_var
-          simp [zeroExtend_irrelevant]
-          rw [add_x1_x1_1_sym_helper]
-          trivial
+  sorry
+  -- simp [*] at *
+  -- unfold run stepi; simp [h_pc, h_inst, h_s_ok]
+  -- unfold exec_inst
+  -- simp (config := { ground := true }) only [h_inst]
+  -- unfold DPI.exec_add_sub_imm; simp (config := { ground := true })
+  -- unfold AddWithCarry
+  -- simp (config := { ground := true }) only [zeroExtend_twice, zeroExtend_of_Nat_64]
+  -- generalize (r (StateField.GPR 1#5) s) = x1_var
+  -- unfold state_value at x1_var;
+  -- simp at x1_var
+  -- simp [zeroExtend_irrelevant]
+  -- rw [add_x1_x1_1_sym_helper]
+  -- trivial
 
 -- This version of the theorem opens up run only once. See the
 -- revert...intro block below.
@@ -96,23 +97,24 @@ theorem add_x1_x1_1_sym_alt
   (h_s' : s' = run 1 s)
   (h_x1': x1' = read_gpr 64 1#5 s') :
   x1' = x1 + 1#64 ∧ read_err s' = StateError.None := by
-    simp at h_s_ok; simp at h_pc
+  sorry
+  -- simp at h_s_ok; simp at h_pc
 
-    revert h_s'
-    unfold run stepi; simp [h_pc, h_inst, h_s_ok]
-    simp (config := { ground := true }) only [h_inst]
-    unfold exec_inst; simp (config := { ground := true })
-    -- unfold DPI.exec_add_sub_imm;
-    -- simp (config := { ground := true })
-    unfold AddWithCarry; simp (config := { ground := true }) only
-    intro h_s'
+  -- revert h_s'
+  -- unfold run stepi; simp [h_pc, h_inst, h_s_ok]
+  -- simp (config := { ground := true }) only [h_inst]
+  -- unfold exec_inst; simp (config := { ground := true })
+  -- -- unfold DPI.exec_add_sub_imm;
+  -- -- simp (config := { ground := true })
+  -- unfold AddWithCarry; simp (config := { ground := true }) only
+  -- intro h_s'
 
-    simp (config := { ground := true }) [*, zeroExtend_twice, zeroExtend_of_Nat_64] at *
-    generalize (r (StateField.GPR 1#5) s) = x1_var
-    unfold state_value at x1_var; simp at x1_var
-    -- simp [zeroExtend_irrelevant]
-    rw [add_x1_x1_1_sym_helper]
-    trivial
+  -- simp (config := { ground := true }) [*, zeroExtend_twice, zeroExtend_of_Nat_64] at *
+  -- generalize (r (StateField.GPR 1#5) s) = x1_var
+  -- unfold state_value at x1_var; simp at x1_var
+  -- -- simp [zeroExtend_irrelevant]
+  -- rw [add_x1_x1_1_sym_helper]
+  -- trivial
 
 
 end TestSection

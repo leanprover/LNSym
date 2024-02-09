@@ -36,7 +36,7 @@ def add_vector_op (e : Nat) (elems : Nat) (esize : Nat)
     let result := BitVec.partInstall hi lo (h.symm ▸ elem_result) result
     have ht1 : elems - (e + 1) < elems - e := by omega
     add_vector_op (e + 1) elems esize op x y result H
-  termination_by add_vector_op e elems esize op x y result H => (elems - e)
+  termination_by (elems - e)
 
 -- #eval add_vector_op 0 2 4 Std.BitVec.add 0xAB 0x12 (Std.BitVec.zero 8)
 

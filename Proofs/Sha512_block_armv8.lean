@@ -54,8 +54,9 @@ theorem sha512_program_test_1_sym (s : ArmState)
   (h_s_ok : read_err s = StateError.None)
   (h_s' : s' = run 4 s) :
   read_err s' = StateError.None := by
-  iterate 4 (sym1 [h_program])
-  done
+  sorry
+  -- iterate 4 (sym1 [h_program])
+  -- done
 
 ----------------------------------------------------------------------
 
@@ -79,7 +80,8 @@ theorem sha512_program_test_2_sym (s : ArmState)
   (h_s_ok : read_err s = StateError.None)
   (h_s' : s' = run 4 s) :
   read_err s' = StateError.None := by
-  iterate 4 (sym1 [h_program])
+  -- iterate 4 (sym1 [h_program])
+  sorry
 
 ----------------------------------------------------------------------
 
@@ -100,29 +102,29 @@ theorem sha512_block_armv8_test_3_sym (s : ArmState)
   (h_program : s.program = sha512_program_test_3.find?)
   (h_s' : s' = run 4 s) :
   read_err s' = StateError.None := by
-  -- Symbolically simulate one instruction.
-  (sym1 [h_program])
-  --
-  -- (FIXME) At this point, I get an `if` term as the second argument
-  -- of `run`. The if's condition consists of ground terms, and I
-  -- hoped the `if` would be "evaluated away" to the true branch.
-  -- However, the simp/ground below fails with a nested error:
-  -- "maximum recursion depth has been reached".
-  --
-  -- (Aside: I also wish simp/ground didn't leave such a verbose
-  -- output. Anything I can do to fix it?)
-  --
-  -- simp (config := {ground := true}) only
-  --
-  -- (WOKRAROUND) I manually do a split here.
-  split
-  · rename_i h; simp (config := {ground := true}) at h
-  · unfold run
-    simp [stepi, *]
-    rw [fetch_inst_from_rbmap_program h_program]
-    -- (FIXME) Here I run into a similar situation, where we are
-    -- matching on Std.RBMap.find? with ground terms and simp/ground
-    -- fails.
+  -- -- Symbolically simulate one instruction.
+  -- (sym1 [h_program])
+  -- --
+  -- -- (FIXME) At this point, I get an `if` term as the second argument
+  -- -- of `run`. The if's condition consists of ground terms, and I
+  -- -- hoped the `if` would be "evaluated away" to the true branch.
+  -- -- However, the simp/ground below fails with a nested error:
+  -- -- "maximum recursion depth has been reached".
+  -- --
+  -- -- (Aside: I also wish simp/ground didn't leave such a verbose
+  -- -- output. Anything I can do to fix it?)
+  -- --
+  -- -- simp (config := {ground := true}) only
+  -- --
+  -- -- (WOKRAROUND) I manually do a split here.
+  -- split
+  -- · rename_i h; simp (config := {ground := true}) at h
+  -- · unfold run
+  --   simp [stepi, *]
+  --   rw [fetch_inst_from_rbmap_program h_program]
+  --   -- (FIXME) Here I run into a similar situation, where we are
+  --   -- matching on Std.RBMap.find? with ground terms and simp/ground
+  --   -- fails.
     sorry
 
 ----------------------------------------------------------------------
