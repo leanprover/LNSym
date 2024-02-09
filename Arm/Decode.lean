@@ -97,6 +97,8 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
     DPSFP (Advanced_simd_extract {Q, op2, Rm, imm4, Rn, Rd})
   | [0, Q:1, U:1, 01110, size:2, 1, Rm:5, opcode:5, 1, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_three_same {Q, U, size, Rm, opcode, Rn, Rd})
+  | [0, Q:1, U:1, 01110, size:2, 1, Rm:5, opcode:4, 00, Rn:5, Rd:5] =>
+    DPSFP (Advanced_simd_three_different {Q, U, size, Rm, opcode, Rn, Rd})
   | _ => none
 
 def decode_ldst_inst (i : BitVec 32) : Option ArmInst :=
