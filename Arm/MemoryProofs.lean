@@ -82,7 +82,7 @@ theorem read_mem_bytes_of_write_mem_bytes_same (hn1 : n <= 2^64) :
   case pos =>
     subst n
     unfold read_mem_bytes
-    simp [Std.BitVec.zero_is_unique]
+    simp only [Std.BitVec.eq_nil]
   case neg => -- n ≠ 0
    have hn0' : 0 < n := by omega
    induction n, hn0' using Nat.le_induction generalizing addr s
@@ -739,7 +739,7 @@ private theorem addr_diff_upper_bound_lemma (h0 : 0 < n1) (h1 : n1 ≤ 2 ^ 64)
   have _ : 2^64 = 18446744073709551616 := by decide
   have _ : 2^64 - 1 = 18446744073709551615 := by decide
   simp_all [mem_subset_and_mem_subset_for_auto, mem_legal, -Nat.reducePow, -toNat_sub]
-  auto d[mem_subset_for_auto]     
+  auto d[mem_subset_for_auto]
 
 private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_lt
   (h0 : 0 < n1) (h1 : n1 <= 2^64) (h2 : 0 < n2) (h3 : n2 < 2^64)
@@ -955,7 +955,7 @@ theorem write_mem_bytes_irrelevant :
       pattern write_mem ..
       arg 2
       simp [toNat_cast, extractLsb, extractLsb', BitVec.truncate_to_lsb_of_append,
-             -Nat.reducePow, -toNat_sub, 
+             -Nat.reducePow, -toNat_sub,
             -toNat_truncate, -toNat_append]
     simp [write_mem_irrelevant, -Nat.reducePow, -toNat_sub]
     have n_ih' := @n_ih (addr + 1#64) s

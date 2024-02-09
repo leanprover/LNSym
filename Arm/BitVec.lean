@@ -205,12 +205,12 @@ protected theorem zero_or (x : BitVec n) : 0#n ||| x = x := by
   ext
   simp only [toNat_or, toNat_ofNat, Nat.zero_mod, Nat.or_zero]
 
---------------------- ZeroExtend/Append/Extract  Lemmas ----------------
+------------------- ZeroExtend/Append/Extract  Lemmas ----------------
 
 @[simp]
 theorem zeroExtend_zero_width : (zeroExtend 0 x) = 0#0 := by
   unfold zeroExtend
-  split <;> simp [Std.BitVec.zero_is_unique]
+  split <;> simp only [Std.BitVec.eq_nil]
 
 theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
   Std.BitVec.extractLsb (n - 1) 0 x = Std.BitVec.cast h x := by
