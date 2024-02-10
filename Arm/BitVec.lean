@@ -89,7 +89,7 @@ protected theorem extensionality_fin_contrapositive
   {idx1 idx2 : BitVec n} (h0 : ¬idx1 = idx2) :
   idx1.toFin ≠ idx2.toFin := by
   have := BitVec.extensionality_fin idx1 idx2
-  simp_all
+  simp_all only [imp_false, ne_eq, not_false_eq_true]
 
 theorem fin_bitvec_add (x y : BitVec n) :
   (x.toFin + y.toFin) = (x + y).toFin := by rfl
@@ -98,16 +98,16 @@ theorem fin_bitvec_sub (x y : BitVec n) :
   (x.toFin - y.toFin) = (x - y).toFin := by rfl
 
 -- (FIXME) Move to Std?
-theorem Fin.sub_eq_nat_if_le {n : ℕ} {a b : Fin n} :
+theorem Fin.sub_eq_nat_if_le {n : Nat} {a b : Fin n} :
    b ≤ a -> ↑(a - b) = (a : Nat) - (b : Nat) := by
    intro h
    rw [Fin.mk_le_mk] at h
-   simp [Fin.sub_def]
-   simp [←Nat.add_sub_assoc]
+   simp only [Fin.sub_def]
+   simp only [Fin.is_le', ←Nat.add_sub_assoc]
    rw [Nat.sub_add_comm h]
    simp only [Nat.add_mod_right]
    have : ↑a - ↑b < n := by omega
-   simp [Nat.mod_eq_of_lt this]
+   simp only [Nat.mod_eq_of_lt this]
    done
 
 theorem fin_bitvec_or (x y : BitVec n) :
@@ -147,7 +147,7 @@ protected theorem extensionality_nat_contrapositive
   {idx1 idx2 : BitVec n} (h0 : ¬idx1 = idx2) :
   idx1.toNat ≠ idx2.toNat := by
   have := BitVec.extensionality_nat idx1 idx2
-  simp_all
+  simp_all only [imp_false, ne_eq, not_false_eq_true]
 
 protected theorem toNat_lt  (x y : BitVec n) :
   (x.toNat < y.toNat) ↔ (x < y) := by rfl
@@ -181,12 +181,12 @@ protected theorem le_iff_val_le_val {a b : Std.BitVec n} :
   exact Fin.mk_le_mk ..
 
 @[simp]
-protected theorem val_bitvec_lt {n : ℕ} {a b : Std.BitVec n} :
+protected theorem val_bitvec_lt {n : Nat} {a b : Std.BitVec n} :
   a.toNat < b.toNat ↔ a < b := by
   exact Fin.mk_lt_mk ..
 
 @[simp]
-protected theorem val_bitvec_le {n : ℕ} {a b : Std.BitVec n} :
+protected theorem val_bitvec_le {n : Nat} {a b : Std.BitVec n} :
   a.toNat ≤ b.toNat ↔ a ≤ b := by
   exact Fin.mk_le_mk ..
 
@@ -203,9 +203,9 @@ protected theorem val_nat_le (x y n : Nat)
 protected theorem zero_le_sub (x y : BitVec n) :
   0#n <= x - y := by
   refine (BitVec.toNat_le (0#n) (x - y)).mp ?a
-  simp only [toNat_ofNat, zero_le, Nat.zero_mod]
+  simp only [toNat_ofNat, Nat.zero_mod, Nat.zero_le]
 
-theorem BitVec.sub_eq_nat_if_le {n : ℕ} {a b : Std.BitVec n} :
+theorem BitVec.sub_eq_nat_if_le {n : Nat} {a b : Std.BitVec n} :
    b ≤ a -> (a - b).toNat = a.toNat - b.toNat := by
    intro h   
    exact Fin.sub_eq_nat_if_le h
@@ -233,7 +233,7 @@ protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
   extractLsb j 0 (zeroExtend i x) = zeroExtend (j + 1) x := by
   simp [extractLsb, extractLsb']
   ext
-  simp [toNat_zeroExtend]
+  simp [toNat_zeroExtend]    
   refine Nat.mod_mod_of_dvd (Std.BitVec.toNat x) ?h
   exact Nat.pow_dvd_pow_iff_le_right'.mpr h
   done
@@ -263,7 +263,7 @@ theorem empty_bitvector_append_left_triangle
   rw [h2]
   trivial
 
-theorem append_of_extract_general_nat (high low n vn : ℕ) (_h : vn < 2 ^ n) :
+theorem append_of_extract_general_nat (high low n vn : Nat) (_h : vn < 2 ^ n) :
   (((vn >>> low) % 2 ^ high) <<< low) ||| (vn % 2 ^ low) =
   (vn % 2 ^ (high + low)) := by
   apply Nat.eq_of_testBit_eq; intro i
@@ -275,7 +275,7 @@ theorem append_of_extract_general_nat (high low n vn : ℕ) (_h : vn < 2 ^ n) :
     by_cases h1 : i - low < high
     case pos => -- (low <= i) and (i - low < high)
       have h1' : i < high + low := by omega
-      simp [h₀', h1', h1]
+      simp [h1, h₀', h1']
     case neg => -- (low <= i) and ¬(i - low < high)
       have h1' : ¬ i < high + low := by omega
       simp [h₀', h1, h1']
