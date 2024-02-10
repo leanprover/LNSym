@@ -78,6 +78,7 @@ theorem nat_bitvec_sub1 (x y : BitVec 64)
   rw [Nat.mod_eq_sub_mod]
   auto; auto
 
+-- (FIXME) Use BitVec.sub_eq_nat_if_le.
 theorem nat_bitvec_sub2 (x y : Nat)
   (h : y <= x) (xub : x < 2^64) :
   (x - y)#64 = x#64 - y#64 := by

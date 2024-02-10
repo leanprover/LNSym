@@ -12,9 +12,8 @@ import Std.Data.Nat.Lemmas
 import Std.Data.Fin.Lemmas
 import Std.Data.Nat.Bitwise
 import Std.Tactic.Omega
-import Mathlib.Data.Fin.Basic
-import Mathlib.Tactic.Contrapose
-import Mathlib.Logic.Basic
+import Std.Data.Fin.Lemmas
+import Std.Logic
 import Mathlib.Data.Nat.Pow
 
 ----------------------------------------------------------------------
@@ -88,16 +87,28 @@ example : 5#4 >= 4#4 := by decide
 
 protected theorem extensionality_fin_contrapositive
   {idx1 idx2 : BitVec n} (h0 : ¬idx1 = idx2) :
-    idx1.toFin ≠ idx2.toFin := by
-    contrapose h0
-    push_neg at *
-    exact BitVec.extensionality_fin idx1 idx2 h0
+  idx1.toFin ≠ idx2.toFin := by
+  have := BitVec.extensionality_fin idx1 idx2
+  simp_all
 
 theorem fin_bitvec_add (x y : BitVec n) :
   (x.toFin + y.toFin) = (x + y).toFin := by rfl
 
 theorem fin_bitvec_sub (x y : BitVec n) :
   (x.toFin - y.toFin) = (x - y).toFin := by rfl
+
+-- (FIXME) Move to Std?
+theorem Fin.sub_eq_nat_if_le {n : ℕ} {a b : Fin n} :
+   b ≤ a -> ↑(a - b) = (a : Nat) - (b : Nat) := by
+   intro h
+   rw [Fin.mk_le_mk] at h
+   simp [Fin.sub_def]
+   simp [←Nat.add_sub_assoc]
+   rw [Nat.sub_add_comm h]
+   simp only [Nat.add_mod_right]
+   have : ↑a - ↑b < n := by omega
+   simp [Nat.mod_eq_of_lt this]
+   done
 
 theorem fin_bitvec_or (x y : BitVec n) :
   (x ||| y).toFin = (x.toFin ||| y.toFin) := by
@@ -134,10 +145,9 @@ theorem fin_bitvec_le (x y : BitVec n) :
 
 protected theorem extensionality_nat_contrapositive
   {idx1 idx2 : BitVec n} (h0 : ¬idx1 = idx2) :
-    idx1.toNat ≠ idx2.toNat := by
-    contrapose h0
-    push_neg at *
-    exact BitVec.extensionality_nat idx1 idx2 h0
+  idx1.toNat ≠ idx2.toNat := by
+  have := BitVec.extensionality_nat idx1 idx2
+  simp_all
 
 protected theorem toNat_lt  (x y : BitVec n) :
   (x.toNat < y.toNat) ↔ (x < y) := by rfl
@@ -152,13 +162,10 @@ protected theorem toNat_le (x y : BitVec n) :
 
 protected theorem lt_of_le_ne (x y : BitVec n)
   (h1 : x <= y) (h2 : ¬ x = y) : x < y := by
-  contrapose h2
-  push_neg
-  have h3 : y <= x := by simp_all only [BitVec.not_lt]
-  ext
+  simp [←BitVec.toNat_lt]
   simp [←BitVec.toNat_le] at h1
-  simp [←BitVec.toNat_le] at h3
-  exact Nat.le_antisymm h1 h3
+  have := BitVec.extensionality_nat_contrapositive h2
+  simp_all [Nat.lt_of_le_of_ne]
 
 protected theorem le_of_eq (x y : BitVec n) (h : x = y) :
   x <= y := by
@@ -171,17 +178,17 @@ protected theorem lt_iff_val_lt_val {a b : Std.BitVec n} :
 
 protected theorem le_iff_val_le_val {a b : Std.BitVec n} :
   a ≤ b ↔ a.toNat ≤ b.toNat := by
-  exact Fin.le_iff_val_le_val ..
+  exact Fin.mk_le_mk ..
 
 @[simp]
 protected theorem val_bitvec_lt {n : ℕ} {a b : Std.BitVec n} :
   a.toNat < b.toNat ↔ a < b := by
-  exact Fin.val_fin_lt ..
+  exact Fin.mk_lt_mk ..
 
 @[simp]
 protected theorem val_bitvec_le {n : ℕ} {a b : Std.BitVec n} :
   a.toNat ≤ b.toNat ↔ a ≤ b := by
-  exact Fin.val_fin_le ..
+  exact Fin.mk_le_mk ..
 
 protected theorem val_nat_le (x y n : Nat)
   (h0 : x <= y) (h1 : x < 2^n) (h2 : y < 2^n) : x#n <= y#n := by
@@ -197,6 +204,11 @@ protected theorem zero_le_sub (x y : BitVec n) :
   0#n <= x - y := by
   refine (BitVec.toNat_le (0#n) (x - y)).mp ?a
   simp only [toNat_ofNat, zero_le, Nat.zero_mod]
+
+theorem BitVec.sub_eq_nat_if_le {n : ℕ} {a b : Std.BitVec n} :
+   b ≤ a -> (a - b).toNat = a.toNat - b.toNat := by
+   intro h   
+   exact Fin.sub_eq_nat_if_le h
 
 ----------------------------- Logical  Lemmas ------------------------
 

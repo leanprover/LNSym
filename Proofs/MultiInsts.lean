@@ -39,7 +39,8 @@ theorem small_asm_snippet_sym (s : ArmState)
   read_err s' = StateError.None := by  
   subst s'
   unfold run stepi; simp_all only
-  rw [fetch_inst_from_rbmap_program h_program]  
+  rw [fetch_inst_from_rbmap_program h_program]
+  -- simp (config := {ground := true}) only
   sorry
     -- iterate 4 (sym1 [h_program])
     -- sym1 [h_program]

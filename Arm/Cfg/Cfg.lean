@@ -208,21 +208,19 @@ protected def addToCfg (address : BitVec 64) (program : program) (cfg : Cfg)
     | some arm_inst =>
       Cfg.addArmInstToCfg address arm_inst cfg
 
--- Termination argument for the create' function below. This theorem
--- is in terms of Fin so that we can take advantage of Fin lemmas. We
--- will map this theorem to BitVecs (using lemmas like
--- BitVec.fin_bitvec_lt) in create'.
 private theorem termination_lemma (i j max : Fin n) (h : n > 0)
   (h0 : i < max) (h1 : j <= max - i) (h2 : ((Fin.ofNat' 0 h) : Fin n) < j) :
   (max - (i + j)) < (max - i) := by
   -- Our strategy is to convert this proof obligation in terms of Nat,
   -- which is made possible by h0 and h1 hypotheses above.
-  have h0' : (i : Nat) < (max : Nat) := by simp_all only [Fin.val_fin_lt, h0]
+  have h0' : (i : Nat) < (max : Nat) := by
+    exact Fin.mk_lt_mk.mp h0
   have h3 : (max - i : Fin n) = ((max - i) : Nat) := by
-    simp_all [Fin.coe_sub_iff_le]
-    exact le_of_lt h0
+    rw [BitVec.Fin.sub_eq_nat_if_le]
+    rw [Fin.mk_le_mk]
+    omega
   have h1' : (j : Nat) <= ((max - i) : Fin n) := by
-    apply Fin.val_fin_le.mpr; exact h1
+    apply Fin.mk_le_mk.mpr; exact h1
   rw [h3] at h1'
   have h1'' : (i : Nat) + (j : Nat) <= (max : Nat) - (i : Nat) + (i : Nat) := by
     rw [Nat.add_comm]
@@ -239,19 +237,18 @@ private theorem termination_lemma (i j max : Fin n) (h : n > 0)
   have sub_lhs' : ((i + j) : Fin n) = (i : Nat) + (j : Nat) := by
     rw [Fin.val_add]
     refine Nat.mod_eq_of_lt ?h
-    exact Nat.lt_of_le_of_lt h1'' max_limit  
-  apply Fin.val_fin_lt.mp
+    exact Nat.lt_of_le_of_lt h1'' max_limit
   have lhs'' : (max - (i + j) : Fin n) = (max - (i + j) : Nat) := by
     rw [←sub_lhs']
-    apply Fin.coe_sub_iff_le.mpr
-    apply Fin.val_fin_le.mp
+    apply BitVec.Fin.sub_eq_nat_if_le
+    rw [Fin.mk_le_mk]
     simp_all! only [h0, sub_lhs', h1'']
-  simp_all! only [Fin.val_fin_lt, Fin.val_fin_le, Fin.is_lt, h0]
+  rw [Fin.mk_lt_mk]
+  simp_all!
   -- Now our conclusion is in terms of Nat, and we can use standard
   -- Nat lemmas to close the goal.
   rw [Nat.sub_add_eq]
   exact Nat.sub_lt_self h2 h1'
-  done
 
 private def create' (address : BitVec 64) (max_address : BitVec 64)
   (program : program) (cfg : Cfg)  : IO Cfg := do
