@@ -1,12 +1,7 @@
 # LNSym: Native Code Symbolic Simulator in Lean
 [![Makefile CI](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml/badge.svg)](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml)
 
-## Project status
-
-Amazon Confidential
-
-LNSym is an Amazon-internal project. Please do not make any external
-contributions at this time.
+LNSym is a symbolic simulator for Armv8 machine-code programs.
 
 ## Prerequisites
 
