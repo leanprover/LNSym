@@ -36,7 +36,7 @@ def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
     let result := BitVec.partInstall hi lo (h.symm ▸ elem_result) result
     have ht1 : elems - (e + 1) < elems - e := by omega
     binary_vector_op_aux (e + 1) elems esize op x y result H
-  termination_by binary_vector_op_aux e elems esize op x y result H => (elems - e)
+  termination_by (elems - e)
 
 /--
   Perform pairwise op on esize-bit slices of x and y
@@ -54,9 +54,7 @@ def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : Ar
     let datasize := if inst.Q = 1#1 then 128 else 64
     let esize := 8 <<< (Std.BitVec.toNat inst.size)
     have h_esize : esize > 0 := by
-      simp_all only [Nat.shiftLeft_eq, gt_iff_lt, 
-                     Nat.zero_lt_succ, mul_pos_iff_of_pos_left, 
-                     zero_lt_two, pow_pos]
+      simp_all [Nat.shiftLeft_eq, Nat.two_pow_pos]
     let sub_op := inst.U == 1
     let operand1 := read_sfp datasize inst.Rn s
     let operand2 := read_sfp datasize inst.Rm s

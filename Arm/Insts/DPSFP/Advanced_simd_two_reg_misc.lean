@@ -22,29 +22,29 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
   else
     let element := Std.BitVec.zeroExtend esize x
     let rest_x := Std.BitVec.zeroExtend (n - esize) (x >>> esize)
-    have h1 : esize <= n := by 
+    have h1 : esize <= n := by
       simp at h0; exact Nat.le_of_lt h0; done
     have h2 : esize ∣ (n - esize) := by
       refine Nat.dvd_sub ?H h₀ ?h₂
       · exact h1
-      · simp only [dvd_refl]
+      · simp only [Nat.dvd_refl]
       done
     have ?term_lemma : n - esize < n := by exact Nat.sub_lt_self h₁ h1
     let rest_ans := rev_elems (n - esize) esize rest_x h2 h₁
     have h3 : (esize + (n - esize)) = n := by
-      simp_all only [ge_iff_le, add_tsub_cancel_of_le, h1]
+      simp_all only [ge_iff_le, Nat.add_sub_cancel', h1]
     h3 ▸ (element ++ rest_ans)
-   termination_by rev_elems n esize x h₀ h₁ => n
+   termination_by n
 
 example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := rfl
 example : rev_elems 8 4 0xAB#8 (by decide) (by decide) = 0xBA#8 := rfl
 example : rev_elems 8 4 (rev_elems 8 4 0xAB#8 (by decide) (by decide))
-          (by decide) (by decide) = 0xAB#8 := by native_decide 
+          (by decide) (by decide) = 0xAB#8 := by native_decide
 
 theorem rev_elems_base :
   rev_elems esize esize x h₀ h₁ = x := by
   unfold rev_elems; simp; done
- 
+
 /-- Divide a bv of width `datasize` into containers, each of size
 `container_size`, and within a container, reverse the order of `esize`-bit
 elements. -/
@@ -60,18 +60,18 @@ def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
     let new_datasize := datasize - container_size
     let rest_x := Std.BitVec.zeroExtend new_datasize (x >>> container_size)
     have h₄' : container_size ∣ new_datasize := by
-      have h : container_size ∣ container_size := by simp
+      have h : container_size ∣ container_size := Nat.dvd_refl _
       exact Nat.dvd_sub h₂ h₄ h
     have h₂' : container_size <= new_datasize := by
       refine Nat.le_of_dvd ?h h₄'
-      simp_all!; exact Ne.lt_of_le' h0 h₂
+      simp_all!; omega
     have h1 : 0 < container_size := by exact Nat.lt_of_lt_of_le h₀ h₁
     have ?term_lemma : new_datasize < datasize := by exact Nat.sub_lt_self h1 h₂
     let rest_ans := rev_vector new_datasize container_size esize rest_x h₀ h₁ h₂' h₃ h₄'
     have h2 : new_datasize + container_size = datasize := by
         rw [Nat.sub_add_cancel h₂]
     h2 ▸ (rest_ans ++ new_container)
-  termination_by rev_vector datasize container_size esize x _ _ _ _ _ => datasize
+  termination_by datasize
 
 example : rev_vector 32 16 8 0xaabbccdd#32 (by decide)
           (by decide) (by decide) (by decide) (by decide) =
@@ -105,19 +105,19 @@ theorem loose_bitvec2_bound (x : BitVec 2) : x.toNat <= 6 := by
 theorem esize_dvd_container_size (x y : BitVec 2) :
   (8 <<< x.toNat < 64 >>> y.toNat) →
   8 <<< x.toNat ∣ 64 >>> y.toNat := by
-    simp_all only [Nat.shiftLeft_eq, Nat.shiftRight_eq_div_pow, IsUnit.mul_iff]
+    simp_all only [Nat.shiftLeft_eq, Nat.shiftRight_eq_div_pow]
     generalize h_yvar : Std.BitVec.toNat y = yvar
     have yvar_limit : yvar <= 6 := by
       rw [← h_yvar]; simp [loose_bitvec2_bound]
     simp [pow2_helper1] at *
-    rw [pow2_helper2] at *    
-    rw [pow_lt_pow_iff_right] <;> simp_all only [Nat_lt_of_2_pow_dvd, implies_true, Nat.lt_succ_self] 
+    rw [pow2_helper2] at *
+    rw [Nat.pow_lt_pow_iff_right] <;> simp_all only [Nat_lt_of_2_pow_dvd, implies_true, Nat.lt_succ_self]
     repeat simp_all only
     done
 
 theorem container_size_dvd_datasize_helper (x : Nat) (_ : x <= 6) :
   2 ^ (6 - x) ∣ (if q = 1#1 then 128 else 64) := by
-    have h0 : 6 - x <= 6 := by simp
+    have h0 : 6 - x <= 6 := by omega
     have h1 : 2 ^ 6 ∣ 128 := by decide
     have h2 : 2 ^ 6 ∣ 64  := by decide
     split
@@ -147,15 +147,15 @@ def exec_advanced_simd_two_reg_misc
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     have h1 : esize ∣ container_size := by
-      simp only [not_le] at h0
+      simp only [Nat.not_le] at h0
       exact esize_dvd_container_size inst.size (extractLsb 0 0 inst.opcode ++ inst.U) h0
     have h2 : container_size ∣ datasize := by
       simp_all
       exact container_size_dvd_datasize (extractLsb 0 0 inst.opcode ++ inst.U) inst.Q
-    have h3 : 0 < esize := by 
-      simp_all only [Nat.sub_zero, Nat.shiftLeft_eq, not_le, IsUnit.mul_iff, beq_iff_eq]
-      rw [mul_pos_iff_of_pos_left]
-      simp only [gt_iff_lt, zero_lt_two, pow_pos]
+    have h3 : 0 < esize := by
+      simp_all only [Nat.sub_zero, Nat.shiftLeft_eq, Nat.not_le, beq_iff_eq]
+      rw [Nat.mul_pos_iff_of_pos_left]
+      simp only [gt_iff_lt, Nat.zero_lt_two, Nat.pow_pos]
       decide
     have h0' : esize <= container_size := by exact Nat.le_of_not_ge h0
     have h4 : container_size <= datasize := by

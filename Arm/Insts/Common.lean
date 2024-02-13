@@ -4,6 +4,7 @@ Author(s): Shilpi Goel, Yan Peng
 -/
 import Arm.BitVec
 import Arm.Memory
+import Std.Tactic.Classical
 
 section Common
 
@@ -142,7 +143,7 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
       . simp
       . split
         . simp
-        . simp
+        . simp [imp_false, Classical.not_not]
     done
 
 -- Resources on Arm bitmask immediate:

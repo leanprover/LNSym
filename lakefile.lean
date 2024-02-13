@@ -27,7 +27,5 @@ lean_exe «lnsym» where
   -- Remove this line if you do not need such functionality.
   -- supportInterpreter := true
 
--- We let mathlib pick a compatible std library.
--- require std from git "https://github.com/leanprover/std4" @ "main"
-require mathlib from git "https://github.com/leanprover-community/mathlib4.git" @ "master"
+require std from git "https://github.com/leanprover/std4" @ "sup"
 require auto from git "https://github.com/leanprover-community/lean-auto.git" @ "main"

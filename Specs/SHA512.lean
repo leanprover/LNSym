@@ -3,7 +3,7 @@ Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Author(s): Shilpi Goel, Yan Peng
 -/
 import Std.Data.BitVec
-import Mathlib.Data.LazyList
+import Std.Data.LazyList
 import Specs.SHA512Common
 
 namespace SHA2
@@ -82,14 +82,14 @@ def message_schedule_word (t : Nat) (m : List (BitVec 64)) : BitVec 64 :=
     let w3 := message_schedule_word (t - 15) m
     let w4 := message_schedule_word (t - 16) m
     message_schedule_word_aux w1 w2 w3 w4
-  termination_by message_schedule_word t m => t
+  termination_by t
 
 def message_schedule (i max : Nat) (m : List (BitVec 64)) : List (BitVec 64) :=
   if i < max then
     message_schedule_word i m :: message_schedule (i + 1) max m
   else
     []
-  termination_by message_schedule i max m => max - i
+  termination_by max - i
 
 -----------------------------------------------
 -- Optimized message schedule, via memoization
@@ -112,7 +112,7 @@ def message_schedule_mem (i max : Nat) (acc : List (BitVec 64)) (m : List (BitVe
     message_schedule_mem (i + 1) max updated_acc m
   else
     acc
-  termination_by message_schedule_mem i max acc m => max - i
+  termination_by max - i
 
 -----------------------------------------------
 -- Optimized message schedule, via lazylists and thunks
@@ -154,7 +154,7 @@ def compression (i max : Nat) (wv : Hash) (k w : List (BitVec 64)) : Hash :=
     compression (i + 1) max wv' k w
   else
     wv
-  termination_by compression i max wv k w => max - i
+  termination_by max - i
 
 def processBlocks (message_schedule : List (BitVec 64) → List (BitVec 64))
                   (j : Nat) (hash : Hash) (k : List (BitVec 64)) (ms : List (List (BitVec 64))) : Hash :=

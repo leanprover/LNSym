@@ -75,18 +75,18 @@ def exec_reg_pair_pre_indexed
   let postindex := false
   let signed := (extractLsb 0 0 inst.opc) != 0#1
   let scale := 2 + (Std.BitVec.toNat (extractLsb 1 1 inst.opc))
-  have H0 : scale > 0 := by simp_all!
+  have H0 : scale > 0 := by omega
   if (inst.L == 0#1 && extractLsb 0 0 inst.opc == 1#1) || (inst.opc == 0b11#2) then
     write_err (StateError.Illegal "Illegal instruction {inst} encountered!") s
   else
     let datasize := 8 <<< scale
     let offset := (signExtend 64 inst.imm7) <<< scale
     have H1 : 8 ∣ datasize := by
-      simp_all! only [gt_iff_lt, Nat.shiftLeft_eq, dvd_mul_right]
+      simp_all! only [gt_iff_lt, Nat.shiftLeft_eq, Nat.dvd_mul_right]
     have H2 : datasize > 0 := by
-      simp_all! only [Nat.shiftLeft_eq, dvd_mul_right]
+      simp_all! only [Nat.shiftLeft_eq, Nat.dvd_mul_right]
       generalize (2 + Std.BitVec.toNat (extractLsb 1 1 inst.opc)) = x
-      have hb : 2 ^ x > 0 := by exact Nat.pow_two_pos x
+      have hb : 2 ^ x > 0 := by exact Nat.two_pow_pos x
       exact Nat.mul_pos (by decide) hb
     -- State Updates
     let s' := reg_pair_scalar_operation s!"{inst}" inst.L wback postindex signed

@@ -3,6 +3,7 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Author(s): Shilpi Goel
 -/
 import Arm.Exec
+import Std.Data.Fin.Lemmas
 
 namespace Cfg
 
@@ -217,12 +218,12 @@ private theorem termination_lemma (i j max : Fin n) (h : n > 0)
   (max - (i + j)) < (max - i) := by
   -- Our strategy is to convert this proof obligation in terms of Nat,
   -- which is made possible by h0 and h1 hypotheses above.
-  have h0' : (i : Nat) < (max : Nat) := by simp_all only [Fin.val_fin_lt, h0]
+  have h0' : (i : Nat) < (max : Nat) := by simp_all only [Fin.lt_def, h0]
   have h3 : (max - i : Fin n) = ((max - i) : Nat) := by
     simp_all [Fin.coe_sub_iff_le]
-    exact le_of_lt h0
+    exact Nat.le_of_lt h0
   have h1' : (j : Nat) <= ((max - i) : Fin n) := by
-    apply Fin.val_fin_le.mpr; exact h1
+    apply Fin.le_def.mpr; exact h1
   rw [h3] at h1'
   have h1'' : (i : Nat) + (j : Nat) <= (max : Nat) - (i : Nat) + (i : Nat) := by
     rw [Nat.add_comm]
@@ -239,14 +240,14 @@ private theorem termination_lemma (i j max : Fin n) (h : n > 0)
   have sub_lhs' : ((i + j) : Fin n) = (i : Nat) + (j : Nat) := by
     rw [Fin.val_add]
     refine Nat.mod_eq_of_lt ?h
-    exact Nat.lt_of_le_of_lt h1'' max_limit  
-  apply Fin.val_fin_lt.mp
+    exact Nat.lt_of_le_of_lt h1'' max_limit
+  apply Fin.lt_def.mp
   have lhs'' : (max - (i + j) : Fin n) = (max - (i + j) : Nat) := by
     rw [←sub_lhs']
     apply Fin.coe_sub_iff_le.mpr
-    apply Fin.val_fin_le.mp
+    apply Fin.le_def.mpr
     simp_all! only [h0, sub_lhs', h1'']
-  simp_all! only [Fin.val_fin_lt, Fin.val_fin_le, Fin.is_lt, h0]
+  simp_all! only [Fin.lt_def, Fin.le_def, Fin.is_lt, h0]
   -- Now our conclusion is in terms of Nat, and we can use standard
   -- Nat lemmas to close the goal.
   rw [Nat.sub_add_eq]
@@ -264,7 +265,7 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
     else if h₁ : address = max_address then
       pure cfg
     else if h₂ : 4#64 <= max_address - address then
-         have ?term_lemma : (max_address - (address + 4#64)).toFin < (max_address - address).toFin := by
+         have ?term_lemma : (max_address - (address + 4#64)).toNat < (max_address - address).toNat := by
            have := termination_lemma address.toFin (4#64).toFin max_address.toFin
                    (by decide)
                    (by simp_all! [BitVec.fin_bitvec_lt, BitVec.fin_bitvec_le, BitVec.lt_of_le_ne])
@@ -280,7 +281,7 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
                 "This does not seem to be the case with this program for the " ++
                 s!"successor of address {address}. Note that the highest " ++
                 s!"address is {max_address}."))
-  termination_by create' address max_address cfg program => (max_address - address).toFin
+  termination_by (max_address - address).toNat
 
 protected def create (program : program) : IO Cfg :=
   let maybe_start_address_entry := program.min

@@ -58,7 +58,7 @@ def exec_reg_unsigned_imm
     let offset := (Std.BitVec.zeroExtend 64 inst.imm12) <<< scale.toNat
     let datasize := 8 <<< scale.toNat
     have H : 8 ∣ datasize := by
-      simp_all! only [Nat.shiftLeft_eq, dvd_mul_right]
+      simp_all! only [Nat.shiftLeft_eq, Nat.dvd_mul_right]
     -- State Updates
     let s' := reg_imm_operation s!"{inst}"
               (extractLsb 0 0 inst.opc) wback postindex datasize
@@ -82,7 +82,7 @@ def exec_reg_imm_post_indexed
     let datasize := 8 <<< scale.toNat
     let offset := signExtend 64 inst.imm9
     have H : 8 ∣ datasize := by
-      simp_all! only [Nat.shiftLeft_eq, dvd_mul_right]
+      simp_all! only [Nat.shiftLeft_eq, Nat.dvd_mul_right]
     -- State Updates
     let s' := reg_imm_operation s!"{inst}"
               (extractLsb 0 0 inst.opc) wback postindex datasize
