@@ -130,7 +130,7 @@ partial def message_schedule_inf (m : List (BitVec 64)) : (LazyList (BitVec 64))
     LazyList.cons hd $ message_schedule_inf $ tl ++ [next]
 
 def message_schedule_lazy (max : Nat) (m : List (BitVec 64)) : List (BitVec 64) :=
-  LazyList.approx max $ message_schedule_inf m
+  LazyList.take max $ message_schedule_inf m
 
 -----------------------------------------------
 

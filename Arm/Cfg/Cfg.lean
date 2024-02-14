@@ -269,9 +269,9 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
            have := termination_lemma address.toFin (4#64).toFin max_address.toFin
                    (by decide)
                    (by simp_all! [BitVec.fin_bitvec_lt, BitVec.fin_bitvec_le, BitVec.lt_of_le_ne])
-                   (by simp [BitVec.fin_bitvec_lt, BitVec.fin_bitvec_le, BitVec.fin_bitvec_sub]; exact h₂)
+                   (by rw [← Std.BitVec.toFin_sub]; exact h₂)
                    (by simp_arith)
-           simp [BitVec.fin_bitvec_le, BitVec.fin_bitvec_lt, BitVec.fin_bitvec_sub, BitVec.fin_bitvec_add] at *
+           simp [BitVec.fin_bitvec_le, BitVec.fin_bitvec_lt] at *
            exact this
          Cfg.create' (address + 4#64) max_address program cfg
     else
