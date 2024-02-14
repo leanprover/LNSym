@@ -57,10 +57,6 @@ theorem w_program (sf:StateField) (v:state_value sf) (s:ArmState):
   · unfold write_base_flag; simp
   · unfold write_base_error; simp
 
-/--
-  An ongoing new version of fine-grained simulation tactics.
---/
-
 macro "init_next_step" h_s:ident : tactic =>
   `(tactic|
     (rw [run_onestep] at $h_s:ident <;> try omega
@@ -75,9 +71,12 @@ macro "fetch_and_decode_inst" h_step:ident h_s_ok:ident h_pc:ident h_program:ide
   `(tactic|
     (unfold stepi at $h_step:ident
      rw [$h_s_ok:ident] at $h_step:ident
-     dsimp at $h_step:ident -- reduce let(zeta) and match
+     dsimp at $h_step:ident -- reduce let and match
      rw [$h_pc:ident] at $h_step:ident
      rw [fetch_inst_from_rbmap_program $h_program:ident] at $h_step:ident
+     -- Note: this often times out. It tries to evaluate, e.g.,
+     -- Std.RBMap.find? sha512_program_test_2 1205560#64
+     -- which easily becomes hard.
      simp (config := {ground := true}) at $h_step:ident
      repeat (rw [Std.BitVec.foldCtor] at $h_step:ident)
     ))
@@ -94,7 +93,8 @@ macro "exec_inst" h_step:ident h_sp_aligned:ident st_next:ident: tactic =>
          apply $st_next:ident); simp [$h_sp_aligned:ident] at $h_step:ident)
     ))
 
--- This tactic is WIP.
+-- TODO: update_invariants must add all register and memory updates as
+-- assumptions.
 macro "update_invariants" st_next:ident progname:ident
                           h_s_ok_new:ident
                           h_pc:ident h_pc_new:ident
@@ -127,3 +127,55 @@ macro "update_invariants" st_next:ident progname:ident
         try (rw [write_mem_bytes_program])
         assumption
     ))
+
+def sym_one (curr_state_number:ℕ) (pc_begin:ℕ) (prog:Lean.Ident):
+    Lean.Elab.Tactic.TacticM Unit :=
+  Lean.Elab.Tactic.withMainContext do
+    let n_str := toString curr_state_number
+    let n'_str := toString (curr_state_number+1)
+    let pcexpr := Lean.mkNatLit (pc_begin + 4 * (curr_state_number + 1))
+    let pcbv := ← (Lean.mkApp2 (Lean.mkConst ``Std.BitVec.ofNat) (Lean.mkNatLit 64)
+                               pcexpr).toSyntax
+    -- Question: how can I convert this pcbv into Syntax?
+    let mk_name (s:String): Lean.Name :=
+      Lean.Name.append Lean.Name.anonymous s
+    -- The name of the next state
+    let st' := Lean.mkIdent (mk_name ("s_" ++ n'_str))
+    let h_st_ok := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_ok"))
+    let h_st'_ok := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_ok"))
+    let h_st_pc := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_pc"))
+    let h_st'_pc := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_pc"))
+    let h_st_program := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_program"))
+    let h_st'_program := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_program"))
+    let h_st_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_sp_aligned"))
+    let h_st'_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_sp_aligned"))
+    -- Temporary hypotheses
+    let h_run := Lean.mkIdent (mk_name "h_run")
+    Lean.Elab.Tactic.evalTactic (←
+      `(tactic|
+         (init_next_step $h_run:ident
+          rename_i $st':ident h_step $h_run:ident
+          -- Simulate one instruction
+          fetch_and_decode_inst h_step $h_st_ok:ident $h_st_pc:ident $h_st_program:ident
+          exec_inst h_step $h_st_sp_aligned:ident $st':ident
+
+          -- Update invariants
+          update_invariants $st':ident $prog:ident
+                            $h_st'_ok:ident
+                            $h_st_pc:ident $h_st'_pc:ident
+                            $h_st_sp_aligned $h_st'_sp_aligned:ident
+                            $h_st'_program h_step $pcbv:term
+          clear $h_st_ok:ident $h_st_sp_aligned:ident $h_st_pc:ident h_step
+                $h_st_program:ident
+         )))
+
+-- sym_n tactic symbolically simulates n instructions.
+elab "sym_n" n:num pc:num prog:ident : tactic => do
+  for i in List.range n.getNat do
+    sym_one i pc.getNat prog
+
+-- sym_n tactic symbolically simulates n instructions from
+-- state number i.
+elab "sym_i_n" i:num n:num pc:num prog:ident : tactic => do
+  for j in List.range n.getNat do
+    sym_one (i.getNat + j) pc.getNat prog

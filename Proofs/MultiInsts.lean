@@ -30,6 +30,7 @@ theorem one_asm_snippet_sym_helper1 (q0_var : BitVec 128) :
 theorem one_asm_snippet_sym_helper2 (q0_var : BitVec 128) :
   q0_var ||| q0_var = q0_var := by auto
 
+-- Todo: use sym_n to prove this theorem.
 theorem small_asm_snippet_sym (s : ArmState)
   (h_pc : read_pc s = 0x12650c#64)
   (h_program : s.program = test_program.find?)
@@ -45,7 +46,7 @@ theorem small_asm_snippet_sym (s : ArmState)
     -- Wrapping up the result:
     -- generalize (r (StateField.SFP 0#5) s) = q0_var; unfold state_value at q0_var; simp at q0_var
     -- try (simp [one_asm_snippet_sym_helper1])
-    simp only [one_asm_snippet_sym_helper2]    
+    simp only [one_asm_snippet_sym_helper2]
     done
 
 end multi_insts_proofs
