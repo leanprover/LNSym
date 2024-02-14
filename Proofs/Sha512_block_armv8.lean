@@ -94,6 +94,44 @@ def sha512_program_test_3 : program :=
     (0x1264cc#64 , 0x4cdf2034#32)       --  ld1     {v20.16b-v23.16b}, [x1], #64
   ]
 
+def mySym1 (curr_state_number:Int) : Lean.Elab.Tactic.TacticM Unit :=
+  Lean.Elab.Tactic.withMainContext do
+    let n_str := toString curr_state_number
+    let n'_str := toString (curr_state_number+1)
+    let mk_name (s:String): Lean.Name :=
+      Lean.Name.append Lean.Name.anonymous s
+    -- The name of the next state
+    let st' := Lean.mkIdent (mk_name ("s_" ++ n'_str))
+    let h_st_ok := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_ok"))
+    let h_st'_ok := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_ok"))
+    let h_st_pc := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_pc"))
+    let h_st'_pc := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_pc"))
+    let h_st_program := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_program"))
+    let h_st'_program := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_program"))
+    let h_st_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_sp_aligned"))
+    let h_st'_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_sp_aligned"))
+    -- Temporary hypotheses
+    let h_run := Lean.mkIdent (mk_name "h_run")
+    Lean.Elab.Tactic.evalTactic (←
+      `(tactic|
+         (init_next_step $h_run:ident
+          rename_i $st':ident h_step $h_run:ident
+          -- Simulate one instruction
+          fetch_and_decode_inst h_step $h_st_ok:ident $h_st_pc:ident $h_st_program:ident
+          exec_inst h_step $h_st_sp_aligned:ident $st':ident
+
+          -- Update invariants
+          update_invariants $st':ident sha512_program_test_3
+                            $h_st'_ok:ident
+                            $h_st_pc:ident $h_st'_pc:ident
+                            $h_st_sp_aligned $h_st'_sp_aligned:ident
+                            $h_st'_program h_step 1205444#64
+          clear $h_st_ok:ident $h_st_sp_aligned:ident $h_st_pc:ident h_step $h_run:ident
+                $h_st_program:ident)))
+
+elab "my_sym1" n:num : tactic => do
+  mySym1 n.getNat
+
 theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   (h_s0_ok : read_err s0 = StateError.None)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
@@ -104,6 +142,13 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
 
   unfold read_pc at h_s0_pc
 
+  my_sym1 0
+  my_sym1 1
+  my_sym1 2
+  my_sym1 3
+
+  sorry
+/-
   -- Unroll one step from 'run (n+1)'
   init_next_step h_run
   rename_i s1 h_step h_run
@@ -155,7 +200,7 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   clear h_s3_ok h_s3_sp_aligned h_s3_pc h_step h_s3_program
 
   rw [h_run,h_s4_ok]
-
+-/
 
 ----------------------------------------------------------------------
 
