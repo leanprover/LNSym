@@ -3,6 +3,7 @@ Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Author(s): Shilpi Goel
 -/
 import Arm.Exec
+import Arm.State
 import Tactics.Sym
 import Tests.SHA512ProgramTest
 
@@ -97,7 +98,7 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   (h_s0_ok : read_err s0 = StateError.None)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
   (h_s0_pc : read_pc s0 = 0x1264c0#64)
-  (h_program : s0.program = sha512_program_test_3.find?)
+  (h_s0_program : s0.program = sha512_program_test_3.find?)
   (h_run : s_final = run 4 s0) :
   read_err s_final = StateError.None := by
 
@@ -105,14 +106,56 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
 
   -- Unroll one step from 'run (n+1)'
   init_next_step h_run
-  rename_i s_1 h_step h_run
+  rename_i s1 h_step h_run
   -- Simulate one instruction
-  fetch_and_decode_inst h_step h_s0_ok h_s0_pc h_program
-  exec_inst h_step h_s0_sp_aligned s_1
-  -- Update invariants
-  update_invariants s_1 h_s1_ok h_s1_pc h_s0_sp_aligned h_step
+  fetch_and_decode_inst h_step h_s0_ok h_s0_pc h_s0_program
+  exec_inst h_step h_s0_sp_aligned s1
 
-  sorry
+  -- Update invariants
+  update_invariants s1 sha512_program_test_3
+                    h_s1_ok h_s0_pc h_s1_pc
+                    h_s0_sp_aligned h_s1_sp_aligned
+                    h_s1_program h_step 1205444#64
+  clear h_s0_ok h_s0_sp_aligned h_s0_pc h_step h_s0_program
+
+  init_next_step h_run
+  rename_i s2 h_step h_run
+  -- Simulate one instruction
+  fetch_and_decode_inst h_step h_s1_ok h_s1_pc h_s1_program
+  exec_inst h_step h_s1_sp_aligned s2
+  -- Update invariants
+  update_invariants s2 sha512_program_test_3
+                    h_s2_ok h_s1_pc h_s2_pc
+                    h_s1_sp_aligned h_s2_sp_aligned
+                    h_s2_program h_step 1205448#64
+  clear h_s1_ok h_s1_sp_aligned h_s1_pc h_step h_s1_program
+
+  init_next_step h_run
+  rename_i s3 h_step h_run
+  -- Simulate one instruction
+  fetch_and_decode_inst h_step h_s2_ok h_s2_pc h_s2_program
+  exec_inst h_step h_s2_sp_aligned s3
+  -- Update invariants
+  update_invariants s3 sha512_program_test_3
+                    h_s3_ok h_s2_pc h_s3_pc
+                    h_s2_sp_aligned h_s3_sp_aligned
+                    h_s3_program h_step 1205452#64
+  clear h_s2_ok h_s2_sp_aligned h_s2_pc h_step h_s2_program
+
+  init_next_step h_run
+  rename_i s4 h_step h_run
+  -- Simulate one instruction
+  fetch_and_decode_inst h_step h_s3_ok h_s3_pc h_s3_program
+  exec_inst h_step h_s3_sp_aligned s4
+  -- Update invariants
+  update_invariants s4 sha512_program_test_3
+                    h_s4_ok h_s3_pc h_s4_pc
+                    h_s3_sp_aligned h_s4_sp_aligned
+                    h_s4_program h_step 1205456#64
+  clear h_s3_ok h_s3_sp_aligned h_s3_pc h_step h_s3_program
+
+  rw [h_run,h_s4_ok]
+
 
 ----------------------------------------------------------------------
 
