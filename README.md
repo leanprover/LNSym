@@ -3,6 +3,10 @@
 
 LNSym is a symbolic simulator for Armv8 machine-code programs.
 
+Please see the [LICENSE](./LICENSE) file for LNSym's licensing and
+[CONTRIBUTING.md](./CONTRIBUTING.md) for external contribution
+guidelines.
+
 ## Prerequisites
 
 1. Install Z3, recommended version
