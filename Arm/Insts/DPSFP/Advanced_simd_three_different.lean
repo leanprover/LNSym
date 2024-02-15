@@ -23,7 +23,7 @@ def polynomial_mult_aux (i : Nat) (result : BitVec (m+n))
     let new_res := if extractLsb i i op1 == 1 then result ^^^ (op2 <<< i) else result
     have h : m - (i + 1) < m - i := by omega
     polynomial_mult_aux (i+1) new_res op1 op2
-  termination_by polynomial_mult_aux i new_res op1 op2 => (m - i)
+  termination_by (m - i)
 
 def polynomial_mult (op1 : BitVec m) (op2 : BitVec n) : BitVec (m+n) :=
   let result := Std.BitVec.zero (m+n)
@@ -51,7 +51,7 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
     let result := BitVec.partInstall hi2 lo2 (h₁ ▸ elem_result) result
     have h₂ : elements - (e + 1) < elements - e := by omega
     pmull_op (e + 1) esize elements x y result H
-  termination_by pmull_op e esize elements op x y result => (elements - e)
+  termination_by (elements - e)
 
 @[simp]
 def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmState :=
@@ -61,9 +61,8 @@ def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmSt
   else
     let esize := 8 <<< inst.size.toNat
     have h₀ : esize > 0 := by
-      simp_all only [Nat.shiftLeft_eq, gt_iff_lt, 
-                     Nat.zero_lt_succ, mul_pos_iff_of_pos_left, 
-                     zero_lt_two, pow_pos]
+      simp_all only [Nat.shiftLeft_eq, gt_iff_lt, Nat.zero_lt_succ,
+        Nat.mul_pos_iff_of_pos_left, Nat.pow_pos]
     let datasize := 64
     let part := inst.Q.toNat
     let elements := datasize / esize
