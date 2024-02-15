@@ -2,7 +2,15 @@
 
 * Ensure your PR follows the [contribution
   guidelines](https://github.com/leanprover/LNSym/blob/main/CONTRIBUTING.md).
+  
+* PRs to the `main` branch must follow these rules:
 
+	* Pull requests require no changes requested and an approval from
+      a maintainer before they can be merged.
+
+	* All conversations on code must be resolved before a pull request
+      can be merged.
+  
 * Remember to document and comment your code.
 
 * Remove this section, up to and including the `---` before submitting.
