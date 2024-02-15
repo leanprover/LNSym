@@ -28,4 +28,4 @@ lean_exe «lnsym» where
   -- supportInterpreter := true
 
 require std from git "https://github.com/leanprover/std4" @ "main"
-require auto from git "https://github.com/leanprover-community/lean-auto.git" @ "main"
+require auto from git "https://github.com/leanprover-community/lean-auto.git" @ "bump_std"
