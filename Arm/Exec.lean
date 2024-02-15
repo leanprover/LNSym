@@ -1,5 +1,6 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.BitVec
@@ -45,6 +46,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     DPSFP.exec_advanced_simd_extract i s
   | DPSFP (DataProcSFPInst.Advanced_simd_three_same i) =>
     DPSFP.exec_advanced_simd_three_same i s
+  | DPSFP (DataProcSFPInst.Advanced_simd_three_different i) =>
+    DPSFP.exec_advanced_simd_three_different i s
 
   | LDST (LDSTInst.Reg_imm_post_indexed i) =>
     LDST.exec_reg_imm_post_indexed i s

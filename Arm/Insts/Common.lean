@@ -1,5 +1,6 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Yan Peng
 -/
 import Arm.BitVec
@@ -185,5 +186,21 @@ inductive SIMDThreeSameLogicalType where
 deriving DecidableEq, Repr
 
 instance : ToString SIMDThreeSameLogicalType where toString a := toString (repr a)
+
+----------------------------------------------------------------------
+
+@[simp]
+def Vpart (n : BitVec 5) (part : Nat) (width : Nat) (s : ArmState) (H : width > 0)
+  : BitVec width :=
+  -- assert n >= 0 && n <= 31;
+  -- assert part IN {0, 1};
+  have h1: width - 1 + 1 = width := by omega
+  have h2: (width * 2 - 1 - width + 1) = width := by omega
+  if part == 0 then
+    -- assert width < 128;
+    h1 ▸ extractLsb (width-1) 0 $ read_sfp 128 n s
+  else
+    -- assert width IN {32,64};
+    h2 ▸ extractLsb (width*2-1) width $ read_sfp 128 n s
 
 end Common

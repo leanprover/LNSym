@@ -1,65 +1,47 @@
-# Contribution Guidelines
+# External Contribution Guidelines
 
-## Project status
+Thank you for your interest in contributing to LNSym! We greatly value
+feedback and contributions from the community. Please read this
+document before submitting any pull requests or issues.
 
-Amazon Confidential
+### Submitting a Pull Request
 
-LNSym is an Amazon-internal project. Please do not make any external
-contributions at this time.
+**Focused Changes**: Create small, focused PRs that address a single
+issue or implement a specific feature.
 
-### Test Your Contribution
+**Documentation**: Add relevant documentation and comments to your
+code.
 
-1. Start from a clean slate; remove previous build artifacts using
-   `make clean_all`.
+**Continuous Integration**: Please ensure that all CI checks pass on
+your PR. During development, you can test your contribution on your
+local machine by following the build instructions in the
+[README.md](https://github.com/leanprover/LNSym?tab=readme-ov-file#build-instructions).
 
-2. Follow the LNSym build instructions in the README.md (including
-   conformance testing on an Aarch64 machine) before submitting your
-   pull request.
+### Filing an Issue
 
-## FAQs
+When filing an issue, first check whether the same issue has already
+been reported previously by someone else. In your issue, include
+details like:
 
-### How do I add a new Arm instruction?
+- Illustrative, minimal, and reproducible test cases
+- Commit hash of LNSym that you used
+- Suggested modifications, if any
 
-1. **Decode:** Add support, if needed, for decoding the instruction's
-   class to LNSym's Arm decoder (function `decode_raw_inst` in
-   `Arm/Decode.lean`).  See Section C4.1 in Part A of the [Arm
-   manual's
-   PDF](https://developer.arm.com/documentation/ddi0487/latest) to
-   learn about Arm's instruction classes.
+### Licensing
 
-   An `ArmInst` type describes a fully-decoded Arm instruction. It
-   contains constructors that correspond to the currently supported
-   instruction classes. For example, the `DPI` constructor represents
-   the data processing (immediate) instructions, which have several
-   sub-classes which are formalized in `Arm/Decode/DPI/DPI.lean`.
+See the
+[LICENSE](https://github.com/leanprover/LNSym/blob/main/LICENSE) file
+for LNSym's licensing. All files in this project will be copyright
+only by "Amazon.com, Inc. or its affiliates". The PR template will
+prompt you to confirm the licensing of your contribution.
 
-2. **Instruction Semantics:** Formalize the instruction's behavior in
-   a file under an appropriate directory pertaining to the instruction
-   class (under `Arm/Insts`). You may either need to extend a
-   pre-existing function (perhaps it supported only a subset of the
-   instructions in that class, and you can add your new instruction
-   right there), or add a new directory/file/function altogether.
+### What to Expect
 
-   For example, `Arm/Insts/DPI/Add_sub_imm.lean` contains the
-   semantics of all instructions (e.g., `ADD`) under the `Add_sub_imm`
-   sub-class of data processsing (immediate) instructions.
+**Be Patient**: Reviewing your contribution may take some time!
 
-   Also add a function to generate random instructions of that class;
-   this will be used to validate the instruction semantics via
-   conformance testing. For an example, see the function
-   `Add_sub_imm_cls.rand` defined in the same file as the instruction
-   semantics. These functions should be eventually added to
-   `Insts.rand` in `Arm/Insts.lean`, which is used to run
-   co-simulations when `build/bin/lnsym` is executed.
+**Not All PRs Get Merged**: We value every contribution. However, to
+enable code maintainability and quality, we will merge only those PRs
+that align with our priorities and goals.
 
-   You do not need to know how these co-simulations are run, but an
-   interested reader can see `Arm/Cosim.lean` and `Arm/Main.lean` for
-   details.
-
-3. **Execute:** Add support, if needed, to execute this instruction by
-   extending the function `exec_inst` in `Arm/Exec.lean` .
-
-4. **Build and Test:** Run `make` to make sure nothing breaks as a
-   consequence of your addition. Also run `make cosim` on an Aarch64
-   machine to run conformance tests for validating your new
-   instruction.
+**Work in Progress**: LNSym is under development and things can change
+rapidly.
