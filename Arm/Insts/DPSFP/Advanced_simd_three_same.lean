@@ -16,9 +16,6 @@ namespace DPSFP
 
 open Std.BitVec
 
-theorem binary_vector_op_aux_helper_lemma (x y : Nat) (h : 0 < y) :
-  x + y - 1 - x + 1 = y := by omega
-
 def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
   (op : BitVec esize → BitVec esize → BitVec esize)
   (x : BitVec n) (y : BitVec n) (result : BitVec n)
@@ -31,8 +28,7 @@ def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
     let hi := lo + esize - 1
     let element1 := extractLsb hi lo x
     let element2 := extractLsb hi lo y
-    have h : hi - lo + 1 = esize := by
-      simp; apply binary_vector_op_aux_helper_lemma; simp [*] at *
+    have h : hi - lo + 1 = esize := by simp; omega
     let elem_result := op (h ▸ element1) (h ▸ element2)
     let result := BitVec.partInstall hi lo (h.symm ▸ elem_result) result
     have ht1 : elems - (e + 1) < elems - e := by omega
@@ -54,10 +50,7 @@ def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : Ar
   else
     let datasize := if inst.Q = 1#1 then 128 else 64
     let esize := 8 <<< (Std.BitVec.toNat inst.size)
-    have h_esize : esize > 0 := by
-      simp_all only [Nat.shiftLeft_eq, gt_iff_lt, 
-                     Nat.zero_lt_succ, mul_pos_iff_of_pos_left, 
-                     zero_lt_two, pow_pos]
+    have h_esize : esize > 0 := by apply esize_gt_zero
     let sub_op := inst.U == 1
     let operand1 := read_sfp datasize inst.Rn s
     let operand2 := read_sfp datasize inst.Rm s

@@ -423,6 +423,22 @@ example : decode_raw_inst 0x4f03b6e5 =
             Rd := 0x05#5 })) := by
         rfl
 
+-- mov v10.h[0] v17.h[6]
+example : decode_raw_inst 0x6e026e2a =
+          (ArmInst.DPSFP
+            (DataProcSFPInst.Advanced_simd_copy
+          { _fixed1 := 0x0#1,
+            Q := 0x1#1,
+            op := 0x1#1,
+            _fixed2 := 0x70#8,
+            imm5 := 0x02#5,
+            _fixed3 := 0x0#1,
+            imm4 := 0xd#4,
+            _fixed4 := 0x1#1,
+            Rn := 0x11#5,
+            Rd := 0x0a#5 })) := by
+          rfl
+
 -- Unimplemented
 example : decode_raw_inst 0x00000000#32 = none := by rfl
 

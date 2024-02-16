@@ -1,5 +1,6 @@
 /-
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Yan Peng
 -/
 -- DUP (element) scalar
@@ -14,9 +15,6 @@ namespace DPSFP
 
 open Std.BitVec
 
-theorem advanced_simd_scalar_copy_helper_lemma (x y : Nat):
-  y + 8 <<< x - 1 - y + 1 = 8 <<< x := by sorry
-
 @[simp]
 def exec_advanced_simd_scalar_copy
   (inst : Advanced_simd_scalar_copy_cls) (s : ArmState) : ArmState :=
@@ -27,16 +25,15 @@ def exec_advanced_simd_scalar_copy
     let index := extractLsb 4 (size + 1) inst.imm5
     let idxdsize := 64 <<< (extractLsb 4 4 inst.imm5).toNat
     let esize := 8 <<< size
-    let datasize := esize
     let operand := read_sfp idxdsize inst.Rn s
     let lo := index.toNat * esize
     let hi := lo + esize - 1
     let result := extractLsb hi lo operand
-    have h : hi - lo + 1 = datasize := by
-      simp; apply advanced_simd_scalar_copy_helper_lemma
+    have h₁ : esize > 0 := by apply esize_gt_zero
+    have h : hi - lo + 1 = esize := by simp; omega
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
-    let s := write_sfp datasize inst.Rd (h ▸ result) s
+    let s := write_sfp esize inst.Rd (h ▸ result) s
     s
 
 ----------------------------------------------------------------------

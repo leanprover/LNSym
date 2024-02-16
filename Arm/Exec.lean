@@ -36,6 +36,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
   | DPR (DataProcRegInst.Logical_shifted_reg i) =>
     DPR.exec_logical_shifted_reg i s
 
+  | DPSFP (DataProcSFPInst.Advanced_simd_copy i) =>
+    DPSFP.exec_advanced_simd_copy i s
   | DPSFP (DataProcSFPInst.Crypto_two_reg_sha512 i) =>
     DPSFP.exec_crypto_two_reg_sha512 i s
   | DPSFP (DataProcSFPInst.Crypto_three_reg_sha512 i) =>

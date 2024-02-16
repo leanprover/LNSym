@@ -222,4 +222,15 @@ def ldst_write (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (val : BitVec width
   : ArmState :=
   if SIMD? then write_sfp width idx val s else write_gpr width idx val s
 
+----------------------------------------------------------------------
+
+theorem hi_lo_diff_equal_esize (esize : Nat) (lo : Nat) (hi : Nat) 
+  (h₀ : esize > 0) (h₁ : hi = lo + esize - 1):
+  hi - lo + 1 = esize := by omega
+
+theorem esize_gt_zero (size : Nat):
+  8 <<< size > 0 := by
+  simp_all only [ Nat.shiftLeft_eq, gt_iff_lt, Nat.zero_lt_succ
+                , mul_pos_iff_of_pos_left, zero_lt_two, pow_pos]
+
 end Common
