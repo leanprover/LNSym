@@ -2,7 +2,8 @@
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Author(s): Yan Peng
 -/
--- MOVI, MVNI, ORR, BIC (Immediate, vector)
+-- MOVI, MVNI, ORR, BIC (Immediate, vector), and FMOV (vector, immediate) - Single/double-precision
+-- Missing: FMOV (vector, immediate) - Half-precision
 
 import Arm.Decode
 import Arm.Insts.Common
@@ -37,7 +38,7 @@ def decode_immediate_op (cmode : BitVec 4) (op : BitVec 1) : ImmediateOp :=
   | [110, _x:1, 1] => ImmediateOp.MVNI
   | [1110, _x:1] => ImmediateOp.MOVI
   | [11110] => ImmediateOp.MOVI
-  -- | [11111] => ImmediateOp.MOVI
+  -- | case [11111]
   | _ => ImmediateOp.MOVI
 
 def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitVec 64 :=
@@ -83,8 +84,9 @@ def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitV
 -- Assumes CheckFPAdvSIMDEnabled64();
 def exec_advanced_simd_modified_immediate
   (inst : Advanced_simd_modified_immediate_cls) (s : ArmState) : ArmState :=
-  if inst.cmode == 0b1111#4 && inst.op == 0b1#1 && inst.Q == 0b0#1 then
-    -- FMOV Dn,#imm is in main FP instruction set
+  if inst.cmode == 0b1111#4 && inst.op == 0b0#1 && inst.o2 == 0b1#1 then
+    write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
+  else if inst.cmode == 0b1111#4 && inst.op == 0b1#1 && inst.Q == 0b0#1 || inst.o2 == 0b1#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let datasize := 64 <<< inst.Q.toNat
@@ -103,9 +105,9 @@ def exec_advanced_simd_modified_immediate
                     let operand := read_sfp datasize inst.Rd s
                     operand &&& ~~~(h ▸ imm)
     -- State Updates
-    let s' := write_pc ((read_pc s) + 4#64) s
-    let s' := write_sfp datasize inst.Rd result s
-    s'
+    let s := write_pc ((read_pc s) + 4#64) s
+    let s := write_sfp datasize inst.Rd result s
+    s
 
 ----------------------------------------------------------------------
 
@@ -131,7 +133,7 @@ partial def Advanced_simd_modified_immediate_cls.nonfp.rand : IO (Option (BitVec
       , h     := ← BitVec.rand 1
       , Rd    := ← BitVec.rand 5
       }
-    pure (some (inst.toBitVec32))
+    pure (some inst.toBitVec32)
 
 /-- Generate random instructions of Advanced_simd_modified_immediate class. -/
 def Advanced_simd_modified_immediate_cls.rand : List (IO (Option (BitVec 32))) :=

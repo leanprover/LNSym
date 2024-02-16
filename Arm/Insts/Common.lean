@@ -112,6 +112,14 @@ def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
          break
   return acc
 
+def lowest_set_bit (bv : BitVec n) : Nat := Id.run do
+  let mut acc := n
+  for i in List.range n do
+    if extractLsb i i bv == 1
+    then acc := i
+         break
+  return acc
+
 def invalid_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immediate : Bool)
   (M : Nat) : Bool :=
   let len := highest_set_bit $ immN ++ ~~~imms
