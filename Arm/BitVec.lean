@@ -8,7 +8,6 @@ Author(s): Shilpi Goel
 
 import Std.Data.BitVec.Lemmas
 import Std.Tactic.Basic
-import Std.Tactic.Ext
 import Std.Data.Nat.Lemmas
 import Std.Data.Fin.Lemmas
 import Std.Data.Nat.Bitwise

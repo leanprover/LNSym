@@ -27,5 +27,5 @@ lean_exe «lnsym» where
   -- Remove this line if you do not need such functionality.
   -- supportInterpreter := true
 
-require std from git "https://github.com/leanprover/std4" @ "main"
-require auto from git "https://github.com/leanprover-community/lean-auto.git" @ "bump_std"
+require std from git "https://github.com/leanprover/std4" @ "nightly-testing-2024-02-18"
+require auto from git "https://github.com/leanprover-community/lean-auto.git" @ "nightly-testing-2024-02-18"

@@ -240,7 +240,7 @@ private theorem termination_lemma (i j max : Fin n) (h : n > 0)
   have max_limit := max.isLt
   have sub_lhs' : ((i + j) : Fin n) = (i : Nat) + (j : Nat) := by
     rw [Fin.val_add]
-    refine Nat.mod_eq_of_lt ?h
+    apply Nat.mod_eq_of_lt
     exact Nat.lt_of_le_of_lt h1'' max_limit
   apply Fin.lt_def.mp
   have lhs'' : (max - (i + j) : Fin n) = (max - (i + j) : Nat) := by
