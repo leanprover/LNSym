@@ -6,10 +6,8 @@ on:
   workflow_dispatch: {}
   # Run on every push:
   push: {}
-  # Run when a pull request has been opened:
-  pull_request: 
-    types:
-      - opened
+  # Run on pull request activity:
+  pull_request: {}
 
 jobs:
   build:

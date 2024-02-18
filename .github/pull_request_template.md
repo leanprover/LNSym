@@ -5,6 +5,14 @@
 
 * Remember to document and comment your code.
 
+* Note that before a PR to the `main` branch can be merged:
+
+	* No changes must be requested.
+
+	* All conversations must be resolved.
+
+	* Approval from a maintainer is required.
+
 * Remove this section, up to and including the `---` before submitting.
 
 ---
