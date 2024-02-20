@@ -4,7 +4,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.Exec
-import Arm.State
 import Tactics.Sym
 import Tests.SHA512ProgramTest
 
@@ -111,6 +110,39 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   unfold read_pc at h_s0_pc
   sym_n 4 0x1264c0 sha512_program_test_3
   rw [h_run,h_s4_ok]
+
+-- A record that shows simp fails.
+theorem sha512_block_armv8_test_3_sym_fail (s : ArmState)
+  (h_s_ok : read_err s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s = true)
+  (h_pc : read_pc s = 0x1264c0#64)
+  (h_program : s.program = sha512_program_test_3.find?)
+  (h_s' : s' = run 4 s) :
+  read_err s' = StateError.None := by
+  -- Symbolically simulate one instruction.
+  (sym1 [h_program])
+  --
+  -- (FIXME) At this point, I get an `if` term as the second argument
+  -- of `run`. The if's condition consists of ground terms, and I
+  -- hoped the `if` would be "evaluated away" to the true branch.
+  -- However, the simp/ground below fails with a nested error:
+  -- "maximum recursion depth has been reached".
+  --
+  -- (Aside: I also wish simp/ground didn't leave such a verbose
+  -- output. Anything I can do to fix it?)
+  --
+  -- simp (config := {ground := true}) only
+  --
+  -- (WOKRAROUND) I manually do a split here.
+  split
+  · rename_i h; simp (config := {ground := true}) at h
+  · unfold run
+    simp [stepi, *]
+    rw [fetch_inst_from_rbmap_program h_program]
+    -- (FIXME) Here I run into a similar situation, where we are
+    -- matching on Std.RBMap.find? with ground terms and simp/ground
+    -- fails.
+    sorry
 
 ----------------------------------------------------------------------
 

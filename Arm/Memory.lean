@@ -99,6 +99,16 @@ theorem read_mem_bytes_of_w :
     rw [n_ih]
   done
 
+theorem write_mem_bytes_program {n : ℕ} (addr : BitVec 64) (bytes : BitVec (n * 8)):
+    (write_mem_bytes n addr bytes s).program = s.program := by
+  intros
+  induction n generalizing addr s
+  · simp [write_mem_bytes]
+  · rename_i n h_n
+    simp [write_mem_bytes]
+    rw [h_n]
+    simp [write_mem]
+
 ---- Memory RoW/WoW lemmas ----
 
 theorem read_mem_of_write_mem_same :
@@ -115,8 +125,8 @@ theorem write_mem_of_write_mem_shadow :
   simp [write_mem]; unfold write_store; simp_all; done
 
 theorem write_mem_irrelevant :
-  write_mem addr (read_mem addr s) s = s := by 
-  simp [read_mem, write_mem, store_write_irrelevant]  
+  write_mem addr (read_mem addr s) s = s := by
+  simp [read_mem, write_mem, store_write_irrelevant]
 
 end Memory
 
