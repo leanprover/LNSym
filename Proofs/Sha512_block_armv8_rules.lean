@@ -95,7 +95,7 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
 -- (FIXME) Prove without auto.
 set_option auto.smt.savepath "/tmp/rev_elems_of_rev_elems_64_8.smt2" in
 theorem rev_elems_of_rev_elems_64_8 (x : Std.BitVec 64) :
-  rev_elems 64 8 (rev_elems 64 8 x h₀ h₁) h₀ h₁ = x := by  
+  rev_elems 64 8 (rev_elems 64 8 x h₀ h₁) h₀ h₁ = x := by
   repeat (unfold rev_elems; (simp (config := {ground := true, decide := true})))
   simp_arith at h₀
   simp_arith at h₁
@@ -167,7 +167,7 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   hi64_spec ++ lo64_spec := by
   repeat (unfold binary_vector_op_aux; simp)
   repeat (unfold BitVec.partInstall; simp)
-  unfold sha512h compression_update_t1 sigma_big_1 ch allOnes
+  unfold sha512h compression_update_t1 sigma_big_1 ch
   auto
 
 end sha512_block_armv8_rules

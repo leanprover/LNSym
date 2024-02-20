@@ -6,11 +6,6 @@ Author(s): Shilpi Goel
 
 -- Kitchen sink file for bitvector theorems
 
-import Std.Tactic.Basic
-import Std.Data.Nat.Lemmas
-import Std.Data.Fin.Lemmas
-import Std.Tactic.LibrarySearch
-
 ----------------------------------------------------------------------
 
 abbrev BitVec := Std.BitVec

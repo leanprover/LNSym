@@ -5,7 +5,6 @@ Author(s): Shilpi Goel, Yan Peng
 -/
 import Arm.BitVec
 import Arm.Memory
-import Std.Tactic.Classical
 
 section Common
 
