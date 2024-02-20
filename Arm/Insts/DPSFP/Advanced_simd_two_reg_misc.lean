@@ -65,7 +65,7 @@ def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
       exact Nat.dvd_sub h₂ h₄ h
     have h₂' : container_size <= new_datasize := by
       refine Nat.le_of_dvd ?h h₄'
-      simp_all!; omega
+      omega
     have h1 : 0 < container_size := by exact Nat.lt_of_lt_of_le h₀ h₁
     have ?term_lemma : new_datasize < datasize := by exact Nat.sub_lt_self h1 h₂
     let rest_ans := rev_vector new_datasize container_size esize rest_x h₀ h₁ h₂' h₃ h₄'
@@ -151,10 +151,10 @@ def exec_advanced_simd_two_reg_misc
       simp only [Nat.not_le] at h0
       exact esize_dvd_container_size inst.size (extractLsb 0 0 inst.opcode ++ inst.U) h0
     have h2 : container_size ∣ datasize := by
-      simp_all
+      simp_all [datasize]
       exact container_size_dvd_datasize (extractLsb 0 0 inst.opcode ++ inst.U) inst.Q
     have h3 : 0 < esize := by
-      simp_all only [Nat.sub_zero, Nat.shiftLeft_eq, Nat.not_le, beq_iff_eq]
+      simp_all only [Nat.sub_zero, Nat.shiftLeft_eq, Nat.not_le, beq_iff_eq, esize]
       rw [Nat.mul_pos_iff_of_pos_left]
       simp only [gt_iff_lt, Nat.zero_lt_two, Nat.pow_pos]
       decide

@@ -32,7 +32,7 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
               0b1000#4, 0b1010#4])
   : ArmState :=
   let datasize := if inst.Q = 1#1 then 128 else 64
-  have H : 8 ∣ datasize := by simp; split <;> decide
+  have H : 8 ∣ datasize := by simp [datasize]; split <;> decide
   let datasize_bytes := datasize / 8
   let t  := inst.Rt
   let t2 := t + 1

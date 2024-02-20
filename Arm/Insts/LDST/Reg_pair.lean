@@ -83,9 +83,9 @@ def exec_reg_pair_pre_indexed
     let datasize := 8 <<< scale
     let offset := (signExtend 64 inst.imm7) <<< scale
     have H1 : 8 ∣ datasize := by
-      simp_all! only [gt_iff_lt, Nat.shiftLeft_eq, Nat.dvd_mul_right]
+      simp_all! only [gt_iff_lt, Nat.shiftLeft_eq, Nat.dvd_mul_right, datasize]
     have H2 : datasize > 0 := by
-      simp_all! only [Nat.shiftLeft_eq, Nat.dvd_mul_right]
+      simp_all! only [Nat.shiftLeft_eq, Nat.dvd_mul_right, datasize, scale]
       generalize (2 + Std.BitVec.toNat (extractLsb 1 1 inst.opc)) = x
       have hb : 2 ^ x > 0 := by exact Nat.two_pow_pos x
       exact Nat.mul_pos (by decide) hb

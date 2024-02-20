@@ -6,12 +6,9 @@ Author(s): Shilpi Goel
 
 -- Kitchen sink file for bitvector theorems
 
-import Std.Data.BitVec.Lemmas
 import Std.Tactic.Basic
 import Std.Data.Nat.Lemmas
 import Std.Data.Fin.Lemmas
-import Std.Data.Nat.Bitwise
-import Std.Tactic.Omega
 import Std.Tactic.LibrarySearch
 
 ----------------------------------------------------------------------

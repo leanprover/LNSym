@@ -47,7 +47,7 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
     let lo2 := 2 * (e * esize)
     let hi2 := lo2 + 2 * esize - 1
     have h₁ : hi - lo + 1 + (hi - lo + 1) = hi2 - lo2 + 1 := by
-      simp; apply pmull_op_helper_lemma; simp [*] at *
+      simp [lo2, hi2]; apply pmull_op_helper_lemma; simp [*] at *
     let result := BitVec.partInstall hi2 lo2 (h₁ ▸ elem_result) result
     have h₂ : elements - (e + 1) < elements - e := by omega
     pmull_op (e + 1) esize elements x y result H
@@ -62,7 +62,7 @@ def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmSt
     let esize := 8 <<< inst.size.toNat
     have h₀ : esize > 0 := by
       simp_all only [Nat.shiftLeft_eq, gt_iff_lt, Nat.zero_lt_succ,
-        Nat.mul_pos_iff_of_pos_left, Nat.pow_pos]
+        Nat.mul_pos_iff_of_pos_left, Nat.pow_pos, esize]
     let datasize := 64
     let part := inst.Q.toNat
     let elements := datasize / esize
