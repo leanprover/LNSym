@@ -1,5 +1,6 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Yan Peng
 -/
 -- ADD, ORR, AND, BIC, ORR, ORN, EOR, BSL, BIT, BIF (vector)
@@ -15,10 +16,10 @@ namespace DPSFP
 
 open Std.BitVec
 
-theorem add_vector_op_helper_lemma (x y : Nat) (h : 0 < y) :
+theorem binary_vector_op_aux_helper_lemma (x y : Nat) (h : 0 < y) :
   x + y - 1 - x + 1 = y := by omega
 
-def add_vector_op (e : Nat) (elems : Nat) (esize : Nat)
+def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
   (op : BitVec esize → BitVec esize → BitVec esize)
   (x : BitVec n) (y : BitVec n) (result : BitVec n)
   (H : esize > 0) : BitVec n :=
@@ -31,17 +32,23 @@ def add_vector_op (e : Nat) (elems : Nat) (esize : Nat)
     let element1 := extractLsb hi lo x
     let element2 := extractLsb hi lo y
     have h : hi - lo + 1 = esize := by
-      simp; apply add_vector_op_helper_lemma; simp [*] at *
+      simp; apply binary_vector_op_aux_helper_lemma; simp [*] at *
     let elem_result := op (h ▸ element1) (h ▸ element2)
     let result := BitVec.partInstall hi lo (h.symm ▸ elem_result) result
     have ht1 : elems - (e + 1) < elems - e := by omega
-    add_vector_op (e + 1) elems esize op x y result H
-  termination_by add_vector_op e elems esize op x y result H => (elems - e)
+    binary_vector_op_aux (e + 1) elems esize op x y result H
+  termination_by binary_vector_op_aux e elems esize op x y result H => (elems - e)
 
--- #eval add_vector_op 0 2 4 Std.BitVec.add 0xAB 0x12 (Std.BitVec.zero 8)
+/--
+  Perform pairwise op on esize-bit slices of x and y
+-/
+@[simp]
+def binary_vector_op (esize : Nat) (op : BitVec esize → BitVec esize → BitVec esize)
+  (x : BitVec n) (y : BitVec n) (H : esize > 0) : BitVec n :=
+  binary_vector_op_aux 0 (n / esize) esize op x y (Std.BitVec.zero n) H
 
 @[simp]
-def exec_add_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : ArmState :=
+def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : ArmState :=
   if inst.size == 0b11#2 && inst.Q == 0b0#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
@@ -51,10 +58,11 @@ def exec_add_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : ArmSt
       simp_all only [Nat.shiftLeft_eq, gt_iff_lt, 
                      Nat.zero_lt_succ, mul_pos_iff_of_pos_left, 
                      zero_lt_two, pow_pos]
-    let elements := datasize / esize
+    let sub_op := inst.U == 1
     let operand1 := read_sfp datasize inst.Rn s
     let operand2 := read_sfp datasize inst.Rm s
-    let result := add_vector_op 0 elements esize Std.BitVec.add operand1 operand2 (Std.BitVec.zero datasize) h_esize
+    let op := if sub_op then Std.BitVec.sub else Std.BitVec.add
+    let result := binary_vector_op esize op operand1 operand2 h_esize
     let s := write_sfp datasize inst.Rd result s
     s
 
@@ -98,10 +106,10 @@ def exec_advanced_simd_three_same
   (inst : Advanced_simd_three_same_cls) (s : ArmState) : ArmState :=
   open Std.BitVec in
   let s :=
-    match inst.U, inst.size, inst.opcode with
-    | 0#1, _, 0b10000#5 => exec_add_vector inst s
-    | _, _, 0b00011#5 => exec_logic_vector inst s
-    | _, _, _ =>
+    match inst.opcode with
+    | 0b10000#5 => exec_binary_vector inst s
+    | 0b00011#5 => exec_logic_vector inst s
+    | _ =>
       write_err (StateError.Unimplemented s!"Unsupported instruction {inst} encountered!") s
   write_pc ((read_pc s) + 4#64) s
 
@@ -112,7 +120,7 @@ theorem pc_of_exec_advanced_simd_three_same
   -- (r StateField.PC s) + 4#64 -- TODO: How do I use + here?
   (Std.BitVec.add (r StateField.PC s) 4#64) := by
   simp_all!
-  simp [exec_advanced_simd_three_same, exec_add_vector, exec_logic_vector]
+  simp [exec_advanced_simd_three_same, exec_binary_vector, exec_logic_vector]
   split
   · split <;> simp
   · simp
@@ -120,12 +128,12 @@ theorem pc_of_exec_advanced_simd_three_same
 
 ----------------------------------------------------------------------
 
-def Advanced_simd_three_same_cls.add.rand : IO (Option (BitVec 32)) := do
+def Advanced_simd_three_same_cls.binary.rand : IO (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let size := ← if Q = 0#1 then BitVec.rand 2 (lo := 0) (hi := 2) else BitVec.rand 2
   let (inst : Advanced_simd_three_same_cls) :=
     { Q := Q,
-      U := ← pure 0b0#1,
+      U := ← BitVec.rand 1,
       size := size,
       Rm := ← BitVec.rand 5,
       opcode := ← pure 0b10000#5,
@@ -146,7 +154,7 @@ def Advanced_simd_three_same_cls.logic.rand : IO (Option (BitVec 32)) := do
 
 /-- Generate random instructions of Advanced_simd_three_same class. -/
 def Advanced_simd_three_same_cls.rand : List (IO (Option (BitVec 32))) :=
-  [ Advanced_simd_three_same_cls.add.rand,
+  [ Advanced_simd_three_same_cls.binary.rand,
     Advanced_simd_three_same_cls.logic.rand ]
 
 end DPSFP

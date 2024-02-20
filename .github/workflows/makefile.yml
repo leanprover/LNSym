@@ -1,10 +1,13 @@
 name: Makefile CI
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  # Run using manual triggers from GitHub UI:
+  # https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
+  workflow_dispatch: {}
+  # Run on every push:
+  push: {}
+  # Run on pull request activity:
+  pull_request: {}
 
 jobs:
   build:

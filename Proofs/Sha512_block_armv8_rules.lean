@@ -1,5 +1,6 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.Insts.DPSFP.Insts
@@ -70,8 +71,8 @@ set_option auto.smt.savepath "/tmp/sha512h_rule_1.smt2" in
 theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let elements := 2
   let esize := 64
-  let inner_sum := (add_vector_op 0 elements esize Std.BitVec.add c d (Std.BitVec.zero 128) H)
-  let outer_sum := (add_vector_op 0 elements esize Std.BitVec.add inner_sum e (Std.BitVec.zero 128) H)
+  let inner_sum := (binary_vector_op_aux 0 elements esize Std.BitVec.add c d (Std.BitVec.zero 128) H)
+  let outer_sum := (binary_vector_op_aux 0 elements esize Std.BitVec.add inner_sum e (Std.BitVec.zero 128) H)
   let a0 := extractLsb 63 0   a
   let a1 := extractLsb 127 64 a
   let b0 := extractLsb 63 0   b
@@ -86,7 +87,7 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let lo64_spec := compression_update_t1 (b0 + hi64_spec) b1 a0 c0 d0 e0
   sha512h a b outer_sum = hi64_spec ++ lo64_spec := by
   simp_all! only [Nat.sub_zero];
-  repeat (unfold add_vector_op; simp)
+  repeat (unfold binary_vector_op_aux; simp)
   unfold BitVec.partInstall
   unfold sha512h compression_update_t1 sigma_big_1 ch allOnes
   auto
@@ -157,14 +158,14 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   let d1 := extractLsb 127 64 d
   let e0 := extractLsb 63 0   e
   let e1 := extractLsb 127 64 e
-  let inner_sum := add_vector_op 0 2 64 Std.BitVec.add d e (Std.BitVec.zero 128) h1
+  let inner_sum := binary_vector_op_aux 0 2 64 Std.BitVec.add d e (Std.BitVec.zero 128) h1
   let concat := inner_sum ++ inner_sum
   let operand := extractLsb 191 64 concat
   let hi64_spec := compression_update_t1 b1 a0 a1 c1 d0 e0
   let lo64_spec := compression_update_t1 (b0 + hi64_spec) b1 a0 c0 d1 e1
-  sha512h a b (add_vector_op 0 2 64 Std.BitVec.add c operand (Std.BitVec.zero 128) h2) =
+  sha512h a b (binary_vector_op_aux 0 2 64 Std.BitVec.add c operand (Std.BitVec.zero 128) h2) =
   hi64_spec ++ lo64_spec := by
-  repeat (unfold add_vector_op; simp)
+  repeat (unfold binary_vector_op_aux; simp)
   repeat (unfold BitVec.partInstall; simp)
   unfold sha512h compression_update_t1 sigma_big_1 ch allOnes
   auto

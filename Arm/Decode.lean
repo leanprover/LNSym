@@ -1,5 +1,6 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.Memory
@@ -71,6 +72,8 @@ def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=
   match_bv i with
   | [sf:1, op:1, S:1, 11010000, Rm:5, 000000, Rn:5, Rd:5] =>
     DPR (Add_sub_carry {sf, op, S, Rm, Rn, Rd})
+  | [sf:1, op:1, S:1, 01011, shift:2, 0, Rm:5, imm6:6 , Rn:5, Rd:5] =>
+    DPR (Add_sub_shifted_reg {sf, op, S, shift, Rm, imm6, Rn, Rd})
   | [sf:1, op:1, S:1, 11010100, Rm:5, cond:4, op2:2, Rn:5, Rd:5] =>
     DPR (Conditional_select {sf, op, S, Rm, cond, op2, Rn, Rd})
   | [sf:1, opc:2, 01010, shift:2, N:1, Rm:5, imm6:6, Rn:5, Rd:5] =>
@@ -95,6 +98,8 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
     DPSFP (Advanced_simd_extract {Q, op2, Rm, imm4, Rn, Rd})
   | [0, Q:1, U:1, 01110, size:2, 1, Rm:5, opcode:5, 1, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_three_same {Q, U, size, Rm, opcode, Rn, Rd})
+  | [0, Q:1, U:1, 01110, size:2, 1, Rm:5, opcode:4, 00, Rn:5, Rd:5] =>
+    DPSFP (Advanced_simd_three_different {Q, U, size, Rm, opcode, Rn, Rd})
   | _ => none
 
 def decode_ldst_inst (i : BitVec 32) : Option ArmInst :=
@@ -371,6 +376,21 @@ example : decode_raw_inst 0xd2524b8f#32 =
             imms := 0x12#6,
             Rn := 0x1c#5,
             Rd := 0x0f#5 })) := by
+        rfl
+
+-- sub x9, x27, x15, lsl #55
+example : decode_raw_inst 0xcb0fdf69 =
+          (ArmInst.DPR (DataProcRegInst.Add_sub_shifted_reg
+          { sf := 0x1#1,
+            op := 0x1#1,
+            S := 0x0#1,
+            _fixed1 := 0x0b#5,
+            shift := 0x0#2,
+            _fixed2 := 0x0#1,
+            Rm := 0x0f#5,
+            imm6 := 0x37#6,
+            Rn := 0x1b#5,
+            Rd := 0x09#5 })) := by
         rfl
 
 -- Unimplemented

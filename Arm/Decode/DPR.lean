@@ -1,6 +1,7 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
-Author(s): Shilpi Goel
+Released under Apache 2.0 license as described in the file LICENSE.
+Author(s): Shilpi Goel, Yan Peng
 -/
 import Arm.BitVec
 
@@ -27,6 +28,24 @@ instance : ToString Add_sub_carry_cls where toString a := toString (repr a)
 
 def Add_sub_carry_cls.toBitVec32 (x : Add_sub_carry_cls) : BitVec 32 :=
   x.sf ++ x.op ++ x.S ++ x._fixed1 ++ x.Rm ++ x._fixed2 ++ x.Rn ++ x.Rd
+
+structure Add_sub_shifted_reg_cls where
+  sf      : BitVec 1                 -- [31:31]
+  op      : BitVec 1                 -- [30:30]
+  S       : BitVec 1                 -- [29:29]
+  _fixed1 : BitVec 5 := 0b01011#5    -- [28:24]
+  shift   : BitVec 2                 -- [23:22]
+  _fixed2 : BitVec 1 := 0            -- [21:21]
+  Rm      : BitVec 5                 -- [20:16]
+  imm6    : BitVec 6                 -- [15:10]
+  Rn      : BitVec 5                 --   [9:5]
+  Rd      : BitVec 5                 --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Add_sub_shifted_reg_cls where toString a := toString (repr a)
+
+def Add_sub_shifted_reg_cls.toBitVec32 (x : Add_sub_shifted_reg_cls) : BitVec 32 :=
+  x.sf ++ x.op ++ x.S ++ x._fixed1 ++ x.shift ++ x._fixed2 ++ x.Rm ++ x.imm6 ++ x.Rn ++ x.Rd
 
 structure Conditional_select_cls where
   sf     : BitVec 1                 -- [31:31]
@@ -65,6 +84,8 @@ def Logical_shifted_reg_cls.toBitVec32 (x : Logical_shifted_reg_cls) : BitVec 32
 inductive DataProcRegInst where
   | Add_sub_carry :
     Add_sub_carry_cls → DataProcRegInst
+  | Add_sub_shifted_reg :
+    Add_sub_shifted_reg_cls → DataProcRegInst
   | Conditional_select :
     Conditional_select_cls → DataProcRegInst
   | Logical_shifted_reg :
