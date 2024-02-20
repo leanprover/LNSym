@@ -38,7 +38,7 @@ def ldr_gpr_unsigned_offset_state : ArmState :=
 
 def ldr_gpr_unsigned_offset_final_state : ArmState := run 1 ldr_gpr_unsigned_offset_state
 
-example : (read_store 0#5 ldr_gpr_unsigned_offset_final_state.gpr) = 20#64 := by native_decide
+example : (read_gpr 64 0#5 ldr_gpr_unsigned_offset_final_state) = 20#64 := by native_decide
 example : ldr_gpr_unsigned_offset_final_state.pc = 4#64 := by native_decide
 
 ----------------------------------------------------------------------
@@ -56,7 +56,7 @@ def str_gpr_post_index_state : ArmState :=
 
 def str_gpr_post_index_final_state : ArmState := run 1 str_gpr_post_index_state
 
-example : (read_store 1#5 str_gpr_post_index_final_state.gpr) = 3#64 := by native_decide
+example : (read_gpr 64 1#5 str_gpr_post_index_final_state) = 3#64 := by native_decide
 example : (read_mem_bytes 8 0#64 str_gpr_post_index_final_state) = 20#64 := by native_decide
 example : str_gpr_post_index_final_state.pc = 4#64 := by native_decide
 
@@ -73,8 +73,8 @@ def ldr_sfp_post_index_state : ArmState :=
 
 def ldr_sfp_post_index_final_state : ArmState := run 1 ldr_sfp_post_index_state
 
-example : (read_store 0#5 ldr_sfp_post_index_final_state.sfp) = 20#128 := by native_decide
-example : (read_store 1#5 ldr_sfp_post_index_final_state.gpr) = 8#64 := by native_decide
+example : (read_sfp 128 0#5 ldr_sfp_post_index_final_state) = 20#128 := by native_decide
+example : (read_gpr 64 1#5 ldr_sfp_post_index_final_state) = 8#64 := by native_decide
 
 ----------------------------------------------------------------------
 -- test str, 128-bit sfp, unsigned offset
@@ -102,7 +102,7 @@ def ldrb_unsigned_offset_state: ArmState :=
   
 def ldrb_unsigned_offset_final_state : ArmState := run 1 ldrb_unsigned_offset_state
 
-example : (read_store 0#5 ldrb_unsigned_offset_final_state.gpr) = 20#64 := by native_decide
+example : (read_gpr 64 0#5 ldrb_unsigned_offset_final_state) = 20#64 := by native_decide
 
 ----------------------------------------------------------------------
 -- test strb, post-index
@@ -117,8 +117,8 @@ def strb_post_index_state : ArmState :=
 
 def strb_post_index_final_state : ArmState := run 1 strb_post_index_state
 
-example : (read_store 0#5 strb_post_index_final_state.gpr) = 20#64 := by native_decide
-example : (read_store 1#5 strb_post_index_final_state.gpr) = 1#64 := by native_decide
+example : (read_gpr 64 0#5 strb_post_index_final_state) = 20#64 := by native_decide
+example : (read_gpr 64 1#5 strb_post_index_final_state) = 1#64 := by native_decide
 
 ----------------------------------------------------------------------
 -- test ldp
@@ -132,8 +132,8 @@ def ldp_gpr_pre_index_state : ArmState :=
 
 def ldp_gpr_pre_index_final_state : ArmState := run 1 ldp_gpr_pre_index_state
 
-example : (read_store 0#5 ldp_gpr_pre_index_final_state.gpr) = 0xABCD#64 := by native_decide
-example : (read_store 2#5 ldp_gpr_pre_index_final_state.gpr) = 0x1234#64 := by native_decide
+example : (read_gpr 64 0#5 ldp_gpr_pre_index_final_state) = 0xABCD#64 := by native_decide
+example : (read_gpr 64 2#5 ldp_gpr_pre_index_final_state) = 0x1234#64 := by native_decide
 
 ----------------------------------------------------------------------
 -- test stp
