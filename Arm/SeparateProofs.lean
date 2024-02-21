@@ -31,7 +31,7 @@ theorem n_minus_1_lt_2_64_1 (n : Nat)
   (n - 1)#64 < (2 ^ 64 - 1)#64 := by
   refine BitVec.val_bitvec_lt.mp ?a
   simp [BitVec.bitvec_to_nat_of_nat]
-  have : n - 1 < 2 ^ 64 := by exact tsub_lt_of_lt h2
+  have : n - 1 < 2 ^ 64 := by omega
   simp_all [Nat.mod_eq_of_lt]
   exact Nat.sub_lt_left_of_lt_add h1 h2
 
@@ -87,7 +87,7 @@ theorem nat_bitvec_sub2 (x y : Nat)
     _ < _ := xub
   ext
   rw [nat_bitvec_sub1]
-  simp [BitVec.bitvec_to_nat_of_nat]
+  simp only [BitVec.bitvec_to_nat_of_nat]
   have xmyub : x - y < 2^64 := calc
     x - y ≤ x := Nat.sub_le x y
     _ < _ := xub
@@ -96,7 +96,7 @@ theorem nat_bitvec_sub2 (x y : Nat)
     pattern (x % 2 ^ 64 - y % 2 ^ 64)
     rw [Nat.mod_eq_of_lt xub, Nat.mod_eq_of_lt yub]
   rw [Nat.mod_eq_of_lt xmyub]
-  simp [BitVec.bitvec_to_nat_of_nat]
+  simp only [BitVec.bitvec_to_nat_of_nat]
   rw [Nat.mod_eq_of_lt xub, Nat.mod_eq_of_lt yub]
   exact h
 
@@ -106,13 +106,11 @@ theorem addr_add_one_add_m_sub_one  (n : Nat) (addr : BitVec 64)
   have h_ub' : n < 2^64 := by exact h_ub
   rw [nat_bitvec_sub2 n 1 h_lb h_ub']
   ext
-  simp [BitVec.nat_bitvec_add]
+  rw [Std.BitVec.toNat_add]
   rw [←nat_bitvec_sub2 n 1 h_lb h_ub]
   simp [BitVec.bitvec_to_nat_of_nat]
-  simp (config := {ground := true})
   rw [←Nat.add_sub_assoc h_lb]
-  simp only [Nat.succ_add_sub_one]
-  done
+  omega
 
 ----------------------------------------------------------------------
 ---- mem_subset ----
