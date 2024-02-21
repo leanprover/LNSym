@@ -532,6 +532,7 @@ theorem sha512_block_armv8_new_program (s : ArmState)
   (h_program : s.program = sha512_program.find?)
   (h_s' : s' = run 506 s) :
   read_err s' = StateError.None := by
+  /- 
   -- (FIXME) simp_all below fails with a nested error:
   -- maximum recursion depth has been reached (use `set_option maxRecDepth <num>` to increase limit)
   -- simp_all
@@ -567,7 +568,7 @@ theorem sha512_block_armv8_new_program (s : ArmState)
     simp [exec_inst, *]
 
 
-
+    -/
     sorry
-
+    
 end SHA512_proof

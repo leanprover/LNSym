@@ -202,4 +202,16 @@ def Vpart (n : BitVec 5) (part : Nat) (width : Nat) (s : ArmState) (H : width > 
     -- assert width IN {32,64};
     h2 ▸ extractLsb (width*2-1) width $ read_sfp 128 n s
 
+----------------------------------------------------------------------
+
+@[simp]
+def ldst_read (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (s : ArmState)
+  : BitVec width :=
+  if SIMD? then read_sfp width idx s else read_gpr width idx s
+
+@[simp]
+def ldst_write (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
+  : ArmState :=
+  if SIMD? then write_sfp width idx val s else write_gpr width idx val s
+
 end Common
