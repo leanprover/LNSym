@@ -221,8 +221,8 @@ private theorem first_addresses_add_one_preserves_subset_same_addr_helper (h1l :
   m - 1#64 ≤ (2 ^ 64 - 1)#64 - 1#64 := by
   revert h1l
   simp [lt_and_bitvec_lt, le_and_bitvec_le]
-  have : (2 ^ 64 - 1) = 18446744073709551615 := by decide
-  simp [this]
+  -- have : (2 ^ 64 - 1) = 18446744073709551615 := by decide
+  -- simp [this]
   auto
 
 theorem first_addresses_add_one_preserves_subset_same_addr
@@ -258,8 +258,8 @@ theorem first_addresses_add_one_preserves_subset_same_addr
       simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt]
       · rw [Nat.mod_eq_of_lt h1u]
         rw [Nat.mod_eq_of_lt h2u]
-        rw [Nat.mod_eq_of_lt (by exact tsub_lt_of_lt h1u)]
-        rw [Nat.mod_eq_of_lt (by exact tsub_lt_of_lt h2u)]
+        rw [Nat.mod_eq_of_lt (by omega)]
+        rw [Nat.mod_eq_of_lt (by omega)]
         exact Nat.sub_le_sub_right h3_0 1
       · simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt, h2u]
         exact h2l
