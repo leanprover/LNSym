@@ -140,30 +140,30 @@ def exec_reg_pair_pre_indexed
 def exec_reg_pair_post_indexed
   (inst : Reg_pair_post_indexed_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_pair_cls) :=
-    { opc := inst.opc
-    , SIMD? := inst.V == 1#1
-    , L? := inst.L == 1#1
-    , wback := true
-    , postindex := true
-    , imm7 := inst.imm7
-    , Rt2 := inst.Rt2
-    , Rn := inst.Rn
-    , Rt := inst.Rt }
+    { opc := inst.opc,
+      SIMD? := inst.V == 1#1,
+      L? := inst.L == 1#1,
+      wback := true,
+      postindex := true,
+      imm7 := inst.imm7,
+      Rt2 := inst.Rt2,
+      Rn := inst.Rn,
+      Rt := inst.Rt }
   exec_reg_pair_common extracted_inst s!"{inst}" s
 
 @[simp]
 def exec_reg_pair_signed_offset
   (inst : Reg_pair_signed_offset_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_pair_cls) :=
-    { opc := inst.opc
-    , SIMD? := inst.V == 1#1
-    , L? := inst.L == 1#1
-    , wback := false
-    , postindex := false
-    , imm7 := inst.imm7
-    , Rt2 := inst.Rt2
-    , Rn := inst.Rn
-    , Rt := inst.Rt}
+    { opc := inst.opc,
+      SIMD? := inst.V == 1#1,
+      L? := inst.L == 1#1,
+      wback := false,
+      postindex := false,
+      imm7 := inst.imm7,
+      Rt2 := inst.Rt2,
+      Rn := inst.Rn,
+      Rt := inst.Rt }
   exec_reg_pair_common extracted_inst s!"{inst}" s
 
 end LDST

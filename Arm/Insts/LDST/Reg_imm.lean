@@ -116,28 +116,28 @@ def exec_reg_imm_common
 def exec_reg_imm_unsigned_offset
   (inst : Reg_unsigned_imm_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_imm_cls) :=
-    { size      := inst.size
-    , opc       := inst.opc
-    , Rn        := inst.Rn
-    , Rt        := inst.Rt
-    , SIMD?     := inst.V == 1#1
-    , wback     := false
-    , postindex := false
-    , imm       := Sum.inl inst.imm12 }
+    { size      := inst.size,
+      opc       := inst.opc,
+      Rn        := inst.Rn,
+      Rt        := inst.Rt,
+      SIMD?     := inst.V == 1#1,
+      wback     := false,
+      postindex := false,
+      imm       := Sum.inl inst.imm12 }
   exec_reg_imm_common extracted_inst s!"{inst}" s
 
 @[simp]
 def exec_reg_imm_post_indexed
   (inst : Reg_imm_post_indexed_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_imm_cls) :=
-    { size      := inst.size
-    , opc       := inst.opc
-    , Rn        := inst.Rn
-    , Rt        := inst.Rt
-    , SIMD?     := inst.V == 1#1
-    , wback     := true
-    , postindex := true
-    , imm       := Sum.inr inst.imm9 }
+    { size      := inst.size,
+      opc       := inst.opc,
+      Rn        := inst.Rn,
+      Rt        := inst.Rt,
+      SIMD?     := inst.V == 1#1,
+      wback     := true,
+      postindex := true,
+      imm       := Sum.inr inst.imm9 }
   exec_reg_imm_common extracted_inst s!"{inst}" s
 
 end LDST
