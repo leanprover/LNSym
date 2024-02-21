@@ -105,8 +105,8 @@ theorem read_mem_bytes_of_write_mem_bytes_same (hn1 : n <= 2^64) :
      · omega
      · have := mem_separate_contiguous_regions addr 0#64 (n - 1)#64
        simp [Std.BitVec.add_zero, BitVec.sub_zero] at this
-       simp_rw [n_minus_1_lt_2_64_1 n hn hn1] at this
-       simp_rw [this]
+       simp only [n_minus_1_lt_2_64_1 n hn hn1] at this
+       simp only [this]
      · omega
      · omega
   done
@@ -293,7 +293,7 @@ theorem write_mem_bytes_of_write_mem_bytes_shadow_same_first_address
 
 set_option auto.smt.savepath "/tmp/mem_subset_neq_first_addr_small_second_region.smt2" in
 private theorem mem_subset_neq_first_addr_small_second_region
-  (n1 n' : ℕ) (addr1 addr2 : BitVec 64)
+  (n1 n' : Nat) (addr1 addr2 : BitVec 64)
   (h1 : n' < 2 ^ 64 - 1)
   (h2 : mem_subset addr1 (addr1 + (n1 - 1)#64) addr2 (addr2 + n'#64))
   (h_addr : ¬addr1 = addr2) :
@@ -306,7 +306,6 @@ private theorem mem_subset_neq_first_addr_small_second_region
     have l1 : n' = 18446744073709551615 := by
       rw [Std.BitVec.toNat_eq n'#64 18446744073709551615#64] at h
       simp [BitVec.bitvec_to_nat_of_nat] at h
-      simp (config := {ground := true}) [Nat.mod_eq_of_lt] at h
       omega
     simp [l1] at h1
   · rename_i h
@@ -546,7 +545,7 @@ private theorem read_mem_of_write_mem_bytes_subset_helper_1
   (a i : Nat) (h1 : 0 < a) (h2 : a < 2^64) :
   (8 + ((a + (2 ^ 64 - 1)) % 2 ^ 64 * 8 + i)) = (a * 8 + i) := by
   have l1 : a + (2^64 - 1) = a - 1 + 2^64 := by omega
-  simp [l1]
+  simp only [l1]
   have l2 : a - 1 < 2 ^ 64 := by omega
   simp [Nat.mod_eq_of_lt l2]
   omega
@@ -558,7 +557,7 @@ private theorem read_mem_of_write_mem_bytes_subset_helper_2 (a b : Nat)
 private theorem read_mem_of_write_mem_bytes_subset_helper_3 (a : Nat) (h1 : 0 < a) (h2 : a < 2^64) :
  (a + (2 ^ 64 - 1)) % 2 ^ 64 = (a - 1) := by
  have l1 : a + (2^64 - 1) = a - 1 + 2^64 := by omega
- simp [l1]
+ simp only [l1]
  have l2 : a - 1 < 2 ^ 64 := by omega
  simp [Nat.mod_eq_of_lt l2]
  done
@@ -835,7 +834,7 @@ def my_pow (base exp : Nat) : Nat := base ^ exp
 
 theorem my_pow_2_gt_zero :
   0 < my_pow 2 n := by
-  unfold my_pow; exact Nat.one_le_two_pow n
+  unfold my_pow; exact Nat.one_le_two_pow
 
 set_option auto.smt.savepath "/tmp/entire_memory_subset_of_only_itself.smt2" in
 theorem entire_memory_subset_of_only_itself
