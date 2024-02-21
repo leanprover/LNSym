@@ -3,8 +3,9 @@ Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
+import Lean.Data.Format
 import Arm.BitVec
-import Std.Data.RBMap
+import Arm.Map
 
 ------------------------------------------------------------------------------
 ------------------------------------------------------------------------------
@@ -398,18 +399,32 @@ end Accessor_updater_functions
 
 section Load_program_and_fetch_inst
 
--- Programs are defined as an RBMap of 64-bit addresses to 32-bit
--- instructions. RBMap has a nice find?_eq-style lemma in the Std
--- library that allows us to smoothly fetch an instruction from the
--- map during proofs (see fetch_inst_from_rbmap_program below).
---
--- TODO: Perhaps use HashMaps here when the Std library is mature?
-abbrev program := Std.RBMap (BitVec 64) (BitVec 32) compare
+-- Programs are defined as an Map of 64-bit addresses to 32-bit
+-- instructions. Map has nice lemmas that allows us to smoothly fetch an instruction from the
+abbrev program := Map (BitVec 64) (BitVec 32)
 
 -- We define a program as an Array of address and instruction pairs,
 -- which are then converted to an RBMap.
-def def_program (p : Array ((BitVec 64) × (BitVec 32))) : program :=
-    Std.RBMap.ofArray p compare
+def def_program (p : Map (BitVec 64) (BitVec 32)) : program :=
+  p
+
+def program.min (p : program) : Option (BitVec 64) :=
+  loop p none
+where
+  loop (p : program) (min? : Option (BitVec 64)) : Option (BitVec 64) :=
+    match p, min? with
+    | [], _ => min?
+    | (addr, _) :: p, none => loop p (some addr)
+    | (addr, _) :: p, some min => if addr < min then loop p (some addr) else loop p (some min)
+
+def program.max (p : program) : Option (BitVec 64) :=
+  loop p none
+where
+  loop (p : program) (max? : Option (BitVec 64)) : Option (BitVec 64) :=
+    match p, max? with
+    | [], _ => max?
+    | (addr, _) :: p, none => loop p (some addr)
+    | (addr, _) :: p, some max => if addr > max then loop p (some addr) else loop p (some max)
 
 theorem fetch_inst_from_rbmap_program
   {address: BitVec 64} {program : program}

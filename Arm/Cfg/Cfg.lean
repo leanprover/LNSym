@@ -284,10 +284,10 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
   termination_by (max_address - address).toNat
 
 protected def create (program : program) : IO Cfg :=
-  let maybe_start_address_entry := program.min
-  let maybe_max_address_entry := program.max
-  match maybe_start_address_entry, maybe_max_address_entry with
-  | some (start_address, _), some (max_address, _) =>
+  let maybe_start_address := program.min
+  let maybe_max_address := program.max
+  match maybe_start_address, maybe_max_address with
+  | some start_address, some max_address =>
     Cfg.create' start_address max_address program { start_address }
   | _, _ =>
     throw (IO.userError s!"Could not determine the start/stop address for the program!")

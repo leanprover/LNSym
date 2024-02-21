@@ -26,6 +26,3 @@ lean_exe «lnsym» where
   -- `runFrontend`) at the expense of increased binary size on Linux.
   -- Remove this line if you do not need such functionality.
   -- supportInterpreter := true
-
-require std from git "https://github.com/leanprover/std4" @ "nightly-testing-2024-02-20"
-require auto from git "https://github.com/leanprover-community/lean-auto.git" @ "nightly-testing-2024-02-20"
