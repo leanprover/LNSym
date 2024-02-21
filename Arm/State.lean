@@ -294,6 +294,17 @@ theorem fetch_inst_of_w (addr : BitVec 64) (fld : StateField) (val : (state_valu
   unfold write_base_error
   split <;> simp_all!
 
+-- There is no StateField that overwrites the program.
+theorem w_program (sf : StateField) (v : state_value sf) (s : ArmState):
+    (w sf v s).program = s.program := by
+  intros
+  cases sf <;> unfold w <;> simp
+  · unfold write_base_gpr; simp
+  · unfold write_base_sfp; simp
+  · unfold write_base_pc; simp
+  · unfold write_base_flag; simp
+  · unfold write_base_error; simp
+
 -- The following functions are defined in terms of r and w, but may be
 -- simpler to use.
 
