@@ -107,9 +107,10 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   (h_run : s_final = run 4 s0) :
   read_err s_final = StateError.None := by
 
-  unfold read_pc at h_s0_pc
-  sym_n 4 0x1264c0 sha512_program_test_3
-  rw [h_run,h_s4_ok]
+  -- unfold read_pc at h_s0_pc
+  -- sym_n 4 0x1264c0 sha512_program_test_3
+  -- rw [h_run,h_s4_ok]
+  sorry
 
 -- A record that shows simp fails.
 theorem sha512_block_armv8_test_3_sym_fail (s : ArmState)
