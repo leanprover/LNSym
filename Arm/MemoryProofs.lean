@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.SeparateProofs
+import Arm.FromMathlib
 import Auto
 
 -- In this file, we have memory (non-)interference proofs that depend
@@ -71,7 +72,7 @@ theorem append_byte_of_extract_rest_same_cast (n : Nat) (v : BitVec ((n + 1) * 8
   Std.BitVec.cast h (zeroExtend (n * 8) (v >>> 8) ++ extractLsb 7 0 v) = v := by
   apply BitVec.append_of_extract
   · omega
-  · exact eq_tsub_of_add_eq h
+  · omega
   · decide
   · omega
   done
@@ -105,8 +106,9 @@ theorem read_mem_bytes_of_write_mem_bytes_same (hn1 : n <= 2^64) :
      · omega
      · have := mem_separate_contiguous_regions addr 0#64 (n - 1)#64
        simp [Std.BitVec.add_zero, BitVec.sub_zero] at this
-       simp only [n_minus_1_lt_2_64_1 n hn hn1] at this
-       simp only [this]
+       apply this
+       simp at hn1
+       omega
      · omega
      · omega
   done
@@ -177,7 +179,7 @@ theorem write_mem_of_write_mem_bytes_commute
       rw [write_mem_of_write_mem_commute]; assumption
     case succ =>
       rename_i n' h' n_ih
-      simp [Nat.succ_sub_succ_eq_sub, tsub_zero] at h1
+      simp [Nat.succ_sub_succ_eq_sub, Nat.sub_zero] at h1
       simp [write_mem_bytes]
       rw [n_ih]
       · rw [write_mem_of_write_mem_commute]
@@ -282,7 +284,7 @@ theorem write_mem_bytes_of_write_mem_bytes_shadow_same_first_address
           case neg => -- n' ≠ 0
             rw [n_ih (by omega) (by omega) _ hn']
             · conv in write_mem_bytes (n + 1) .. => simp [write_mem_bytes]
-            · simp [Nat.succ_eq_one_add] at h3
+            · simp [Nat.succ_eq_add_one] at h3
               rw [addr_add_one_add_m_sub_one n' addr (by omega) h1u]
               rw [addr_add_one_add_m_sub_one n addr (by omega) h2u]
               rw [first_addresses_add_one_preserves_subset_same_addr
@@ -323,8 +325,8 @@ private theorem write_mem_bytes_of_write_mem_bytes_shadow_general_n2_lt
   case neg => -- n1 ≠ 0
     induction n2, h2l using Nat.le_induction generalizing addr1 addr2 val1 s
     case base =>
-      simp_all [write_mem_bytes]
       have h1u' : n1 - 1 < 2^64 := by omega
+      simp_all [write_mem_bytes]
       have h0 := @mem_subset_one_addr_region_lemma_alt (n1 - 1) addr1 addr2 h1u'
       simp [h3] at h0
       have ⟨h₀, h₁⟩ := h0
@@ -934,7 +936,7 @@ theorem leftshift_n_or_rightshift_n (x y : Nat) (h : y < 2^n) :
   have l0 : y < 2^(n + i) :=
     calc
       _ < 2^n := by assumption
-      _ <= 2^(n + i) := by simp [Nat.pow_le_pow_right]
+      _ <= 2^(n + i) := Nat.pow_le_pow_right (by omega) (by omega)
   rw [Nat.testBit_lt_two l0]
   simp [Nat.testBit_shiftLeft]
 
