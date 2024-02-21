@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.Exec
+import Arm.Util
 import Tactics.Sym
 import Tests.SHA512ProgramTest
 
@@ -42,7 +43,7 @@ the machine state (denoted by function `w`).
 
 def sha512_program_test_1 : program :=
   def_program
-   #[(0x126538#64 , 0xcec08230#32),      --  sha512su0       v16.2d, v17.2d
+   [(0x126538#64 , 0xcec08230#32),      --  sha512su0       v16.2d, v17.2d
      (0x12653c#64 , 0x6e154287#32),      --  ext     v7.16b, v20.16b, v21.16b, #8
      (0x126540#64 , 0xce6680a3#32),      --  sha512h q3, q5, v6.2d
      (0x126544#64 , 0xce678af0#32)       --  sha512su1       v16.2d, v23.2d, v7.2d
@@ -65,7 +66,7 @@ theorem sha512_program_test_1_sym (s : ArmState)
 
 def sha512_program_test_2 : program :=
   def_program
-   #[(0x126538#64 , 0xcec08230#32),      --  sha512su0       v16.2d, v17.2d
+   [(0x126538#64 , 0xcec08230#32),      --  sha512su0       v16.2d, v17.2d
      (0x12653c#64 , 0x6e154287#32),      --  ext     v7.16b, v20.16b, v21.16b, #8
      (0x126540#64 , 0xce6680a3#32),      --  sha512h q3, q5, v6.2d
      (0x126544#64 , 0xce678af0#32),      --  sha512su1       v16.2d, v23.2d, v7.2d
@@ -88,7 +89,7 @@ theorem sha512_program_test_2_sym (s : ArmState)
 
 def sha512_program_test_3 : program :=
   def_program
-  #[(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
+  [(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
     (0x1264c4#64 , 0x910003fd#32),      --  mov     x29, sp
     (0x1264c8#64 , 0x4cdf2030#32),      --  ld1     {v16.16b-v19.16b}, [x1], #64
     (0x1264cc#64 , 0x4cdf2034#32)       --  ld1     {v20.16b-v23.16b}, [x1], #64
@@ -101,6 +102,7 @@ theorem sha512_block_armv8_test_3_sym (s : ArmState)
   (h_program : s.program = sha512_program_test_3.find?)
   (h_s' : s' = run 4 s) :
   read_err s' = StateError.None := by
+  FIXME
   -- Symbolically simulate one instruction.
   (sym1 [h_program])
   --

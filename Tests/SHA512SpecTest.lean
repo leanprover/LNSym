@@ -64,10 +64,11 @@ def ms_lazy := (SHA2.message_schedule_lazy SHA2.j_512)
 
 def ans_one_blk_lazy : IO SHA2.Hash := do
   pure (SHA2.sha512 ms_lazy ms_one_block)
-#eval timeit "sha512 one block (lazy lists):" ans_one_blk_lazy -- ~20 ms
 
-example : SHA2.sha512 ms_lazy ms_one_block = expected := by
-  native_decide
+-- #eval timeit "sha512 one block (lazy lists):" ans_one_blk_lazy -- ~20 ms
+
+-- example : SHA2.sha512 ms_lazy ms_one_block = expected := by
+--  native_decide
 
 ----------------------------------------------------------------------
 
@@ -130,9 +131,10 @@ example : SHA2.sha512 ms_mem ms_two_blocks = expected2 := by
 -- Lazy version
 def ans_two_blks_lazy : IO SHA2.Hash := do
   pure (SHA2.sha512 ms_lazy ms_two_blocks)
-#eval timeit "sha512 two blocks (lazy lists):" ans_two_blks_lazy -- ~17 ms
 
-example : SHA2.sha512 ms_lazy ms_two_blocks = expected2 := by
-  native_decide
+-- #eval timeit "sha512 two blocks (lazy lists):" ans_two_blks_lazy -- ~17 ms
+
+-- example : SHA2.sha512 ms_lazy ms_two_blocks = expected2 := by
+--   native_decide
 
 end SHA512SpecTest

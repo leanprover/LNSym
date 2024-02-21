@@ -5,14 +5,12 @@ Author(s): Shilpi Goel
 -/
 import Arm.Exec
 import Arm.MemoryProofs
-import Std.Data.AssocList
 
 section SHA512_proof
 
 open Std.BitVec
-open Std.AssocList
 
-def sha512_program : Std.AssocList (BitVec 64) (BitVec 32) :=
+def sha512_program : Map (BitVec 64) (BitVec 32) :=
    [(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
     (0x1264c4#64 , 0x910003fd#32),      --  mov     x29, sp
     (0x1264c8#64 , 0x4cdf2030#32),      --  ld1     {v16.16b-v19.16b}, [x1], #64
@@ -516,10 +514,10 @@ def sha512_program : Std.AssocList (BitVec 64) (BitVec 32) :=
     (0x126c90#64 , 0xb5ffc382#32),      --  cbnz    x2, 126500 <sha512_block_armv8+0x40>
     (0x126c94#64 , 0x4c002c00#32),      --  st1     {v0.2d-v3.2d}, [x0]
     (0x126c98#64 , 0xf84107fd#32),      --  ldr     x29, [sp], #16
-    (0x126c9c#64 , 0xd65f03c0#32)].toAssocList
+    (0x126c9c#64 , 0xd65f03c0#32)]
 
 theorem fetch_inst_from_assoclist
-  {address: BitVec 64} {program : Std.AssocList (BitVec 64) (BitVec 32)}
+  {address: BitVec 64} {program : Map (BitVec 64) (BitVec 32)}
   (h_program : s.program = program.find?) :
   fetch_inst address s = program.find? address := by
     unfold fetch_inst read_store
@@ -542,6 +540,7 @@ theorem sha512_block_armv8_new_program (s : ArmState)
   simp [stepi, h_pc]
   rw [fetch_inst_from_assoclist h_program]
   -- (FIXME) Wish this output from simp/ground wasn't so noisy.
+  FIXME
   simp (config := {ground := true}) only
   simp [exec_inst, *]
   -- (FIXME) At this point, we have an if in the goal whose condition
