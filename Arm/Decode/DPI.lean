@@ -55,7 +55,7 @@ deriving DecidableEq, Repr
 
 instance : ToString PC_rel_addressing_cls where toString a := toString (repr a)
 
-structure Bitfield_cls where 
+structure Bitfield_cls where
   sf     : BitVec 1                -- [31:31]
   opc    : BitVec 2                -- [30:29]
   _fixed : BitVec 6 := 0b100110#6  -- [28:23]
@@ -67,6 +67,9 @@ structure Bitfield_cls where
 deriving DecidableEq, Repr
 
 instance : ToString Bitfield_cls where toString a := toString (repr a)
+
+def Bitfield_cls.toBitVec32 (x : Bitfield_cls) : BitVec 32 :=
+  x.sf ++ x.opc ++ x._fixed ++ x.N ++ x.immr ++ x.imms ++ x.Rn ++ x.Rd
 
 inductive DataProcImmInst where
   | Add_sub_imm :
