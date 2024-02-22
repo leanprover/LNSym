@@ -81,6 +81,12 @@ def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitV
       extractLsb 7 7 imm8 ++ ~~~(extractLsb 6 6 imm8) ++
         (replicate 8 $ extractLsb 6 6 imm8) ++ extractLsb 5 0 imm8 ++ Std.BitVec.zero 48
 
+
+private theorem mul_div_norm_form_lemma  (n m : Nat) (_h1 : 0 < m) (h2 : n ∣ m) :
+  (n * (m / n)) = n * m / n := by
+  rw [Nat.mul_div_assoc]
+  simp only [h2]
+
 @[simp]
 -- Assumes CheckFPAdvSIMDEnabled64();
 def exec_advanced_simd_modified_immediate
@@ -95,7 +101,16 @@ def exec_advanced_simd_modified_immediate
     let imm8 := inst.a ++ inst.b ++ inst.c ++ inst.d ++ inst.e ++ inst.f ++ inst.g ++ inst.h
     let imm64 := AdvSIMDExpandImm inst.op inst.cmode imm8
     let imm := replicate (datasize/64) imm64
-    have h : (64 * (datasize / 64)) = datasize := by sorry
+    have h₀ : 0 < datasize := by
+      simp_all! only [Nat.shiftLeft_eq, Nat.dvd_mul_right]
+      generalize Std.BitVec.toNat inst.Q = x
+      have hb : 2 ^ x > 0 := by exact Nat.pow_two_pos x
+      exact Nat.mul_pos (by decide) hb
+    have h₁ : 64 ∣ datasize := by
+      simp_all! only [Nat.shiftLeft_eq, Nat.dvd_mul_right]
+    have h : (64 * (datasize / 64)) = datasize := by 
+      rw [mul_div_norm_form_lemma 64 datasize h₀ h₁]
+      refine Nat.mul_div_cancel_left datasize ?H; decide
     let result := match operation with
                   | ImmediateOp.MOVI => (h ▸ imm)
                   | ImmediateOp.MVNI => ~~~(h ▸ imm)
