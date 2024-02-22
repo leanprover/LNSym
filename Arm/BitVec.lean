@@ -100,23 +100,11 @@ theorem fin_bitvec_sub (x y : BitVec n) :
 
 theorem fin_bitvec_or (x y : BitVec n) :
   (x ||| y).toFin = (x.toFin ||| y.toFin) := by
-  have h_x := Std.BitVec.isLt x
-  have h_y := Std.BitVec.isLt y
-  simp only [HOr.hOr, OrOp.or, Std.BitVec.or, Fin.lor, Std.BitVec.toNat, Nat.lor]
-  have h_or := @Nat.bitwise_lt_two_pow x.toNat n y.toNat or h_x h_y
-  have h_mod := Nat.mod_eq_of_lt h_or
-  simp only [Std.BitVec.toNat] at h_mod
-  simp_all
+  simp
 
 theorem fin_bitvec_and (x y : BitVec n) :
   (x &&& y).toFin = (x.toFin &&& y.toFin) := by
-  have h_x := Std.BitVec.isLt x
-  have h_y := Std.BitVec.isLt y
-  simp only [HAnd.hAnd, AndOp.and, Std.BitVec.and, Fin.land, Std.BitVec.toNat, Nat.land]
-  have h_or := @Nat.bitwise_lt_two_pow x.toNat n y.toNat and h_x h_y
-  have h_mod := Nat.mod_eq_of_lt h_or
-  simp only [Std.BitVec.toNat] at h_mod
-  simp_all
+  simp
 
 theorem fin_bitvec_lt (x y : BitVec n) :
   (x.toFin < y.toFin) ↔ (x < y) := by rfl
