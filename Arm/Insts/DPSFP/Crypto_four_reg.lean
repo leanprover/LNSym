@@ -36,7 +36,7 @@ def exec_crypto_four_reg (inst : Crypto_four_reg_cls) (s : ArmState) : ArmState 
 def Crypto_four_reg_cls.eor3.rand : IO (Option (BitVec 32)) := do
   let feat_check ←
       IO.Process.output
-      { cmd  := "../Cosim/platform_check.sh",
+      { cmd  := "Arm/Insts/Cosim/platform_check.sh",
         args := #["-f", "sha3"] }
   if feat_check.exitCode == 0 then
     let (inst : Crypto_four_reg_cls) :=
