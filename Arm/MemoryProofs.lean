@@ -590,7 +590,7 @@ private theorem read_mem_of_write_mem_bytes_subset_helper_4
       simp at h₃
       have : (n' + 1) * 8 ≤ a * 8 + i := by omega
       simp
-      rw [Nat.testBit_lt_two]
+      rw [Nat.testBit_lt_two_pow]
       exact calc
         _ < 2 ^ ((n' + 1) * 8) := by exact h_v_size
         _ <= 2 ^ (a * 8 + i) := by apply Nat.pow_le_pow_right; decide; exact this
@@ -723,7 +723,7 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_helper2
       have h₁' : ¬(8 <= i) := by omega
       simp [h₀, h₁']
       have h₀' : (n + 1) * 8 ≤ i := by omega
-      rw [Nat.testBit_lt_two]
+      rw [Nat.testBit_lt_two_pow]
       omega
     case neg => -- (8 <= i)
       simp at h₀ h₁
@@ -943,8 +943,8 @@ theorem leftshift_n_or_rightshift_n (x y : Nat) (h : y < 2^n) :
     calc
       _ < 2^n := by assumption
       _ <= 2^(n + i) := Nat.pow_le_pow_right (by omega) (by omega)
-  rw [Nat.testBit_lt_two l0]
-  simp [Nat.testBit_shiftLeft]
+  rw [Nat.testBit_lt_two_pow l0]
+  simp [Nat.testBit_shiftLeft, Nat.add_sub_cancel_left, Nat.le_add_right]
 
 private theorem write_mem_bytes_irrelevant_helper (h : n * 8 + 8 = (n + 1) * 8) :
   (zeroExtend (n * 8)
@@ -954,7 +954,6 @@ private theorem write_mem_bytes_irrelevant_helper (h : n * 8 + 8 = (n + 1) * 8) 
   simp [zeroExtend]
   simp [HShiftRight.hShiftRight, ushiftRight, ShiftRight.shiftRight,
                 BitVec.bitvec_to_nat_of_nat]
-  simp [Std.BitVec.toNat_append]
   have h_x_size := (read_mem_bytes n (addr + 1#64) s).isLt
   have h_y_size := (read_mem addr s).isLt
   generalize h_x : (Std.BitVec.toNat (read_mem_bytes n (addr + 1#64) s)) = x

@@ -19,16 +19,6 @@ set_option trace.auto.smt.proof false -- Do not print the proof.
 
 ----------------------------------------------------------------------
 
-namespace Bool
-
--- These lemmas are PR'd to Lean as https://github.com/leanprover/lean4/pull/3426 and should be removed when that is resolved.
-@[simp] theorem decide_eq_true {b : Bool} : decide (b = true) = b := by cases b <;> simp
-@[simp] theorem decide_eq_false {b : Bool} : decide (b = false) = !b := by cases b <;> simp
-@[simp] theorem decide_true_eq {b : Bool} : decide (true = b) = b := by cases b <;> simp
-@[simp] theorem decide_false_eq {b : Bool} : decide (false = b) = !b := by cases b <;> simp
-
-end Bool
-
 section MemoryProofs
 
 open Std.BitVec
@@ -129,11 +119,9 @@ theorem addr_add_one_add_m_sub_one  (n : Nat) (addr : BitVec 64)
 -- Std.BitVec.ul[t/e].
 def lt_and_bitvec_lt (x y : BitVec n) : x < y ↔ Std.BitVec.ult x y := by
   simp [Std.BitVec.ult]
-  simp only [← Std.BitVec.lt_ofFin]
 
 def le_and_bitvec_le (x y : BitVec n) : x <= y ↔ Std.BitVec.ule x y := by
   simp [Std.BitVec.ule]
-  simp only [← Std.BitVec.le_ofFin]
 
 def mem_overlap_for_auto (a1 a2 b1 b2 : BitVec 64) : Bool :=
   Std.BitVec.ule (b1 - a1) (a2 - a1) ||
