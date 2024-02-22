@@ -1,5 +1,6 @@
 /-
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Yan Peng
 -/
 -- PMULL and PMULL2
@@ -30,10 +31,6 @@ def polynomial_mult (op1 : BitVec m) (op2 : BitVec n) : BitVec (m+n) :=
   let extended_op2 := zeroExtend (m+n) op2
   polynomial_mult_aux 0 result op1 extended_op2
 
-theorem pmull_op_helper_lemma (x y : Nat) (h : 0 < y):
-  x + y - 1 - x + 1 + (x + y - 1 - x + 1) = 2 * x + 2 * y - 1 - 2 * x + 1 := by
-  omega
-
 def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
   (y : BitVec n) (result : BitVec (n*2)) (H : esize > 0) : BitVec (n*2) :=
   if h₀ : e ≥ elements then
@@ -46,8 +43,7 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
     let elem_result := polynomial_mult element1 element2
     let lo2 := 2 * (e * esize)
     let hi2 := lo2 + 2 * esize - 1
-    have h₁ : hi - lo + 1 + (hi - lo + 1) = hi2 - lo2 + 1 := by
-      simp; apply pmull_op_helper_lemma; simp [*] at *
+    have h₁ : hi - lo + 1 + (hi - lo + 1) = hi2 - lo2 + 1 := by simp; omega
     let result := BitVec.partInstall hi2 lo2 (h₁ ▸ elem_result) result
     have h₂ : elements - (e + 1) < elements - e := by omega
     pmull_op (e + 1) esize elements x y result H
@@ -60,10 +56,7 @@ def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmSt
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let esize := 8 <<< inst.size.toNat
-    have h₀ : esize > 0 := by
-      simp_all only [Nat.shiftLeft_eq, gt_iff_lt, 
-                     Nat.zero_lt_succ, mul_pos_iff_of_pos_left, 
-                     zero_lt_two, pow_pos]
+    have h₀ : esize > 0 := by apply esize_gt_zero
     let datasize := 64
     let part := inst.Q.toNat
     let elements := datasize / esize
