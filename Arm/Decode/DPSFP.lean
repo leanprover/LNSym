@@ -53,6 +53,22 @@ instance : ToString Crypto_two_reg_sha512_cls where toString a := toString (repr
 def Crypto_two_reg_sha512_cls.toBitVec32 (x : Crypto_two_reg_sha512_cls) : BitVec 32 :=
   x._fixed ++ x.opcode ++ x.Rn ++ x.Rd
 
+structure Crypto_four_reg_cls where
+  _fixed1 : BitVec 9 := 0b110011100#9     -- [31:23]
+  Op0     : BitVec 2                      -- [22:21]
+  Rm      : BitVec 5                      -- [20:16]
+  _fixed2 : BitVec 1 := 0b0#1             -- [15:15]
+  Ra      : BitVec 5                      -- [14:10]
+  Rn      : BitVec 5                      --   [9:5]
+  Rd      : BitVec 5                      --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Crypto_four_reg_cls where
+toString a := toString (repr a)
+
+def Crypto_four_reg_cls.toBitVec32 (x : Crypto_four_reg_cls) : BitVec 32 :=
+  x._fixed1 ++ x.Op0 ++ x.Rm ++ x._fixed2 ++ x.Ra ++ x.Rn ++ x.Rd
+
 structure Advanced_simd_two_reg_misc_cls where
   _fixed1 : BitVec 1 := 0b0#1      -- [31:31]
   Q       : BitVec 1               -- [30:30]
@@ -194,6 +210,8 @@ inductive DataProcSFPInst where
     Crypto_two_reg_sha512_cls → DataProcSFPInst
   | Crypto_three_reg_sha512 :
     Crypto_three_reg_sha512_cls → DataProcSFPInst
+  | Crypto_four_reg :
+    Crypto_four_reg_cls → DataProcSFPInst
   | Advanced_simd_two_reg_misc :
     Advanced_simd_two_reg_misc_cls → DataProcSFPInst
   | Advanced_simd_copy :

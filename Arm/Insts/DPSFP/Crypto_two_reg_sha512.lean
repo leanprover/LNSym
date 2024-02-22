@@ -53,7 +53,7 @@ def exec_crypto_two_reg_sha512
 def Crypto_two_reg_sha512_cls.sha512su0.rand : IO (Option (BitVec 32)) := do
   let feat_check ←
       IO.Process.output
-      { cmd  := "../Cosim/platform_check.sh",
+      { cmd  := "Arm/Insts/Cosim/platform_check.sh",
         args := #["-f", "sha512"] }
   if feat_check.exitCode == 0 then
     let (inst : Crypto_two_reg_sha512_cls) :=
@@ -65,7 +65,7 @@ def Crypto_two_reg_sha512_cls.sha512su0.rand : IO (Option (BitVec 32)) := do
     pure none
 
 /-- Generate random instructions of Crypto_two_reg_sha512_cls class. -/
-def Crypto_two_reg_sha512_cls.rand : List (IO (Option (BitVec 32))) := 
+def Crypto_two_reg_sha512_cls.rand : List (IO (Option (BitVec 32))) :=
   [Crypto_two_reg_sha512_cls.sha512su0.rand]
 
 end DPSFP
