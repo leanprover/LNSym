@@ -32,6 +32,7 @@ theorem one_asm_snippet_sym_helper1 (q0_var : BitVec 128) :
 theorem one_asm_snippet_sym_helper2 (q0_var : BitVec 128) :
   q0_var ||| q0_var = q0_var := by sorry -- auto
 
+-- Todo: use sym_n to prove this theorem.
 theorem small_asm_snippet_sym (s : ArmState)
   (h_pc : read_pc s = 0x12650c#64)
   (h_program : s.program = test_program.find?)

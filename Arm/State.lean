@@ -295,6 +295,17 @@ theorem fetch_inst_of_w (addr : BitVec 64) (fld : StateField) (val : (state_valu
   unfold write_base_error
   split <;> simp_all!
 
+-- There is no StateField that overwrites the program.
+theorem w_program (sf : StateField) (v : state_value sf) (s : ArmState):
+    (w sf v s).program = s.program := by
+  intros
+  cases sf <;> unfold w <;> simp
+  · unfold write_base_gpr; simp
+  · unfold write_base_sfp; simp
+  · unfold write_base_pc; simp
+  · unfold write_base_flag; simp
+  · unfold write_base_error; simp
+
 -- The following functions are defined in terms of r and w, but may be
 -- simpler to use.
 
@@ -400,7 +411,9 @@ end Accessor_updater_functions
 section Load_program_and_fetch_inst
 
 -- Programs are defined as an Map of 64-bit addresses to 32-bit
--- instructions. Map has nice lemmas that allows us to smoothly fetch an instruction from the
+-- instructions. Map has nice lemmas that allow us to smoothly fetch
+-- an instruction from the map during proofs (see
+-- fetch_inst_from_program below).
 abbrev program := Map (BitVec 64) (BitVec 32)
 
 -- We define a program as an Array of address and instruction pairs,
@@ -426,7 +439,7 @@ where
     | (addr, _) :: p, none => loop p (some addr)
     | (addr, _) :: p, some max => if addr > max then loop p (some addr) else loop p (some max)
 
-theorem fetch_inst_from_rbmap_program
+theorem fetch_inst_from_program
   {address: BitVec 64} {program : program}
   (h_program : s.program = program.find?) :
   fetch_inst address s = program.find? address := by

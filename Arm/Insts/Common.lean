@@ -112,6 +112,14 @@ def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
          break
   return acc
 
+def lowest_set_bit (bv : BitVec n) : Nat := Id.run do
+  let mut acc := n
+  for i in List.range n do
+    if extractLsb i i bv == 1
+    then acc := i
+         break
+  return acc
+
 def invalid_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immediate : Bool)
   (M : Nat) : Bool :=
   let len := highest_set_bit $ immN ++ ~~~imms
@@ -201,5 +209,27 @@ def Vpart (n : BitVec 5) (part : Nat) (width : Nat) (s : ArmState) (H : width > 
   else
     -- assert width IN {32,64};
     h2 ▸ extractLsb (width*2-1) width $ read_sfp 128 n s
+
+----------------------------------------------------------------------
+
+@[simp]
+def ldst_read (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (s : ArmState)
+  : BitVec width :=
+  if SIMD? then read_sfp width idx s else read_gpr width idx s
+
+@[simp]
+def ldst_write (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
+  : ArmState :=
+  if SIMD? then write_sfp width idx val s else write_gpr width idx val s
+
+----------------------------------------------------------------------
+
+theorem zero_lt_shift_left_pos {x n : Nat} (h : 0 < x) :
+  0 < x <<< n := by
+  simp_all only [Nat.shiftLeft_eq, gt_iff_lt, Nat.zero_lt_succ,
+  Nat.zero_lt_two, Nat.pow_pos, Nat.mul_pos_iff_of_pos_left]
+  done
+
+----------------------------------------------------------------------
 
 end Common
