@@ -90,6 +90,8 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
     DPSFP (Crypto_three_reg_sha512 {Rm, O, opcode, Rn, Rd})
   | [11001110110000001000, opcode:2, Rn:5, Rd:5] =>
     DPSFP (Crypto_two_reg_sha512 {opcode, Rn, Rd})
+  | [110011100, Op0:2, Rm:5, 0, Ra:5, Rn:5, Rd:5] =>
+    DPSFP (Crypto_four_reg {Op0, Rm, Ra, Rn, Rd})
   | [0, Q:1, U:1, 01110, size:2, 10000, opcode:5, 10, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_two_reg_misc {Q, U, size, opcode, Rn, Rd})
   | [0, Q:1, op:1, 01110000, imm5:5, 0, imm4:4, 1, Rn:5, Rd:5] =>
