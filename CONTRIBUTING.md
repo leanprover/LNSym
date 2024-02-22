@@ -9,6 +9,16 @@ document before submitting any pull requests or issues.
 **Focused Changes**: Create small, focused PRs that address a single
 issue or implement a specific feature.
 
+**Maintainable Proofs**: Write your proofs in a maintainable way, even
+if doing so causes them to become more verbose. LNSym follows the
+***no nonterminal `simp`*** rule, which says that unless `simp` is
+closing the goal, it should always be converted to a `simp only [X, Y,
+Z]` call.
+
+**External Dependencies**: Do not introduce any new external
+dependencies into LNSym's codebase -- be mindful of what you
+import. Exceptions are possible, but only when absolutely necessary.
+
 **Documentation**: Add relevant documentation and comments to your
 code.
 
