@@ -626,7 +626,7 @@ example : final_sha512_hash =
 -- the specification function.
 def spec_input_message : List (List (BitVec 64)) :=
   let block_revbytes :=
-    List.map (fun elem => DPSFP.rev_elems 64 8 elem (by decide) (by decide)) message_block
+    List.map (fun elem => rev_elems 64 8 elem (by decide) (by decide)) message_block
   [block_revbytes]
 
 -- The specification function computes the same hash value as our

@@ -258,4 +258,69 @@ inductive FPConvOp where
   | FPConvOp_CVT_FtoI_JS : FPConvOp
 deriving DecidableEq, Repr
 
+----------------------------------------------------------------------
+
+/-- Reverse the order of `esize`-bit elements in `x`.-/
+def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < esize) : BitVec n :=
+  if h0 : n <= esize then
+    x
+  else
+    let element := Std.BitVec.zeroExtend esize x
+    let rest_x := Std.BitVec.zeroExtend (n - esize) (x >>> esize)
+    have h1 : esize <= n := by 
+      simp at h0; exact Nat.le_of_lt h0; done
+    have h2 : esize ∣ (n - esize) := by
+      refine Nat.dvd_sub ?H h₀ ?h₂
+      · exact h1
+      · simp only [dvd_refl]
+      done
+    have ?term_lemma : n - esize < n := by exact Nat.sub_lt_self h₁ h1
+    let rest_ans := rev_elems (n - esize) esize rest_x h2 h₁
+    have h3 : (esize + (n - esize)) = n := by
+      simp_all only [ge_iff_le, add_tsub_cancel_of_le, h1]
+    h3 ▸ (element ++ rest_ans)
+   termination_by rev_elems n esize x h₀ h₁ => n
+
+example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := rfl
+example : rev_elems 8 4 0xAB#8 (by decide) (by decide) = 0xBA#8 := rfl
+example : rev_elems 8 4 (rev_elems 8 4 0xAB#8 (by decide) (by decide))
+          (by decide) (by decide) = 0xAB#8 := by native_decide 
+
+theorem rev_elems_base :
+  rev_elems esize esize x h₀ h₁ = x := by
+  unfold rev_elems; simp; done
+ 
+/-- Divide a bv of width `datasize` into containers, each of size
+`container_size`, and within a container, reverse the order of `esize`-bit
+elements. -/
+def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
+  (h₀ : 0 < esize) (h₁ : esize <= container_size) (h₂ : container_size <= datasize)
+  (h₃ : esize ∣ container_size) (h₄ : container_size ∣ datasize) :
+  BitVec datasize :=
+  if h0 : datasize = container_size then
+    h0 ▸ (rev_elems container_size esize (h0 ▸ x) h₃ h₀)
+  else
+    let container := Std.BitVec.zeroExtend container_size x
+    let new_container := rev_elems container_size esize container h₃ h₀
+    let new_datasize := datasize - container_size
+    let rest_x := Std.BitVec.zeroExtend new_datasize (x >>> container_size)
+    have h₄' : container_size ∣ new_datasize := by
+      have h : container_size ∣ container_size := by simp
+      exact Nat.dvd_sub h₂ h₄ h
+    have h₂' : container_size <= new_datasize := by
+      refine Nat.le_of_dvd ?h h₄'
+      simp_all!; exact Ne.lt_of_le' h0 h₂
+    have h1 : 0 < container_size := by exact Nat.lt_of_lt_of_le h₀ h₁
+    have ?term_lemma : new_datasize < datasize := by exact Nat.sub_lt_self h1 h₂
+    let rest_ans := rev_vector new_datasize container_size esize rest_x h₀ h₁ h₂' h₃ h₄'
+    have h2 : new_datasize + container_size = datasize := by
+        rw [Nat.sub_add_cancel h₂]
+    h2 ▸ (rest_ans ++ new_container)
+  termination_by rev_vector datasize container_size esize x _ _ _ _ _ => datasize
+
+example : rev_vector 32 16 8 0xaabbccdd#32 (by decide)
+          (by decide) (by decide) (by decide) (by decide) =
+          0xbbaaddcc#32 := by
+          native_decide
+
 end Common

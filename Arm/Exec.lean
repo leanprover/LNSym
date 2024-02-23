@@ -35,6 +35,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     DPR.exec_add_sub_shifted_reg i s
   | DPR (DataProcRegInst.Conditional_select i) =>
     DPR.exec_conditional_select i s
+  | DPR (DataProcRegInst.Data_processing_one_source i) =>
+    DPR.exec_data_processing_one_source i s
   | DPR (DataProcRegInst.Logical_shifted_reg i) =>
     DPR.exec_logical_shifted_reg i s
 
