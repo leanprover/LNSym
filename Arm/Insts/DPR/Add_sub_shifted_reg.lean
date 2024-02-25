@@ -10,7 +10,7 @@ import Arm.Insts.Common
 
 namespace DPR
 
-open Std.BitVec
+open BitVec
 
 @[simp]
 def exec_add_sub_shifted_reg (inst : Add_sub_shifted_reg_cls) (s : ArmState) : ArmState :=

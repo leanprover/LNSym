@@ -13,7 +13,7 @@ import Arm.BitVec
 
 namespace BR
 
-open Std.BitVec
+open BitVec
 
 @[simp]
 def Cond_branch_imm_inst.branch_taken_pc (inst : Cond_branch_imm_inst) (pc : BitVec 64) : BitVec 64 :=

@@ -7,7 +7,7 @@ import Arm.State
 
 section Separate
 
-open Std.BitVec
+open BitVec
 
 ----------------------------------------------------------------------
 

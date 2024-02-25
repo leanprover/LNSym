@@ -7,7 +7,7 @@ import «Tests».SHA512SpecTest
 
 section SHA512StandardSpecTest
 
-open Std.BitVec
+open BitVec
 
 -- See https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Standards-and-Guidelines/documents/examples/SHA512.pdf
 

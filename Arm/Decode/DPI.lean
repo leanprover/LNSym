@@ -9,7 +9,7 @@ import Arm.BitVec
 
 section Decode
 
-open Std.BitVec
+open BitVec
 
 -- Data Processing (Immediate) Instructions --
 

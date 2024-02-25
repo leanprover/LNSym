@@ -1,5 +1,6 @@
 /-
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Yan Peng
 -/
 -- PMULL and PMULL2
@@ -13,7 +14,7 @@ import Arm.Insts.Common
 
 namespace DPSFP
 
-open Std.BitVec
+open BitVec
 
 def polynomial_mult_aux (i : Nat) (result : BitVec (m+n))
   (op1 : BitVec m) (op2 : BitVec (m+n)) : BitVec (m+n) :=
@@ -26,17 +27,13 @@ def polynomial_mult_aux (i : Nat) (result : BitVec (m+n))
   termination_by (m - i)
 
 def polynomial_mult (op1 : BitVec m) (op2 : BitVec n) : BitVec (m+n) :=
-  let result := Std.BitVec.zero (m+n)
+  let result := BitVec.zero (m+n)
   let extended_op2 := zeroExtend (m+n) op2
   polynomial_mult_aux 0 result op1 extended_op2
 
-theorem pmull_op_helper_lemma (x y : Nat) (h : 0 < y):
-  x + y - 1 - x + 1 + (x + y - 1 - x + 1) = 2 * x + 2 * y - 1 - 2 * x + 1 := by
-  omega
-
 def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
-  (y : BitVec n) (result : BitVec (n*2)) (H : esize > 0) : BitVec (n*2) :=
-  if h₀ : e ≥ elements then
+  (y : BitVec n) (result : BitVec (n*2)) (H : 0 < esize) : BitVec (n*2) :=
+  if h₀ : elements <= e then
     result
   else
     let lo := e * esize
@@ -46,8 +43,8 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
     let elem_result := polynomial_mult element1 element2
     let lo2 := 2 * (e * esize)
     let hi2 := lo2 + 2 * esize - 1
-    have h₁ : hi - lo + 1 + (hi - lo + 1) = hi2 - lo2 + 1 := by
-      simp [lo2, hi2]; apply pmull_op_helper_lemma; simp [*] at *
+    have h₁ : hi - lo + 1 + (hi - lo + 1) = hi2 - lo2 + 1 := by 
+      simp [hi, lo, hi2, lo2]; omega
     let result := BitVec.partInstall hi2 lo2 (h₁ ▸ elem_result) result
     have h₂ : elements - (e + 1) < elements - e := by omega
     pmull_op (e + 1) esize elements x y result H
@@ -60,9 +57,7 @@ def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmSt
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let esize := 8 <<< inst.size.toNat
-    have h₀ : esize > 0 := by
-      simp_all only [Nat.shiftLeft_eq, gt_iff_lt, Nat.zero_lt_succ,
-        Nat.mul_pos_iff_of_pos_left, Nat.pow_pos, esize]
+    have h₀ : 0 < esize := by apply zero_lt_shift_left_pos (by decide)
     let datasize := 64
     let part := inst.Q.toNat
     let elements := datasize / esize
@@ -70,7 +65,7 @@ def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmSt
     let operand1 := Vpart inst.Rn part datasize s h₁
     let operand2 := Vpart inst.Rm part datasize s h₁
     let result :=
-      pmull_op 0 esize elements operand1 operand2 (Std.BitVec.zero (2*datasize)) h₀
+      pmull_op 0 esize elements operand1 operand2 (BitVec.zero (2*datasize)) h₀
     let s := write_sfp (datasize*2) inst.Rd result s
     let s := write_pc ((read_pc s) + 4#64) s
     s
@@ -90,13 +85,13 @@ partial def Advanced_simd_three_different_cls.pmull.rand : IO (Option (BitVec 32
     Advanced_simd_three_different_cls.pmull.rand
   else
     let (inst : Advanced_simd_three_different_cls) :=
-      { Q := ← BitVec.rand 1
-      , U := 0b0#1
-      , size := size
-      , Rm := ← BitVec.rand 5
-      , opcode := 0b1110#4
-      , Rn := ← BitVec.rand 5
-      , Rd := ← BitVec.rand 5
+      { Q := ← BitVec.rand 1,
+        U := 0b0#1,
+        size := size,
+        Rm := ← BitVec.rand 5,
+        opcode := 0b1110#4,
+        Rn := ← BitVec.rand 5,
+        Rd := ← BitVec.rand 5
       }
     pure (some (inst.toBitVec32))
 

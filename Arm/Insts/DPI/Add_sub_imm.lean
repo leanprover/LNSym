@@ -10,7 +10,7 @@ import Arm.Insts.Common
 
 namespace DPI
 
-open Std.BitVec
+open BitVec
 
 @[simp]
 def exec_add_sub_imm (inst : Add_sub_imm_cls) (s : ArmState) : ArmState :=
@@ -28,7 +28,7 @@ def exec_add_sub_imm (inst : Add_sub_imm_cls) (s : ArmState) : ArmState :=
                           (1#1, ~~~imm)
                         else
                           (0#1, imm)
-    let operand2      := Std.BitVec.zeroExtend datasize operand2
+    let operand2      := BitVec.zeroExtend datasize operand2
     let (result, pstate) := AddWithCarry operand1 operand2 carry_in
     -- State Updates
     let s'            := write_pc ((read_pc s) + 4#64) s

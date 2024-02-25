@@ -7,7 +7,7 @@ import Arm.BitVec
 
 namespace aes_helpers
 
-open Std.BitVec
+open BitVec
 
 def aes_shift_rows (op : BitVec 128) : BitVec 128 :=
   let op_7_0     := extractLsb 7 0 op

@@ -12,7 +12,7 @@ import Arm.BitVec
 
 namespace DPI
 
-open Std.BitVec
+open BitVec
 
 @[simp]
 def exec_pc_rel_addressing (inst : PC_rel_addressing_cls) (s : ArmState) : ArmState :=

@@ -7,7 +7,7 @@ import Arm.Exec
 
 namespace Cfg
 
-open Std.BitVec
+open BitVec
 
 /-- Conditions under which a branch is taken; this is a function that
 takes a state as input, and returns a boolean. -/
@@ -269,7 +269,7 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
            have := termination_lemma address.toFin (4#64).toFin max_address.toFin
                    (by decide)
                    (by simp_all! [BitVec.fin_bitvec_lt, BitVec.fin_bitvec_le, BitVec.lt_of_le_ne])
-                   (by rw [← Std.BitVec.toFin_sub]; exact h₂)
+                   (by rw [← BitVec.toFin_sub]; exact h₂)
                    (by simp_arith)
            simp [BitVec.fin_bitvec_le, BitVec.fin_bitvec_lt] at *
            exact this
@@ -284,10 +284,10 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
   termination_by (max_address - address).toNat
 
 protected def create (program : program) : IO Cfg :=
-  let maybe_start_address_entry := program.min
-  let maybe_max_address_entry := program.max
-  match maybe_start_address_entry, maybe_max_address_entry with
-  | some (start_address, _), some (max_address, _) =>
+  let maybe_start_address := program.min
+  let maybe_max_address := program.max
+  match maybe_start_address, maybe_max_address with
+  | some start_address, some max_address =>
     Cfg.create' start_address max_address program { start_address }
   | _, _ =>
     throw (IO.userError s!"Could not determine the start/stop address for the program!")

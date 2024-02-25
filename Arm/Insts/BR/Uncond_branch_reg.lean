@@ -13,7 +13,7 @@ import Arm.BitVec
 
 namespace BR
 
-open Std.BitVec
+open BitVec
 
 -- (FIXME) Extend Cfg.addToGraphs when more instructions in this
 -- category are implemented.

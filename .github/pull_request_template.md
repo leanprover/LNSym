@@ -3,6 +3,10 @@
 * Ensure your PR follows the [contribution
   guidelines](https://github.com/leanprover/LNSym/blob/main/CONTRIBUTING.md).
 
+* Be mindful of the **no nonterminal simp** rule in your proofs.
+
+* Do not introduce any new external dependencies.
+
 * Remember to document and comment your code.
 
 * Note that before a PR to the `main` branch can be merged:

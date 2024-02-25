@@ -10,7 +10,7 @@ import Arm.Insts.Common
 
 namespace DPI
 
-open Std.BitVec
+open BitVec
 
 def decode_op (opc : BitVec 2) : LogicalImmType :=
   match opc with
@@ -21,7 +21,7 @@ def decode_op (opc : BitVec 2) : LogicalImmType :=
 
 def update_logical_imm_pstate (bv : BitVec n) : PState :=
   have h: n - 1 - (n - 1) + 1 = 1 := by simp
-  let N := h ▸ (Std.BitVec.extractLsb (n-1) (n-1) bv)
+  let N := h ▸ (BitVec.extractLsb (n-1) (n-1) bv)
   let Z := zero_flag_spec bv
   let C := 0#1
   let V := 0#1

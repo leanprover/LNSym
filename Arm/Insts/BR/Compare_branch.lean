@@ -13,7 +13,7 @@ import Arm.BitVec
 
 namespace BR
 
-open Std.BitVec
+open BitVec
 
 -- The functions Compare_branch_inst.branch_taken_pc and
 -- Compare_branch_inst.condition_holds are also used in control-flow
@@ -29,7 +29,7 @@ def Compare_branch_inst.branch_taken_pc (inst : Compare_branch_inst) (pc : BitVe
 def Compare_branch_inst.condition_holds (inst : Compare_branch_inst) (s : ArmState) : Bool :=
   let datasize := if inst.sf = 1#1 then 64 else 32
   let operand1 := read_gpr datasize inst.Rt s
-  let operand1_is_zero := operand1 = Std.BitVec.zero datasize
+  let operand1_is_zero := operand1 = BitVec.zero datasize
   if inst.op = 0#1 then
     -- CBZ
     operand1_is_zero

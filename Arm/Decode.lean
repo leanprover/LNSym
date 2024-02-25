@@ -14,7 +14,7 @@ import Arm.Decode.DPSFP
 
 section Decode
 
-open Std.BitVec
+open BitVec
 
 -- We do not tag any of the decode functions (e.g., decode_raw_inst or
 -- its callees) with the `simp` attribute because we always expect
@@ -90,12 +90,18 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
     DPSFP (Crypto_three_reg_sha512 {Rm, O, opcode, Rn, Rd})
   | [11001110110000001000, opcode:2, Rn:5, Rd:5] =>
     DPSFP (Crypto_two_reg_sha512 {opcode, Rn, Rd})
+  | [110011100, Op0:2, Rm:5, 0, Ra:5, Rn:5, Rd:5] =>
+    DPSFP (Crypto_four_reg {Op0, Rm, Ra, Rn, Rd})
   | [0, Q:1, U:1, 01110, size:2, 10000, opcode:5, 10, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_two_reg_misc {Q, U, size, opcode, Rn, Rd})
   | [0, Q:1, op:1, 01110000, imm5:5, 0, imm4:4, 1, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_copy {Q, op, imm5, imm4, Rn, Rd})
   | [0, Q:1, 101110, op2:2, 0, Rm:5, 0, imm4:4, 0, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_extract {Q, op2, Rm, imm4, Rn, Rd})
+  | [0, Q:1, op:1, 0111100000, a:1, b:1, c:1, cmode:4, o2:1, 1, d:1, e:1, f:1, g:1, h:1, Rd:5] =>
+    DPSFP (Advanced_simd_modified_immediate {Q, op, a, b, c, cmode, o2, d, e, f, g, h, Rd})
+  | [01, op:1, 11110000, imm5:5, 0, imm4:4, 1, Rn:5, Rd:5] =>
+    DPSFP (Advanced_simd_scalar_copy {op, imm5, imm4, Rn, Rd})
   | [0, Q:1, U:1, 01110, size:2, 1, Rm:5, opcode:5, 1, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_three_same {Q, U, size, Rm, opcode, Rn, Rd})
   | [0, Q:1, U:1, 01110, size:2, 1, Rm:5, opcode:4, 00, Rn:5, Rd:5] =>
@@ -112,6 +118,10 @@ def decode_ldst_inst (i : BitVec 32) : Option ArmInst :=
     LDST (Reg_unsigned_imm {size, V, opc, imm12, Rn, Rt})
   | [opc:2, 101, V:1, 011, L:1, imm7:7, Rt2:5, Rn:5, Rt:5] =>
     LDST (Reg_pair_pre_indexed {opc, V, L, imm7, Rt2, Rn, Rt})
+  | [opc:2, 101, V:1, 001, L:1, imm7:7, Rt2:5, Rn:5, Rt:5] =>
+    LDST (Reg_pair_post_indexed {opc, V, L, imm7, Rt2, Rn, Rt})
+  | [opc:2, 101, V:1, 010, L:1, imm7:7, Rt2:5, Rn:5, Rt:5] =>
+    LDST (Reg_pair_signed_offset {opc, V, L, imm7, Rt2, Rn, Rt})
   | [0, Q:1, 0011000, L:1, 000000, opcode:4, size:2, Rn:5, Rt:5] =>
     LDST (Advanced_simd_multiple_struct {Q, L, opcode, size, Rn, Rt})
   | [0, Q:1, 0011001, L:1, 0, Rm:5, opcode:4, size:2, Rn:5, Rt:5] =>
@@ -392,6 +402,44 @@ example : decode_raw_inst 0xcb0fdf69 =
             Rn := 0x1b#5,
             Rd := 0x09#5 })) := by
         rfl
+
+-- orr v5.8h, #0x77, lsl #8
+example : decode_raw_inst 0x4f03b6e5 =
+          (ArmInst.DPSFP
+            (DataProcSFPInst.Advanced_simd_modified_immediate
+          { _fixed1 := 0x0#1,
+            Q := 0x1#1,
+            op := 0x0#1,
+            _fixed2 := 0x1e0#10,
+            a := 0x0#1,
+            b := 0x1#1,
+            c := 0x1#1,
+            cmode := 0xb#4,
+            o2 := 0x0#1,
+            _fixed3 := 0x1#1,
+            d := 0x1#1,
+            e := 0x0#1,
+            f := 0x1#1,
+            g := 0x1#1,
+            h := 0x1#1,
+            Rd := 0x05#5 })) := by
+        rfl
+
+-- mov v10.h[0] v17.h[6]
+example : decode_raw_inst 0x6e026e2a =
+          (ArmInst.DPSFP
+            (DataProcSFPInst.Advanced_simd_copy
+          { _fixed1 := 0x0#1,
+            Q := 0x1#1,
+            op := 0x1#1,
+            _fixed2 := 0x70#8,
+            imm5 := 0x02#5,
+            _fixed3 := 0x0#1,
+            imm4 := 0xd#4,
+            _fixed4 := 0x1#1,
+            Rn := 0x11#5,
+            Rd := 0x0a#5 })) := by
+          rfl
 
 -- Unimplemented
 example : decode_raw_inst 0x00000000#32 = none := by rfl

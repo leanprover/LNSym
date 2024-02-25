@@ -8,20 +8,20 @@ import Arm.Memory
 
 section Common
 
-open Std.BitVec
+open BitVec
 
 ----------------------------------------------------------------------
 
 def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) : (BitVec n × PState) :=
-  let carry_in_nat := Std.BitVec.toNat carry_in
-  let unsigned_sum := Std.BitVec.toNat x + Std.BitVec.toNat y + carry_in_nat
-  let signed_sum := Std.BitVec.toInt x + Std.BitVec.toInt y + carry_in_nat
-  let result := (Std.BitVec.ofNat n unsigned_sum)
+  let carry_in_nat := BitVec.toNat carry_in
+  let unsigned_sum := BitVec.toNat x + BitVec.toNat y + carry_in_nat
+  let signed_sum := BitVec.toInt x + BitVec.toInt y + carry_in_nat
+  let result := (BitVec.ofNat n unsigned_sum)
   have h: n - 1 - (n - 1) + 1 = 1 := by simp
   let N := h ▸ (extractLsb (n - 1) (n - 1) result)
-  let Z := if result = (Std.BitVec.zero n) then 1#1 else 0#1
-  let C := if Std.BitVec.toNat result = unsigned_sum then 0#1 else 1#1
-  let V := if Std.BitVec.toInt result = signed_sum then 0#1 else 1#1
+  let Z := if result = (BitVec.zero n) then 1#1 else 0#1
+  let C := if BitVec.toNat result = unsigned_sum then 0#1 else 1#1
+  let V := if BitVec.toInt result = signed_sum then 0#1 else 1#1
   (result, (make_pstate N Z C V))
 
 def ConditionHolds (cond : BitVec 4) (pstate : PState) : Bool :=
@@ -72,7 +72,7 @@ def decode_shift (shift : BitVec 2) : ShiftType :=
 def shift_reg (bv : BitVec n) (st : ShiftType) (sa : BitVec 6)
   : BitVec n :=
   match st with
-  | ShiftType.LSL => Std.BitVec.shiftLeft bv sa.toNat
+  | ShiftType.LSL => BitVec.shiftLeft bv sa.toNat
   | ShiftType.LSR => ushiftRight bv sa.toNat
   | ShiftType.ASR => sshiftRight bv sa.toNat
   | ShiftType.ROR => rotateRight bv sa.toNat
@@ -91,7 +91,7 @@ deriving DecidableEq, Repr
 instance : ToString LogicalShiftedRegType where toString a := toString (repr a)
 
 def zero_flag_spec (bv : BitVec n) : BitVec 1 :=
-  if bv = Std.BitVec.zero n then 1#1 else 0#1
+  if bv = BitVec.zero n then 1#1 else 0#1
 
 ----------------------------------------------------------------------
 
@@ -109,6 +109,14 @@ def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
   for i in List.reverse $ List.range n do
     if extractLsb i i bv = 1
     then acc := some i
+         break
+  return acc
+
+def lowest_set_bit (bv : BitVec n) : Nat := Id.run do
+  let mut acc := n
+  for i in List.range n do
+    if extractLsb i i bv == 1
+    then acc := i
          break
   return acc
 
@@ -201,5 +209,27 @@ def Vpart (n : BitVec 5) (part : Nat) (width : Nat) (s : ArmState) (H : width > 
   else
     -- assert width IN {32,64};
     h2 ▸ extractLsb (width*2-1) width $ read_sfp 128 n s
+
+----------------------------------------------------------------------
+
+@[simp]
+def ldst_read (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (s : ArmState)
+  : BitVec width :=
+  if SIMD? then read_sfp width idx s else read_gpr width idx s
+
+@[simp]
+def ldst_write (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
+  : ArmState :=
+  if SIMD? then write_sfp width idx val s else write_gpr width idx val s
+
+----------------------------------------------------------------------
+
+theorem zero_lt_shift_left_pos {x n : Nat} (h : 0 < x) :
+  0 < x <<< n := by
+  simp_all only [Nat.shiftLeft_eq, gt_iff_lt, Nat.zero_lt_succ,
+  Nat.zero_lt_two, Nat.pow_pos, Nat.mul_pos_iff_of_pos_left]
+  done
+
+----------------------------------------------------------------------
 
 end Common

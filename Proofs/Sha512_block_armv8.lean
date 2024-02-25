@@ -4,12 +4,13 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.Exec
+import Arm.Util
 import Tactics.Sym
 import Tests.SHA512ProgramTest
 
 section SHA512_proof
 
-open Std.BitVec
+open BitVec
 
 /-
 The `sym1` tactic, defined in ../Tactics/Sym.lean, attempts to
@@ -42,21 +43,24 @@ the machine state (denoted by function `w`).
 
 def sha512_program_test_1 : program :=
   def_program
-   #[(0x126538#64 , 0xcec08230#32),      --  sha512su0       v16.2d, v17.2d
+   [(0x126538#64 , 0xcec08230#32),      --  sha512su0       v16.2d, v17.2d
      (0x12653c#64 , 0x6e154287#32),      --  ext     v7.16b, v20.16b, v21.16b, #8
      (0x126540#64 , 0xce6680a3#32),      --  sha512h q3, q5, v6.2d
      (0x126544#64 , 0xce678af0#32)       --  sha512su1       v16.2d, v23.2d, v7.2d
      ]
 
 -- set_option profiler true in
-theorem sha512_program_test_1_sym (s : ArmState)
-  (h_pc : read_pc s = 0x126538#64)
-  (h_program : s.program = sha512_program_test_1.find?)
-  (h_s_ok : read_err s = StateError.None)
-  (h_s' : s' = run 4 s) :
-  read_err s' = StateError.None := by
-  iterate 4 (sym1 [h_program])
-  done
+theorem sha512_program_test_1_sym (s0 s_final : ArmState)
+  (h_s0_pc : read_pc s0 = 0x126538#64)
+  (h_s0_sp_aligned : CheckSPAlignment s0 = true)
+  (h_s0_program : s0.program = sha512_program_test_1.find?)
+  (h_s0_ok : read_err s0 = StateError.None)
+  (h_run : s_final = run 4 s0) :
+  read_err s_final = StateError.None := by
+  iterate 4 (sym1 [h_s0_program])
+  -- unfold read_pc at h_s0_pc
+  -- sym_n 4 0x126538 sha512_program_test_1
+  -- rw [h_run,h_s4_ok]
 
 ----------------------------------------------------------------------
 
@@ -65,7 +69,7 @@ theorem sha512_program_test_1_sym (s : ArmState)
 
 def sha512_program_test_2 : program :=
   def_program
-   #[(0x126538#64 , 0xcec08230#32),      --  sha512su0       v16.2d, v17.2d
+   [(0x126538#64 , 0xcec08230#32),      --  sha512su0       v16.2d, v17.2d
      (0x12653c#64 , 0x6e154287#32),      --  ext     v7.16b, v20.16b, v21.16b, #8
      (0x126540#64 , 0xce6680a3#32),      --  sha512h q3, q5, v6.2d
      (0x126544#64 , 0xce678af0#32),      --  sha512su1       v16.2d, v23.2d, v7.2d
@@ -74,13 +78,15 @@ def sha512_program_test_2 : program :=
      ]
 
 -- set_option profiler true in
-theorem sha512_program_test_2_sym (s : ArmState)
-  (h_pc : read_pc s = 0x126538#64)
-  (h_program : s.program = sha512_program_test_2.find?)
-  (h_s_ok : read_err s = StateError.None)
-  (h_s' : s' = run 4 s) :
-  read_err s' = StateError.None := by
-  iterate 4 (sym1 [h_program])
+theorem sha512_program_test_2_sym (s0 s_final : ArmState)
+  (h_s0_pc : read_pc s0 = 0x126538#64)
+  (h_s0_program : s0.program = sha512_program_test_2.find?)
+  (h_s0_ok : read_err s0 = StateError.None)
+  (h_run : s_final = run 4 s0) :
+  read_err s_final = StateError.None := by
+  -- TODO: use sym_n. Using it causes an error at simp due to the
+  -- large formula size.
+  iterate 4 (sym1 [h_s0_program])
 
 ----------------------------------------------------------------------
 
@@ -88,19 +94,34 @@ theorem sha512_program_test_2_sym (s : ArmState)
 
 def sha512_program_test_3 : program :=
   def_program
-  #[(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
+  [(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
     (0x1264c4#64 , 0x910003fd#32),      --  mov     x29, sp
     (0x1264c8#64 , 0x4cdf2030#32),      --  ld1     {v16.16b-v19.16b}, [x1], #64
     (0x1264cc#64 , 0x4cdf2034#32)       --  ld1     {v20.16b-v23.16b}, [x1], #64
   ]
 
-theorem sha512_block_armv8_test_3_sym (s : ArmState)
+
+theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
+  (h_s0_ok : read_err s0 = StateError.None)
+  (h_s0_sp_aligned : CheckSPAlignment s0 = true)
+  (h_s0_pc : read_pc s0 = 0x1264c0#64)
+  (h_s0_program : s0.program = sha512_program_test_3.find?)
+  (h_run : s_final = run 4 s0) :
+  read_err s_final = StateError.None := by
+  -- unfold read_pc at h_s0_pc
+  -- sym_n 4 0x1264c0 sha512_program_test_3
+  -- rw [h_run,h_s4_ok]
+  sorry
+
+-- A record that shows simp fails.
+theorem sha512_block_armv8_test_3_sym_fail (s : ArmState)
   (h_s_ok : read_err s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s = true)
   (h_pc : read_pc s = 0x1264c0#64)
   (h_program : s.program = sha512_program_test_3.find?)
   (h_s' : s' = run 4 s) :
   read_err s' = StateError.None := by
+  FIXME
   -- Symbolically simulate one instruction.
   (sym1 [h_program])
   --
@@ -120,7 +141,7 @@ theorem sha512_block_armv8_test_3_sym (s : ArmState)
   · rename_i h; simp (config := {ground := true}) at h
   · unfold run
     simp [stepi, *]
-    rw [fetch_inst_from_rbmap_program h_program]
+    rw [fetch_inst_from_program h_program]
     -- (FIXME) Here I run into a similar situation, where we are
     -- matching on Std.RBMap.find? with ground terms and simp/ground
     -- fails.
@@ -133,13 +154,17 @@ theorem sha512_block_armv8_test_3_sym (s : ArmState)
 -- we'd like to verify).
 
 -- set_option profiler true in
-theorem sha512_block_armv8_test_4_sym (s : ArmState)
-  (h_s_ok : read_err s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s = true)
-  (h_pc : read_pc s = 0x1264c0#64)
-  (h_program : s.program = sha512_program_map.find?)
-  (h_s' : s' = run 32 s) :
-  read_err s' = StateError.None := by
+theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
+  (h_s0_ok : read_err s0 = StateError.None)
+  (h_s0_sp_aligned : CheckSPAlignment s0 = true)
+  (h_s0_pc : read_pc s0 = 0x1264c0#64)
+  (h_s0_program : s0.program = sha512_program_map.find?)
+  (h_run : s_final = run 32 s0) :
+  read_err s_final = StateError.None := by
+
+  unfold read_pc at h_s0_pc
+  -- sym_n 32 0x1264c0
+  -- ^^ This raises the max recursion depth limit error because the program is too large. :/
   sorry
 
 end SHA512_proof

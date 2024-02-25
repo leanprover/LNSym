@@ -9,7 +9,7 @@ import Arm.BitVec
 
 section Decode
 
-open Std.BitVec
+open BitVec
 
 -- Data Processing (SIMD and FP) Instructions --
 
@@ -53,6 +53,22 @@ instance : ToString Crypto_two_reg_sha512_cls where toString a := toString (repr
 def Crypto_two_reg_sha512_cls.toBitVec32 (x : Crypto_two_reg_sha512_cls) : BitVec 32 :=
   x._fixed ++ x.opcode ++ x.Rn ++ x.Rd
 
+structure Crypto_four_reg_cls where
+  _fixed1 : BitVec 9 := 0b110011100#9     -- [31:23]
+  Op0     : BitVec 2                      -- [22:21]
+  Rm      : BitVec 5                      -- [20:16]
+  _fixed2 : BitVec 1 := 0b0#1             -- [15:15]
+  Ra      : BitVec 5                      -- [14:10]
+  Rn      : BitVec 5                      --   [9:5]
+  Rd      : BitVec 5                      --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Crypto_four_reg_cls where
+toString a := toString (repr a)
+
+def Crypto_four_reg_cls.toBitVec32 (x : Crypto_four_reg_cls) : BitVec 32 :=
+  x._fixed1 ++ x.Op0 ++ x.Rm ++ x._fixed2 ++ x.Ra ++ x.Rn ++ x.Rd
+
 structure Advanced_simd_two_reg_misc_cls where
   _fixed1 : BitVec 1 := 0b0#1      -- [31:31]
   Q       : BitVec 1               -- [30:30]
@@ -72,19 +88,39 @@ def Advanced_simd_two_reg_misc_cls.toBitVec32 (x : Advanced_simd_two_reg_misc_cl
   x._fixed1 ++ x.Q ++ x.U ++ x._fixed2 ++ x.size ++ x._fixed3 ++ x.opcode ++ x._fixed4 ++ x.Rn ++ x.Rd
 
 structure Advanced_simd_copy_cls where
-  _fixed1 : BitVec 1 := 0b0#1      -- [31:31]
-  Q       : BitVec 1               -- [30:30]
-  op      : BitVec 1               -- [29:29]
-  _fixed2 : BitVec 7 := 01110000#7 -- [28:21]
-  imm5    : BitVec 5               -- [20:16]
-  _fixed3 : BitVec 1 := 0b0#1      -- [15:15]
-  imm4    : BitVec 4               -- [14:11]
-  _fixed4 : BitVec 1 := 0b1#1      -- [10:10]
-  Rn      : BitVec 5               --   [9:5]
-  Rd      : BitVec 5               --   [4:0]
+  _fixed1 : BitVec 1 := 0b0#1        -- [31:31]
+  Q       : BitVec 1                 -- [30:30]
+  op      : BitVec 1                 -- [29:29]
+  _fixed2 : BitVec 8 := 0b01110000#8 -- [28:21]
+  imm5    : BitVec 5                 -- [20:16]
+  _fixed3 : BitVec 1 := 0b0#1        -- [15:15]
+  imm4    : BitVec 4                 -- [14:11]
+  _fixed4 : BitVec 1 := 0b1#1        -- [10:10]
+  Rn      : BitVec 5                 --   [9:5]
+  Rd      : BitVec 5                 --   [4:0]
 deriving DecidableEq, Repr
 
 instance : ToString Advanced_simd_copy_cls where toString a := toString (repr a)
+
+def Advanced_simd_copy_cls.toBitVec32 (x : Advanced_simd_copy_cls) : BitVec 32 :=
+  x._fixed1 ++ x.Q ++ x.op ++ x._fixed2 ++ x.imm5 ++ x._fixed3 ++ x.imm4 ++ x._fixed4 ++ x.Rn ++ x.Rd
+
+structure Advanced_simd_scalar_copy_cls where
+  _fixed1 : BitVec 2 := 0b01#2       -- [31:30]
+  op      : BitVec 1                 -- [29:29]
+  _fixed2 : BitVec 8 := 0b11110000#8 -- [28:21]
+  imm5    : BitVec 5                 -- [20:16]
+  _fixed3 : BitVec 1 := 0b0#1        -- [15:15]
+  imm4    : BitVec 4                 -- [14:11]
+  _fixed4 : BitVec 1 := 0b1#1        -- [10:10]
+  Rn      : BitVec 5                 --   [9:5]
+  Rd      : BitVec 5                 --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Advanced_simd_scalar_copy_cls where toString a := toString (repr a)
+
+def Advanced_simd_scalar_copy_cls.toBitVec32 (x : Advanced_simd_scalar_copy_cls) : BitVec 32 :=
+  x._fixed1 ++ x.op ++ x._fixed2 ++ x.imm5 ++ x._fixed3 ++ x.imm4 ++ x._fixed4 ++ x.Rn ++ x.Rd
 
 structure Advanced_simd_extract_cls where
   _fixed1 : BitVec 1 := 0b0#1      -- [31:31]
@@ -104,6 +140,30 @@ instance : ToString Advanced_simd_extract_cls where toString a := toString (repr
 
 def Advanced_simd_extract_cls.toBitVec32 (x : Advanced_simd_extract_cls) : BitVec 32 :=
   x._fixed1 ++ x.Q ++ x._fixed2 ++ x.op2 ++ x._fixed3 ++ x.Rm ++ x._fixed4 ++ x.imm4 ++ x._fixed5 ++ x.Rn ++ x.Rd
+
+structure Advanced_simd_modified_immediate_cls where
+  _fixed1 : BitVec 1 := 0b0#1            -- [31:31]
+  Q       : BitVec 1                     -- [30:30]
+  op      : BitVec 1                     -- [29:29]
+  _fixed2 : BitVec 10 := 0b0111100000#10 -- [28:19]
+  a       : BitVec 1                     -- [18:18]
+  b       : BitVec 1                     -- [17:17]
+  c       : BitVec 1                     -- [16:16]
+  cmode   : BitVec 4                     -- [15:12]
+  o2      : BitVec 1                     -- [11:11]
+  _fixed3 : BitVec 1 := 0b1#1            -- [10:10]
+  d       : BitVec 1                     --   [9:9]
+  e       : BitVec 1                     --   [8:8]
+  f       : BitVec 1                     --   [7:7]
+  g       : BitVec 1                     --   [6:6]
+  h       : BitVec 1                     --   [5:5]
+  Rd      : BitVec 5                     --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Advanced_simd_modified_immediate_cls where toString a := toString (repr a)
+
+def Advanced_simd_modified_immediate_cls.toBitVec32 (x : Advanced_simd_modified_immediate_cls) : BitVec 32 :=
+  x._fixed1 ++ x.Q ++ x.op ++ x._fixed2 ++ x.a ++ x.b ++ x.c ++ x.cmode ++ x.o2 ++ x._fixed3 ++ x.d ++ x.e ++ x.f ++ x.g ++ x.h ++ x.Rd
 
 structure Advanced_simd_three_same_cls where
   _fixed1 : BitVec 1 := 0b0#1      -- [31:31]
@@ -150,12 +210,18 @@ inductive DataProcSFPInst where
     Crypto_two_reg_sha512_cls → DataProcSFPInst
   | Crypto_three_reg_sha512 :
     Crypto_three_reg_sha512_cls → DataProcSFPInst
+  | Crypto_four_reg :
+    Crypto_four_reg_cls → DataProcSFPInst
   | Advanced_simd_two_reg_misc :
     Advanced_simd_two_reg_misc_cls → DataProcSFPInst
   | Advanced_simd_copy :
     Advanced_simd_copy_cls → DataProcSFPInst
   | Advanced_simd_extract :
     Advanced_simd_extract_cls → DataProcSFPInst
+  | Advanced_simd_modified_immediate :
+    Advanced_simd_modified_immediate_cls → DataProcSFPInst
+  | Advanced_simd_scalar_copy :
+    Advanced_simd_scalar_copy_cls → DataProcSFPInst
   | Advanced_simd_three_same :
     Advanced_simd_three_same_cls → DataProcSFPInst
   | Advanced_simd_three_different :

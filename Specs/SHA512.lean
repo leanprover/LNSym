@@ -3,7 +3,6 @@ Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Yan Peng
 -/
-import Std.Data.LazyList
 import Specs.SHA512Common
 
 namespace SHA2
@@ -24,7 +23,7 @@ namespace SHA2
 --    not amenable to reasoning because a Lean partial function is
 --    involved here.
 
-open Std.BitVec
+open BitVec
 open sha512_helpers
 
 structure Hash where
@@ -118,19 +117,19 @@ def message_schedule_mem (i max : Nat) (acc : List (BitVec 64)) (m : List (BitVe
 -- Optimized message schedule, via lazylists and thunks
 
 -- Use Lazylists to speed up message_schedule
-partial def message_schedule_inf (m : List (BitVec 64)) : (LazyList (BitVec 64)) :=
+partial def message_schedule_inf (m : List (BitVec 64)) : List (BitVec 64) :=
   match m with
-  | [] => LazyList.nil
+  | [] => []
   | hd :: tl =>
     let w1 := List.get! m 14
     let w2 := List.get! m 9
     let w3 := List.get! m 1
     let w4 := List.get! m 0
     let next := message_schedule_word_aux w1 w2 w3 w4
-    LazyList.cons hd $ message_schedule_inf $ tl ++ [next]
+    hd :: (message_schedule_inf $ tl ++ [next])
 
 def message_schedule_lazy (max : Nat) (m : List (BitVec 64)) : List (BitVec 64) :=
-  LazyList.take max $ message_schedule_inf m
+  List.take max $ message_schedule_inf m
 
 -----------------------------------------------
 

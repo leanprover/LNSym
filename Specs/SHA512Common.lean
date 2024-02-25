@@ -7,7 +7,7 @@ import Arm.BitVec
 
 namespace sha512_helpers
 
-open Std.BitVec
+open BitVec
 
 def sigma_big_0 (op : BitVec 64) : BitVec 64 :=
   (BitVec.ror op 28) ^^^ (BitVec.ror op 34) ^^^ (BitVec.ror op 39)

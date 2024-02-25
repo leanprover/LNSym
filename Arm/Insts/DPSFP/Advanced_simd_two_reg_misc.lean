@@ -14,15 +14,15 @@ import Arm.BitVec
 
 namespace DPSFP
 
-open Std.BitVec
+open BitVec
 
 /-- Reverse the order of `esize`-bit elements in `x`.-/
 def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < esize) : BitVec n :=
   if h0 : n <= esize then
     x
   else
-    let element := Std.BitVec.zeroExtend esize x
-    let rest_x := Std.BitVec.zeroExtend (n - esize) (x >>> esize)
+    let element := BitVec.zeroExtend esize x
+    let rest_x := BitVec.zeroExtend (n - esize) (x >>> esize)
     have h1 : esize <= n := by
       simp at h0; exact Nat.le_of_lt h0; done
     have h2 : esize ∣ (n - esize) := by
@@ -56,10 +56,10 @@ def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
   if h0 : datasize = container_size then
     h0 ▸ (rev_elems container_size esize (h0 ▸ x) h₃ h₀)
   else
-    let container := Std.BitVec.zeroExtend container_size x
+    let container := BitVec.zeroExtend container_size x
     let new_container := rev_elems container_size esize container h₃ h₀
     let new_datasize := datasize - container_size
-    let rest_x := Std.BitVec.zeroExtend new_datasize (x >>> container_size)
+    let rest_x := BitVec.zeroExtend new_datasize (x >>> container_size)
     have h₄' : container_size ∣ new_datasize := by
       have h : container_size ∣ container_size := Nat.dvd_refl _
       exact Nat.dvd_sub h₂ h₄ h
@@ -101,13 +101,13 @@ theorem pow2_helper2 (j : Nat) (h : j <= 6) : 64 / 2 ^ j = 2 ^ (6 - j) := by
 
 theorem loose_bitvec2_bound (x : BitVec 2) : x.toNat <= 6 := by
   have h : x.toNat < 4 := by exact Fin.isLt ..
-  apply Nat_lt_of_le_of_le (Std.BitVec.toNat x) 4 6 <;> trivial
+  apply Nat_lt_of_le_of_le (BitVec.toNat x) 4 6 <;> trivial
 
 theorem esize_dvd_container_size (x y : BitVec 2) :
   (8 <<< x.toNat < 64 >>> y.toNat) →
   8 <<< x.toNat ∣ 64 >>> y.toNat := by
     simp_all only [Nat.shiftLeft_eq, Nat.shiftRight_eq_div_pow]
-    generalize h_yvar : Std.BitVec.toNat y = yvar
+    generalize h_yvar : BitVec.toNat y = yvar
     have yvar_limit : yvar <= 6 := by
       rw [← h_yvar]; simp [loose_bitvec2_bound]
     simp [pow2_helper1] at *
@@ -129,7 +129,7 @@ theorem container_size_dvd_datasize_helper (x : Nat) (_ : x <= 6) :
 theorem container_size_dvd_datasize (x : BitVec 2) (q : BitVec 1) :
   64 >>> x.toNat ∣ (if q = 1#1 then 128 else 64) := by
     simp_all! [Nat.shiftRight_eq_div_pow]
-    generalize h_xvar : Std.BitVec.toNat x = xvar at *
+    generalize h_xvar : BitVec.toNat x = xvar at *
     have xvar_limit : xvar <= 6 := by
       rw [← h_xvar]; simp [loose_bitvec2_bound]
     rw [pow2_helper2] at *
@@ -140,7 +140,7 @@ theorem container_size_dvd_datasize (x : BitVec 2) (q : BitVec 1) :
 @[simp]
 def exec_advanced_simd_two_reg_misc
   (inst : Advanced_simd_two_reg_misc_cls) (s : ArmState) : ArmState :=
-  open Std.BitVec in
+  open BitVec in
   let datasize := if inst.Q == 1#1 then 128 else 64 -- 64 << Uint(inst.Q)
   let esize := 8 <<< inst.size.toNat
   let container_size := 64 >>> ((extractLsb 0 0 inst.opcode) ++ inst.U).toNat

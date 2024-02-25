@@ -12,7 +12,7 @@ import Arm.BitVec
 
 namespace DPR
 
-open Std.BitVec
+open BitVec
 
 @[simp]
 def exec_conditional_select (inst : Conditional_select_cls) (s : ArmState) : ArmState :=
@@ -26,7 +26,7 @@ def exec_conditional_select (inst : Conditional_select_cls) (s : ArmState) : Arm
             else
               read_gpr_zr datasize inst.Rm s)
         | _, _, _ =>
-          (true, Std.BitVec.ofNat datasize 0)
+          (true, BitVec.ofNat datasize 0)
     -- State Updates
     if unimplemented then
       write_err

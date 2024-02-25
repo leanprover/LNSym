@@ -10,7 +10,7 @@ import Arm.Insts.Common
 
 namespace DPR
 
-open Std.BitVec
+open BitVec
 
 @[simp]
 def exec_add_sub_carry (inst : Add_sub_carry_cls) (s : ArmState) : ArmState :=

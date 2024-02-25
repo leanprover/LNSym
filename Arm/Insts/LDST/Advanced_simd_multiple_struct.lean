@@ -12,7 +12,7 @@ import Arm.Insts.Common
 
 namespace LDST
 
-open Std.BitVec
+open BitVec
 
 structure Multiple_struct_inst_fields where
   Q       : BitVec 1
@@ -70,7 +70,7 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
         | (2, 1) => -- two registers
           if inst.L = 1#1 then -- LD1
             let data1 := h ▸ read_mem_bytes datasize_bytes address s
-            let data2 := h ▸ read_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 datasize_bytes)) s
+            let data2 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) s
             let s := write_sfp datasize t data1 s
             let s := write_sfp datasize t2 data2 s
             (2 * datasize_bytes, s)
@@ -78,13 +78,13 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
             let data1 := h.symm ▸ read_sfp datasize t s
             let data2 := h.symm ▸ read_sfp datasize t2 s
             let s := write_mem_bytes datasize_bytes address data1 s
-            let s := write_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 datasize_bytes)) data2 s
+            let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) data2 s
             (2 * datasize_bytes, s)
         | (3, 1) => -- three registers
           if inst.L = 1#1 then -- LD1
             let data1 := h ▸ read_mem_bytes datasize_bytes address s
-            let data2 := h ▸ read_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 datasize_bytes)) s
-            let data3 := h ▸ read_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 (2 * datasize_bytes))) s
+            let data2 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) s
+            let data3 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) s
             let s := write_sfp datasize t data1 s
             let s := write_sfp datasize t2 data2 s
             let s := write_sfp datasize t3 data3 s
@@ -94,15 +94,15 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
             let data2 := h.symm ▸ read_sfp datasize t2 s
             let data3 := h.symm ▸ read_sfp datasize t3 s
             let s := write_mem_bytes datasize_bytes address data1 s
-            let s := write_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 datasize_bytes)) data2 s
-            let s := write_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 (2 * datasize_bytes))) data3 s
+            let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) data2 s
+            let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) data3 s
             (3 * datasize_bytes, s)
         | _ => -- four registers
           if inst.L = 1#1 then -- LD1
             let data1 := h ▸ read_mem_bytes datasize_bytes address s
-            let data2 := h ▸ read_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 datasize_bytes)) s
-            let data3 := h ▸ read_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 (2 * datasize_bytes))) s
-            let data4 := h ▸ read_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 (3 * datasize_bytes))) s
+            let data2 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) s
+            let data3 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) s
+            let data4 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (3 * datasize_bytes))) s
             let s := write_sfp datasize t data1 s
             let s := write_sfp datasize t2 data2 s
             let s := write_sfp datasize t3 data3 s
@@ -114,14 +114,14 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
             let data3 := h.symm ▸ read_sfp datasize t3 s
             let data4 := h.symm ▸ read_sfp datasize t4 s
             let s := write_mem_bytes datasize_bytes address data1 s
-            let s := write_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 datasize_bytes)) data2 s
-            let s := write_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 (2 * datasize_bytes))) data3 s
-            let s := write_mem_bytes datasize_bytes (address + (Std.BitVec.ofNat 64 (3 * datasize_bytes))) data4 s
+            let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) data2 s
+            let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) data3 s
+            let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (3 * datasize_bytes))) data4 s
             (4 * datasize_bytes, s)
       let offs := if wback && not (inst.Rm == some 31#5) then
                      read_gpr 64 (Option.getD inst.Rm 0#5) s
                   else
-                    Std.BitVec.ofNat 64 offs
+                    BitVec.ofNat 64 offs
       let address := address + offs
       let s := if wback then write_gpr 64 inst.Rn address s else s
       let s := write_pc ((read_pc s) + 4#64) s
@@ -130,7 +130,7 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
 @[simp]
 def exec_advanced_simd_multiple_struct
   (inst : Advanced_simd_multiple_struct_cls) (s : ArmState) : ArmState :=
-  open Std.BitVec in
+  open BitVec in
   match h₀: inst.opcode with
     | 0b0010#4 | 0b0110#4 | 0b0111#4 | 0b1010#4 =>
       ld1_st1_operation false
@@ -146,7 +146,7 @@ def exec_advanced_simd_multiple_struct
 @[simp]
 def exec_advanced_simd_multiple_struct_post_indexed
   (inst : Advanced_simd_multiple_struct_post_indexed_cls) (s : ArmState) : ArmState :=
-  open Std.BitVec in
+  open BitVec in
   match h₀ : inst.opcode with
     | 0b0010#4 | 0b0110#4 | 0b0111#4 | 0b1010#4 =>
       ld1_st1_operation true

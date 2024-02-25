@@ -14,10 +14,7 @@ import Arm.BitVec
 
 namespace DPSFP
 
-open Std.BitVec
-
-theorem binary_vector_op_aux_helper_lemma (x y : Nat) (h : 0 < y) :
-  x + y - 1 - x + 1 = y := by omega
+open BitVec
 
 def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
   (op : BitVec esize → BitVec esize → BitVec esize)
@@ -31,8 +28,7 @@ def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
     let hi := lo + esize - 1
     let element1 := extractLsb hi lo x
     let element2 := extractLsb hi lo y
-    have h : hi - lo + 1 = esize := by
-      apply binary_vector_op_aux_helper_lemma; simp [*] at *
+    have h : hi - lo + 1 = esize := by simp [hi, lo]; omega
     let elem_result := op (h ▸ element1) (h ▸ element2)
     let result := BitVec.partInstall hi lo (h.symm ▸ elem_result) result
     have ht1 : elems - (e + 1) < elems - e := by omega
@@ -44,8 +40,8 @@ def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
 -/
 @[simp]
 def binary_vector_op (esize : Nat) (op : BitVec esize → BitVec esize → BitVec esize)
-  (x : BitVec n) (y : BitVec n) (H : esize > 0) : BitVec n :=
-  binary_vector_op_aux 0 (n / esize) esize op x y (Std.BitVec.zero n) H
+  (x : BitVec n) (y : BitVec n) (H : 0 < esize) : BitVec n :=
+  binary_vector_op_aux 0 (n / esize) esize op x y (BitVec.zero n) H
 
 @[simp]
 def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : ArmState :=
@@ -53,13 +49,12 @@ def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : Ar
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let datasize := if inst.Q = 1#1 then 128 else 64
-    let esize := 8 <<< (Std.BitVec.toNat inst.size)
-    have h_esize : esize > 0 := by
-      simp_all [Nat.shiftLeft_eq, Nat.two_pow_pos, esize]
+    let esize := 8 <<< (BitVec.toNat inst.size)
+    have h_esize : 0 < esize := by simp [esize]; apply zero_lt_shift_left_pos (by decide)
     let sub_op := inst.U == 1
     let operand1 := read_sfp datasize inst.Rn s
     let operand2 := read_sfp datasize inst.Rm s
-    let op := if sub_op then Std.BitVec.sub else Std.BitVec.add
+    let op := if sub_op then BitVec.sub else BitVec.add
     let result := binary_vector_op esize op operand1 operand2 h_esize
     let s := write_sfp datasize inst.Rd result s
     s
@@ -102,7 +97,7 @@ def exec_logic_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : Arm
 @[simp]
 def exec_advanced_simd_three_same
   (inst : Advanced_simd_three_same_cls) (s : ArmState) : ArmState :=
-  open Std.BitVec in
+  open BitVec in
   let s :=
     match inst.opcode with
     | 0b10000#5 => exec_binary_vector inst s
@@ -116,7 +111,7 @@ theorem pc_of_exec_advanced_simd_three_same
   (h_no_err: read_err s' = None) :
   r StateField.PC s' =
   -- (r StateField.PC s) + 4#64 -- TODO: How do I use + here?
-  (Std.BitVec.add (r StateField.PC s) 4#64) := by
+  (BitVec.add (r StateField.PC s) 4#64) := by
   simp_all!
   simp [exec_advanced_simd_three_same, exec_binary_vector, exec_logic_vector]
   split

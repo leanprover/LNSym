@@ -7,7 +7,7 @@ import Arm.Exec
 
 namespace Cosim
 
-open Std.BitVec
+open BitVec
 
 /-- A default concrete state to begin co-simulations. -/
 def init_cosim_state : ArmState :=
@@ -50,7 +50,7 @@ def input_regState (inst : BitVec 32) : IO regState := do
 def init_gprs (gprs : List (BitVec 64)) (s : ArmState) : ArmState := Id.run do
   let mut s := s
   for i in [0:31] do
-    s := write_gpr 64 (Std.BitVec.ofNat 5 i) gprs[i]! s
+    s := write_gpr 64 (BitVec.ofNat 5 i) gprs[i]! s
   pure s
 
 /-- Populate the SIMD/FP registers in the ArmState s with `sfps`. Note
@@ -59,7 +59,7 @@ that the `sfps` contain 64-bit values, with the low 64-bit value of a
 def init_sfps (sfps : List (BitVec 64)) (s : ArmState) : ArmState := Id.run do
   let mut s := s
   for i in [0:32] do
-      s := write_sfp 128 (Std.BitVec.ofNat 5 i) (sfps[2*i+1]! ++ sfps[2*i]!) s
+      s := write_sfp 128 (BitVec.ofNat 5 i) (sfps[2*i+1]! ++ sfps[2*i]!) s
   pure s
 
 /-- Populate the PState in the ArmState s. -/
@@ -92,11 +92,11 @@ def machine_to_regState (inst : BitVec 32) (str : String) : regState :=
   -- Important: the assumption here, because of the use of
   -- String.toNat!, is that the machine output will be in base
   -- 10. This is consistent with simulator.c.
-  let gpr := List.map (fun x => (Std.BitVec.ofNat 64 x.toNat!)) (strs.take 31)
+  let gpr := List.map (fun x => (BitVec.ofNat 64 x.toNat!)) (strs.take 31)
   let strs := strs.drop 31
-  let flags := List.map (fun x => (Std.BitVec.ofNat 4 x.toNat!)) (strs.take 1)
+  let flags := List.map (fun x => (BitVec.ofNat 4 x.toNat!)) (strs.take 1)
   let strs := strs.drop 1
-  let sfp := List.map (fun x => (Std.BitVec.ofNat 64 x.toNat!)) (strs.take 64)
+  let sfp := List.map (fun x => (BitVec.ofNat 64 x.toNat!)) (strs.take 64)
   { inst, gpr, nzcv := flags[0]!, sfp }
 
 /-- Call the `armsimulate` script. -/
@@ -129,7 +129,7 @@ bitvector values.-/
 def gpr_list (s : ArmState) : List (BitVec 64) := Id.run do
   let mut acc := []
   for i in [0:31] do
-    acc :=  acc ++ [(s.gpr (Std.BitVec.ofNat 5 i))]
+    acc :=  acc ++ [(s.gpr (BitVec.ofNat 5 i))]
   pure acc
 
 /-- Get the SIMD/FP registers in an ArmState as a list of bitvector
@@ -137,7 +137,7 @@ values.-/
 def sfp_list (s : ArmState) : List (BitVec 64) := Id.run do
   let mut acc := []
   for i in [0:32] do
-    let reg := s.sfp (Std.BitVec.ofNat 5 i)
+    let reg := s.sfp (BitVec.ofNat 5 i)
     acc := acc ++ [(extractLsb 63 0 reg), (extractLsb 127 64 reg)]
   pure acc
 

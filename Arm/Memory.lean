@@ -7,7 +7,7 @@ import Arm.Separate
 
 section Memory
 
-open Std.BitVec
+open BitVec
 
 ----------------------------------------------------------------------
 
@@ -28,7 +28,7 @@ def read_mem_bytes (n : Nat) (addr : BitVec 64) (s : ArmState) : BitVec (n * 8) 
     let byte := read_mem addr s
     let rest := read_mem_bytes n' (addr + 1#64) s
     have h: n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
-    Std.BitVec.cast h (rest ++ byte)
+    BitVec.cast h (rest ++ byte)
 
 -- (FIXME) Make write_mem private.
 -- We export write_mem_bytes, not write_mem.
@@ -42,7 +42,7 @@ def write_mem_bytes (n : Nat) (addr : BitVec 64) (val : BitVec (n * 8)) (s : Arm
   | n' + 1 =>
     let byte := extractLsb 7 0 val
     let s := write_mem addr byte s
-    let val_rest := Std.BitVec.zeroExtend (n' * 8) (val >>> 8)
+    let val_rest := BitVec.zeroExtend (n' * 8) (val >>> 8)
     write_mem_bytes n' (addr + 1#64) val_rest s
 
 ---- RoW/WoW lemmas about memory and other fields ----
@@ -99,6 +99,16 @@ theorem read_mem_bytes_of_w :
     rw [n_ih]
   done
 
+theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n * 8)):
+    (write_mem_bytes n addr bytes s).program = s.program := by
+  intros
+  induction n generalizing addr s
+  · simp [write_mem_bytes]
+  · rename_i n h_n
+    simp [write_mem_bytes]
+    rw [h_n]
+    simp [write_mem]
+
 ---- Memory RoW/WoW lemmas ----
 
 theorem read_mem_of_write_mem_same :
@@ -115,8 +125,8 @@ theorem write_mem_of_write_mem_shadow :
   simp [write_mem]; unfold write_store; simp_all; done
 
 theorem write_mem_irrelevant :
-  write_mem addr (read_mem addr s) s = s := by 
-  simp [read_mem, write_mem, store_write_irrelevant]  
+  write_mem addr (read_mem addr s) s = s := by
+  simp [read_mem, write_mem, store_write_irrelevant]
 
 end Memory
 

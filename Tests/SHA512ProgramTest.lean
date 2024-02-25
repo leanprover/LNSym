@@ -9,13 +9,13 @@ import Specs.SHA512
 
 section SHA512ProgramTest
 
-open Std.BitVec
+open BitVec
 
 -- sha512_block_armv8
 -- Source: https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/sha/asm/sha512-armv8.pl#L454
 def sha512_program_map : program :=
   def_program
-  #[(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
+  [(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
     (0x1264c4#64 , 0x910003fd#32),      --  mov     x29, sp
     (0x1264c8#64 , 0x4cdf2030#32),      --  ld1     {v16.16b-v19.16b}, [x1], #64
     (0x1264cc#64 , 0x4cdf2034#32),      --  ld1     {v20.16b-v23.16b}, [x1], #64
@@ -616,8 +616,8 @@ example : final_sha512_pc =
         native_decide
 
 -- The final hash computed by the program is this bitvector below.
-example : final_sha512_hash = 
-          0xa8018698f607e71485fd9f419b7061663ec081e2452ad3a1710d2fa39bbca33de8b1d23ccdc5e78e8ca5dd0a0a317e368b137f3cd4c324e4b5d80451e2f1d2a2#512 := 
+example : final_sha512_hash =
+          0xa8018698f607e71485fd9f419b7061663ec081e2452ad3a1710d2fa39bbca33de8b1d23ccdc5e78e8ca5dd0a0a317e368b137f3cd4c324e4b5d80451e2f1d2a2#512 :=
         by native_decide
 
 -- Specification Run:

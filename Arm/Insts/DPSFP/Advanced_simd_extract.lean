@@ -14,12 +14,12 @@ import Arm.BitVec
 
 namespace DPSFP
 
-open Std.BitVec
+open BitVec
 
 @[simp]
 def exec_advanced_simd_extract
   (inst : Advanced_simd_extract_cls) (s : ArmState) : ArmState :=
-  open Std.BitVec in
+  open BitVec in
   if inst.op2 ≠ 0#2 then
     write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
   else if inst.Q == 0b0#1 && extractLsb 3 3 inst.imm4 == 0b1#1 then

@@ -12,7 +12,7 @@ import Arm.Insts.Common
 
 namespace DPSFP
 
-open Std.BitVec
+open BitVec
 
 -- def aese (x : BitVec 128) : BitVec 128 :=
 --   open aes_helpers in
@@ -30,7 +30,7 @@ open Std.BitVec
 
 -- def exec_crypto_aes
 --   (inst : Crypto_aes_cls) (s : ArmState) : ArmState :=
---   open Std.BitVec in
+--   open BitVec in
 --   let operand1 := read_sfp 128 inst.Rd s
 --   let operand2 := read_sfp 128 inst.Rn s
 --   let result :=

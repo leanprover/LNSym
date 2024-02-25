@@ -3,8 +3,9 @@ Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
+import Lean.Data.Format
 import Arm.BitVec
-import Std.Data.RBMap
+import Arm.Map
 
 ------------------------------------------------------------------------------
 ------------------------------------------------------------------------------
@@ -55,7 +56,7 @@ theorem store_write_irrelevant [DecidableEq α]
 instance [Repr β]: Repr (Store (BitVec n) β) where
   reprPrec store _ :=
     let rec helper (a : Nat) (acc : Lean.Format) :=
-      let a_bv := Std.BitVec.ofNat n a
+      let a_bv := BitVec.ofNat n a
       let a_repr := "(" ++ repr a_bv ++ " : " ++ (repr (read_store a_bv store)) ++ ") "
       match a with
       | 0 => a_repr ++ acc
@@ -198,7 +199,7 @@ def write_base_error (val : StateError) (s : ArmState) : ArmState :=
 
 section Accessor_updater_functions
 
-open Std.BitVec
+open BitVec
 
 inductive StateField where
   | GPR    : BitVec 5 → StateField
@@ -294,6 +295,17 @@ theorem fetch_inst_of_w (addr : BitVec 64) (fld : StateField) (val : (state_valu
   unfold write_base_error
   split <;> simp_all!
 
+-- There is no StateField that overwrites the program.
+theorem w_program (sf : StateField) (v : state_value sf) (s : ArmState):
+    (w sf v s).program = s.program := by
+  intros
+  cases sf <;> unfold w <;> simp
+  · unfold write_base_gpr; simp
+  · unfold write_base_sfp; simp
+  · unfold write_base_pc; simp
+  · unfold write_base_flag; simp
+  · unfold write_base_error; simp
+
 -- The following functions are defined in terms of r and w, but may be
 -- simpler to use.
 
@@ -301,7 +313,7 @@ theorem fetch_inst_of_w (addr : BitVec 64) (fld : StateField) (val : (state_valu
 def read_gpr (width : Nat) (idx : BitVec 5) (s : ArmState)
   : BitVec width :=
     let val := r (StateField.GPR idx) s
-    Std.BitVec.zeroExtend width val
+    BitVec.zeroExtend width val
 
 -- Use read_gpr_zr when register 31 is mapped to the zero register ZR,
 -- instead of the default (Stack pointer).
@@ -311,7 +323,7 @@ def read_gpr_zr (width : Nat) (idx : BitVec 5) (s : ArmState)
   if idx ≠ 31#5 then
     read_gpr width idx s
   else
-    Std.BitVec.ofNat width 0
+    BitVec.ofNat width 0
 
 -- In practice, we only ever access the low 32 bits or the full 64
 -- bits of these registers in Arm. When we write 32 bits to these
@@ -319,7 +331,7 @@ def read_gpr_zr (width : Nat) (idx : BitVec 5) (s : ArmState)
 @[simp]
 def write_gpr (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
   : ArmState :=
-    let val := Std.BitVec.zeroExtend 64 val
+    let val := BitVec.zeroExtend 64 val
     w (StateField.GPR idx) val s
 
 -- Use write_gpr_zr when register 31 is mapped to the zero register
@@ -336,19 +348,19 @@ def write_gpr_zr (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState)
 -- (see simp?).
 example (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState) :
   read_gpr n idx (write_gpr n idx val s) =
-  Std.BitVec.zeroExtend n (Std.BitVec.zeroExtend 64 val) := by
+  BitVec.zeroExtend n (BitVec.zeroExtend 64 val) := by
   simp
 
 @[simp]
 def read_sfp (width : Nat) (idx : BitVec 5) (s : ArmState) : BitVec width :=
   let val := r (StateField.SFP idx) s
-  Std.BitVec.zeroExtend width val
+  BitVec.zeroExtend width val
 
 -- Write `val` to the `idx`-th SFP, zeroing the upper bits, if
 -- applicable.
 @[simp]
 def write_sfp (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState) : ArmState :=
-   let val := Std.BitVec.zeroExtend 128 val
+   let val := BitVec.zeroExtend 128 val
    w (StateField.SFP idx) val s
 
 @[simp]
@@ -398,20 +410,36 @@ end Accessor_updater_functions
 
 section Load_program_and_fetch_inst
 
--- Programs are defined as an RBMap of 64-bit addresses to 32-bit
--- instructions. RBMap has a nice find?_eq-style lemma in the Std
--- library that allows us to smoothly fetch an instruction from the
--- map during proofs (see fetch_inst_from_rbmap_program below).
---
--- TODO: Perhaps use HashMaps here when the Std library is mature?
-abbrev program := Std.RBMap (BitVec 64) (BitVec 32) compare
+-- Programs are defined as an Map of 64-bit addresses to 32-bit
+-- instructions. Map has nice lemmas that allow us to smoothly fetch
+-- an instruction from the map during proofs (see
+-- fetch_inst_from_program below).
+abbrev program := Map (BitVec 64) (BitVec 32)
 
 -- We define a program as an Array of address and instruction pairs,
 -- which are then converted to an RBMap.
-def def_program (p : Array ((BitVec 64) × (BitVec 32))) : program :=
-    Std.RBMap.ofArray p compare
+def def_program (p : Map (BitVec 64) (BitVec 32)) : program :=
+  p
 
-theorem fetch_inst_from_rbmap_program
+def program.min (p : program) : Option (BitVec 64) :=
+  loop p none
+where
+  loop (p : program) (min? : Option (BitVec 64)) : Option (BitVec 64) :=
+    match p, min? with
+    | [], _ => min?
+    | (addr, _) :: p, none => loop p (some addr)
+    | (addr, _) :: p, some min => if addr < min then loop p (some addr) else loop p (some min)
+
+def program.max (p : program) : Option (BitVec 64) :=
+  loop p none
+where
+  loop (p : program) (max? : Option (BitVec 64)) : Option (BitVec 64) :=
+    match p, max? with
+    | [], _ => max?
+    | (addr, _) :: p, none => loop p (some addr)
+    | (addr, _) :: p, some max => if addr > max then loop p (some addr) else loop p (some max)
+
+theorem fetch_inst_from_program
   {address: BitVec 64} {program : program}
   (h_program : s.program = program.find?) :
   fetch_inst address s = program.find? address := by
