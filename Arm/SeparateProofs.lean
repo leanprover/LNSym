@@ -6,7 +6,9 @@ Author(s): Shilpi Goel
 import Arm.Memory
 -- import Auto
 
--- In this file, we have memory-related proofs that depend on auto.
+-- In this file, we have proofs pertaining to separateness of memory
+-- regions. Many of these are skipped right now as we eliminate our
+-- dependency on auto (and SMT solving).
 
 -- set_option auto.smt true
 -- set_option auto.smt.trust true
@@ -35,90 +37,48 @@ theorem n_minus_1_lt_2_64_1 (n : Nat)
   simp_all [Nat.mod_eq_of_lt]
   exact Nat.sub_lt_left_of_lt_add h1 h2
 
--- (FIXME) Prove for all bitvector widths, without using auto.
--- set_option auto.smt.savepath "/tmp/BitVec.add_sub_self_left_64.smt2" in
+-- (FIXME) Prove for all bitvector widths.
 theorem BitVec.add_sub_self_left_64 (a m : BitVec 64) :
   a + m - a = m := by
-  sorry -- auto
+  bv_omega
 
--- (FIXME) Prove for all bitvector widths, without using auto.
--- set_option auto.smt.savepath "/tmp/BitVec.add_sub_self_right_64.smt2" in
+-- (FIXME) Prove for all bitvector widths.
 theorem BitVec.add_sub_self_right_64 (a m : BitVec 64) :
   a + m - m = a := by
-  sorry -- auto
+  bv_omega
 
--- (FIXME) Prove for all bitvector widths, without using auto.
--- set_option auto.smt.savepath "/tmp/BitVec.add_sub_add_left.smt2" in
+-- (FIXME) Prove for all bitvector widths.
 theorem BitVec.add_sub_add_left (a m n : BitVec 64) :
   a + m - (a + n) = m - n := by
-  sorry -- auto
+  bv_omega
 
--- (FIXME) Prove without auto using general assoc/comm BitVec lemmas.
--- set_option auto.smt.savepath "/tmp/BitVec.sub_of_add_is_sub_sub.smt2" in
+-- (FIXME) Prove for all bitvector widths, using general assoc/comm
+-- BitVec lemmas.
 theorem BitVec.sub_of_add_is_sub_sub (a b c : BitVec 64) :
   (a - (b + c)) = a - b - c := by
-  sorry -- auto
+  bv_omega
 
--- (FIXME) Prove without auto using general assoc/comm BitVec lemmas.
--- set_option auto.smt.savepath "/tmp/BitVec.add_of_sub_sub_of_add.smt2" in
+-- (FIXME) Prove for all bitvector widths, using general assoc/comm
+-- BitVec lemmas.
 theorem BitVec.add_of_sub_sub_of_add (a b c : BitVec 64) :
   (a + b - c) = a - c + b := by
-  sorry -- auto
+  bv_omega
 
 -- set_option auto.smt.savepath "/tmp/nat_bitvec_sub1.smt2" in
 theorem nat_bitvec_sub1 (x y : BitVec 64)
   (_h : y.toNat <= x.toNat) :
   (x - y).toNat = (x.toNat - y.toNat) % 2^64 := by
-  rw [BitVec.nat_bitvec_sub]
-  generalize hx1 : BitVec.toNat x = x1
-  generalize hy1 : BitVec.toNat y = y1
-  have : x1 < 2^64 := by subst x1; exact x.isLt
-  have : y1 < 2^64 := by subst y1; exact y.isLt
-  -- Let's reduce 2^64 to a constant for SMT solvers.
-  simp (config := {ground := true}) only
-  rw [Nat.mod_eq_sub_mod]
-  sorry; sorry -- auto; auto
+  bv_omega
 
 theorem nat_bitvec_sub2 (x y : Nat)
   (h : y <= x) (xub : x < 2^64) :
   (x - y)#64 = x#64 - y#64 := by
-  have yub : y < 2^64 := calc
-    _ ≤ x := h
-    _ < _ := xub
-  ext
-  rw [nat_bitvec_sub1]
-  simp only [BitVec.bitvec_to_nat_of_nat]
-  have xmyub : x - y < 2^64 := calc
-    x - y ≤ x := Nat.sub_le x y
-    _ < _ := xub
-  simp at xmyub
-  -- rw [Nat.mod_eq_of_lt xmyub]
-  -- simp at xub yub
-  -- conv =>
-  --   pattern (x % 18446744073709551616 - y % 18446744073709551616)
-  --   rw [Nat.mod_eq_of_lt xub, Nat.mod_eq_of_lt yub]
-  -- rw [Nat.mod_eq_of_lt xmyub]
-  -- simp only [BitVec.bitvec_to_nat_of_nat]
-  -- simp at xub yub
-  -- rw [Nat.mod_eq_of_lt xub, Nat.mod_eq_of_lt yub]
-  -- exact h
-  repeat sorry
+  bv_omega
 
 theorem addr_add_one_add_m_sub_one  (n : Nat) (addr : BitVec 64)
   (h_lb : Nat.succ 0 ≤ n) (h_ub : n + 1 ≤ 2 ^ 64) :
   (addr + 1#64 + (n - 1)#64) = addr + n#64 := by
-  sorry
-/-
-  have h_ub' : n < 2^64 := by exact h_ub
-  rw [nat_bitvec_sub2 n 1 h_lb h_ub']
-  ext
-  rw [BitVec.toNat_add]
-  rw [←nat_bitvec_sub2 n 1 h_lb h_ub]
-  simp [BitVec.bitvec_to_nat_of_nat]
-  rw [←Nat.add_sub_assoc h_lb]
-  omega
--/
-
+  bv_omega
 
 ----------------------------------------------------------------------
 ---- mem_subset ----
@@ -311,8 +271,7 @@ theorem mem_subset_trans
   mem_subset a1 a2 c1 c2 := by
   revert h1 h2
   simp [mem_subset_and_mem_subset_for_auto]
-  -- auto d[mem_subset_for_auto]
-  sorry
+  sorry -- auto d[mem_subset_for_auto]
 
 ----------------------------------------------------------------------
 ---- mem_separate ----
