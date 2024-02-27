@@ -62,8 +62,8 @@ def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmSt
     let part := inst.Q.toNat
     let elements := datasize / esize
     have h₁ : datasize > 0 := by decide
-    let operand1 := Vpart inst.Rn part datasize s h₁
-    let operand2 := Vpart inst.Rm part datasize s h₁
+    let operand1 := Vpart_read inst.Rn part datasize s h₁
+    let operand2 := Vpart_read inst.Rm part datasize s h₁
     let result :=
       pmull_op 0 esize elements operand1 operand2 (BitVec.zero (2*datasize)) h₀
     let s := write_sfp (datasize*2) inst.Rd result s
