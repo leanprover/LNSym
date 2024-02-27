@@ -197,7 +197,7 @@ instance : ToString SIMDThreeSameLogicalType where toString a := toString (repr 
 ----------------------------------------------------------------------
 
 @[simp]
-def Vpart (n : BitVec 5) (part : Nat) (width : Nat) (s : ArmState) (H : width > 0)
+def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState) (H : width > 0)
   : BitVec width :=
   -- assert n >= 0 && n <= 31;
   -- assert part IN {0, 1};
@@ -209,6 +209,20 @@ def Vpart (n : BitVec 5) (part : Nat) (width : Nat) (s : ArmState) (H : width > 
   else
     -- assert width IN {32,64};
     h2 ▸ extractLsb (width*2-1) width $ read_sfp 128 n s
+
+
+@[simp]
+def Vpart_write (n : BitVec 5) (part width : Nat) (val : BitVec width) (s : ArmState)
+  : ArmState :=
+  -- assert n >= 0 && n <= 31;
+  -- assert part IN {0, 1};
+  if part == 0 then
+    -- assert width < 128
+    write_sfp width n val s
+  else
+    -- assert width == 64
+    let res := (extractLsb 63 0 val) ++ (read_sfp 64 n s)
+    write_sfp 128 n res s
 
 ----------------------------------------------------------------------
 
@@ -232,5 +246,16 @@ theorem esize_gt_zero (size : Nat):
   8 <<< size > 0 := by
   simp_all only [ Nat.shiftLeft_eq, gt_iff_lt, Nat.zero_lt_succ
                 , mul_pos_iff_of_pos_left, zero_lt_two, pow_pos]
+
+----------------------------------------------------------------------
+
+-- Floating-point convert/move instruction types
+inductive FPConvOp where
+  | FPConvOp_CVT_FtoI : FPConvOp
+  | FPConvOp_CVT_ItoF : FPConvOp
+  | FPConvOp_MOV_FtoI : FPConvOp
+  | FPConvOp_MOV_ItoF : FPConvOp
+  | FPConvOp_CVT_FtoI_JS : FPConvOp
+deriving DecidableEq, Repr
 
 end Common

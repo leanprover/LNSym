@@ -106,6 +106,8 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
     DPSFP (Advanced_simd_three_same {Q, U, size, Rm, opcode, Rn, Rd})
   | [0, Q:1, U:1, 01110, size:2, 1, Rm:5, opcode:4, 00, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_three_different {Q, U, size, Rm, opcode, Rn, Rd})
+  | [sf:1, 0, S:1, 11110, ftype:2, 1, rmode:2, opcode:3, 000000, Rn:5, Rd:5] =>
+    DPSFP (Conversion_between_FP_and_Int {sf, S, ftype, rmode, opcode, Rn, Rd})
   | _ => none
 
 def decode_ldst_inst (i : BitVec 32) : Option ArmInst :=
@@ -440,6 +442,23 @@ example : decode_raw_inst 0x6e026e2a =
             Rn := 0x11#5,
             Rd := 0x0a#5 })) := by
           rfl
+
+-- fmov v25.d[1], x5
+example : decode_raw_inst 0x9eaf00b9 =
+          (ArmInst.DPSFP
+            (DataProcSFPInst.Conversion_between_FP_and_Int
+            { sf := 0x1#1,
+              _fixed1 := 0x0#1,
+              S := 0x0#1,
+              _fixed2 := 0x1e#5,
+              ftype := 0x2#2,
+              _fixed3 := 0x1#1,
+              rmode := 0x1#2,
+              opcode := 0x7#3,
+              _fixed4 := 0x00#6,
+              Rn := 0x05#5,
+              Rd := 0x19#5 })) := by
+            rfl
 
 -- Unimplemented
 example : decode_raw_inst 0x00000000#32 = none := by rfl

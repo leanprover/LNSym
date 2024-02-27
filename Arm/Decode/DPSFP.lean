@@ -203,6 +203,25 @@ instance : ToString Advanced_simd_three_different_cls where toString a := toStri
 def Advanced_simd_three_different_cls.toBitVec32 (x : Advanced_simd_three_different_cls) : BitVec 32 :=
   x._fixed1 ++ x.Q ++ x.U ++ x._fixed2 ++ x.size ++ x._fixed3 ++ x.Rm ++ x.opcode ++ x._fixed4 ++ x.Rn ++ x.Rd
 
+structure Conversion_between_FP_and_Int_cls where
+  sf      : BitVec 1               -- [31:31]
+  _fixed1 : BitVec 1 := 0b0#1      -- [30:30]
+  S       : BitVec 1               -- [29:29]
+  _fixed2 : BitVec 5 := 0b11110#5  -- [28:24]
+  ftype   : BitVec 2               -- [23:22]
+  _fixed3 : BitVec 1 := 0b1#1      -- [21:21]
+  rmode   : BitVec 2               -- [20:19]
+  opcode  : BitVec 3               -- [18:16]
+  _fixed4 : BitVec 6 := 0b000000#6 -- [15:10]
+  Rn      : BitVec 5               -- [9:5]
+  Rd      : BitVec 5               -- [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Conversion_between_FP_and_Int_cls where toString a := toString (repr a)
+
+def Conversion_between_FP_and_Int_cls.toBitVec32 (x : Conversion_between_FP_and_Int_cls) : BitVec 32 :=
+  x.sf ++ x._fixed1 ++ x.S ++ x._fixed2 ++ x.ftype ++ x._fixed3 ++ x.rmode ++ x.opcode ++ x._fixed4 ++ x.Rn ++ x.Rd
+
 inductive DataProcSFPInst where
   | Crypto_aes :
     Crypto_aes_cls → DataProcSFPInst
@@ -226,6 +245,8 @@ inductive DataProcSFPInst where
     Advanced_simd_three_same_cls → DataProcSFPInst
   | Advanced_simd_three_different :
     Advanced_simd_three_different_cls → DataProcSFPInst
+  | Conversion_between_FP_and_Int :
+    Conversion_between_FP_and_Int_cls → DataProcSFPInst
 deriving DecidableEq, Repr
 
 instance : ToString DataProcSFPInst where toString a := toString (repr a)
