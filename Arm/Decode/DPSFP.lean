@@ -141,6 +141,25 @@ instance : ToString Advanced_simd_extract_cls where toString a := toString (repr
 def Advanced_simd_extract_cls.toBitVec32 (x : Advanced_simd_extract_cls) : BitVec 32 :=
   x._fixed1 ++ x.Q ++ x._fixed2 ++ x.op2 ++ x._fixed3 ++ x.Rm ++ x._fixed4 ++ x.imm4 ++ x._fixed5 ++ x.Rn ++ x.Rd
 
+structure Advanced_simd_permute_cls where
+  _fixed1 : BitVec 1 := 0b0#1      -- [31:31]
+  Q       : BitVec 1               -- [30:30]
+  _fixed2 : BitVec 6 := 0b001110#6 -- [29:24]
+  size    : BitVec 2               -- [23:22]
+  _fixed3 : BitVec 1 := 0b0#1      -- [21:21]
+  Rm      : BitVec 5               -- [20:16]
+  _fixed4 : BitVec 1 := 0b0#1      -- [15:15]
+  opcode  : BitVec 3               -- [14:12]
+  _fixed5 : BitVec 2 := 0b10#2     -- [11:10]
+  Rn      : BitVec 5               --   [9:5]
+  Rd      : BitVec 5               --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Advanced_simd_permute_cls where toString a := toString (repr a)
+
+def Advanced_simd_permute_cls.toBitVec32 (x : Advanced_simd_permute_cls) : BitVec 32 :=
+  x._fixed1 ++ x.Q ++ x._fixed2 ++ x.size ++ x._fixed3 ++ x.Rm ++ x._fixed4 ++ x.opcode ++ x._fixed5 ++ x.Rn ++ x.Rd
+
 structure Advanced_simd_modified_immediate_cls where
   _fixed1 : BitVec 1 := 0b0#1            -- [31:31]
   Q       : BitVec 1                     -- [30:30]
@@ -237,6 +256,8 @@ inductive DataProcSFPInst where
     Advanced_simd_copy_cls → DataProcSFPInst
   | Advanced_simd_extract :
     Advanced_simd_extract_cls → DataProcSFPInst
+  | Advanced_simd_permute :
+    Advanced_simd_permute_cls → DataProcSFPInst
   | Advanced_simd_modified_immediate :
     Advanced_simd_modified_immediate_cls → DataProcSFPInst
   | Advanced_simd_scalar_copy :

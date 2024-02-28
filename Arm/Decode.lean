@@ -100,6 +100,8 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
     DPSFP (Advanced_simd_copy {Q, op, imm5, imm4, Rn, Rd})
   | [0, Q:1, 101110, op2:2, 0, Rm:5, 0, imm4:4, 0, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_extract {Q, op2, Rm, imm4, Rn, Rd})
+  | [0, Q:1, 001110, size:2, 0, Rm:5, 0, opcode:3, 10, Rn:5, Rd:5] =>
+    DPSFP (Advanced_simd_permute {Q, size, Rm, opcode, Rn, Rd})
   | [0, Q:1, op:1, 0111100000, a:1, b:1, c:1, cmode:4, o2:1, 1, d:1, e:1, f:1, g:1, h:1, Rd:5] =>
     DPSFP (Advanced_simd_modified_immediate {Q, op, a, b, c, cmode, o2, d, e, f, g, h, Rd})
   | [01, op:1, 11110000, imm5:5, 0, imm4:4, 1, Rn:5, Rd:5] =>
