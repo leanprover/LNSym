@@ -3,8 +3,8 @@ Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Nevine
 -/
--- For now, support only UBFM (immediate) aliased as LSR (immediate):
--- 32- and 64-bit versions
+-- For now, support only UBFM (immediate) 32- and 64-bit versions
+-- (aliased as LSR and LSL (immediate) among other aliases)
 
 import Arm.Decode
 import Arm.Insts.Common
@@ -15,24 +15,26 @@ open Std.BitVec
 
 @[simp]
 def exec_bitfield (inst: Bitfield_cls) (s : ArmState) : ArmState :=
-  -- TODO: match opc
-  let immr5 := inst.immr >>> 5
-  let imms5 := inst.imms >>> 5
-  if (inst.sf == 1 && inst.N != 1) ||
-     (inst.sf == 0 && (inst.N != 0 || immr5 != 0 || imms5 != 0)) then
+  if inst.opc != 0b10#2 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
-    let datasize  := if inst.sf == 1#1 then 64 else 32
-    let wtmask    := decode_bit_masks inst.N inst.imms inst.immr false datasize
-    match wtmask with
-    | none => write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
-    | some (wmask, tmask) =>
-      let src := read_gpr datasize inst.Rn s
-      let bot := (BitVec.ror src inst.immr.toNat) &&& wmask
-      let result := bot &&& tmask
-      let s := write_gpr datasize inst.Rd result s
-      let s := write_pc ((read_pc s) + 4#64) s
-      s
+    let immr5 := inst.immr >>> 5
+    let imms5 := inst.imms >>> 5
+    if (inst.sf == 1 && inst.N != 1) ||
+      (inst.sf == 0 && (inst.N != 0 || immr5 != 0 || imms5 != 0)) then
+      write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
+    else
+      let datasize  := if inst.sf == 1#1 then 64 else 32
+      let wtmask    := decode_bit_masks inst.N inst.imms inst.immr false datasize
+      match wtmask with
+      | none => write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
+      | some (wmask, tmask) =>
+        let src := read_gpr_zr datasize inst.Rn s
+        let bot := (BitVec.ror src inst.immr.toNat) &&& wmask
+        let result := bot &&& tmask
+        let s := write_gpr_zr datasize inst.Rd result s
+        let s := write_pc ((read_pc s) + 4#64) s
+        s
 
 
 ----------------------------------------------------------------------
@@ -76,8 +78,8 @@ partial def Bitfield_cls.lsr.rand : IO (Option (BitVec 32)) := do
   bitfield_rand_aux sf N immr imms
 
 def Bitfield_cls.rand : List (IO (Option (BitVec 32))) :=
-  [Bitfield_cls.lsr.rand,
-   Bitfield_cls.ubfm.rand]
+  [ Bitfield_cls.lsr.rand,
+    Bitfield_cls.ubfm.rand ]
 ----------------------------------------------------------------------
 
 end DPI

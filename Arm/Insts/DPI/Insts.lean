@@ -11,6 +11,7 @@ import Arm.Insts.DPI.Bitfield
 /-- List of functions to generate random instructions of the
 DPI class. -/
 def DPI.rand : List (IO (Option (BitVec 32))) :=
-  [ DPI.Add_sub_imm_cls.rand,
-    DPI.Logical_imm_cls.rand,
-    DPI.Bitfield_cls.ubfm.rand ]
+  DPI.Add_sub_imm_cls.rand ++
+    DPI.Logical_imm_cls.rand ++
+    DPI.Bitfield_cls.rand
+  --  DPI.Bitfield_cls.lsr.rand ]

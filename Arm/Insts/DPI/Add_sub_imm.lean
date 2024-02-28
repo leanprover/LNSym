@@ -39,7 +39,7 @@ def exec_add_sub_imm (inst : Add_sub_imm_cls) (s : ArmState) : ArmState :=
 ----------------------------------------------------------------------
 
 /-- Generate random instructions of the DPI.Add_sub_imm class. -/
-def Add_sub_imm_cls.rand : IO (Option (BitVec 32)) := do
+def Add_sub_imm_cls.dpi.rand : IO (Option (BitVec 32)) := do
   let (inst : Add_sub_imm_cls) :=
     { sf    := ← BitVec.rand 1,
       op    := ← BitVec.rand 1,
@@ -54,6 +54,8 @@ def Add_sub_imm_cls.rand : IO (Option (BitVec 32)) := do
       Rd    := ← BitVec.rand 5 (lo := 0) (hi := 30) }
   pure (some (inst.toBitVec32))
 
+def Add_sub_imm_cls.rand : List (IO (Option (BitVec 32))) :=
+  [ Add_sub_imm_cls.dpi.rand ]
 ----------------------------------------------------------------------
 
 end DPI
