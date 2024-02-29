@@ -127,7 +127,7 @@ def exec_advanced_simd_copy
   | [_Q:1, 0, _imm5:5, 0111] => exec_smov_umov inst s false
   | [1, 0, _imm5:5, 0011] => exec_ins_general inst s
   | [1, 1, _imm5:5, _imm4:4] => exec_ins_element inst s
-  | _ => write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
+  | _ => write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
 
 ----------------------------------------------------------------------
 
