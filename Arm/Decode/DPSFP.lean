@@ -14,8 +14,8 @@ open BitVec
 -- Data Processing (SIMD and FP) Instructions --
 
 structure Crypto_aes_cls where
-  _fixed1 : BitVec 7 := 0b01001110#7  -- [31:24]
-  esize   : BitVec 2                  -- [23:22]
+  _fixed1 : BitVec 8 := 0b01001110#8  -- [31:24]
+  size    : BitVec 2                  -- [23:22]
   _fixed2 : BitVec 5 := 0b10100#5     -- [21:17]
   opcode  : BitVec 5                  -- [16:12]
   _fixed3 : BitVec 2 := 0b10#2        -- [11:10]
@@ -24,6 +24,9 @@ structure Crypto_aes_cls where
 deriving DecidableEq, Repr
 
 instance : ToString Crypto_aes_cls where toString a := toString (repr a)
+
+def Crypto_aes_cls.toBitVec32 (x : Crypto_aes_cls) : BitVec 32 :=
+  x._fixed1 ++ x.size ++ x._fixed2 ++ x.opcode ++ x._fixed3 ++ x.Rn ++ x.Rd
 
 structure Crypto_three_reg_sha512_cls where
   _fixed1 : BitVec 11 := 0b11001110011#11 -- [31:21]
