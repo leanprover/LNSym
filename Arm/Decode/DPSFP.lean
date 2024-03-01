@@ -187,6 +187,43 @@ instance : ToString Advanced_simd_modified_immediate_cls where toString a := toS
 def Advanced_simd_modified_immediate_cls.toBitVec32 (x : Advanced_simd_modified_immediate_cls) : BitVec 32 :=
   x._fixed1 ++ x.Q ++ x.op ++ x._fixed2 ++ x.a ++ x.b ++ x.c ++ x.cmode ++ x.o2 ++ x._fixed3 ++ x.d ++ x.e ++ x.f ++ x.g ++ x.h ++ x.Rd
 
+structure Advanced_simd_shift_by_immediate_cls where
+  _fixed1 : BitVec 1 := 0b0#1      -- [31:31]
+  Q       : BitVec 1               -- [30:30]
+  U       : BitVec 1               -- [29:29]
+  _fixed2 : BitVec 6 := 0b011110#6 -- [28:23]
+  immh    : BitVec 4               -- [22:19]
+  immb    : BitVec 3               -- [18:16]
+  opcode  : BitVec 5               -- [15:11]
+  _fixed3 : BitVec 1 := 0b1#1      -- [10:10]
+  Rn      : BitVec 5               --   [9:5]
+  Rd      : BitVec 5               --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Advanced_simd_shift_by_immediate_cls where toString a := toString (repr a)
+
+def Advanced_simd_shift_by_immediate_cls.toBitVec32
+  (x : Advanced_simd_shift_by_immediate_cls) : BitVec 32 :=
+  x._fixed1 ++ x.Q ++ x.U ++ x._fixed2 ++ x.immh ++ x.immb ++ x.opcode ++ x._fixed3 ++ x.Rn ++ x.Rd
+
+structure Advanced_simd_scalar_shift_by_immediate_cls where
+  _fixed1 : BitVec 2 := 0b01#2     -- [31:30]
+  U       : BitVec 1               -- [29:29]
+  _fixed2 : BitVec 6 := 0b111110#6 -- [28:23]
+  immh    : BitVec 4               -- [22:19]
+  immb    : BitVec 3               -- [18:16]
+  opcode  : BitVec 5               -- [15:11]
+  _fixed3 : BitVec 1 := 0b1#1      -- [10:10]
+  Rn      : BitVec 5               --   [9:5]
+  Rd      : BitVec 5               --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Advanced_simd_scalar_shift_by_immediate_cls where toString a := toString (repr a)
+
+def Advanced_simd_scalar_shift_by_immediate_cls.toBitVec32
+  (x : Advanced_simd_scalar_shift_by_immediate_cls) : BitVec 32 :=
+  x._fixed1 ++ x.U ++ x._fixed2 ++ x.immh ++ x.immb ++ x.opcode ++ x._fixed3 ++ x.Rn ++ x.Rd
+
 structure Advanced_simd_table_lookup_cls where
   _fixed1 : BitVec 1 := 0b0#1      -- [31:31]
   Q       : BitVec 1               -- [30:30]
@@ -283,6 +320,10 @@ inductive DataProcSFPInst where
     Advanced_simd_permute_cls → DataProcSFPInst
   | Advanced_simd_modified_immediate :
     Advanced_simd_modified_immediate_cls → DataProcSFPInst
+  | Advanced_simd_shift_by_immediate :
+    Advanced_simd_shift_by_immediate_cls → DataProcSFPInst
+  | Advanced_simd_scalar_shift_by_immediate :
+    Advanced_simd_scalar_shift_by_immediate_cls → DataProcSFPInst
   | Advanced_simd_scalar_copy :
     Advanced_simd_scalar_copy_cls → DataProcSFPInst
   | Advanced_simd_table_lookup :

@@ -78,6 +78,8 @@ def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=
     DPR (Conditional_select {sf, op, S, Rm, cond, op2, Rn, Rd})
   | [sf:1, 1, S:1, 11010110, opcode2:5, opcode:6, Rn:5, Rd:5] =>
     DPR (Data_processing_one_source {sf, S, opcode2, opcode, Rn, Rd})
+  | [sf:1, 0, S:1, 11010110, Rm:5, opcode:6, Rn:5, Rd:5] =>
+    DPR (Data_processing_two_source {sf, S, Rm, opcode, Rn, Rd})
   | [sf:1, opc:2, 01010, shift:2, N:1, Rm:5, imm6:6, Rn:5, Rd:5] =>
     DPR (Logical_shifted_reg {sf, opc, shift, N, Rm, imm6, Rn, Rd})
   | _ => none
@@ -104,6 +106,11 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
     DPSFP (Advanced_simd_permute {Q, size, Rm, opcode, Rn, Rd})
   | [0, Q:1, op:1, 0111100000, a:1, b:1, c:1, cmode:4, o2:1, 1, d:1, e:1, f:1, g:1, h:1, Rd:5] =>
     DPSFP (Advanced_simd_modified_immediate {Q, op, a, b, c, cmode, o2, d, e, f, g, h, Rd})
+  -- Note: Advanced SIMD shift by immediate constraint immh != 0000
+  | [0, Q:1, U:1, 011110, immh:4, immb:3, opcode:5, 1, Rn:5, Rd:5] =>
+    DPSFP (Advanced_simd_shift_by_immediate {Q, U, immh, immb, opcode, Rn, Rd})
+  | [01, U:1, 111110, immh:4, immb:3, opcode:5, 1, Rn:5, Rd:5] =>
+    DPSFP (Advanced_simd_scalar_shift_by_immediate {U, immh, immb, opcode, Rn, Rd})
   | [01, op:1, 11110000, imm5:5, 0, imm4:4, 1, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_scalar_copy {op, imm5, imm4, Rn, Rd})
   | [0, Q:1, 001110, op2:2, 0, Rm:5, 0, len:2, op:1, 00, Rn:5, Rd:5] =>

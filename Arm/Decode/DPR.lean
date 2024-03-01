@@ -64,6 +64,40 @@ instance : ToString Conditional_select_cls where toString a := toString (repr a)
 def Conditional_select_cls.toBitVec32 (x : Conditional_select_cls) : BitVec 32 :=
   x.sf ++ x.op ++ x.S ++ x._fixed ++ x.Rm ++ x.cond ++ x.op2 ++ x.Rn ++ x.Rd
 
+structure Data_processing_one_source_cls where
+  sf      : BitVec 1                 -- [31:31]
+  _fixed1 : BitVec 1 := 0b1#1        -- [30:30]
+  S       : BitVec 1                 -- [29:29]
+  _fixed2 : BitVec 8 := 0b11010110#8 -- [28:21]
+  opcode2 : BitVec 5                 -- [20:16]
+  opcode  : BitVec 6                 -- [15:10]
+  Rn      : BitVec 5                 --   [9:5]
+  Rd      : BitVec 5                 --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Data_processing_one_source_cls where toString a := toString (repr a)
+
+def Data_processing_one_source_cls.toBitVec32
+  (x : Data_processing_one_source_cls) : BitVec 32 :=
+  x.sf ++ x._fixed1 ++ x.S ++ x._fixed2 ++ x.opcode2 ++ x.opcode ++ x.Rn ++ x.Rd
+
+structure Data_processing_two_source_cls where
+  sf      : BitVec 1                 -- [31:31]
+  _fixed1 : BitVec 1 := 0b0#1        -- [30:30]
+  S       : BitVec 1                 -- [29:29]
+  _fixed2 : BitVec 8 := 0b11010110#8 -- [28:21]
+  Rm      : BitVec 5                 -- [20:16]
+  opcode  : BitVec 6                 -- [15:10]
+  Rn      : BitVec 5                 --   [9:5]
+  Rd      : BitVec 5                 --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Data_processing_two_source_cls where toString a := toString (repr a)
+
+def Data_processing_two_source_cls.toBitVec32
+  (x : Data_processing_two_source_cls) : BitVec 32 :=
+  x.sf ++ x._fixed1 ++ x.S ++ x._fixed2 ++ x.Rm ++ x.opcode ++ x.Rn ++ x.Rd
+
 structure Logical_shifted_reg_cls where
   sf     : BitVec 1                 -- [31:31]
   opc    : BitVec 2                 -- [30:29]
@@ -81,22 +115,6 @@ instance : ToString Logical_shifted_reg_cls where toString a := toString (repr a
 def Logical_shifted_reg_cls.toBitVec32 (x : Logical_shifted_reg_cls) : BitVec 32 :=
   x.sf ++ x.opc ++ x._fixed ++ x.shift ++ x.N ++ x.Rm ++ x.imm6 ++ x.Rn ++ x.Rd
 
-structure Data_processing_one_source_cls where
-  sf      : BitVec 1                 -- [31:31]
-  _fixed1 : BitVec 1 := 0b1#1        -- [30:30]
-  S       : BitVec 1                 -- [29:29]
-  _fixed2 : BitVec 8 := 0b11010110#8 -- [28:21]
-  opcode2 : BitVec 5                 -- [20:16]
-  opcode  : BitVec 6                 -- [15:10]
-  Rn      : BitVec 5                 --   [9:5]
-  Rd      : BitVec 5                 --   [4:0]
-deriving DecidableEq, Repr
-
-instance : ToString Data_processing_one_source_cls where toString a := toString (repr a)
-
-def Data_processing_one_source_cls.toBitVec32 (x : Data_processing_one_source_cls) : BitVec 32 :=
-  x.sf ++ x._fixed1 ++ x.S ++ x._fixed2 ++ x.opcode2 ++ x.opcode ++ x.Rn ++ x.Rd
-
 inductive DataProcRegInst where
   | Add_sub_carry :
     Add_sub_carry_cls → DataProcRegInst
@@ -106,6 +124,8 @@ inductive DataProcRegInst where
     Conditional_select_cls → DataProcRegInst
   | Data_processing_one_source:
     Data_processing_one_source_cls → DataProcRegInst
+  | Data_processing_two_source:
+    Data_processing_two_source_cls → DataProcRegInst
   | Logical_shifted_reg :
     Logical_shifted_reg_cls → DataProcRegInst
 deriving DecidableEq, Repr
