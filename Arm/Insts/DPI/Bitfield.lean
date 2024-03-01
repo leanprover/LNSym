@@ -40,18 +40,12 @@ def exec_bitfield (inst: Bitfield_cls) (s : ArmState) : ArmState :=
 ----------------------------------------------------------------------
 
 /-- Generate random instructions of the DPI.Bitfield class. -/
-partial def bitfield_rand_aux (sf : BitVec 1) (N : BitVec 1) (immr : BitVec 6) (imms : BitVec 6) :
-IO (Option (BitVec 32)) := do
-  if sf == 1 && N != 1 then
-    let N := 0b1#1
-    bitfield_rand_aux sf N immr imms
-  else if sf == 0 && (N != 0 || extractLsb 5 5 immr != 0 || extractLsb 5 5 imms != 0) then
-    let sf := ← BitVec.rand 1
-    let N := sf
-    let immr := sf ++ (← BitVec.rand 5)
-    let imms := sf ++ (← BitVec.rand 5)
-    bitfield_rand_aux sf N immr imms
-  else
+partial def Bitfield_cls.ubfm.rand : IO (Option (BitVec 32)) := do
+  -- Choose assignments based on sf that will not result in illegal instructions
+  let sf := ← BitVec.rand 1
+  let N := sf
+  let immr := sf ++ (← BitVec.rand 5)
+  let imms := sf ++ (← BitVec.rand 5)
   let (inst : Bitfield_cls) :=
     { sf    := sf,
       opc   := ← pure 0b10#2,
@@ -63,19 +57,23 @@ IO (Option (BitVec 32)) := do
       Rd    := ← BitVec.rand 5 }
   pure (some (inst.toBitVec32))
 
-partial def Bitfield_cls.ubfm.rand : IO (Option (BitVec 32)) := do
-  let sf := ← BitVec.rand 1
-  let N := ← BitVec.rand 1
-  let immr := ← BitVec.rand 6
-  let imms := ← BitVec.rand 6
-  bitfield_rand_aux sf N immr imms
-
 partial def Bitfield_cls.lsr.rand : IO (Option (BitVec 32)) := do
-  let N := ← BitVec.rand 1
-  let sf := N
-  let immr := ← BitVec.rand 6
-  let imms := N <<< 5 ++ 0b11111#5
-  bitfield_rand_aux sf N immr imms
+  -- Specifically test the assignment that results in LSR
+  let sf := ← BitVec.rand 1
+  let N := sf
+  let immr := sf ++ (← BitVec.rand 5)
+  let imms := sf ++ 0b11111#5
+  let (inst : Bitfield_cls) :=
+    { sf    := sf,
+      opc   := ← pure 0b10#2,
+      N     := N,
+      immr  := immr,
+      imms  := imms,
+       -- TODO: Do we need to limit Rn and Rd to be up to 30 as in Add_sub_imm?
+      Rn    := ← BitVec.rand 5,
+      Rd    := ← BitVec.rand 5 }
+  pure (some (inst.toBitVec32))
+
 
 def Bitfield_cls.rand : List (IO (Option (BitVec 32))) :=
   [ Bitfield_cls.lsr.rand,

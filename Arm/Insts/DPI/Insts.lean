@@ -12,6 +12,5 @@ import Arm.Insts.DPI.Bitfield
 DPI class. -/
 def DPI.rand : List (IO (Option (BitVec 32))) :=
   DPI.Add_sub_imm_cls.rand ++
-    DPI.Logical_imm_cls.rand ++
-    DPI.Bitfield_cls.rand
-  --  DPI.Bitfield_cls.lsr.rand ]
+  DPI.Logical_imm_cls.rand ++
+  DPI.Bitfield_cls.rand
