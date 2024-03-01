@@ -57,7 +57,16 @@ theorem sha512_program_test_1_sym (s0 s_final : ArmState)
   (h_s0_ok : read_err s0 = StateError.None)
   (h_run : s_final = run 4 s0) :
   read_err s_final = StateError.None := by
-  iterate 4 (sym1 [h_s0_program])
+  -- iterate 4 (sym1 [h_s0_program])
+  -- sym1 [h_s0_program]
+  (try simp_all (config := {decide := true, ground := true}) only [state_simp_rules]);
+  unfold run;
+  simp_all only [stepi, state_simp_rules];
+  (try rw [fetch_inst_from_program h_s0_program]);
+  -- (try simp (config := {ground := true}) only);
+  -- simp only [exec_inst, state_simp_rules];
+  -- (try simp_all (config := {decide := true, ground := true}) only [state_simp_rules])
+  sorry
   -- unfold read_pc at h_s0_pc
   -- sym_n 4 0x126538 sha512_program_test_1
   -- rw [h_run,h_s4_ok]
@@ -86,7 +95,8 @@ theorem sha512_program_test_2_sym (s0 s_final : ArmState)
   read_err s_final = StateError.None := by
   -- TODO: use sym_n. Using it causes an error at simp due to the
   -- large formula size.
-  iterate 4 (sym1 [h_s0_program])
+  -- iterate 4 (sym1 [h_s0_program])
+  sorry
 
 ----------------------------------------------------------------------
 

@@ -113,11 +113,14 @@ theorem pc_of_exec_advanced_simd_three_same
   -- (r StateField.PC s) + 4#64 -- TODO: How do I use + here?
   (BitVec.add (r StateField.PC s) 4#64) := by
   simp_all!
-  simp [exec_advanced_simd_three_same, exec_binary_vector, exec_logic_vector]
+  simp only [exec_advanced_simd_three_same, exec_binary_vector, 
+             Bool.and_eq_true, beq_iff_eq, binary_vector_op,
+             ofNat_eq_ofNat, zero_eq, exec_logic_vector, 
+             logic_vector_op]
   split
-  · split <;> simp
-  · simp
-  · simp
+  · split <;> state_simp
+  · state_simp
+  · state_simp
 
 ----------------------------------------------------------------------
 

@@ -115,8 +115,17 @@ def Map.size (m : Map α β) : Nat :=
 @[simp] theorem Map.size_erase_le [DecidableEq α] (m : Map α β) (a : α) : (m.erase a).size ≤ m.size := by
   induction m <;> simp [erase, size] at *
   split
-  next => omega
-  next => simp; omega
+  next => 
+    -- (FIXME) This could be discharged by omega in
+    -- leanprover/lean4:nightly-2024-02-24, but not in
+    -- leanprover/lean4:nightly-2024-03-01.
+    exact Nat.le_succ_of_le (by assumption)
+  next => 
+    simp; 
+    -- (FIXME) This could be discharged by omega in
+    -- leanprover/lean4:nightly-2024-02-24, but not in
+    -- leanprover/lean4:nightly-2024-03-01.  
+    exact Nat.succ_le_succ (by assumption)
 
 @[simp] theorem Map.size_erase_eq [DecidableEq α] (m : Map α β) (a : α) : m.contains a = false → (m.erase a).size = m.size := by
   induction m <;> simp [erase, size] at *
@@ -127,5 +136,13 @@ def Map.size (m : Map α β) : Nat :=
   induction m <;> simp [erase, size, contains, find?] at *
   next head tail ih =>
   split
-  next => have := Map.size_erase_le tail a; omega
-  next he => simp [he] at h; simp [h] at ih; simp; omega
+  next => have := Map.size_erase_le tail a; 
+          -- (FIXME) This could be discharged by omega in
+          -- leanprover/lean4:nightly-2024-02-24, but not in
+          -- leanprover/lean4:nightly-2024-03-01.
+          exact Nat.lt_succ_of_le this
+  next he => simp [he] at h; simp [h] at ih; simp; 
+          -- (FIXME) This could be discharged by omega in
+          -- leanprover/lean4:nightly-2024-02-24, but not in
+          -- leanprover/lean4:nightly-2024-03-01.
+             exact Nat.succ_lt_succ ih

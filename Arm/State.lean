@@ -6,6 +6,7 @@ Author(s): Shilpi Goel
 import Lean.Data.Format
 import Arm.BitVec
 import Arm.Map
+import Arm.Attr
 
 ------------------------------------------------------------------------------
 ------------------------------------------------------------------------------
@@ -82,6 +83,13 @@ inductive StateError where
   | Fault (e : String)         : StateError
   | Other (e : String)         : StateError
 deriving DecidableEq, Repr
+
+-- Injective Lemmas for StateError
+attribute [state_simp_rules] StateError.NotFound.injEq
+attribute [state_simp_rules] StateError.Unimplemented.injEq
+attribute [state_simp_rules] StateError.Illegal.injEq
+attribute [state_simp_rules] StateError.Fault.injEq
+attribute [state_simp_rules] StateError.Other.injEq
 
 -- PFlag (Process State's Flags)
 inductive PFlag where
@@ -209,6 +217,11 @@ inductive StateField where
   | ERR    : StateField
 deriving DecidableEq, Repr
 
+-- Injective Lemmas for StateField
+attribute [state_simp_rules] StateField.GPR.injEq
+attribute [state_simp_rules] StateField.SFP.injEq
+attribute [state_simp_rules] StateField.FLAG.injEq
+
 def state_value (fld : StateField) : Type :=
   open StateField in
   match fld with
@@ -238,7 +251,7 @@ def w (fld : StateField) (v : (state_value fld)) (s : ArmState) : ArmState :=
   | FLAG i => write_base_flag i v s
   | ERR    => write_base_error v s
 
-@[simp]
+@[state_simp_rules]
 theorem r_of_w_same (fld : StateField) (v : (state_value fld)) (s : ArmState) :
   r fld (w fld v s) = v := by
   unfold r w
@@ -249,7 +262,7 @@ theorem r_of_w_same (fld : StateField) (v : (state_value fld)) (s : ArmState) :
   unfold read_base_error write_base_error
   split <;> split <;> simp_all!
 
-@[simp]
+@[state_simp_rules]
 theorem r_of_w_different (fld1 fld2 : StateField) (v : (state_value fld2)) (s : ArmState)
   (h : fld1 ≠ fld2) :
   r fld1 (w fld2 v s) = r fld1 s := by
@@ -262,7 +275,7 @@ theorem r_of_w_different (fld1 fld2 : StateField) (v : (state_value fld2)) (s : 
   simp_all!
   split <;> split <;> simp_all!
 
-@[simp]
+@[state_simp_rules]
 theorem w_of_w_shadow (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmState) :
   w fld v2 (w fld v1 s) = w fld v2 s := by
   unfold w
@@ -273,7 +286,7 @@ theorem w_of_w_shadow (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmSta
   unfold write_base_error
   split <;> simp
 
-@[simp]
+@[state_simp_rules]
 theorem w_irrelevant (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmState) :
   w fld (r fld s) s = s := by
   unfold r w
@@ -284,7 +297,7 @@ theorem w_irrelevant (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmStat
   unfold read_base_error write_base_error
   split <;> simp
 
-@[simp]
+@[state_simp_rules]
 theorem fetch_inst_of_w (addr : BitVec 64) (fld : StateField) (val : (state_value fld)) (s : ArmState) :
   fetch_inst addr (w fld val s) = fetch_inst addr s := by
   unfold fetch_inst w
@@ -309,7 +322,7 @@ theorem w_program (sf : StateField) (v : state_value sf) (s : ArmState):
 -- The following functions are defined in terms of r and w, but may be
 -- simpler to use.
 
-@[simp]
+@[state_simp_rules]
 def read_gpr (width : Nat) (idx : BitVec 5) (s : ArmState)
   : BitVec width :=
     let val := r (StateField.GPR idx) s
@@ -317,7 +330,7 @@ def read_gpr (width : Nat) (idx : BitVec 5) (s : ArmState)
 
 -- Use read_gpr_zr when register 31 is mapped to the zero register ZR,
 -- instead of the default (Stack pointer).
-@[simp]
+@[state_simp_rules]
 def read_gpr_zr (width : Nat) (idx : BitVec 5) (s : ArmState)
   : BitVec width :=
   if idx ≠ 31#5 then
@@ -328,7 +341,7 @@ def read_gpr_zr (width : Nat) (idx : BitVec 5) (s : ArmState)
 -- In practice, we only ever access the low 32 bits or the full 64
 -- bits of these registers in Arm. When we write 32 bits to these
 -- registers, the upper 32 bits are zeroed out.
-@[simp]
+@[state_simp_rules]
 def write_gpr (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
   : ArmState :=
     let val := BitVec.zeroExtend 64 val
@@ -336,71 +349,71 @@ def write_gpr (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
 
 -- Use write_gpr_zr when register 31 is mapped to the zero register
 -- ZR, instead of the default (Stack pointer).
-@[simp]
+@[state_simp_rules]
 def write_gpr_zr (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState)
   : ArmState :=
   if idx ≠ 31#5 then
     write_gpr n idx val s
   else
     s
--- read_gpr and write_gpr are tagged with @[simp], which let us solve
+-- read_gpr and write_gpr are tagged with @[state_simp_rules], which let us solve
 -- the following using just simp, write_gpr, read_gpr, r_of_w_same
 -- (see simp?).
 example (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState) :
   read_gpr n idx (write_gpr n idx val s) =
   BitVec.zeroExtend n (BitVec.zeroExtend 64 val) := by
-  simp
+  state_simp
 
-@[simp]
+@[state_simp_rules]
 def read_sfp (width : Nat) (idx : BitVec 5) (s : ArmState) : BitVec width :=
   let val := r (StateField.SFP idx) s
   BitVec.zeroExtend width val
 
 -- Write `val` to the `idx`-th SFP, zeroing the upper bits, if
 -- applicable.
-@[simp]
+@[state_simp_rules]
 def write_sfp (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState) : ArmState :=
    let val := BitVec.zeroExtend 128 val
    w (StateField.SFP idx) val s
 
-@[simp]
+@[state_simp_rules]
 def read_pc (s : ArmState) : BitVec 64 :=
   r StateField.PC s
 
-@[simp]
+@[state_simp_rules]
 def write_pc (v : BitVec 64) (s : ArmState) : ArmState :=
   w StateField.PC v s
 
-@[simp]
+@[state_simp_rules]
 def read_flag (flag : PFlag) (s : ArmState) : BitVec 1 :=
   r (StateField.FLAG flag) s
 
-@[simp]
+@[state_simp_rules]
 def write_flag (flag : PFlag) (val : BitVec 1) (s : ArmState) : ArmState :=
   w (StateField.FLAG flag) val s
 
-@[simp]
+@[state_simp_rules]
 def read_pstate (s : ArmState) : PState :=
   fun p => read_flag p s
 
-@[simp]
+@[state_simp_rules]
 def write_pstate (pstate : PState) (s : ArmState) : ArmState :=
    { s with pstate := pstate }
 
 -- (FIXME) Define in terms of write_flag so that we see checkpoints in
 -- terms of the w function.
-@[simp]
+@[state_simp_rules]
 def make_pstate (n z c v : BitVec 1) : PState :=
   fun (p : PFlag) =>
     open PFlag in
     match p with
       | N => n | Z => z | C => c | V => v
 
-@[simp]
+@[state_simp_rules]
 def read_err (s : ArmState) : StateError :=
   r StateField.ERR s
 
-@[simp]
+@[state_simp_rules]
 def write_err (v : StateError) (s : ArmState) : ArmState :=
   w StateField.ERR v s
 
@@ -450,19 +463,21 @@ end Load_program_and_fetch_inst
 
 ----------------------------------------------------------------------
 
+-- Adding some basic simp lemmas to `state_simp_rules`:
+attribute [state_simp_rules] ne_eq
+attribute [state_simp_rules] not_false_eq_true
+
 example :
   read_flag flag (write_flag flag val s) = val := by
-  simp
+  state_simp
 
 example (h : flag1 ≠ flag2) :
   read_flag flag1 (write_flag flag2 val s) = read_flag flag1 s := by
-  simp [*] at *
+  state_simp_all
 
 example :
   read_gpr width idx (write_flag flag2 val s) = read_gpr width idx s := by
-  simp
-
--- #help tactic simp
+  state_simp
 
 end State
 

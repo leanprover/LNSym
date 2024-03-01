@@ -82,7 +82,7 @@ theorem append_byte_of_extract_rest_same_cast (n : Nat) (v : BitVec ((n + 1) * 8
   · omega
   done
 
-@[simp]
+@[state_simp_rules]
 theorem read_mem_bytes_of_write_mem_bytes_same (hn1 : n <= 2^64) :
   read_mem_bytes n addr (write_mem_bytes n addr v s) = v := by
   by_cases hn0 : n = 0
@@ -127,7 +127,7 @@ theorem read_mem_bytes_of_write_mem_bytes_same (hn1 : n <= 2^64) :
 ----------------------------------------------------------------------
 -- Key theorem: read_mem_bytes_of_write_mem_bytes_different
 
-@[simp]
+@[state_simp_rules]
 theorem read_mem_bytes_of_write_mem_bytes_different
   (hn1 : n1 <= 2^64) (hn2 : n2 <= 2^64)
   (h : mem_separate addr1 (addr1 + (n1 - 1)#64) addr2 (addr2 + (n2 - 1)#64)) :
@@ -208,7 +208,7 @@ theorem write_mem_of_write_mem_bytes_commute
       · omega
   done
 
-@[simp]
+@[state_simp_rules]
 theorem write_mem_bytes_of_write_mem_bytes_commute
   (h1 : n1 <= 2^64) (h2 : n2 <= 2^64)
   (h3 : mem_separate addr2 (addr2 + (n2 - 1)#64) addr1 (addr1 + (n1 - 1)#64)) :
@@ -247,7 +247,7 @@ theorem write_mem_bytes_of_write_mem_bytes_commute
 -- Key theorems: write_mem_bytes_of_write_mem_bytes_shadow_same_region
 -- and write_mem_bytes_of_write_mem_bytes_shadow_general
 
-@[simp]
+@[state_simp_rules]
 theorem write_mem_bytes_of_write_mem_bytes_shadow_same_region
   (h : n <= 2^64) :
   write_mem_bytes n addr val2 (write_mem_bytes n addr val1 s) =
@@ -473,7 +473,7 @@ private theorem write_mem_bytes_of_write_mem_bytes_shadow_general_n2_eq
           · omega
         · exact h₁
 
-@[simp]
+@[state_simp_rules]
 theorem write_mem_bytes_of_write_mem_bytes_shadow_general
   (h1u : n1 <= 2^64) (h2l : 0 < n2) (h2u : n2 <= 2^64)
   (h3 : mem_subset addr1 (addr1 + (n1 - 1)#64) addr2 (addr2 + (n2 - 1)#64)) :
@@ -803,7 +803,7 @@ private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_lt
     (extractLsb ((((addr2 - addr1).toNat + n2) * 8) - 1) ((addr2 - addr1).toNat * 8) val) := by
   induction n2, h2 using Nat.le_induction generalizing addr1 addr2 val s
   case base =>
-    simp only [Nat.reduceSucc, Nat.succ_sub_succ_eq_sub, 
+    simp only [Nat.reduceSucc, Nat.succ_sub_succ_eq_sub,
                Nat.sub_self, BitVec.add_zero] at h4
     simp_all only [read_mem_bytes, BitVec.cast_eq]
     have h' : (BitVec.toNat (addr2 - addr1) + 1) * 8 - 1 - BitVec.toNat (addr2 - addr1) * 8 + 1 = 8 := by
@@ -832,7 +832,7 @@ private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_lt
         · have l0 := @mem_subset_trans (addr2 + 1#64) (addr2 + n#64) addr2 (addr2 + n#64)
                    addr1 (addr1 + (n1 - 1)#64)
           simp only [h4] at l0
-          rw [first_addresses_add_one_is_subset_of_region_general 
+          rw [first_addresses_add_one_is_subset_of_region_general
               (by omega) (by omega) (by omega)] at l0
           · simp_all only [Nat.succ_sub_succ_eq_sub, Nat.sub_zero, forall_const]
           · simp only [mem_subset_refl]
@@ -939,7 +939,7 @@ private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_eq_alt
       simp [my_pow_2_gt_zero]
     · unfold my_pow; decide
 
-@[simp]
+@[state_simp_rules]
 theorem read_mem_bytes_of_write_mem_bytes_subset
   (h0 : 0 < n1) (h1 : n1 <= 2^64) (h2 : 0 < n2) (h3 : n2 <= 2^64)
   (h4 : mem_subset addr2 (addr2 + (n2 - 1)#64) addr1 (addr1 + (n1 - 1)#64))
@@ -1009,7 +1009,7 @@ private theorem extract_byte_of_read_mem_bytes_succ (n : Nat) :
   rw [l0, Nat.mod_eq_of_lt y.isLt]
   done
 
-@[simp]
+@[state_simp_rules]
 theorem write_mem_bytes_irrelevant :
   write_mem_bytes n addr (read_mem_bytes n addr s) s = s := by
   induction n generalizing addr s
@@ -1027,6 +1027,17 @@ theorem write_mem_bytes_irrelevant :
     rw [write_mem_bytes_irrelevant_helper]
     exact n_ih'
     done
+
+-- set_option pp.deepTerms false in
+-- set_option pp.deepTerms.threshold 1000 in
+-- theorem write_mem_bytes_irrelevant :
+--   write_mem_bytes n addr (read_mem_bytes n addr s) s = s := by
+--   induction n generalizing addr s
+--   case zero => simp only [write_mem_bytes]
+--   case succ =>
+--     rename_i n n_ih
+--     simp only [read_mem_bytes, write_mem_bytes]
+--     sorry
 
 ----------------------------------------------------------------------
 

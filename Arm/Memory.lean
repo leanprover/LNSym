@@ -54,13 +54,13 @@ theorem r_of_write_mem : r fld (write_mem addr val s) = r fld s := by
   unfold write_mem
   split <;> simp
 
-@[simp]
+@[state_simp_rules]
 theorem r_of_write_mem_bytes :
   r fld (write_mem_bytes n addr val s) = r fld s := by
   induction n generalizing addr s
   case succ =>
     rename_i n n_ih
-    unfold write_mem_bytes; simp
+    unfold write_mem_bytes; simp only
     rw [n_ih, r_of_write_mem]
   case zero => rfl
   done
@@ -70,14 +70,14 @@ theorem fetch_inst_of_write_mem :
   unfold fetch_inst write_mem
   simp
 
-@[simp]
+@[state_simp_rules]
 theorem fetch_inst_of_write_mem_bytes :
   fetch_inst addr1 (write_mem_bytes n addr2 val s) = fetch_inst addr1 s := by
   induction n generalizing addr2 s
   case zero => rfl
   case succ =>
     rename_i n n_ih
-    unfold write_mem_bytes; simp
+    unfold write_mem_bytes; simp only
     rw [n_ih, fetch_inst_of_write_mem]
   done
 
@@ -88,26 +88,27 @@ theorem read_mem_of_w :
   unfold write_base_pc write_base_flag write_base_error
   split <;> simp
 
-@[simp]
+@[state_simp_rules]
 theorem read_mem_bytes_of_w :
   read_mem_bytes n addr (w fld v s) = read_mem_bytes n addr s := by
   induction n generalizing addr s
   case zero => rfl
   case succ =>
     rename_i n n_ih
-    unfold read_mem_bytes; simp [read_mem_of_w]
+    unfold read_mem_bytes; simp only [read_mem_of_w]
     rw [n_ih]
   done
 
+@[state_simp_rules]
 theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n * 8)):
     (write_mem_bytes n addr bytes s).program = s.program := by
   intros
   induction n generalizing addr s
   · simp [write_mem_bytes]
   · rename_i n h_n
-    simp [write_mem_bytes]
+    simp only [write_mem_bytes]
     rw [h_n]
-    simp [write_mem]
+    simp only [write_mem]
 
 ---- Memory RoW/WoW lemmas ----
 

@@ -16,18 +16,18 @@ syntax "sym1" "[" term "]" : tactic
 macro_rules
   | `(tactic| sym1 [$h_program:term]) =>
     `(tactic|
-      (try simp_all (config := {decide := true, ground := true}));
+      (try simp_all (config := {decide := true, ground := true}) only [state_simp_rules]);
       unfold run;
-      simp_all [stepi];
+      simp_all only [stepi, state_simp_rules];
       (try rw [fetch_inst_from_program $h_program]);
       (try simp (config := {decide := true, ground := true}) only);
       -- After exec_inst is opened up, the exec functions of the
       -- instructions which are tagged with simp will also open up
       -- here.
-      simp [exec_inst];
+      simp only [exec_inst, state_simp_rules];
       -- (try simp_all (config := {decide := true, ground := true}) only);
       -- (try simp only [ne_eq, r_of_w_different, r_of_w_same, w_of_w_shadow, w_irrelevant])
-      (try simp_all (config := {decide := true, ground := true})))
+      (try simp_all (config := {decide := true, ground := true}) only [state_simp_rules]))
 
 theorem run_onestep (s s': ArmState) (n : Nat) (h_nonneg : 0 < n):
   (s' = run n s) ↔ ∃ s'', s'' = stepi s ∧ s' = run (n-1) s'' := by
