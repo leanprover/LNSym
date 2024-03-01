@@ -11,7 +11,7 @@ import Arm.Insts.Common
 
 namespace DPI
 
-open Std.BitVec
+open BitVec
 
 @[simp]
 def exec_bitfield (inst: Bitfield_cls) (s : ArmState) : ArmState :=
@@ -52,11 +52,18 @@ partial def Bitfield_cls.ubfm.rand : IO (Option (BitVec 32)) := do
       N     := N,
       immr  := immr,
       imms  := imms,
-       -- TODO: Do we need to limit Rn and Rd to be up to 30 as in Add_sub_imm?
+       -- TODO: Do we need to limit Rn and Rd to be up to 30 as in
+       -- Add_sub_imm?
       Rn    := ← BitVec.rand 5,
       Rd    := ← BitVec.rand 5 }
   pure (some (inst.toBitVec32))
 
+-- (FIXME) We have a separate function to test LSR specifically
+-- because we want to make sure it is hit during conformance testing,
+-- which may not be the case when `Bitfield_cls.ubfm.rand` is used to
+-- generate a small number of test cases.  Once we have conformance
+-- testing running in CI, the volume of tests we'd be running will
+-- eliminate the need to have alias-specific instruction generators.
 partial def Bitfield_cls.lsr.rand : IO (Option (BitVec 32)) := do
   -- Specifically test the assignment that results in LSR
   let sf := ← BitVec.rand 1
@@ -69,7 +76,8 @@ partial def Bitfield_cls.lsr.rand : IO (Option (BitVec 32)) := do
       N     := N,
       immr  := immr,
       imms  := imms,
-       -- TODO: Do we need to limit Rn and Rd to be up to 30 as in Add_sub_imm?
+       -- TODO: Do we need to limit Rn and Rd to be up to 30 as in
+       -- Add_sub_imm?
       Rn    := ← BitVec.rand 5,
       Rd    := ← BitVec.rand 5 }
   pure (some (inst.toBitVec32))
@@ -78,6 +86,7 @@ partial def Bitfield_cls.lsr.rand : IO (Option (BitVec 32)) := do
 def Bitfield_cls.rand : List (IO (Option (BitVec 32))) :=
   [ Bitfield_cls.lsr.rand,
     Bitfield_cls.ubfm.rand ]
+
 ----------------------------------------------------------------------
 
 end DPI

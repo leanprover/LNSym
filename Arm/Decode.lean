@@ -76,6 +76,8 @@ def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=
     DPR (Add_sub_shifted_reg {sf, op, S, shift, Rm, imm6, Rn, Rd})
   | [sf:1, op:1, S:1, 11010100, Rm:5, cond:4, op2:2, Rn:5, Rd:5] =>
     DPR (Conditional_select {sf, op, S, Rm, cond, op2, Rn, Rd})
+  | [sf:1, 1, S:1, 11010110, opcode2:5, opcode:6, Rn:5, Rd:5] =>
+    DPR (Data_processing_one_source {sf, S, opcode2, opcode, Rn, Rd})
   | [sf:1, opc:2, 01010, shift:2, N:1, Rm:5, imm6:6, Rn:5, Rd:5] =>
     DPR (Logical_shifted_reg {sf, opc, shift, N, Rm, imm6, Rn, Rd})
   | _ => none
@@ -459,6 +461,20 @@ example : decode_raw_inst 0x9eaf00b9 =
               Rn := 0x05#5,
               Rd := 0x19#5 })) := by
             rfl
+
+-- rev x0, x25
+example : decode_raw_inst 0xdac00f20 =
+          (ArmInst.DPR
+            (DataProcRegInst.Data_processing_one_source
+            { sf := 0x1#1,
+              _fixed1 := 0x1#1,
+              S := 0x0#1,
+              _fixed2 := 0xd6#8,
+              opcode2 := 0x00#5,
+              opcode := 0x03#6,
+              Rn := 0x19#5,
+              Rd := 0x00#5 })) := by
+          rfl
 
 -- Unimplemented
 example : decode_raw_inst 0x00000000#32 = none := by rfl
