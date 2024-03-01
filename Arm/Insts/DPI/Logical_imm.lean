@@ -61,7 +61,7 @@ def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
 ----------------------------------------------------------------------
 
 /-- Generate random instructions of the DPI.Logical_imm class. -/
-partial def Logical_imm_cls.dpi.rand : IO (Option (BitVec 32)) := do
+partial def Logical_imm_cls.inst.rand : IO (Option (BitVec 32)) := do
   let opc := ← BitVec.rand 2
   let op  := decode_op opc
   -- (FIXME) We want to avoid use of SP (i.e., register index
@@ -79,11 +79,11 @@ partial def Logical_imm_cls.dpi.rand : IO (Option (BitVec 32)) := do
     }
   let datasize := 32 <<< inst.sf.toNat
   if inst.sf = 0#1 ∧ inst.N = 1#1 ∨ invalid_bit_masks inst.N inst.imms true datasize then
-    Logical_imm_cls.dpi.rand
+    Logical_imm_cls.inst.rand
   else
     pure (some (inst.toBitVec32))
 
 def Logical_imm_cls.rand : List (IO (Option (BitVec 32))) :=
-  [ Logical_imm_cls.dpi.rand ]
+  [ Logical_imm_cls.inst.rand ]
 
 end DPI

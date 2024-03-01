@@ -16,7 +16,7 @@ open Std.BitVec
 @[simp]
 def exec_bitfield (inst: Bitfield_cls) (s : ArmState) : ArmState :=
   if inst.opc != 0b10#2 then
-    write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
+    write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
   else
     let immr5 := inst.immr >>> 5
     let imms5 := inst.imms >>> 5
