@@ -12,30 +12,6 @@ section SHA512_proof
 
 open BitVec
 
-/-
-The `sym1` tactic, defined in ../Tactics/Sym.lean, attempts to
-symbolically simulate a single instruction -- it is pretty
-straightforward right now and we expect it to radically change in the
-near future.
-
-It unfolds the `run` function once, then
-unfolds the `stepi` function, reduces
-`fetch_inst <address> <state>`
-to a term like:
-`Std.RBMap.find?  <program> <address>`
-where `<program>` and `<address>` are expected to be concrete.
-We hope that `simp` is able to "evaluate" such ground terms during
-proof so that the above gives us instruction <i> located at
-`<address>` in `<program>`. Moreover, we also hope that `simp`
-evaluates `decode_raw_inst <i>` to produce a concrete
-`<decoded_inst>` and return an `exec_inst <decoded_inst> <state>`
-term.
-
-`sym1` then applies some lemmas in its simpset, and finally we
-capture the behavior of the instruction in terms of writes made to
-the machine state (denoted by function `w`).
--/
-
 ----------------------------------------------------------------------
 
 -- Test 1: We have a 4 instruction program, and we attempt to simulate
@@ -50,6 +26,7 @@ def sha512_program_test_1 : program :=
      ]
 
 -- set_option profiler true in
+-- set_option pp.deepTerms true in
 theorem sha512_program_test_1_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x126538#64)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
@@ -57,19 +34,15 @@ theorem sha512_program_test_1_sym (s0 s_final : ArmState)
   (h_s0_ok : read_err s0 = StateError.None)
   (h_run : s_final = run 4 s0) :
   read_err s_final = StateError.None := by
-  -- iterate 4 (sym1 [h_s0_program])
-  -- sym1 [h_s0_program]
-  (try simp_all (config := {decide := true, ground := true}) only [state_simp_rules]);
-  unfold run;
-  simp_all only [stepi, state_simp_rules];
-  (try rw [fetch_inst_from_program h_s0_program]);
-  -- (try simp (config := {ground := true}) only);
-  -- simp only [exec_inst, state_simp_rules];
-  -- (try simp_all (config := {decide := true, ground := true}) only [state_simp_rules])
-  sorry
-  -- unfold read_pc at h_s0_pc
-  -- sym_n 4 0x126538 sha512_program_test_1
-  -- rw [h_run,h_s4_ok]
+  -- Prelude
+  simp_all only [state_simp_rules, -h_run]
+  -- Symbolic simulation
+  sym_n 4 h_s0_program
+  -- Final steps
+  unfold run at h_run
+  subst s_final s_4
+  simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
+  done
 
 ----------------------------------------------------------------------
 
@@ -93,10 +66,15 @@ theorem sha512_program_test_2_sym (s0 s_final : ArmState)
   (h_s0_ok : read_err s0 = StateError.None)
   (h_run : s_final = run 4 s0) :
   read_err s_final = StateError.None := by
-  -- TODO: use sym_n. Using it causes an error at simp due to the
-  -- large formula size.
-  -- iterate 4 (sym1 [h_s0_program])
-  sorry
+  -- Prelude
+  simp_all only [state_simp_rules, -h_run]
+  -- Symbolic simulation
+  sym_n 4 h_s0_program
+  -- Final steps
+  unfold run at h_run
+  subst s_final s_4
+  simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
+  done
 
 ----------------------------------------------------------------------
 
@@ -118,44 +96,11 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   (h_s0_program : s0.program = sha512_program_test_3.find?)
   (h_run : s_final = run 4 s0) :
   read_err s_final = StateError.None := by
-  -- unfold read_pc at h_s0_pc
-  -- sym_n 4 0x1264c0 sha512_program_test_3
-  -- rw [h_run,h_s4_ok]
+  -- Prelude
+  simp_all only [state_simp_rules, -h_run]
+  -- Symbolic simulation
+  -- sym_n 1 h_s0_program
   sorry
-
--- A record that shows simp fails.
-theorem sha512_block_armv8_test_3_sym_fail (s : ArmState)
-  (h_s_ok : read_err s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s = true)
-  (h_pc : read_pc s = 0x1264c0#64)
-  (h_program : s.program = sha512_program_test_3.find?)
-  (h_s' : s' = run 4 s) :
-  read_err s' = StateError.None := by
-  FIXME
-  -- Symbolically simulate one instruction.
-  (sym1 [h_program])
-  --
-  -- (FIXME) At this point, I get an `if` term as the second argument
-  -- of `run`. The if's condition consists of ground terms, and I
-  -- hoped the `if` would be "evaluated away" to the true branch.
-  -- However, the simp/ground below fails with a nested error:
-  -- "maximum recursion depth has been reached".
-  --
-  -- (Aside: I also wish simp/ground didn't leave such a verbose
-  -- output. Anything I can do to fix it?)
-  --
-  -- simp (config := {ground := true}) only
-  --
-  -- (WOKRAROUND) I manually do a split here.
-  split
-  · rename_i h; simp (config := {ground := true}) at h
-  · unfold run
-    simp [stepi, *]
-    rw [fetch_inst_from_program h_program]
-    -- (FIXME) Here I run into a similar situation, where we are
-    -- matching on Std.RBMap.find? with ground terms and simp/ground
-    -- fails.
-    sorry
 
 ----------------------------------------------------------------------
 
@@ -171,10 +116,10 @@ theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
   (h_s0_program : s0.program = sha512_program_map.find?)
   (h_run : s_final = run 32 s0) :
   read_err s_final = StateError.None := by
-
-  unfold read_pc at h_s0_pc
-  -- sym_n 32 0x1264c0
-  -- ^^ This raises the max recursion depth limit error because the program is too large. :/
+  -- Prelude
+  simp_all only [state_simp_rules, -h_run]
+  -- Symbolic simulation
+  -- sym_n 1 h_s0_program
   sorry
 
 end SHA512_proof

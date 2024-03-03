@@ -37,7 +37,7 @@ def exec_logical_imm_op (op : LogicalImmType) (op1 : BitVec n) (op2 : BitVec n)
     let result := op1 &&& op2
     (op1 &&& op2, some (update_logical_imm_pstate result))
 
-@[simp]
+@[state_simp_rules]
 def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
   if inst.sf = 0#1 ∧ inst.N ≠ 0 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s

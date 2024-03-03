@@ -28,7 +28,7 @@ deriving DecidableEq, Repr
 
 instance : ToString Reg_imm_cls where toString a := toString (repr a)
 
-@[simp]
+@[state_simp_rules]
 def reg_imm_operation (inst_str : String) (op : BitVec 1)
   (wback : Bool) (postindex : Bool) (SIMD? : Bool)
   (datasize : Nat) (regsize : Option Nat) (Rn : BitVec 5)
@@ -59,12 +59,12 @@ def reg_imm_operation (inst_str : String) (op : BitVec 1)
     else
       s
 
-@[simp]
+@[state_simp_rules]
 def reg_imm_constrain_unpredictable (wback : Bool) (SIMD? : Bool) (Rn : BitVec 5)
   (Rt : BitVec 5) : Bool :=
   if SIMD? then false else wback && Rn == Rt && Rn != 31#5
 
-@[simp]
+@[state_simp_rules]
 def supported_reg_imm (size : BitVec 2) (opc : BitVec 2) (SIMD? : Bool) : Bool :=
   match size, opc, SIMD? with
   | 0b00#2, 0b00#2, false => true -- STRB, 32-bit, GPR
@@ -79,7 +79,7 @@ def supported_reg_imm (size : BitVec 2) (opc : BitVec 2) (SIMD? : Bool) : Bool :
   | 0b00#2, 0b11#2, true => true -- LDR, 128-bit, SIMD&FP
   | _, _, _ => false -- other instructions that are not supported or illegal
 
-@[simp]
+@[state_simp_rules]
 def exec_reg_imm_common
   (inst : Reg_imm_cls) (inst_str : String) (s : ArmState) : ArmState :=
   let scale :=
@@ -112,7 +112,7 @@ def exec_reg_imm_common
     let s' := write_pc ((read_pc s) + 4#64) s'
     s'
 
-@[simp]
+@[state_simp_rules]
 def exec_reg_imm_unsigned_offset
   (inst : Reg_unsigned_imm_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_imm_cls) :=
@@ -126,7 +126,7 @@ def exec_reg_imm_unsigned_offset
       imm       := Sum.inl inst.imm12 }
   exec_reg_imm_common extracted_inst s!"{inst}" s
 
-@[simp]
+@[state_simp_rules]
 def exec_reg_imm_post_indexed
   (inst : Reg_imm_post_indexed_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_imm_cls) :=

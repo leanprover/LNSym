@@ -134,9 +134,6 @@ def invalid_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immediate : Bool)
         let esize := 1 <<< len
         if esize * (M / esize) ≠ M then true else false
 
-theorem option_get_bang_of_some [Inhabited α] (v : α) :
-  Option.get! (some v) = v := by rfl
-
 theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec 6)
   (immediate : Bool) (M : Nat):
   ¬ invalid_bit_masks immN imms immediate M →
@@ -196,7 +193,7 @@ instance : ToString SIMDThreeSameLogicalType where toString a := toString (repr 
 
 ----------------------------------------------------------------------
 
-@[simp]
+@[state_simp_rules]
 def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState) (H : width > 0)
   : BitVec width :=
   -- assert n >= 0 && n <= 31;
@@ -211,7 +208,7 @@ def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState) (H : width > 0)
     h2 ▸ extractLsb (width*2-1) width $ read_sfp 128 n s
 
 
-@[simp]
+@[state_simp_rules]
 def Vpart_write (n : BitVec 5) (part width : Nat) (val : BitVec width) (s : ArmState)
   : ArmState :=
   -- assert n >= 0 && n <= 31;
@@ -226,12 +223,12 @@ def Vpart_write (n : BitVec 5) (part width : Nat) (val : BitVec width) (s : ArmS
 
 ----------------------------------------------------------------------
 
-@[simp]
+@[state_simp_rules]
 def ldst_read (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (s : ArmState)
   : BitVec width :=
   if SIMD? then read_sfp width idx s else read_gpr width idx s
 
-@[simp]
+@[state_simp_rules]
 def ldst_write (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
   : ArmState :=
   if SIMD? then write_sfp width idx val s else write_gpr width idx val s

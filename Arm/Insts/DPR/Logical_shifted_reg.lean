@@ -47,7 +47,7 @@ def exec_logical_shifted_reg_op (op : LogicalShiftedRegType) (opd1 : BitVec n) (
     let result := opd1 &&& ~~~opd2
     (result, some (logical_shifted_reg_update_pstate result))
 
-@[simp]
+@[state_simp_rules]
 def exec_logical_shifted_reg (inst : Logical_shifted_reg_cls) (s : ArmState) : ArmState :=
   if inst.sf = 0#1 ∧ inst.imm6 &&& 32 ≠ 0 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s

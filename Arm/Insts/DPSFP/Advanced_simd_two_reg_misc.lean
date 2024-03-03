@@ -74,7 +74,7 @@ theorem container_size_dvd_datasize (x : BitVec 2) (q : BitVec 1) :
     repeat trivial
     done
 
-@[simp]
+@[state_simp_rules]
 def exec_advanced_simd_two_reg_misc
   (inst : Advanced_simd_two_reg_misc_cls) (s : ArmState) : ArmState :=
   open BitVec in

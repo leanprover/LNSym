@@ -15,7 +15,7 @@ namespace DPSFP
 
 open BitVec
 
-@[simp]
+@[state_simp_rules]
 def fmov_general_aux (intsize : Nat) (fltsize : Nat) (op : FPConvOp)
   (part : Nat) (inst : Conversion_between_FP_and_Int_cls) (s : ArmState)
   (H : 0 < fltsize)
@@ -39,7 +39,7 @@ def fmov_general_aux (intsize : Nat) (fltsize : Nat) (op : FPConvOp)
     s
   | _ => write_err (StateError.Other s!"fmov_general_aux called with non-FMOV op!") s
 
-@[simp]
+@[state_simp_rules]
 def exec_fmov_general
   (inst : Conversion_between_FP_and_Int_cls) (s : ArmState): ArmState :=
   let intsize := 32 <<< inst.sf.toNat
@@ -71,7 +71,7 @@ def exec_fmov_general
       fmov_general_aux intsize decode_fltsize op part inst s H
     | _ => write_err (StateError.Other s!"exec_fmov_general called with non-FMOV instructions!") s
 
-@[simp]
+@[state_simp_rules]
 def exec_conversion_between_FP_and_Int
   (inst : Conversion_between_FP_and_Int_cls) (s : ArmState) : ArmState :=
   if inst.ftype == 0b10#2 && (extractLsb 2 1 inst.opcode) ++ inst.rmode != 0b1101#4 then

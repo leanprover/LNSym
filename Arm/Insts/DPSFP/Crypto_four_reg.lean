@@ -16,7 +16,7 @@ namespace DPSFP
 
 open BitVec
 
-@[simp]
+@[state_simp_rules]
 def exec_crypto_four_reg (inst : Crypto_four_reg_cls) (s : ArmState) : ArmState :=
   -- This function assumes IsFeatureImplemented(FEAT_SHA3) is true
   -- and that AArch64.CheckFPAdvSIMDEnabled() returns successfully

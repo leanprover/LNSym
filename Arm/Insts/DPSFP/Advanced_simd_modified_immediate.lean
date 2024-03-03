@@ -87,7 +87,7 @@ private theorem mul_div_norm_form_lemma  (n m : Nat) (_h1 : 0 < m) (h2 : n ∣ m
   rw [Nat.mul_div_assoc]
   simp only [h2]
 
-@[simp]
+@[state_simp_rules]
 -- Assumes CheckFPAdvSIMDEnabled64();
 def exec_advanced_simd_modified_immediate
   (inst : Advanced_simd_modified_immediate_cls) (s : ArmState) : ArmState :=

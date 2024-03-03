@@ -134,7 +134,7 @@ def exec_smov_umov (inst : Advanced_simd_copy_cls) (s : ArmState) (signed : Bool
     let s := write_gpr datasize inst.Rd result s
     s
 
-@[simp]
+@[state_simp_rules]
 def exec_advanced_simd_copy
   (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :=
   match_bv inst.Q ++ inst.op ++ inst.imm5 ++ inst.imm4 with

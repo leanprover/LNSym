@@ -8,9 +8,19 @@ Author(s): Shilpi Goel
 
 ----------------------------------------------------------------------
 
+import Arm.Attr
+
 namespace BitVec
 
 open BitVec
+
+-- Adding some useful simp lemmas to `bitvec_rules`:
+attribute [bitvec_rules] BitVec.ofFin_eq_ofNat
+attribute [minimal_theory] BitVec.extractLsb_ofFin
+attribute [minimal_theory] zeroExtend_eq 
+attribute [minimal_theory] add_ofFin
+attribute [minimal_theory] ofFin.injEq 
+attribute [minimal_theory] Fin.mk.injEq
 
 ----------------------------------------------------------------------
 -- Some BitVec definitions

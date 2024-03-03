@@ -7,6 +7,7 @@ import Lean.Data.Format
 import Arm.BitVec
 import Arm.Map
 import Arm.Attr
+import Arm.MinTheory
 
 ------------------------------------------------------------------------------
 ------------------------------------------------------------------------------
@@ -309,6 +310,7 @@ theorem fetch_inst_of_w (addr : BitVec 64) (fld : StateField) (val : (state_valu
   split <;> simp_all!
 
 -- There is no StateField that overwrites the program.
+@[state_simp_rules]
 theorem w_program (sf : StateField) (v : state_value sf) (s : ArmState):
     (w sf v s).program = s.program := by
   intros
@@ -362,7 +364,7 @@ def write_gpr_zr (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState)
 example (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState) :
   read_gpr n idx (write_gpr n idx val s) =
   BitVec.zeroExtend n (BitVec.zeroExtend 64 val) := by
-  state_simp
+  simp [state_simp_rules, minimal_theory]
 
 @[state_simp_rules]
 def read_sfp (width : Nat) (idx : BitVec 5) (s : ArmState) : BitVec width :=
@@ -463,21 +465,17 @@ end Load_program_and_fetch_inst
 
 ----------------------------------------------------------------------
 
--- Adding some basic simp lemmas to `state_simp_rules`:
-attribute [state_simp_rules] ne_eq
-attribute [state_simp_rules] not_false_eq_true
-
 example :
   read_flag flag (write_flag flag val s) = val := by
-  state_simp
+  simp only [state_simp_rules, minimal_theory] 
 
 example (h : flag1 ≠ flag2) :
   read_flag flag1 (write_flag flag2 val s) = read_flag flag1 s := by
-  state_simp_all
+  simp_all only [state_simp_rules, minimal_theory]
 
 example :
   read_gpr width idx (write_flag flag2 val s) = read_gpr width idx s := by
-  state_simp
+  simp only [state_simp_rules, minimal_theory]
 
 end State
 

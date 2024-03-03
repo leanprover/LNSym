@@ -112,7 +112,6 @@ def run (n : Nat) (s : ArmState) : ArmState :=
     let s' := stepi s
     run n' s'
 
-@[simp]
 theorem run_opener_zero (s : ArmState) :
   run 0 s = s := by
   rfl
@@ -128,7 +127,7 @@ theorem run_opener_general
 theorem run_plus (n1 : Nat) (n2 : Nat) (s : ArmState) :
   run (n1 + n2) s = run n2 (run n1 s) := by
   induction n1 generalizing s with
-  | zero => simp
+  | zero => simp only [run_opener_zero, minimal_theory]
   | succ n n_ih =>
     simp [run_opener_general]
     conv =>
@@ -140,3 +139,11 @@ theorem run_plus (n1 : Nat) (n2 : Nat) (s : ArmState) :
       unfold run
     simp
     exact n_ih (stepi s)
+
+
+theorem run_onestep (s s': ArmState) (n : Nat) (h_nonneg : 0 < n):
+  (s' = run n s) ↔ ∃ s'', s'' = stepi s ∧ s' = run (n-1) s'' := by
+  cases n
+  · cases h_nonneg
+  · rename_i n
+    simp [run]

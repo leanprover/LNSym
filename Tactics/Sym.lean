@@ -6,7 +6,7 @@ Author(s): Shilpi Goel
 import Arm.Exec
 import Arm.MemoryProofs
 
-import Lean.Elab 
+import Lean.Elab
 import Lean.Expr
 
 open BitVec
@@ -29,17 +29,6 @@ macro_rules
       -- (try simp only [ne_eq, r_of_w_different, r_of_w_same, w_of_w_shadow, w_irrelevant])
       (try simp_all (config := {decide := true, ground := true}) only [state_simp_rules]))
 
-theorem run_onestep (s s': ArmState) (n : Nat) (h_nonneg : 0 < n):
-  (s' = run n s) ↔ ∃ s'', s'' = stepi s ∧ s' = run (n-1) s'' := by
-  cases n
-  · cases h_nonneg
-  · rename_i n
-    simp [run]
-
--- TODO: replace this with an upcoming new lemma in Std
-theorem BitVec.foldCtor : { toFin := { val := a, isLt := h } : BitVec n } = BitVec.ofNat n a := by
-  simp [BitVec.ofNat, Fin.ofNat', h, Nat.mod_eq_of_lt]
-
 -- init_next_step breaks 'h_s: s_next = run n s' into 'run (n-1) s' and one step.
 macro "init_next_step" h_s:ident : tactic =>
   `(tactic|
@@ -48,37 +37,54 @@ macro "init_next_step" h_s:ident : tactic =>
      rename_i h_temp
      cases h_temp
      rename_i h_s'
-     simp at h_s'))
+     simp (config := {ground := true}) only at h_s'))
 
 -- Given 'h_step: s_next = stepi s', fetch_and_decode_inst unfolds stepi,
 -- simplifies fetch_inst and decode_raw_inst.
-macro "fetch_and_decode_inst" h_step:ident h_s_ok:ident h_pc:ident h_program:ident : tactic =>
+macro "fetch_and_decode_inst" h_step:ident h_program:ident : tactic =>
   `(tactic|
-    (unfold stepi at $h_step:ident
-     rw [$h_s_ok:ident] at $h_step:ident
-     dsimp at $h_step:ident -- reduce let and match
-     rw [$h_pc:ident] at $h_step:ident
-     rw [fetch_inst_from_program $h_program:ident] at $h_step:ident
-     -- Note: this often times out. It tries to evaluate, e.g.,
-     -- Std.RBMap.find? sha512_program_test_2 1205560#64
-     -- which easily becomes hard.
-     simp (config := {ground := true}) at $h_step:ident
-     repeat (rw [BitVec.foldCtor] at $h_step:ident)
-    ))
+    (-- unfold stepi at $h_step:ident
+     -- rw [$h_s_ok:ident] at $h_step:ident
+     -- dsimp at $h_step:ident -- reduce let and match
+     -- rw [$h_pc:ident] at $h_step:ident
+     -- rw [fetch_inst_from_program $h_program:ident] at $h_step:ident
+     -- -- Note: this often times out. It tries to evaluate, e.g.,
+     -- -- Std.RBMap.find? sha512_program_test_2 1205560#64
+     -- -- which easily becomes hard.
+     -- simp (config := {ground := true}) at $h_step:ident
+     -- repeat (rw [BitVec.ofFin_eq_ofNat] at $h_step:ident)
+    simp only [*, stepi, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident
+    rw [fetch_inst_from_program $h_program:ident] at $h_step:ident
+    conv at $h_step:ident =>
+      pattern Map.find? _ _
+      simp (config := {ground := true}) only
+      -- simp/ground leaves bitvecs' structure exposed, so we use
+      -- BitVec.ofFin_eq_ofNat to fold them back into their canonical
+      -- form.
+      simp only [BitVec.ofFin_eq_ofNat]
+    (try dsimp only at $h_step:ident);
+    conv at $h_step:ident =>
+      pattern decode_raw_inst _
+      simp (config := {ground := true}) only
+      simp only [BitVec.ofFin_eq_ofNat]
+    (try dsimp only at $h_step:ident)))
 
 -- Given hstep which is the result of fetch_and_decode_inst, exec_inst executes
 -- an instruction and generates 's_next = w .. (w .. (... s))'.
-macro "exec_inst" h_step:ident h_sp_aligned:ident st_next:ident: tactic =>
+macro "exec_inst" h_step:ident : tactic =>
   `(tactic|
-    (unfold exec_inst at $h_step:ident
-     -- A simple case where simp works (e.g., Arm.DPI)
-     try (simp (config := {ground := true, decide := true}) at $h_step:ident)
-     -- A complicated case (e.g., Arm.LDST)
-     try (simp at $h_step:ident; (conv at $h_step:ident =>
-         arg 2
-         apply if_true
-         apply $st_next:ident); simp [$h_sp_aligned:ident] at $h_step:ident)
-    ))
+    (-- unfold exec_inst at $h_step:ident
+     -- -- A simple case where simp works (e.g., Arm.DPI)
+     -- try (simp (config := {ground := true, decide := true}) at $h_step:ident)
+     -- -- A complicated case (e.g., Arm.LDST)
+     -- try (simp at $h_step:ident; (conv at $h_step:ident =>
+     --     arg 2
+     --     apply if_true
+     --     apply $st_next:ident); simp [$h_sp_aligned:ident] at $h_step:ident)
+    simp only [exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident;
+    (try simp (config := {ground := true}) only [↓reduceIte, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident)
+    -- Fold back any exposed bitvecs into canonical forms.
+    (try simp only [BitVec.ofFin_eq_ofNat])))
 
 -- Given h_step wich is 's_next = w .. (w .. (... s))', it creates assumptions
 -- 'read .. s_next = value'.
@@ -91,12 +97,12 @@ macro "update_invariants" st_next:ident progname:ident
                           h_program_new:ident
                           h_step:ident pc_next:term : tactic =>
   `(tactic|
-     (have $h_s_ok_new:ident: read_err $st_next:ident = StateError.None := by
+     (have $h_s_ok_new:ident : r StateField.ERR $st_next:ident = StateError.None := by
         rw [$h_step:ident]; simp_all
       -- Q: How can we automatically infer the next PC?
-      have $h_pc_new:ident: r StateField.PC $st_next:ident = $pc_next:term := by
+      have $h_pc_new:ident : r StateField.PC $st_next:ident = $pc_next:term := by
         rw [$h_step:ident,$h_pc:ident]; simp; simp (config := {ground := true})
-      have $h_sp_aligned_new:ident: CheckSPAlignment $st_next:ident = true := by
+      have $h_sp_aligned_new:ident : CheckSPAlignment $st_next:ident = true := by
         unfold CheckSPAlignment at *
         rw [$h_step:ident]
         simp
@@ -116,62 +122,65 @@ macro "update_invariants" st_next:ident progname:ident
         -/
         sorry
       have $h_program_new:ident : ($st_next:ident).program =
-              Std.RBMap.find? ($progname:ident) := by
+              Map.find? ($progname:ident) := by
         rw [$h_step:ident]
         try (repeat rw [w_program])
         try (rw [write_mem_bytes_program])
         assumption))
 
-def sym_one (curr_state_number : Nat) (pc_begin : Nat) (prog : Lean.Ident) :
+def sym_one (curr_state_number : Nat) (prog : Lean.Ident) :
     Lean.Elab.Tactic.TacticM Unit :=
   Lean.Elab.Tactic.withMainContext do
     let n_str := toString curr_state_number
-    let n'_str := toString (curr_state_number+1)
-    let pcexpr := Lean.mkNatLit (pc_begin + 4 * (curr_state_number + 1))
-    let pcbv :=  ← (Lean.Elab.Term.exprToSyntax (Lean.mkApp2 (Lean.mkConst ``BitVec.ofNat)
-                              (Lean.mkNatLit 64)
-                              pcexpr))
+    let n'_str := toString (curr_state_number + 1)
+    -- let pcexpr := Lean.mkNatLit (pc_begin + 4 * (curr_state_number + 1))
+    -- let pcbv :=  ← (Lean.Elab.Term.exprToSyntax (Lean.mkApp2 (Lean.mkConst ``BitVec.ofNat)
+    --                           (Lean.mkNatLit 64)
+    --                           pcexpr))
     -- let pcbv := ← (Lean.mkApp2 (Lean.mkConst ``BitVec.ofNat) (Lean.mkNatLit 64)
     --                            pcexpr).toSyntax
     -- Question: how can I convert this pcbv into Syntax?
-    let mk_name (s:String): Lean.Name :=
+    let mk_name (s : String) : Lean.Name :=
       Lean.Name.append Lean.Name.anonymous s
-    -- The name of the next state
+    -- st': name of the next state
     let st' := Lean.mkIdent (mk_name ("s_" ++ n'_str))
-    let h_st_ok := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_ok"))
-    let h_st'_ok := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_ok"))
-    let h_st_pc := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_pc"))
-    let h_st'_pc := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_pc"))
-    let h_st_program := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_program"))
-    let h_st'_program := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_program"))
-    let h_st_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_sp_aligned"))
-    let h_st'_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_sp_aligned"))
+    -- let h_st_ok := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_ok"))
+    -- let h_st'_ok := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_ok"))
+    -- let h_st_pc := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_pc"))
+    -- let h_st'_pc := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_pc"))
+    -- let h_st_program := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_program"))
+    -- let h_st'_program := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_program"))
+    -- let h_st_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_sp_aligned"))
+    -- let h_st'_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_sp_aligned"))
     -- Temporary hypotheses
     let h_run := Lean.mkIdent (mk_name "h_run")
+    let h_step_n := Lean.mkIdent (mk_name ("h_step_" ++ n_str))
+    let h_step_n' := Lean.mkIdent (mk_name ("h_step_" ++ n'_str))
     Lean.Elab.Tactic.evalTactic (←
       `(tactic|
          (init_next_step $h_run:ident
-          rename_i $st':ident h_step $h_run:ident
+          rename_i $st':ident $h_step_n':ident $h_run:ident
           -- Simulate one instruction
-          fetch_and_decode_inst h_step $h_st_ok:ident $h_st_pc:ident $h_st_program:ident
-          exec_inst h_step $h_st_sp_aligned:ident $st':ident
-
+          fetch_and_decode_inst $h_step_n':ident $prog:ident
+          exec_inst $h_step_n':ident
+          (try clear $h_step_n:ident)
           -- Update invariants
-          update_invariants $st':ident $prog:ident
-                            $h_st'_ok:ident
-                            $h_st_pc:ident $h_st'_pc:ident
-                            $h_st_sp_aligned $h_st'_sp_aligned:ident
-                            $h_st'_program h_step $pcbv:term
-          clear $h_st_ok:ident $h_st_sp_aligned:ident $h_st_pc:ident h_step
-                $h_st_program:ident)))
+          -- update_invariants $st':ident $prog:ident
+          --                   $h_st'_ok:ident
+          --                   $h_st_pc:ident $h_st'_pc:ident
+          --                   $h_st_sp_aligned $h_st'_sp_aligned:ident
+          --                   $h_st'_program $h_step_n':ident $pcbv:term
+          -- clear $h_st_ok:ident $h_st_sp_aligned:ident $h_st_pc:ident $h_step_n':ident
+          --       $h_st_program:ident
+                )))
 
 -- sym_n tactic symbolically simulates n instructions.
-elab "sym_n" n:num pc:num prog:ident : tactic => do
+elab "sym_n" n:num prog:ident : tactic => do
   for i in List.range n.getNat do
-    sym_one i pc.getNat prog
+    sym_one i prog
 
 -- sym_n tactic symbolically simulates n instructions from
 -- state number i.
-elab "sym_i_n" i:num n:num pc:num prog:ident : tactic => do
+elab "sym_i_n" i:num n:num prog:ident : tactic => do
   for j in List.range n.getNat do
-    sym_one (i.getNat + j) pc.getNat prog
+    sym_one (i.getNat + j) prog

@@ -15,12 +15,12 @@ namespace BR
 
 open BitVec
 
-@[simp]
+@[state_simp_rules]
 def Cond_branch_imm_inst.branch_taken_pc (inst : Cond_branch_imm_inst) (pc : BitVec 64) : BitVec 64 :=
   let offset := signExtend 64 (inst.imm19 <<< 2)
   pc + offset
 
-@[simp]
+@[state_simp_rules]
 def Cond_branch_imm_inst.condition_holds (inst : Cond_branch_imm_inst) (s : ArmState): Bool :=
   let Z := read_store PFlag.Z s.pstate
   let C := read_store PFlag.C s.pstate
@@ -42,7 +42,7 @@ def Cond_branch_imm_inst.condition_holds (inst : Cond_branch_imm_inst) (s : ArmS
     else result
   result
 
-@[simp]
+@[state_simp_rules]
 def exec_cond_branch_imm (inst : Cond_branch_imm_inst) (s : ArmState)
   : ArmState :=
   let orig_pc := read_pc s

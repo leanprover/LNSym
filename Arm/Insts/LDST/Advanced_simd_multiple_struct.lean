@@ -24,7 +24,7 @@ structure Multiple_struct_inst_fields where
   Rt      : BitVec 5
 deriving DecidableEq, Repr
 
-@[simp]
+@[state_simp_rules]
 def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
   (inst_str : String) (s : ArmState)
   (H_opcode : inst.opcode ∈
@@ -127,7 +127,7 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
       let s := write_pc ((read_pc s) + 4#64) s
       s
 
-@[simp]
+@[state_simp_rules]
 def exec_advanced_simd_multiple_struct
   (inst : Advanced_simd_multiple_struct_cls) (s : ArmState) : ArmState :=
   open BitVec in
@@ -143,7 +143,7 @@ def exec_advanced_simd_multiple_struct
         (StateError.Unimplemented s!"Unsupported instruction {inst} encountered!")
       s
 
-@[simp]
+@[state_simp_rules]
 def exec_advanced_simd_multiple_struct_post_indexed
   (inst : Advanced_simd_multiple_struct_post_indexed_cls) (s : ArmState) : ArmState :=
   open BitVec in

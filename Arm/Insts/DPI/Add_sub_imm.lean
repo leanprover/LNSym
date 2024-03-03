@@ -12,7 +12,7 @@ namespace DPI
 
 open BitVec
 
-@[simp]
+@[state_simp_rules]
 def exec_add_sub_imm (inst : Add_sub_imm_cls) (s : ArmState) : ArmState :=
     let sub_op        := inst.op == 1#1
     let setflags      := inst.S == 1#1

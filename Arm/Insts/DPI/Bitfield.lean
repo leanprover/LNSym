@@ -13,7 +13,7 @@ namespace DPI
 
 open BitVec
 
-@[simp]
+@[state_simp_rules]
 def exec_bitfield (inst: Bitfield_cls) (s : ArmState) : ArmState :=
   if inst.opc != 0b10#2 then
     write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s

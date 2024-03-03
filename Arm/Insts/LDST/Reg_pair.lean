@@ -28,7 +28,7 @@ deriving DecidableEq, Repr
 
 instance : ToString Reg_pair_cls where toString a := toString (repr a)
 
-@[simp]
+@[state_simp_rules]
 def reg_pair_constrain_unpredictable (wback : Bool) (inst : Reg_pair_cls) : Bool :=
   match inst.SIMD?, inst.L? with
   | false, false => wback && ((inst.Rt == inst.Rn) || inst.Rt2 == inst.Rn) && inst.Rn != 31#5
@@ -37,7 +37,7 @@ def reg_pair_constrain_unpredictable (wback : Bool) (inst : Reg_pair_cls) : Bool
   | true, false => false
   | true, true => inst.Rt == inst.Rt2
 
-@[simp]
+@[state_simp_rules]
 def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
   (datasize : Nat) (offset : BitVec 64) (s : ArmState)
   (H1 : 8 ∣ datasize) (H2 : 0 < datasize) : ArmState :=
@@ -82,7 +82,7 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
     else
       s
 
-@[simp]
+@[state_simp_rules]
 def exec_reg_pair_common (inst : Reg_pair_cls) (inst_str : String) (s : ArmState) : ArmState :=
   if -- UNDEFINED case for none-SIMD Reg Pair
      not inst.SIMD? &&
@@ -110,7 +110,7 @@ def exec_reg_pair_common (inst : Reg_pair_cls) (inst_str : String) (s : ArmState
     let s' := write_pc ((read_pc s) + 4#64) s'
     s'
 
-@[simp]
+@[state_simp_rules]
 def exec_reg_pair_pre_indexed
   (inst : Reg_pair_pre_indexed_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_pair_cls) :=
@@ -125,7 +125,7 @@ def exec_reg_pair_pre_indexed
       Rt := inst.Rt }
   exec_reg_pair_common extracted_inst s!"{inst}" s
 
-@[simp]
+@[state_simp_rules]
 def exec_reg_pair_post_indexed
   (inst : Reg_pair_post_indexed_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_pair_cls) :=
@@ -140,7 +140,7 @@ def exec_reg_pair_post_indexed
       Rt := inst.Rt }
   exec_reg_pair_common extracted_inst s!"{inst}" s
 
-@[simp]
+@[state_simp_rules]
 def exec_reg_pair_signed_offset
   (inst : Reg_pair_signed_offset_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_pair_cls) :=

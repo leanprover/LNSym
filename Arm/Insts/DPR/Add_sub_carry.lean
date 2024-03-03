@@ -12,7 +12,7 @@ namespace DPR
 
 open BitVec
 
-@[simp]
+@[state_simp_rules]
 def exec_add_sub_carry (inst : Add_sub_carry_cls) (s : ArmState) : ArmState :=
     let sub_op        := inst.op == 1#1
     let setflags      := inst.S == 1#1
