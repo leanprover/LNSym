@@ -16,16 +16,18 @@ namespace BR
 open BitVec
 
 @[state_simp_rules]
-def Cond_branch_imm_inst.branch_taken_pc (inst : Cond_branch_imm_inst) (pc : BitVec 64) : BitVec 64 :=
+def Cond_branch_imm_inst.branch_taken_pc
+  (inst : Cond_branch_imm_inst) (pc : BitVec 64) : BitVec 64 :=
   let offset := signExtend 64 (inst.imm19 <<< 2)
   pc + offset
 
 @[state_simp_rules]
-def Cond_branch_imm_inst.condition_holds (inst : Cond_branch_imm_inst) (s : ArmState): Bool :=
-  let Z := read_store PFlag.Z s.pstate
-  let C := read_store PFlag.C s.pstate
-  let N := read_store PFlag.N s.pstate
-  let V := read_store PFlag.V s.pstate
+def Cond_branch_imm_inst.condition_holds
+  (inst : Cond_branch_imm_inst) (s : ArmState) : Bool :=
+  let Z := read_flag PFlag.Z s
+  let C := read_flag PFlag.C s
+  let N := read_flag PFlag.N s
+  let V := read_flag PFlag.V s
   let result :=
     match (extractLsb 3 1 inst.cond) with
     | 0b000#3 => Z == 1#1

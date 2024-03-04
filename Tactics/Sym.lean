@@ -81,12 +81,12 @@ macro "exec_inst" h_step:ident : tactic =>
      --     arg 2
      --     apply if_true
      --     apply $st_next:ident); simp [$h_sp_aligned:ident] at $h_step:ident)
-    simp only [exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident;
+    simp only [*, exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident;
     (try simp (config := {ground := true}) only [↓reduceIte, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident)
     -- Fold back any exposed bitvecs into canonical forms.
-    (try simp only [BitVec.ofFin_eq_ofNat])))
+    (try simp only [BitVec.ofFin_eq_ofNat] at $h_step:ident)))
 
--- Given h_step wich is 's_next = w .. (w .. (... s))', it creates assumptions
+-- Given h_step which is 's_next = w .. (w .. (... s))', it creates assumptions
 -- 'read .. s_next = value'.
 -- TODO: update_invariants must add all register and memory updates as
 -- assumptions.
@@ -162,8 +162,8 @@ def sym_one (curr_state_number : Nat) (prog : Lean.Ident) :
           rename_i $st':ident $h_step_n':ident $h_run:ident
           -- Simulate one instruction
           fetch_and_decode_inst $h_step_n':ident $prog:ident
-          exec_inst $h_step_n':ident
           (try clear $h_step_n:ident)
+          exec_inst $h_step_n':ident
           -- Update invariants
           -- update_invariants $st':ident $prog:ident
           --                   $h_st'_ok:ident

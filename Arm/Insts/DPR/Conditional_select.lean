@@ -21,7 +21,7 @@ def exec_conditional_select (inst : Conditional_select_cls) (s : ArmState) : Arm
       match inst.op, inst.S, inst.op2 with
         | 0b0#1, 0b0#1, 0b00#2 => -- CSEL
           (false,
-            if ConditionHolds inst.cond (read_pstate s) then
+            if ConditionHolds inst.cond s then
               read_gpr_zr datasize inst.Rn s
             else
               read_gpr_zr datasize inst.Rm s)

@@ -98,5 +98,6 @@ attribute [minimal_theory] Option.isNone_some
 
 attribute [minimal_theory] Fin.isValue
 attribute [minimal_theory] Fin.zero_eta
+attribute [minimal_theory] Fin.mk.injEq
 
 -- attribute [minimal_theory] ↓reduceIte

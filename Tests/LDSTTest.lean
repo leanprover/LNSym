@@ -18,7 +18,7 @@ def set_init_state (find? : Store (BitVec 64) (Option (BitVec 32))) : ArmState :
   let s := { gpr := (fun (_ : BitVec 5) => 0#64),
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc := 0#64,
-             pstate := (fun (_ : PFlag) => 0#1),
+             pstate := zero_pstate,
              mem := (fun (_ : BitVec 64) => 0#8),
              program := find?,
              error := StateError.None}

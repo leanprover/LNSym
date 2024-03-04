@@ -12,7 +12,8 @@ open BitVec
 
 ----------------------------------------------------------------------
 
-def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) : (BitVec n × PState) :=
+def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
+  (BitVec n × PState) :=
   let carry_in_nat := BitVec.toNat carry_in
   let unsigned_sum := BitVec.toNat x + BitVec.toNat y + carry_in_nat
   let signed_sum := BitVec.toInt x + BitVec.toInt y + carry_in_nat
@@ -24,17 +25,21 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) : (BitVec n
   let V := if BitVec.toInt result = signed_sum then 0#1 else 1#1
   (result, (make_pstate N Z C V))
 
-def ConditionHolds (cond : BitVec 4) (pstate : PState) : Bool :=
+def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   open PFlag in
+  let N := read_flag N s
+  let Z := read_flag Z s
+  let C := read_flag C s
+  let V := read_flag V s
   let result :=
     match (extractLsb 3 1 cond) with
-      | 0b000#3 => pstate Z == 1#1
-      | 0b001#3 => pstate C == 1#1
-      | 0b010#3 => pstate N == 1#1
-      | 0b011#3 => pstate V == 1#1
-      | 0b100#3 => pstate C == 1#1 && pstate Z == 0#1
-      | 0b101#3 => pstate N == pstate V
-      | 0b110#3 => pstate N == pstate V && pstate Z == 0#1
+      | 0b000#3 => Z == 1#1
+      | 0b001#3 => C == 1#1
+      | 0b010#3 => N == 1#1
+      | 0b011#3 => V == 1#1
+      | 0b100#3 => C == 1#1 && Z == 0#1
+      | 0b101#3 => N == V
+      | 0b110#3 => N == V && Z == 0#1
       | 0b111#3 => true
   if (extractLsb 0 0 cond) = 1#1 && cond ≠ 0b1111#4 then
     not result
@@ -50,6 +55,21 @@ def CheckSPAlignment (s : ArmState) : Bool :=
   -- If the low 4 bits of SP are 0, then it is divisible by 16 and
   -- 16-aligned.
   (extractLsb 3 0 sp) &&& 0xF#4 == 0#4
+
+@[state_simp_rules]
+theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
+  CheckSPAlignment (w fld v s) = CheckSPAlignment s := by
+  simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
+
+@[state_simp_rules]
+theorem CheckSPAligment_of_w_sp :
+  CheckSPAlignment (w (StateField.GPR 31#5) v s) = ((extractLsb 3 0 v) &&& 0xF#4 == 0#4) := by
+  simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
+
+@[state_simp_rules]
+theorem CheckSPAligment_of_write_mem_bytes :
+  CheckSPAlignment (write_mem_bytes n addr v s) = CheckSPAlignment s := by
+  simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
 ----------------------------------------------------------------------
 
@@ -262,7 +282,7 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
   else
     let element := BitVec.zeroExtend esize x
     let rest_x := BitVec.zeroExtend (n - esize) (x >>> esize)
-    have h1 : esize <= n := by 
+    have h1 : esize <= n := by
       simp at h0; exact Nat.le_of_lt h0; done
     have h2 : esize ∣ (n - esize) := by
       refine Nat.dvd_sub ?H h₀ ?h₂
@@ -279,12 +299,12 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
 example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := rfl
 example : rev_elems 8 4 0xAB#8 (by decide) (by decide) = 0xBA#8 := rfl
 example : rev_elems 8 4 (rev_elems 8 4 0xAB#8 (by decide) (by decide))
-          (by decide) (by decide) = 0xAB#8 := by native_decide 
+          (by decide) (by decide) = 0xAB#8 := by native_decide
 
 theorem rev_elems_base :
   rev_elems esize esize x h₀ h₁ = x := by
   unfold rev_elems; simp; done
- 
+
 /-- Divide a bv of width `datasize` into containers, each of size
 `container_size`, and within a container, reverse the order of `esize`-bit
 elements. -/
@@ -302,7 +322,7 @@ def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
     have h₄' : container_size ∣ new_datasize := by
       have h : container_size ∣ container_size := Nat.dvd_refl _
       exact Nat.dvd_sub h₂ h₄ h
-    have h₂' : container_size <= new_datasize := by 
+    have h₂' : container_size <= new_datasize := by
       refine Nat.le_of_dvd ?h h₄'
       omega
     have h1 : 0 < container_size := by exact Nat.lt_of_lt_of_le h₀ h₁

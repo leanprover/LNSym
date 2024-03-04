@@ -100,19 +100,12 @@ inductive PFlag where
   | V : PFlag
 deriving DecidableEq, Repr
 
-abbrev PState := Store PFlag (BitVec 1)
-
-instance [Repr β]: Repr (Store PFlag β) where
-  reprPrec store _ :=
-    let rec helper (ps : List PFlag) :=
-      match ps with
-      | [] => ""
-      | p :: rest => "(" ++ repr p ++ " : " ++ (repr (read_store p store)) ++ ") " ++ helper rest
-    open PFlag in
-    helper [N, Z, C, V]
-
--- def init_store : Store PFlag (BitVec 1) := (fun (_ : PFlag) => 0#1)
--- #eval init_store
+structure PState where
+  n : BitVec 1
+  z : BitVec 1
+  c : BitVec 1
+  v : BitVec 1
+deriving DecidableEq, Repr
 
 structure ArmState where
   -- General-purpose registers: register 31 is the stack pointer.
@@ -182,10 +175,23 @@ def write_base_pstate (pstate : PState) (s : ArmState) : ArmState  :=
   { s with pstate := pstate }
 
 def read_base_flag (flag : PFlag) (s : ArmState) : BitVec 1 :=
-  read_store flag s.pstate
+  open PFlag in
+  let pstate := s.pstate
+  match flag with
+  | N => pstate.n
+  | Z => pstate.z
+  | C => pstate.c
+  | V => pstate.v
 
 def write_base_flag (flag : PFlag) (val : BitVec 1) (s : ArmState) : ArmState :=
-  let new_pstate := write_store flag val s.pstate
+  open PFlag in
+  let pstate := s.pstate
+  let new_pstate :=
+    match flag with
+    | N => { pstate with n := val }
+    | Z => { pstate with z := val }
+    | C => { pstate with c := val }
+    | V => { pstate with v := val }
   { s with pstate := new_pstate }
 
 -- Program --
@@ -261,7 +267,7 @@ theorem r_of_w_same (fld : StateField) (v : (state_value fld)) (s : ArmState) :
   unfold read_base_pc write_base_pc
   unfold read_base_flag write_base_flag
   unfold read_base_error write_base_error
-  split <;> split <;> simp_all!
+  split <;> (repeat (split <;> simp_all!))
 
 @[state_simp_rules]
 theorem r_of_w_different (fld1 fld2 : StateField) (v : (state_value fld2)) (s : ArmState)
@@ -274,7 +280,7 @@ theorem r_of_w_different (fld1 fld2 : StateField) (v : (state_value fld2)) (s : 
   unfold read_base_flag write_base_flag
   unfold read_base_error write_base_error
   simp_all!
-  split <;> split <;> simp_all!
+  split <;> (repeat (split <;> simp_all!))
 
 @[state_simp_rules]
 theorem w_of_w_shadow (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmState) :
@@ -285,7 +291,7 @@ theorem w_of_w_shadow (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmSta
   unfold write_base_pc
   unfold write_base_flag
   unfold write_base_error
-  split <;> simp
+  (repeat (split <;> simp_all!))
 
 @[state_simp_rules]
 theorem w_irrelevant (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmState) :
@@ -296,7 +302,7 @@ theorem w_irrelevant (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmStat
   unfold read_base_pc write_base_pc
   unfold read_base_flag write_base_flag
   unfold read_base_error write_base_error
-  split <;> simp
+  repeat (split <;> simp_all)
 
 @[state_simp_rules]
 theorem fetch_inst_of_w (addr : BitVec 64) (fld : StateField) (val : (state_value fld)) (s : ArmState) :
@@ -396,20 +402,23 @@ def write_flag (flag : PFlag) (val : BitVec 1) (s : ArmState) : ArmState :=
 
 @[state_simp_rules]
 def read_pstate (s : ArmState) : PState :=
-  fun p => read_flag p s
+  s.pstate
 
 @[state_simp_rules]
 def write_pstate (pstate : PState) (s : ArmState) : ArmState :=
-   { s with pstate := pstate }
+  open StateField PFlag in
+  let s := w (FLAG N) pstate.n s
+  let s := w (FLAG Z) pstate.z s
+  let s := w (FLAG C) pstate.c s
+  let s := w (FLAG V) pstate.v s
+  s
 
--- (FIXME) Define in terms of write_flag so that we see checkpoints in
--- terms of the w function.
 @[state_simp_rules]
 def make_pstate (n z c v : BitVec 1) : PState :=
-  fun (p : PFlag) =>
-    open PFlag in
-    match p with
-      | N => n | Z => z | C => c | V => v
+  { n, z, c, v }
+
+def zero_pstate : PState :=
+  { n := 0#1, z := 0#1, c := 0#1, v := 0#1 }
 
 @[state_simp_rules]
 def read_err (s : ArmState) : StateError :=
@@ -467,7 +476,7 @@ end Load_program_and_fetch_inst
 
 example :
   read_flag flag (write_flag flag val s) = val := by
-  simp only [state_simp_rules, minimal_theory] 
+  simp only [state_simp_rules, minimal_theory]
 
 example (h : flag1 ≠ flag2) :
   read_flag flag1 (write_flag flag2 val s) = read_flag flag1 s := by

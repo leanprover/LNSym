@@ -13,7 +13,7 @@ def test_s (inst : BitVec 32): ArmState :=
   { gpr := (fun (_ : BitVec 5) => 0#64),
     sfp := (fun (_ : BitVec 5) => 0#128),
     pc  := 0#64,
-    pstate := (fun (_ : PFlag) => 0#1),
+    pstate := zero_pstate,
     mem := (fun (_ : BitVec 64) => 0#8),
     -- Program: BitVec 64 → Option (BitVec 32)
     program := (fun (a : BitVec 64) => if a == some 0#64 then inst else none),

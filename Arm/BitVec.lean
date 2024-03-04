@@ -16,11 +16,11 @@ open BitVec
 
 -- Adding some useful simp lemmas to `bitvec_rules`:
 attribute [bitvec_rules] BitVec.ofFin_eq_ofNat
-attribute [minimal_theory] BitVec.extractLsb_ofFin
-attribute [minimal_theory] zeroExtend_eq 
-attribute [minimal_theory] add_ofFin
-attribute [minimal_theory] ofFin.injEq 
-attribute [minimal_theory] Fin.mk.injEq
+attribute [bitvec_rules] BitVec.extractLsb_ofFin
+attribute [bitvec_rules] BitVec.zeroExtend_eq
+attribute [bitvec_rules] BitVec.ofFin.injEq
+attribute [bitvec_rules] BitVec.extractLsb_toNat
+-- attribute [bitvec_rules] add_ofFin
 
 ----------------------------------------------------------------------
 -- Some BitVec definitions
