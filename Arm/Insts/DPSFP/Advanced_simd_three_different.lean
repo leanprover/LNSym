@@ -36,16 +36,13 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
   if h₀ : e ≥ elements then
     result
   else
-    let lo := e * esize
-    let hi := lo + esize - 1
-    let element1 := extractLsb hi lo x
-    let element2 := extractLsb hi lo y
+    let element1 := elem_get x e esize H
+    let element2 := elem_get y e esize H
     let elem_result := polynomial_mult element1 element2
-    let lo2 := 2 * (e * esize)
-    let hi2 := lo2 + 2 * esize - 1
-    have h₁ : hi - lo + 1 + (hi - lo + 1) = hi2 - lo2 + 1 := by simp; omega
-    let result := BitVec.partInstall hi2 lo2 (h₁ ▸ elem_result) result
-    have h₂ : elements - (e + 1) < elements - e := by omega
+    have h₁ : esize + esize = 2 * esize := by omega
+    have h₂ : 2 * esize > 0 := by omega
+    let result := elem_set result e (2 * esize) (h₁ ▸ elem_result) h₂
+    have _ : elements - (e + 1) < elements - e := by omega
     pmull_op (e + 1) esize elements x y result H
   termination_by pmull_op e esize elements op x y result => (elements - e)
 

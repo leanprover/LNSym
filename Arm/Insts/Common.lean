@@ -238,10 +238,6 @@ def ldst_write (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (val : BitVec width
 
 ----------------------------------------------------------------------
 
-theorem hi_lo_diff_equal_esize (esize : Nat) (lo : Nat) (hi : Nat) 
-  (h₀ : esize > 0) (h₁ : hi = lo + esize - 1):
-  hi - lo + 1 = esize := by omega
-
 theorem esize_gt_zero (size : Nat):
   8 <<< size > 0 := by
   simp_all only [ Nat.shiftLeft_eq, gt_iff_lt, Nat.zero_lt_succ
@@ -322,5 +318,29 @@ example : rev_vector 32 16 8 0xaabbccdd#32 (by decide)
           (by decide) (by decide) (by decide) (by decide) =
           0xbbaaddcc#32 := by
           native_decide
+
+----------------------------------------------------------------------
+
+/-- Divide bv `vector` into elements, each of size `size`. This function gets
+the `e`'th element from the `vector`. -/
+@[simp]
+def elem_get (vector : BitVec n) (e : Nat) (size : Nat)
+  (h: size > 0): BitVec size :=
+  -- assert (e+1)*size <= n
+  let lo := e * size
+  let hi := lo + size - 1
+  have h : hi - lo + 1 = size := by simp only []; omega
+  h ▸ extractLsb hi lo vector
+
+/-- Divide bv `vector` into elements, each of size `size`. This function sets
+the `e`'th element in the `vector`. -/
+@[simp]
+def elem_set (vector : BitVec n) (e : Nat) (size : Nat) 
+  (value : BitVec size) (h: size > 0): BitVec n :=
+  -- assert (e+1)*size <= n
+  let lo := e * size
+  let hi := lo + size - 1
+  have h : hi - lo + 1 = size := by simp only []; omega
+  BitVec.partInstall hi lo (h ▸ value) vector
 
 end Common

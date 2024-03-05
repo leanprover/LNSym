@@ -20,10 +20,7 @@ def dup_aux (e : Nat) (elements : Nat) (esize : Nat)
   if h₀ : e ≥ elements then
     result
   else
-    let lo := e * esize
-    let hi := lo + esize -1
-    have h₁ : hi - lo + 1 = esize := by simp; omega
-    let result := BitVec.partInstall hi lo (h₁ ▸ element) result
+    let result := elem_set result e esize element H
     have h : elements - (e + 1) < elements - e := by omega
     dup_aux (e + 1) elements esize element result H
   termination_by dup_aux e elements esize element result H => (elements - e)
@@ -39,12 +36,9 @@ def exec_dup_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     let datasize := 64 <<< inst.Q.toNat
     let elements := datasize / esize
     let operand := read_sfp idxdsize inst.Rn s
-    let lo := index * esize
-    let hi := lo + esize - 1
-    let element := extractLsb hi lo operand
     have h₀ : esize > 0 := by apply esize_gt_zero
-    have h₁ : hi - lo + 1 = esize := by simp; omega
-    let result := dup_aux 0 elements esize (h₁ ▸ element) (Std.BitVec.zero datasize) h₀
+    let element := elem_get operand index esize h₀
+    let result := dup_aux 0 elements esize element (Std.BitVec.zero datasize) h₀
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
     let s := write_sfp datasize inst.Rd result s
@@ -77,17 +71,9 @@ def exec_ins_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     let esize := 8 <<< size
     let operand := read_sfp idxdsize inst.Rn s
     let result := read_sfp 128 inst.Rd s
-    let lo_src := src_index * esize
-    let hi_src := lo_src + esize - 1
-    let elem := extractLsb hi_src lo_src operand
-    let lo_dst := dst_index * esize
-    let hi_dst := lo_dst + esize - 1
     have h₀ : esize > 0 := by apply esize_gt_zero
-    have h : hi_dst - lo_dst + 1 = hi_src - lo_src + 1 := by
-      -- rewrite the LHS and RHS to esize
-      rw [hi_lo_diff_equal_esize _ _ _ h₀ (by simp)]
-      rw [hi_lo_diff_equal_esize _ _ _ h₀ (by simp)]
-    let result := BitVec.partInstall hi_dst lo_dst (h ▸ elem) result
+    let elem := elem_get operand src_index esize h₀
+    let result := elem_set result dst_index esize elem h₀
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
     let s := write_sfp 128 inst.Rd result s
@@ -102,11 +88,8 @@ def exec_ins_general (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     let esize := 8 <<< size
     let element := read_gpr esize inst.Rn s
     let result := read_sfp 128 inst.Rd s
-    let lo := index * esize
-    let hi := lo + esize -1
     have h₀ : esize > 0 := by apply esize_gt_zero
-    have h : hi - lo + 1 = esize := by simp; omega
-    let result := BitVec.partInstall hi lo (h ▸ element) result
+    let result := elem_set result index esize element h₀
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
     let s := write_sfp 128 inst.Rd result s
@@ -126,9 +109,8 @@ def exec_smov_umov (inst : Advanced_simd_copy_cls) (s : ArmState) (signed : Bool
     let idxdsize := 64 <<< (extractLsb 4 4 inst.imm5).toNat
     -- if index == 0 then CheckFPEnabled64 else CheckFPAdvSIMDEnabled64
     let operand := read_sfp idxdsize inst.Rn s
-    let lo := index * esize
-    let hi := lo + esize - 1
-    let element := extractLsb hi lo operand
+    have h₀ : esize > 0 := by apply esize_gt_zero
+    let element := elem_get operand index esize h₀
     let result := if signed then signExtend datasize element else zeroExtend datasize element
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
