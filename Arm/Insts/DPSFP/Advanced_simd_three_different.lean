@@ -36,12 +36,12 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
   if h₀ : e ≥ elements then
     result
   else
-    let element1 := Elem_nassign x e esize H
-    let element2 := Elem_nassign y e esize H
+    let element1 := elem_get x e esize H
+    let element2 := elem_get y e esize H
     let elem_result := polynomial_mult element1 element2
     have h₁ : esize + esize = 2 * esize := by omega
     have h₂ : 2 * esize > 0 := by omega
-    let result := Elem_assign result e (2 * esize) (h₁ ▸ elem_result) h₂
+    let result := elem_set result e (2 * esize) (h₁ ▸ elem_result) h₂
     have _ : elements - (e + 1) < elements - e := by omega
     pmull_op (e + 1) esize elements x y result H
   termination_by pmull_op e esize elements op x y result => (elements - e)

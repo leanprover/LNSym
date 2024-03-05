@@ -24,10 +24,10 @@ def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
     result
   else
     have h₁ : e < elems := by omega
-    let element1 := Elem_nassign x e esize H
-    let element2 := Elem_nassign y e esize H
+    let element1 := elem_get x e esize H
+    let element2 := elem_get y e esize H
     let elem_result := op element1 element2
-    let result := Elem_assign result e esize elem_result H
+    let result := elem_set result e esize elem_result H
     have ht1 : elems - (e + 1) < elems - e := by omega
     binary_vector_op_aux (e + 1) elems esize op x y result H
   termination_by binary_vector_op_aux e elems esize op x y result H => (elems - e)

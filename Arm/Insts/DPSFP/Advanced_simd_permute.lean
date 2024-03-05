@@ -21,10 +21,10 @@ def trn_aux (p : Nat) (pairs : Nat) (esize : Nat) (part : Nat)
     result
   else
     let idx_from := 2 * p + part
-    let op1_part := Elem_nassign operand1 idx_from esize h
-    let op2_part := Elem_nassign operand2 idx_from esize h
-    let result := Elem_assign result (2 * p) esize op1_part h
-    let result := Elem_assign result (2 * p + 1) esize op2_part h
+    let op1_part := elem_get operand1 idx_from esize h
+    let op2_part := elem_get operand2 idx_from esize h
+    let result := elem_set result (2 * p) esize op1_part h
+    let result := elem_set result (2 * p + 1) esize op2_part h
     have h₁ : pairs - (p + 1) < pairs - p := by omega
     trn_aux (p + 1) pairs esize part operand1 operand2 result h
   termination_by trn_aux p pairs esize part operand1 operand2 result h => (pairs - p)

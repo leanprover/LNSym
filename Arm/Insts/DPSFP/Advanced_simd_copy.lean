@@ -20,7 +20,7 @@ def dup_aux (e : Nat) (elements : Nat) (esize : Nat)
   if h₀ : e ≥ elements then
     result
   else
-    let result := Elem_assign result e esize element H
+    let result := elem_set result e esize element H
     have h : elements - (e + 1) < elements - e := by omega
     dup_aux (e + 1) elements esize element result H
   termination_by dup_aux e elements esize element result H => (elements - e)
@@ -37,7 +37,7 @@ def exec_dup_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     let elements := datasize / esize
     let operand := read_sfp idxdsize inst.Rn s
     have h₀ : esize > 0 := by apply esize_gt_zero
-    let element := Elem_nassign operand index esize h₀
+    let element := elem_get operand index esize h₀
     let result := dup_aux 0 elements esize element (Std.BitVec.zero datasize) h₀
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
@@ -72,8 +72,8 @@ def exec_ins_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     let operand := read_sfp idxdsize inst.Rn s
     let result := read_sfp 128 inst.Rd s
     have h₀ : esize > 0 := by apply esize_gt_zero
-    let elem := Elem_nassign operand src_index esize h₀
-    let result := Elem_assign result dst_index esize elem h₀
+    let elem := elem_get operand src_index esize h₀
+    let result := elem_set result dst_index esize elem h₀
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
     let s := write_sfp 128 inst.Rd result s
@@ -89,7 +89,7 @@ def exec_ins_general (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     let element := read_gpr esize inst.Rn s
     let result := read_sfp 128 inst.Rd s
     have h₀ : esize > 0 := by apply esize_gt_zero
-    let result := Elem_assign result index esize element h₀
+    let result := elem_set result index esize element h₀
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
     let s := write_sfp 128 inst.Rd result s
@@ -110,7 +110,7 @@ def exec_smov_umov (inst : Advanced_simd_copy_cls) (s : ArmState) (signed : Bool
     -- if index == 0 then CheckFPEnabled64 else CheckFPAdvSIMDEnabled64
     let operand := read_sfp idxdsize inst.Rn s
     have h₀ : esize > 0 := by apply esize_gt_zero
-    let element := Elem_nassign operand index esize h₀
+    let element := elem_get operand index esize h₀
     let result := if signed then signExtend datasize element else zeroExtend datasize element
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s

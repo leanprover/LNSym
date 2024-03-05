@@ -27,7 +27,7 @@ def exec_advanced_simd_scalar_copy
     let esize := 8 <<< size
     let operand := read_sfp idxdsize inst.Rn s
     have h₁ : esize > 0 := by apply esize_gt_zero
-    let result := Elem_nassign operand index.toNat esize h₁
+    let result := elem_get operand index.toNat esize h₁
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
     let s := write_sfp esize inst.Rd result s
