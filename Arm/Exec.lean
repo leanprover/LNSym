@@ -52,10 +52,14 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     DPSFP.exec_advanced_simd_two_reg_misc i s
   | DPSFP (DataProcSFPInst.Advanced_simd_extract i) =>
     DPSFP.exec_advanced_simd_extract i s
+  | DPSFP (DataProcSFPInst.Advanced_simd_permute i) =>
+    DPSFP.exec_advanced_simd_permute i s
   | DPSFP (DataProcSFPInst.Advanced_simd_modified_immediate i) =>
     DPSFP.exec_advanced_simd_modified_immediate i s
   | DPSFP (DataProcSFPInst.Advanced_simd_scalar_copy i) =>
     DPSFP.exec_advanced_simd_scalar_copy i s
+  | DPSFP (DataProcSFPInst.Advanced_simd_table_lookup i) =>
+    DPSFP.exec_advanced_simd_table_lookup i s
   | DPSFP (DataProcSFPInst.Advanced_simd_three_same i) =>
     DPSFP.exec_advanced_simd_three_same i s
   | DPSFP (DataProcSFPInst.Advanced_simd_three_different i) =>

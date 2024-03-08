@@ -26,14 +26,11 @@ def exec_advanced_simd_scalar_copy
     let idxdsize := 64 <<< (extractLsb 4 4 inst.imm5).toNat
     let esize := 8 <<< size
     let operand := read_sfp idxdsize inst.Rn s
-    let lo := index.toNat * esize
-    let hi := lo + esize - 1
-    let result := extractLsb hi lo operand
-    have h₁ : 0 < esize := by apply zero_lt_shift_left_pos (by decide)
-    have h : hi - lo + 1 = esize := by simp [lo, hi]; omega
+    have h₁ : esize > 0 := by apply zero_lt_shift_left_pos (by decide)
+    let result := elem_get operand index.toNat esize h₁
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
-    let s := write_sfp esize inst.Rd (h ▸ result) s
+    let s := write_sfp esize inst.Rd result s
     s
 
 ----------------------------------------------------------------------
@@ -44,7 +41,7 @@ partial def Advanced_simd_scalar_copy_cls.dup.rand : IO (Option (BitVec 32)) := 
     Advanced_simd_scalar_copy_cls.dup.rand
   else
     let (inst : Advanced_simd_scalar_copy_cls) :=
-      { op := 0b0#1, 
+      { op := 0b0#1,
         imm5 := imm5,
         imm4 := 0b0000#4,
         Rn := ← BitVec.rand 5,

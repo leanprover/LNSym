@@ -344,4 +344,28 @@ example : rev_vector 32 16 8 0xaabbccdd#32 (by decide)
           0xbbaaddcc#32 := by
           native_decide
 
+----------------------------------------------------------------------
+
+/-- Divide bv `vector` into elements, each of size `size`. This function gets
+the `e`'th element from the `vector`. -/
+@[state_simp_rules]
+def elem_get (vector : BitVec n) (e : Nat) (size : Nat)
+  (h: size > 0): BitVec size :=
+  -- assert (e+1)*size <= n
+  let lo := e * size
+  let hi := lo + size - 1
+  have h : hi - lo + 1 = size := by simp only [hi, lo]; omega
+  h ▸ extractLsb hi lo vector
+
+/-- Divide bv `vector` into elements, each of size `size`. This function sets
+the `e`'th element in the `vector`. -/
+@[state_simp_rules]
+def elem_set (vector : BitVec n) (e : Nat) (size : Nat)
+  (value : BitVec size) (h: size > 0): BitVec n :=
+  -- assert (e+1)*size <= n
+  let lo := e * size
+  let hi := lo + size - 1
+  have h : hi - lo + 1 = size := by simp only [hi, lo]; omega
+  BitVec.partInstall hi lo (h ▸ value) vector
+
 end Common
