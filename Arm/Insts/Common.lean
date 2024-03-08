@@ -154,6 +154,9 @@ def invalid_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immediate : Bool)
         let esize := 1 <<< len
         if esize * (M / esize) ≠ M then true else false
 
+theorem Nat.lt_one_iff {n : Nat} : n < 1 ↔ n = 0 := by
+  omega
+
 theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec 6)
   (immediate : Bool) (M : Nat):
   ¬ invalid_bit_masks immN imms immediate M →
@@ -161,14 +164,17 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
   let esize := 1 <<< len.get!
   esize * (M / esize) = M := by
     unfold invalid_bit_masks
-    simp
+    simp only [Nat.lt_one_iff, ite_not, Bool.not_eq_true]
     split
-    . simp
-    . simp_all; rw [option_get_bang_of_some]; split
-      . simp
+    · simp only
+      exact fun a => False.elim a
+    . simp_all only [Bool.ite_eq_false_distrib, ite_eq_left_iff, imp_false]
+      rw [option_get_bang_of_some]
+      split
+      . simp only [false_implies]
       . split
-        . simp
-        . simp [imp_false, Classical.not_not]
+        . simp only [false_implies]
+        . simp only [Decidable.not_not, imp_self]
     done
 
 -- Resources on Arm bitmask immediate:

@@ -385,12 +385,7 @@ theorem leftshift_n_or_mod_2n :
 
 protected theorem truncate_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitVec n) :
   truncate n (x ++ y) = y := by
-  ext
-  simp [BitVec.toNat_truncate, BitVec.toNat_append]
-  apply Nat.eq_of_testBit_eq; intro i
-  have := y.isLt
-  rw [leftshift_n_or_mod_2n, Nat.mod_eq_of_lt]
-  exact this
+  simp only [truncate_append, Nat.le_refl, ↓reduceDite, zeroExtend_eq]
 
 ----------------------------------------------------------------------
 

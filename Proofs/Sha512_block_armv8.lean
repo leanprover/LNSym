@@ -79,6 +79,16 @@ theorem sha512_program_test_2_sym (s0 s_final : ArmState)
 
 -- Test 3:
 
+variable (write : (n : Nat) → BitVec 64 → BitVec (n * 8) → Type → Type)
+
+theorem write_simplify_test_0 (a x y : BitVec 64)
+  (h : ((8 * 8) + 8 * 8) = 2 * ((8 * 8) / 8) * 8) :
+  write (2 * ((8 * 8) / 8)) a (BitVec.cast h (zeroExtend (8 * 8) x ++ (zeroExtend (8 * 8) y))) s
+  =
+  write 16 a (x ++ y) s := by
+  simp only [zeroExtend_eq, BitVec.cast_eq]
+
+
 def sha512_program_test_3 : program :=
   def_program
    [(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
@@ -110,26 +120,29 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   fetch_and_decode_inst h_step_2 h_s0_program
   clear h_step_1
   -- exec_inst h_step_2
+  simp only [*, exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at h_step_2
+  simp only [Nat.reduceAdd, reduceAppend, reduceNot, beq_iff_eq, ofNat_add_ofNat, reduceToNat,
+    Nat.reduceSub, Nat.reducePow] at h_step_2
   -- FIXME: simproc for first args. of write_mem_bytes and zeroExtend
-  simp only [exec_inst, DPI.exec_add_sub_imm, write_gpr, Nat.sub_zero, read_gpr, ne_eq,
-    not_false_eq_true, r_of_w_different, r_of_w_same, beq_self_eq_true, ite_true, write_pstate,
-    write_pc, read_pc, w_of_w_shadow, w_program, write_mem_bytes_program, h_s0_program] at h_step_2
-  simp only [beq_iff_eq, ofNat_add_ofNat, Nat.reduceAdd] at h_step_2
-  -- simp (config := {ground := true}) only at h_step_2 -- max. recursion depth is reached.
-  conv at h_step_2 =>
-    rhs
-    arg 3
-    tactic => simp (config := {ground := true}) only [minimal_theory, bitvec_rules, ↓reduceIte, reduceAdd, reduceSub, Fin.reduceEq, Fin.mk_one]
-  (try simp only [BitVec.ofFin_eq_ofNat] at h_step_2)
+  -- simp only [exec_inst, DPI.exec_add_sub_imm, write_gpr, Nat.sub_zero, read_gpr, ne_eq,
+  --   not_false_eq_true, r_of_w_different, r_of_w_same, beq_self_eq_true, ite_true, write_pstate,
+  --   write_pc, read_pc, w_of_w_shadow, w_program, write_mem_bytes_program, h_s0_program] at h_step_2
+  -- simp only [beq_iff_eq, ofNat_add_ofNat, Nat.reduceAdd] at h_step_2
+  -- -- simp (config := {ground := true}) only at h_step_2 -- max. recursion depth is reached.
+  -- conv at h_step_2 =>
+  --   rhs
+  --   arg 3
+  --   tactic => simp (config := {ground := true}) only [minimal_theory, bitvec_rules, ↓reduceIte, reduceAdd, reduceSub, Fin.reduceEq, Fin.mk_one]
+  -- (try simp only [BitVec.ofFin_eq_ofNat] at h_step_2)
 
   -- sym_i_n 2 1 h_s0_program
-  init_next_step h_run
-  rename_i s_3 h_step_3 h_run
-  fetch_and_decode_inst h_step_3 h_s0_program
-  clear h_step_2
-  -- exec_inst h_step_3
-  -- LDST.exec_advanced_simd_multiple_struct_post_indexed
-  simp only [exec_inst, state_simp_rules, minimal_theory, bitvec_rules, ↓reduceIte] at h_step_3
+  -- init_next_step h_run
+  -- rename_i s_3 h_step_3 h_run
+  -- fetch_and_decode_inst h_step_3 h_s0_program
+  -- clear h_step_2
+  -- -- exec_inst h_step_3
+  -- -- LDST.exec_advanced_simd_multiple_struct_post_indexed
+  -- simp only [exec_inst, state_simp_rules, minimal_theory, bitvec_rules, ↓reduceIte] at h_step_3
   -- rw [CheckSPAligment_of_w_different] at h_step_3
   sorry
 

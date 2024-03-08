@@ -268,7 +268,7 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
          have ?term_lemma : (max_address - (address + 4#64)).toNat < (max_address - address).toNat := by
            have := termination_lemma address.toFin (4#64).toFin max_address.toFin
                    (by decide)
-                   (by simp_all! [BitVec.fin_bitvec_lt, BitVec.fin_bitvec_le, BitVec.lt_of_le_ne])
+                   (by simp_all! only [BitVec.not_lt, BitVec.fin_bitvec_lt, not_false_eq_true, BitVec.lt_of_le_ne, h₁])
                    (by rw [← BitVec.toFin_sub]; exact h₂)
                    (by simp_arith)
            simp [BitVec.fin_bitvec_le, BitVec.fin_bitvec_lt] at *
