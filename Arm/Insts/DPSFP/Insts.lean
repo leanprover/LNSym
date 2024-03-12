@@ -30,6 +30,7 @@ def DPSFP.rand : List (IO (Option (BitVec 32))) :=
   DPSFP.Advanced_simd_three_same_cls.rand ++
   DPSFP.Advanced_simd_three_different_cls.rand ++
   DPSFP.Advanced_simd_two_reg_misc_cls.rand ++
+  DPSFP.Crypto_aes_cls.rand ++
   DPSFP.Crypto_three_reg_sha512_cls.rand ++
   DPSFP.Crypto_two_reg_sha512_cls.rand ++
   DPSFP.Crypto_four_reg_cls.rand ++

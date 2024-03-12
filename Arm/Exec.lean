@@ -42,6 +42,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
 
   | DPSFP (DataProcSFPInst.Advanced_simd_copy i) =>
     DPSFP.exec_advanced_simd_copy i s
+  | DPSFP (DataProcSFPInst.Crypto_aes i) =>
+    DPSFP.exec_crypto_aes i s
   | DPSFP (DataProcSFPInst.Crypto_two_reg_sha512 i) =>
     DPSFP.exec_crypto_two_reg_sha512 i s
   | DPSFP (DataProcSFPInst.Crypto_three_reg_sha512 i) =>
@@ -81,10 +83,6 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     LDST.exec_advanced_simd_multiple_struct i s
   | LDST (LDSTInst.Advanced_simd_multiple_struct_post_indexed i) =>
     LDST.exec_advanced_simd_multiple_struct_post_indexed i s
-
-  | _ =>
-    write_err
-      (StateError.Unimplemented s!"Unsupported ArmInst {ai} encountered in exec_inst!") s
 
 
 def stepi (s : ArmState) : ArmState :=

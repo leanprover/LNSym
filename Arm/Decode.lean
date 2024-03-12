@@ -86,8 +86,8 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
   open DataProcSFPInst in
   match_bv i with
-  | [01001110, esize:2, 10100, opcode:5, 10, Rn:5, Rd:5] =>
-    DPSFP (Crypto_aes {esize, opcode, Rn, Rd})
+  | [01001110, size:2, 10100, opcode:5, 10, Rn:5, Rd:5] =>
+    DPSFP (Crypto_aes {size, opcode, Rn, Rd})
   | [11001110011, Rm:5, 1, O:1, 00, opcode:2, Rn:5, Rd:5] =>
     DPSFP (Crypto_three_reg_sha512 {Rm, O, opcode, Rn, Rd})
   | [11001110110000001000, opcode:2, Rn:5, Rd:5] =>
@@ -325,14 +325,14 @@ example : decode_raw_inst 0x4e200800#32 =
 -- aese	v0.16b, v16.16b
 example : decode_raw_inst 0x4e284a00#32 =
           (ArmInst.DPSFP (DataProcSFPInst.Crypto_aes
-               { esize := 0x0#2, opcode := 0x04#5,
+               { size := 0x0#2, opcode := 0x04#5,
                  Rn := 0x10#5, Rd := 0x00#5 })) := by
         rfl
 
 -- aesmc v0.16b, v0.16b
 example : decode_raw_inst 0x4e286800#32 =
           (ArmInst.DPSFP (DataProcSFPInst.Crypto_aes
-               { esize := 0x0#2, opcode := 0x06#5,
+               { size := 0x0#2, opcode := 0x06#5,
                  Rn := 0x00#5, Rd := 0x00#5 })) := by
         rfl
 
