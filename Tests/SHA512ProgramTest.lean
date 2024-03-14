@@ -587,7 +587,7 @@ def init_sha512_test : ArmState :=
              pc  := 0x1264c0#64,
              pstate := zero_pstate,
              mem := (fun (_ : BitVec 64) => 0#8),
-             program := sha512_program_map.find?,
+             program := sha512_program_map,
              error := StateError.None }
   have h_input : 1024 = 1024 / 8 * 8 := by decide
   let s := write_mem_bytes (1024 / 8) input_address (h_input ▸ asm_input) s

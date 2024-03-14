@@ -118,11 +118,10 @@ structure ArmState where
   pstate     : PState
   -- Memory: maps 64-bit addresses to bytes
   mem        : Store (BitVec 64) (BitVec 8)
-  -- Program: maps 64-bit addresses to 32-bit instructions. None is
-  -- returned when no instruction is present at a specified address.
+  -- Program: maps 64-bit addresses to 32-bit instructions.
   -- Note that we have the following assumption baked into our machine model:
   -- the program is always disjoint from the rest of the memory.
-  program    : Store (BitVec 64) (Option (BitVec 32))
+  program    : Map (BitVec 64) (BitVec 32)
 
   -- The error field is an artifact of this model; it is set to a
   -- non-None value when some irrecoverable error is encountered
@@ -199,7 +198,7 @@ def write_base_flag (flag : PFlag) (val : BitVec 1) (s : ArmState) : ArmState :=
 -- Fetch the instruction at address addr.
 @[irreducible]
 def fetch_inst (addr : BitVec 64) (s : ArmState) : Option (BitVec 32) :=
-  read_store addr s.program
+  s.program.find? addr
 
 -- Error --
 
@@ -464,10 +463,9 @@ where
     | (addr, _) :: p, some max => if addr > max then loop p (some addr) else loop p (some max)
 
 theorem fetch_inst_from_program
-  {address: BitVec 64} {program : program}
-  (h_program : s.program = program.find?) :
-  fetch_inst address s = program.find? address := by
-    unfold fetch_inst read_store
+  {address: BitVec 64} {program : program} :
+  fetch_inst address s = s.program.find? address := by
+    unfold fetch_inst
     simp_all!
 
 end Load_program_and_fetch_inst

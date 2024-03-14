@@ -35,7 +35,7 @@ theorem one_asm_snippet_sym_helper2 (q0_var : BitVec 128) :
 -- Todo: use sym_n to prove this theorem.
 theorem small_asm_snippet_sym (s : ArmState)
   (h_pc : read_pc s = 0x12650c#64)
-  (h_program : s.program = test_program.find?)
+  (h_program : s.program = test_program)
   (h_s_ok : read_err s = StateError.None)
   (h_s' : s' = run 4 s) :
   read_sfp 128 26#5 s' = read_sfp 128 0#5 s ∧

@@ -30,14 +30,14 @@ def sha512_program_test_1 : program :=
 theorem sha512_program_test_1_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x126538#64)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
-  (h_s0_program : s0.program = sha512_program_test_1.find?)
+  (h_s0_program : s0.program = sha512_program_test_1)
   (h_s0_ok : read_err s0 = StateError.None)
   (h_run : s_final = run 4 s0) :
   read_err s_final = StateError.None := by
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
-  sym_n 4 h_s0_program
+  sym_n 4 --h_s0_program
   -- Final steps
   unfold run at h_run
   subst s_final s_4

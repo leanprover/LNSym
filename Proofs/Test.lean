@@ -16,7 +16,7 @@ def test_s (inst : BitVec 32): ArmState :=
     pstate := zero_pstate,
     mem := (fun (_ : BitVec 64) => 0#8),
     -- Program: BitVec 64 → Option (BitVec 32)
-    program := (fun (a : BitVec 64) => if a == some 0#64 then inst else none),
+    program := [(0#64, inst)],
     error := StateError.None }
 
 -- 0x91000421#32: add x1, x1, 1

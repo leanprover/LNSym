@@ -41,7 +41,7 @@ macro "init_next_step" h_s:ident : tactic =>
 
 -- Given 'h_step: s_next = stepi s', fetch_and_decode_inst unfolds stepi,
 -- simplifies fetch_inst and decode_raw_inst.
-macro "fetch_and_decode_inst" h_step:ident h_program:ident : tactic =>
+macro "fetch_and_decode_inst" h_step:ident /-h_program:ident-/ : tactic =>
   `(tactic|
     (-- unfold stepi at $h_step:ident
      -- rw [$h_s_ok:ident] at $h_step:ident
@@ -54,7 +54,7 @@ macro "fetch_and_decode_inst" h_step:ident h_program:ident : tactic =>
      -- simp (config := {ground := true}) at $h_step:ident
      -- repeat (rw [BitVec.ofFin_eq_ofNat] at $h_step:ident)
     simp only [*, stepi, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident
-    rw [fetch_inst_from_program $h_program:ident] at $h_step:ident
+    rw [fetch_inst_from_program/- $h_program:ident-/] at $h_step:ident
     conv at $h_step:ident =>
       pattern Map.find? _ _
       simp (config := {ground := true}) only
@@ -128,7 +128,7 @@ macro "update_invariants" st_next:ident progname:ident
         try (rw [write_mem_bytes_program])
         assumption))
 
-def sym_one (curr_state_number : Nat) (prog : Lean.Ident) :
+def sym_one (curr_state_number : Nat) /-(prog : Lean.Ident)-/ :
     Lean.Elab.Tactic.TacticM Unit :=
   Lean.Elab.Tactic.withMainContext do
     let n_str := toString curr_state_number
@@ -161,7 +161,7 @@ def sym_one (curr_state_number : Nat) (prog : Lean.Ident) :
          (init_next_step $h_run:ident
           rename_i $st':ident $h_step_n':ident $h_run:ident
           -- Simulate one instruction
-          fetch_and_decode_inst $h_step_n':ident $prog:ident
+          fetch_and_decode_inst $h_step_n':ident /-$prog:ident-/
           (try clear $h_step_n:ident)
           exec_inst $h_step_n':ident
           -- Update invariants
@@ -175,12 +175,12 @@ def sym_one (curr_state_number : Nat) (prog : Lean.Ident) :
                 )))
 
 -- sym_n tactic symbolically simulates n instructions.
-elab "sym_n" n:num prog:ident : tactic => do
+elab "sym_n" n:num /-prog:ident-/ : tactic => do
   for i in List.range n.getNat do
-    sym_one i prog
+    sym_one i --prog
 
 -- sym_n tactic symbolically simulates n instructions from
 -- state number i.
-elab "sym_i_n" i:num n:num prog:ident : tactic => do
+elab "sym_i_n" i:num n:num /-prog:ident-/ : tactic => do
   for j in List.range n.getNat do
-    sym_one (i.getNat + j) prog
+    sym_one (i.getNat + j) --prog
