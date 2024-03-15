@@ -23,7 +23,7 @@ import Specs.AESCommon
 -- ShiftRows
 -- AddRoundKey key10
 --
--- The Arm implementation has an optimization that shifts the rounds:
+-- The Arm implementation has an optimization that commute intermediate steps:
 --
 -- for k in key0 to key8
 --   AddRoundKey + ShiftRows + SubBytes (AESE k)
@@ -43,8 +43,9 @@ open BitVec
 def WordSize := 32
 def BlockSize := 128
 
--- Maybe consider Lists vs Vectors?
+-- General comment: Maybe consider Lists vs Vectors?
 -- https://github.com/joehendrix/lean-crypto/blob/323ee9b1323deed5240762f4029700a246ecd9d5/lib/Crypto/Vector.lean#L96
+
 def Rcon : List (BitVec WordSize) :=
 [ 0x00000001#32,
   0x00000002#32,
@@ -96,7 +97,7 @@ def sbox (ind : BitVec 8) : BitVec 8 :=
       (x.toNat * 128 + y.toNat * 8) $ BitVec.flatten AESCommon.SBOX
   | _ => ind -- unreachable case
 
--- Little endian
+-- Note: The RotWord function is written in little endian
 def RotWord (w : BitVec WordSize) : BitVec WordSize :=
   match_bv w with
   | [a3:8, a2:8, a1:8, a0:8] => a0 ++ a3 ++ a2 ++ a1
@@ -154,8 +155,8 @@ def ShiftRows {Param : KBR} (state : BitVec Param.block_size)
   h ▸ AESCommon.ShiftRows (h ▸ state)
 
 def XTimes (bv : BitVec 8) : BitVec 8 :=
-  let res := extractLsb 6 0 bv ++ 0b0#1
-  if extractLsb 7 7 bv == 0b0#1 then res else res ^^^ 0b00011011#8
+  let res := truncate 7 bv ++ 0b0#1
+  if getLsb bv 7 then res ^^^ 0b00011011#8 else res
 
 def MixColumns {Param : KBR} (state : BitVec Param.block_size)
   : BitVec Param.block_size :=
@@ -164,25 +165,25 @@ def MixColumns {Param : KBR} (state : BitVec Param.block_size)
   let FFmul03 := fun (x : BitVec 8) => x ^^^ XTimes x
   h ▸ AESCommon.MixColumns (h ▸ state) FFmul02 FFmul03
 
--- TODO : Prove the following lemma
+-- TODO: looks like a SAT/SMT problem
+protected theorem FFmul02_equiv : (fun x => XTimes x) = DPSFP.FFmul02 := by
+  funext x
+  simp only [XTimes, DPSFP.FFmul02]
+  sorry
+
+-- TODO: looks like a SAT/SMT problem
+protected theorem FFmul03_equiv : (fun x => x ^^^ XTimes x) = DPSFP.FFmul03 := by
+  funext x
+  simp only [XTimes, DPSFP.FFmul03]
+  sorry
+
+
 theorem MixColumns_table_lookup_equiv {Param : KBR}
   (state : BitVec Param.block_size):
   have h : Param.block_size = 128 := by simp only [Param.h, BlockSize]
   MixColumns (Param := Param) state = h ▸ DPSFP.AESMixColumns (h ▸ state) := by
     simp only [MixColumns, DPSFP.AESMixColumns]
-    have h₀ : (fun x => XTimes x) = DPSFP.FFmul02 := by
-      funext x
-      simp only [XTimes, DPSFP.FFmul02]
-      simp only [Nat.reduceSub, Nat.reduceAdd, beq_iff_eq, Nat.sub_zero, List.length_cons, List.length_nil,
-      Nat.reduceSucc, Nat.reduceMul]
-      sorry -- looks like a sat problem
-    have h₁ : (fun x => x ^^^ XTimes x) = DPSFP.FFmul03 := by
-      funext x
-      simp only [XTimes, DPSFP.FFmul03]
-      simp only [Nat.reduceSub, Nat.reduceAdd, beq_iff_eq, Nat.sub_zero, List.length_cons, List.length_nil,
-      Nat.reduceSucc, Nat.reduceMul]
-      sorry -- looks like a sat problem
-    rw [h₀, h₁]
+    rw [AES.FFmul02_equiv, AES.FFmul03_equiv]
 
 def AddRoundKey {Param : KBR} (state : BitVec Param.block_size)
   (roundKey : BitVec Param.block_size) : BitVec Param.block_size :=

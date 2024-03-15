@@ -52,8 +52,7 @@ def FFmul02 (b : BitVec 8) : BitVec 8 :=
     ]
   let lo := b.toNat * 8
   let hi := lo + 7
-  have h : hi - lo + 1 = 8 := by omega
-  h ▸ extractLsb hi lo $ BitVec.flatten FFmul_02
+  BitVec.cast (by omega) $ extractLsb hi lo $ BitVec.flatten FFmul_02
 
 def FFmul03 (b : BitVec 8) : BitVec 8 :=
   let FFmul_03 :=
@@ -77,8 +76,7 @@ def FFmul03 (b : BitVec 8) : BitVec 8 :=
     ]
   let lo := b.toNat * 8
   let hi := lo + 7
-  have h : hi - lo + 1 = 8 := by omega
-  h ▸ extractLsb hi lo $ BitVec.flatten FFmul_03
+  BitVec.cast (by omega) $ extractLsb hi lo $ BitVec.flatten FFmul_03
 
 def AESMixColumns (op : BitVec 128) : BitVec 128 :=
   AESCommon.MixColumns op FFmul02 FFmul03
