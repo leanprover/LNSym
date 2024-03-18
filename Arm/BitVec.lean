@@ -512,7 +512,7 @@ macro_rules
          | _ => $rhsElse:term) => do
   let mut result := rhsElse
   let x ← `(discr)
-  for p in ps, rhs in rhss do
+  for p in ps.reverse, rhs in rhss.reverse do
     let test ← genBVPatMatchTest x p
     let rhs ← declBVPatVars x p rhs
     result ← `(if $test then $rhs else $result)
