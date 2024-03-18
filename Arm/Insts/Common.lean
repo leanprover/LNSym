@@ -370,7 +370,7 @@ def elem_set (vector : BitVec n) (e : Nat) (size : Nat)
 
 ----------------------------------------------------------------------
 
--- Field unsigned, round and accumulate are optional for left shifts
+-- Field unsigned, round and accumulate are not used in left shifts
 structure ShiftInfo where
   esize : Nat
   elements : Nat

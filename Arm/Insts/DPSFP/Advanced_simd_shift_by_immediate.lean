@@ -70,15 +70,16 @@ def exec_advanced_simd_shift_by_immediate
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     match inst.U, inst.opcode with
-    | 0b0#1, 0b01010#5 => exec_shl_vector inst s
-    | 0b0#1, 0b00000#5
-    | 0b0#1, 0b00010#5
-    | 0b0#1, 0b00100#5
-    | 0b0#1, 0b00110#5
-    | 0b1#1, 0b00000#5
-    | 0b1#1, 0b00010#5
-    | 0b1#1, 0b00100#5
-    | 0b1#1, 0b00110#5 => exec_shift_right_vector inst s
+    | 0b0#1, 0b01010#5 => exec_shl_vector inst s    -- SHL
+    | 0b0#1, 0b00000#5                              -- SSHR
+    | 0b0#1, 0b00010#5                              -- SSRA
+    | 0b0#1, 0b00100#5                              -- SRSHR
+    | 0b0#1, 0b00110#5                              -- SRSRA
+    | 0b1#1, 0b00000#5                              -- USHR
+    | 0b1#1, 0b00010#5                              -- USRA
+    | 0b1#1, 0b00100#5                              -- URSHR
+    | 0b1#1, 0b00110#5                              -- URSRA
+      => exec_shift_right_vector inst s
     | _, _ => write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
 
 ----------------------------------------------------------------------

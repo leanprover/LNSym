@@ -107,6 +107,8 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
   | [0, Q:1, op:1, 0111100000, a:1, b:1, c:1, cmode:4, o2:1, 1, d:1, e:1, f:1, g:1, h:1, Rd:5] =>
     DPSFP (Advanced_simd_modified_immediate {Q, op, a, b, c, cmode, o2, d, e, f, g, h, Rd})
   -- Note: Advanced SIMD shift by immediate constraint immh != 0000
+  -- An instruction will be matched against `Advanced_simd_modified_immediate` first,
+  -- if it doesn't match, then we know immh can't be 0b0000#4
   | [0, Q:1, U:1, 011110, immh:4, immb:3, opcode:5, 1, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_shift_by_immediate {Q, U, immh, immb, opcode, Rn, Rd})
   | [01, U:1, 111110, immh:4, immb:3, opcode:5, 1, Rn:5, Rd:5] =>
