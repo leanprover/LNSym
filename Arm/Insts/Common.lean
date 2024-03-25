@@ -368,4 +368,81 @@ def elem_set (vector : BitVec n) (e : Nat) (size : Nat)
   have h : hi - lo + 1 = size := by simp only [hi, lo]; omega
   BitVec.partInstall hi lo (h ▸ value) vector
 
+----------------------------------------------------------------------
+
+-- Field unsigned, round and accumulate are not used in left shifts
+structure ShiftInfo where
+  esize : Nat
+  elements : Nat
+  shift : Nat
+  unsigned := true
+  round := false
+  accumulate := false
+  h : esize > 0
+deriving DecidableEq, Repr
+
+export ShiftInfo (esize elements shift unsigned round accumulate)
+
+@[state_simp_rules]
+def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool) (h : n > 0)
+  : BitVec n :=
+  -- assert shift > 0
+  let fn := if unsigned then ushiftRight else sshiftRight
+  let rounded_bv :=
+    if round then
+      let rounded := value + (1 <<< (shift - 1))
+      BitVec.ofInt (n + 1) rounded
+    else
+      BitVec.ofInt (n + 1) value
+  have h₀ : n - 1 - 0 + 1 = n := by omega
+  h₀ ▸ extractLsb (n-1) 0 (fn rounded_bv shift)
+
+@[state_simp_rules]
+def Int_with_unsigned (unsigned : Bool) (value : BitVec n) : Int :=
+  if unsigned then value.toNat else value.toInt
+
+def shift_right_common_aux
+  (e : Nat) (info : ShiftInfo) (operand : BitVec datasize)
+  (operand2 : BitVec datasize) (result : BitVec datasize) : BitVec datasize :=
+  if h : info.elements ≤ e then
+    result
+  else
+    let elem := Int_with_unsigned info.unsigned $ elem_get operand e info.esize info.h
+    let shift_elem := RShr info.unsigned elem info.shift info.round info.h
+    let acc_elem := elem_get operand2 e info.esize info.h + shift_elem
+    let result := elem_set result e info.esize acc_elem info.h
+    have _ : info.elements - (e + 1) < info.elements - e := by omega
+    shift_right_common_aux (e + 1) info operand operand2 result
+  termination_by (info.elements - e)
+
+@[state_simp_rules]
+def shift_right_common
+  (info : ShiftInfo) (datasize : Nat) (Rn : BitVec 5) (Rd : BitVec 5)
+  (s : ArmState) : BitVec datasize :=
+  let operand := read_sfp datasize Rn s
+  let operand2 := if info.accumulate then read_sfp datasize Rd s else BitVec.zero datasize
+  let result := BitVec.zero datasize
+  shift_right_common_aux 0 info operand operand2 result
+
+def shift_left_common_aux
+  (e : Nat) (info : ShiftInfo) (operand : BitVec datasize)
+  (result : BitVec datasize) : BitVec datasize :=
+  if h : info.elements ≤ e then
+    result
+  else
+    let elem := elem_get operand e info.esize info.h
+    let shift_elem := elem <<< info.shift
+    let result := elem_set result e info.esize shift_elem info.h
+    have _ : info.elements - (e + 1) < info.elements - e := by omega
+    shift_left_common_aux (e + 1) info operand result
+  termination_by (info.elements - e)
+
+@[state_simp_rules]
+def shift_left_common
+  (info : ShiftInfo) (datasize : Nat) (Rn : BitVec 5) (s : ArmState)
+  : BitVec datasize :=
+  let operand := read_sfp datasize Rn s
+  let result := BitVec.zero datasize
+  shift_left_common_aux 0 info operand result
+
 end Common

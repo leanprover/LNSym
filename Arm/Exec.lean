@@ -37,6 +37,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     DPR.exec_conditional_select i s
   | DPR (DataProcRegInst.Data_processing_one_source i) =>
     DPR.exec_data_processing_one_source i s
+  | DPR (DataProcRegInst.Data_processing_two_source i) =>
+    DPR.exec_data_processing_two_source i s
   | DPR (DataProcRegInst.Logical_shifted_reg i) =>
     DPR.exec_logical_shifted_reg i s
 
@@ -58,6 +60,10 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     DPSFP.exec_advanced_simd_permute i s
   | DPSFP (DataProcSFPInst.Advanced_simd_modified_immediate i) =>
     DPSFP.exec_advanced_simd_modified_immediate i s
+  | DPSFP (DataProcSFPInst.Advanced_simd_shift_by_immediate i) =>
+    DPSFP.exec_advanced_simd_shift_by_immediate i s
+  | DPSFP (DataProcSFPInst.Advanced_simd_scalar_shift_by_immediate i) =>
+    DPSFP.exec_advanced_simd_scalar_shift_by_immediate i s
   | DPSFP (DataProcSFPInst.Advanced_simd_scalar_copy i) =>
     DPSFP.exec_advanced_simd_scalar_copy i s
   | DPSFP (DataProcSFPInst.Advanced_simd_table_lookup i) =>
@@ -83,6 +89,10 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     LDST.exec_advanced_simd_multiple_struct i s
   | LDST (LDSTInst.Advanced_simd_multiple_struct_post_indexed i) =>
     LDST.exec_advanced_simd_multiple_struct_post_indexed i s
+
+  -- | _ =>
+  --   write_err
+  --     (StateError.Unimplemented s!"Unsupported ArmInst {ai} encountered in exec_inst!") s
 
 
 def stepi (s : ArmState) : ArmState :=
