@@ -36,6 +36,7 @@ protected def flatten {n : Nat} (xs : List (BitVec n)) : BitVec (n * xs.length) 
   | x :: rest =>
     have h : n + n * List.length rest = n * List.length (x :: rest) := by
       simp [List.length_cons, Nat.mul_one, Nat.mul_add, Nat.succ_eq_one_add]
+      omega
     BitVec.cast h (x ++ (BitVec.flatten rest))
 
 /-- Generate a random bitvector of width n. The range of the values
@@ -275,9 +276,6 @@ protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
 theorem empty_bitvector_append_left
   (x : BitVec n) (h : 0 + n = n) :
   BitVec.cast h (0#0 ++ x) = x := by
-  simp [HAppend.hAppend, BitVec.append, shiftLeftZeroExtend, zeroExtend']
-  simp [HOr.hOr, OrOp.or, BitVec.or, Nat.lor]
-  unfold Nat.bitwise
   simp [BitVec.cast]
   rfl
 
@@ -341,7 +339,7 @@ theorem append_of_extract_general_nat (high low n vn : Nat) (h : vn < 2 ^ n) :
   done
 
 theorem append_of_extract (n : Nat) (v : BitVec n)
-  (hn0 : 0 < n) (high0 : high = n - low) (low0 : 1 <= low)
+  (high0 : high = n - low) (low0 : 1 <= low)
   (h : high + (low - 1 - 0 + 1) = n) :
   BitVec.cast h (zeroExtend high (v >>> low) ++ extractLsb (low - 1) 0 v) = v := by
   ext
@@ -354,9 +352,10 @@ theorem append_of_extract (n : Nat) (v : BitVec n)
   · rw [this]
   · rw [Nat.shiftRight_eq_div_pow]
     exact Nat.lt_of_le_of_lt (Nat.div_le_self _ _) vlt
+  done
 
 theorem append_of_extract_general (v : BitVec n)
-  (hn0 : 0 < n) (low0 : 1 <= low)
+  (low0 : 1 <= low)
   (h1 : high = width)
   (h2 : (high + low - 1 - 0 + 1) = (width + (low - 1 - 0 + 1))) :
   BitVec.cast h1 (zeroExtend high (v >>> low)) ++ extractLsb (low - 1) 0 v =
@@ -371,6 +370,7 @@ theorem append_of_extract_general (v : BitVec n)
   · rw [this]
   · rw [Nat.shiftRight_eq_div_pow]
     exact Nat.lt_of_le_of_lt (Nat.div_le_self _ _) h_vlt
+  done
 
 theorem leftshift_n_or_mod_2n :
   (x <<< n ||| y) % 2 ^ n = y % 2 ^ n := by

@@ -78,7 +78,6 @@ theorem append_byte_of_extract_rest_same_cast (n : Nat) (v : BitVec ((n + 1) * 8
   apply BitVec.append_of_extract
   · omega
   · omega
-  · decide
   · omega
   done
 
@@ -720,7 +719,7 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_helper1 (a i : Nat)
 
 theorem read_mem_bytes_of_write_mem_bytes_subset_helper2
   (addr2 addr1 : BitVec 64) (val : BitVec (n1 * 8))
-  (h0 : 0 < n1) (h1 : n1 <= 2 ^ 64) (h2 : 0 < n)
+  (_h0 : 0 < n1) (_h1 : n1 <= 2 ^ 64) (h2 : 0 < n)
   (h4 : addr1 ≠ addr2) (h5 : addr2 - addr1 < (2 ^ 64 - 1)#64) :
   (BitVec.toNat val >>> ((BitVec.toNat (addr2 - addr1) + 1) % 2 ^ 64 * 8) % 2 ^ (n * 8)) <<< 8 |||
       BitVec.toNat val >>> (BitVec.toNat (addr2 - addr1) * 8) % 2 ^ 8 =

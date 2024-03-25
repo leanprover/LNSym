@@ -99,7 +99,7 @@ def sym_one (curr_state_number : Nat) (prog : Lean.Ident) :
     --                            pcexpr).toSyntax
     -- Question: how can I convert this pcbv into Syntax?
     let mk_name (s : String) : Lean.Name :=
-      Lean.Name.append Lean.Name.anonymous s
+      Lean.Name.mkStr Lean.Name.anonymous s
     -- st': name of the next state
     let st' := Lean.mkIdent (mk_name ("s_" ++ n'_str))
     -- let h_st_ok := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_ok"))
