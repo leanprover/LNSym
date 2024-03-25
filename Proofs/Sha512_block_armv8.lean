@@ -37,7 +37,7 @@ theorem sha512_program_test_1_sym (s0 s_final : ArmState)
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
-  sym_n 4 --h_s0_program
+  sym_n 4 h_s0_program
   -- Final steps
   unfold run at h_run
   subst s_final s_4
@@ -61,7 +61,7 @@ def sha512_program_test_2 : program :=
 -- set_option profiler true in
 theorem sha512_program_test_2_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x126538#64)
-  (h_s0_program : s0.program = sha512_program_test_2.find?)
+  (h_s0_program : s0.program = sha512_program_test_2)
   (h_s0_ok : read_err s0 = StateError.None)
   (h_run : s_final = run 6 s0) :
   read_err s_final = StateError.None := by
@@ -79,16 +79,6 @@ theorem sha512_program_test_2_sym (s0 s_final : ArmState)
 
 -- Test 3:
 
-variable (write : (n : Nat) → BitVec 64 → BitVec (n * 8) → Type → Type)
-
-theorem write_simplify_test_0 (a x y : BitVec 64)
-  (h : ((8 * 8) + 8 * 8) = 2 * ((8 * 8) / 8) * 8) :
-  write (2 * ((8 * 8) / 8)) a (BitVec.cast h (zeroExtend (8 * 8) x ++ (zeroExtend (8 * 8) y))) s
-  =
-  write 16 a (x ++ y) s := by
-  simp only [zeroExtend_eq, BitVec.cast_eq]
-
-
 def sha512_program_test_3 : program :=
   def_program
    [(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
@@ -105,7 +95,7 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   (h_s0_ok : read_err s0 = StateError.None)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
   (h_s0_pc : read_pc s0 = 0x1264c0#64)
-  (h_s0_program : s0.program = sha512_program_test_3.find?)
+  (h_s0_program : s0.program = sha512_program_test_3)
   (h_run : s_final = run 4 s0) :
   read_err s_final = StateError.None := by
   -- Prelude
@@ -157,7 +147,7 @@ theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
   (h_s0_ok : read_err s0 = StateError.None)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
   (h_s0_pc : read_pc s0 = 0x1264c0#64)
-  (h_s0_program : s0.program = sha512_program_map.find?)
+  (h_s0_program : s0.program = sha512_program_map)
   (h_run : s_final = run 32 s0) :
   read_err s_final = StateError.None := by
   -- Prelude

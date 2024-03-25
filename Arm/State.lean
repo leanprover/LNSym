@@ -258,8 +258,7 @@ def w (fld : StateField) (v : (state_value fld)) (s : ArmState) : ArmState :=
   | ERR    => write_base_error v s
 
 @[state_simp_rules]
-theorem r_of_w_same (fld : StateField) (v : (state_value fld)) (s : ArmState) :
-  r fld (w fld v s) = v := by
+theorem r_of_w_same : r fld (w fld v s) = v := by
   unfold r w
   unfold read_base_gpr write_base_gpr
   unfold read_base_sfp write_base_sfp
@@ -269,8 +268,7 @@ theorem r_of_w_same (fld : StateField) (v : (state_value fld)) (s : ArmState) :
   split <;> (repeat (split <;> simp_all!))
 
 @[state_simp_rules]
-theorem r_of_w_different (fld1 fld2 : StateField) (v : (state_value fld2)) (s : ArmState)
-  (h : fld1 ≠ fld2) :
+theorem r_of_w_different (h : fld1 ≠ fld2) :
   r fld1 (w fld2 v s) = r fld1 s := by
   unfold r w
   unfold read_base_gpr write_base_gpr
@@ -282,8 +280,7 @@ theorem r_of_w_different (fld1 fld2 : StateField) (v : (state_value fld2)) (s : 
   split <;> (repeat (split <;> simp_all!))
 
 @[state_simp_rules]
-theorem w_of_w_shadow (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmState) :
-  w fld v2 (w fld v1 s) = w fld v2 s := by
+theorem w_of_w_shadow : w fld v2 (w fld v1 s) = w fld v2 s := by
   unfold w
   unfold write_base_gpr
   unfold write_base_sfp
@@ -293,8 +290,7 @@ theorem w_of_w_shadow (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmSta
   (repeat (split <;> simp_all!))
 
 @[state_simp_rules]
-theorem w_irrelevant (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmState) :
-  w fld (r fld s) s = s := by
+theorem w_irrelevant : w fld (r fld s) s = s := by
   unfold r w
   unfold read_base_gpr write_base_gpr
   unfold read_base_sfp write_base_sfp
@@ -304,8 +300,7 @@ theorem w_irrelevant (fld : StateField) (v1 v2 : (state_value fld)) (s : ArmStat
   repeat (split <;> simp_all)
 
 @[state_simp_rules]
-theorem fetch_inst_of_w (addr : BitVec 64) (fld : StateField) (val : (state_value fld)) (s : ArmState) :
-  fetch_inst addr (w fld val s) = fetch_inst addr s := by
+theorem fetch_inst_of_w : fetch_inst addr (w fld val s) = fetch_inst addr s := by
   unfold fetch_inst w
   unfold write_base_gpr
   unfold write_base_sfp
@@ -316,10 +311,9 @@ theorem fetch_inst_of_w (addr : BitVec 64) (fld : StateField) (val : (state_valu
 
 -- There is no StateField that overwrites the program.
 @[state_simp_rules]
-theorem w_program (sf : StateField) (v : state_value sf) (s : ArmState):
-    (w sf v s).program = s.program := by
+theorem w_program : (w fld v s).program = s.program := by
   intros
-  cases sf <;> unfold w <;> simp
+  cases fld <;> unfold w <;> simp
   · unfold write_base_gpr; simp
   · unfold write_base_sfp; simp
   · unfold write_base_pc; simp
@@ -463,7 +457,7 @@ where
     | (addr, _) :: p, some max => if addr > max then loop p (some addr) else loop p (some max)
 
 theorem fetch_inst_from_program
-  {address: BitVec 64} {program : program} :
+  {address: BitVec 64} :
   fetch_inst address s = s.program.find? address := by
     unfold fetch_inst
     simp_all!
