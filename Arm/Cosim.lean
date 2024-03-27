@@ -16,7 +16,7 @@ def init_cosim_state : ArmState :=
     pc  := 0#64,
     pstate := zero_pstate,
     mem := (fun (_ : BitVec 64) => 0#8),
-    program := (fun (_ : BitVec 64) => none),
+    program := Map.empty,
     error := StateError.None }
 
 /-- A structure to hold both the input and output values for a
@@ -73,8 +73,7 @@ def init_flags (flags : BitVec 4) (s : ArmState) : ArmState := Id.run do
 /-- Initialize an ArmState for cosimulation from a given regState. -/
 def regState_to_armState (r : regState) : ArmState :=
   let s := init_gprs r.gpr (init_flags r.nzcv (init_sfps r.sfp init_cosim_state))
-  let s := { s with program :=
-             (fun (a : BitVec 64) => if a == some 0#64 then r.inst else none) }
+  let s := { s with program := def_program [(0x0#64, r.inst)] }
   s
 
 def bitvec_to_hex (x : BitVec n) : String :=

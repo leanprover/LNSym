@@ -11,24 +11,6 @@ import Lean.Expr
 
 open BitVec
 
--- sym1 tactic symbolically simulates a single instruction.
-syntax "sym1" "[" term "]" : tactic
-macro_rules
-  | `(tactic| sym1 [$h_program:term]) =>
-    `(tactic|
-      (try simp_all (config := {decide := true, ground := true}) only [state_simp_rules]);
-      unfold run;
-      simp_all only [stepi, state_simp_rules];
-      (try rw [fetch_inst_from_program $h_program]);
-      (try simp (config := {decide := true, ground := true}) only);
-      -- After exec_inst is opened up, the exec functions of the
-      -- instructions which are tagged with simp will also open up
-      -- here.
-      simp only [exec_inst, state_simp_rules];
-      -- (try simp_all (config := {decide := true, ground := true}) only);
-      -- (try simp only [ne_eq, r_of_w_different, r_of_w_same, w_of_w_shadow, w_irrelevant])
-      (try simp_all (config := {decide := true, ground := true}) only [state_simp_rules]))
-
 -- init_next_step breaks 'h_s: s_next = run n s' into 'run (n-1) s' and one step.
 macro "init_next_step" h_s:ident : tactic =>
   `(tactic|
@@ -43,48 +25,24 @@ macro "init_next_step" h_s:ident : tactic =>
 -- simplifies fetch_inst and decode_raw_inst.
 macro "fetch_and_decode_inst" h_step:ident h_program:ident : tactic =>
   `(tactic|
-    (-- unfold stepi at $h_step:ident
-     -- rw [$h_s_ok:ident] at $h_step:ident
-     -- dsimp at $h_step:ident -- reduce let and match
-     -- rw [$h_pc:ident] at $h_step:ident
-     -- rw [fetch_inst_from_program $h_program:ident] at $h_step:ident
-     -- -- Note: this often times out. It tries to evaluate, e.g.,
-     -- -- Std.RBMap.find? sha512_program_test_2 1205560#64
-     -- -- which easily becomes hard.
-     -- simp (config := {ground := true}) at $h_step:ident
-     -- repeat (rw [BitVec.ofFin_eq_ofNat] at $h_step:ident)
-    simp only [*, stepi, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident
-    rw [fetch_inst_from_program $h_program:ident] at $h_step:ident
-    conv at $h_step:ident =>
+    (simp only [*, stepi, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident
+     rw [fetch_inst_from_program] at $h_step:ident
+     simp only [$h_program:ident] at $h_step:ident
+     conv at $h_step:ident =>
       pattern Map.find? _ _
       simp (config := {ground := true}) only
-      -- simp/ground leaves bitvecs' structure exposed, so we use
-      -- BitVec.ofFin_eq_ofNat to fold them back into their canonical
-      -- form.
-      simp only [BitVec.ofFin_eq_ofNat]
-    (try dsimp only at $h_step:ident);
-    conv at $h_step:ident =>
+     (try dsimp only at $h_step:ident);
+     conv at $h_step:ident =>
       pattern decode_raw_inst _
       simp (config := {ground := true}) only
-      simp only [BitVec.ofFin_eq_ofNat]
-    (try dsimp only at $h_step:ident)))
+     (try dsimp only at $h_step:ident)))
 
 -- Given hstep which is the result of fetch_and_decode_inst, exec_inst executes
 -- an instruction and generates 's_next = w .. (w .. (... s))'.
 macro "exec_inst" h_step:ident : tactic =>
   `(tactic|
-    (-- unfold exec_inst at $h_step:ident
-     -- -- A simple case where simp works (e.g., Arm.DPI)
-     -- try (simp (config := {ground := true, decide := true}) at $h_step:ident)
-     -- -- A complicated case (e.g., Arm.LDST)
-     -- try (simp at $h_step:ident; (conv at $h_step:ident =>
-     --     arg 2
-     --     apply if_true
-     --     apply $st_next:ident); simp [$h_sp_aligned:ident] at $h_step:ident)
-    simp only [*, exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident;
-    (try simp (config := {ground := true}) only [↓reduceIte, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident)
-    -- Fold back any exposed bitvecs into canonical forms.
-    (try simp only [BitVec.ofFin_eq_ofNat] at $h_step:ident)))
+    (simp only [*, exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident;
+     (try (repeat simp (config := {ground := true}) only [↓reduceIte, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident))))
 
 -- Given h_step which is 's_next = w .. (w .. (... s))', it creates assumptions
 -- 'read .. s_next = value'.

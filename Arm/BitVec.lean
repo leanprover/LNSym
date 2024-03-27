@@ -20,6 +20,10 @@ attribute [bitvec_rules] BitVec.extractLsb_ofFin
 attribute [bitvec_rules] BitVec.zeroExtend_eq
 attribute [bitvec_rules] BitVec.ofFin.injEq
 attribute [bitvec_rules] BitVec.extractLsb_toNat
+attribute [bitvec_rules] BitVec.truncate_or
+attribute [bitvec_rules] BitVec.zeroExtend_zeroExtend_of_le
+attribute [bitvec_rules] BitVec.zeroExtend_eq
+
 -- attribute [bitvec_rules] add_ofFin
 
 ----------------------------------------------------------------------

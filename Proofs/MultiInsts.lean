@@ -25,31 +25,31 @@ def test_program : program :=
     (0x126514#64 , 0x4ea21c5c#32),      --  mov     v28.16b, v2.16b
     (0x126518#64 , 0x4ea31c7d#32)]      --  mov     v29.16b, v3.16b
 
-theorem one_asm_snippet_sym_helper1 (q0_var : BitVec 128) :
-  zeroExtend 128 (zeroExtend 128 (zeroExtend 128 q0_var ||| zeroExtend 128 q0_var)) = zeroExtend 128 q0_var := by
-  sorry -- auto
-
 theorem one_asm_snippet_sym_helper2 (q0_var : BitVec 128) :
   q0_var ||| q0_var = q0_var := by sorry -- auto
 
--- Todo: use sym_n to prove this theorem.
-theorem small_asm_snippet_sym (s : ArmState)
-  (h_pc : read_pc s = 0x12650c#64)
-  (h_program : s.program = test_program.find?)
-  (h_s_ok : read_err s = StateError.None)
-  (h_s' : s' = run 4 s) :
-  read_sfp 128 26#5 s' = read_sfp 128 0#5 s ∧
-  read_err s' = StateError.None := by
-    FIXME
-    -- iterate 4 (sym1 [h_program])
-    sym1 [h_program]
-    sym1 [h_program]
-    sym1 [h_program]
-    sym1 [h_program]
-    -- Wrapping up the result:
-    -- generalize (r (StateField.SFP 0#5) s) = q0_var; unfold state_value at q0_var; simp at q0_var
-    -- try (simp [one_asm_snippet_sym_helper1])
+theorem small_asm_snippet_sym (s0 s_final : ArmState)
+  (h_s0_pc : read_pc s0 = 0x12650c#64)
+  (h_s0_program : s0.program = test_program)
+  (h_s0_ok : read_err s0 = StateError.None)
+  (h_run : s_final = run 4 s0) :
+  read_sfp 128 26#5 s_final = read_sfp 128 0#5 s0 ∧
+  read_err s_final = StateError.None := by
+  -- Prelude
+  simp_all only [state_simp_rules, -h_run]
+  -- Symbolic Simulation
+  sym_n 4 h_s0_program
+  -- Wrapping up the result:
+  unfold run at h_run
+  subst s_final s_4
+  apply And.intro
+  · simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
     simp only [one_asm_snippet_sym_helper2]
-    done
+    -- FIXME: Why does state_simp_rules not work here? Why do we need
+    -- an explicit rw?
+    (try (repeat (rw [r_of_w_different (by decide)])))
+    (try (rw [r_of_w_same]))
+  · simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
+  done
 
 end multi_insts_proofs

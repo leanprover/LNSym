@@ -10,6 +10,9 @@ A simple Map-like type based on lists
 
 def Map (α : Type u) (β : Type v) := List (α × β)
 
+instance [x : Repr (List (α × β))] : Repr (Map α β) where
+  reprPrec := x.reprPrec
+
 def Map.empty : Map α β := []
 
 def Map.find? [DecidableEq α] (m : Map α β) (a' : α) : Option β :=

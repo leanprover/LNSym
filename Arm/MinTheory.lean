@@ -83,13 +83,15 @@ attribute [minimal_theory] bne_self_eq_false'
 attribute [minimal_theory] decide_False
 attribute [minimal_theory] decide_True
 attribute [minimal_theory] bne_iff_ne
-attribute [minimal_theory] Nat.le_zero_eq
 
+attribute [minimal_theory] Nat.le_zero_eq
 attribute [minimal_theory] Nat.zero_add
 attribute [minimal_theory] Nat.zero_eq
 attribute [minimal_theory] Nat.succ.injEq
 attribute [minimal_theory] Nat.succ_ne_zero
 attribute [minimal_theory] Nat.sub_zero
+
+attribute [minimal_theory] Nat.le_refl
 
 @[minimal_theory]
 theorem option_get_bang_of_some [Inhabited α] (v : α) :
