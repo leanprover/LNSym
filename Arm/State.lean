@@ -59,7 +59,7 @@ instance [Repr β]: Repr (Store (BitVec n) β) where
   reprPrec store _ :=
     let rec helper (a : Nat) (acc : Lean.Format) :=
       let a_bv := BitVec.ofNat n a
-      let a_repr := "(" ++ repr a_bv ++ " : " ++ (repr (read_store a_bv store)) ++ ") "
+      let a_repr := "(" ++ repr a_bv ++ " : " ++ (repr (read_store a_bv store)) ++ ") \n"
       match a with
       | 0 => a_repr ++ acc
       | a' + 1 => helper a' (a_repr ++ acc)

@@ -11,4 +11,6 @@ import «Tests».SHA512ProgramTest
 import «Tests».LDSTTest
 import «Tests».AESSpecTest
 import «Tests».AESGCMSpecTest
-
+import «Tests».GCMProgramTests
+import «Tests».AESV8ProgramTests
+import «Tests».AESGCMProgramTests
