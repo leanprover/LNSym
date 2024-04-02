@@ -95,7 +95,7 @@ protected theorem bits_le_ceiling_in_bits (w : Nat) :
   omega
 
 /-- GCTR: encrypting/decrypting message x using Galois counter mode -/
-def GCTR {m : Nat} (CIPH : Cipher (n := 128) (m := m))
+def GCTR (CIPH : Cipher (n := 128) (m := m))
   (K : BitVec m) (ICB : BitVec 128) (X : BitVec v) : (BitVec v) :=
   let n := GCM.ceiling_in_blocks v
   GCTR_aux CIPH 0 n K ICB X $ BitVec.zero v
@@ -134,8 +134,8 @@ protected theorem GCM_AE_DE_simplification2
   (x * 128 - y) + y = x * 128 := by omega
 
 /-- GCM_AE : Galois Counter Mode Authenticated Encryption -/
-def GCM_AE {m : Nat} (CIPH : Cipher (n := 128) (m := m))
-  (K : BitVec m) (IV : BitVec lv) (P : BitVec p) (A : BitVec a) (t : Nat)
+def GCM_AE (CIPH : Cipher (n := 128) (m := m))
+  (K : BitVec m) (t : Nat) (IV : BitVec lv) (P : BitVec p) (A : BitVec a)
   : (BitVec p) × (BitVec t) :=
   let H := CIPH (BitVec.zero 128) K
   let J0 : BitVec 128 := GCM.initialize_J0 H IV
@@ -167,7 +167,7 @@ def length_constraints (_IV : BitVec v) (_A : BitVec a) (_C : BitVec c)
 
 /-- GCM_AD : Galois Counter Mode Authenticated Decryption
     GCM_AD returns none when decryption fails. -/
-def GCM_AD {m : Nat} (CIPH : Cipher (n := 128) (m := m))
+def GCM_AD (CIPH : Cipher (n := 128) (m := m))
   (K : BitVec m) (IV : BitVec lv) (C : BitVec c) (A : BitVec a) (T : BitVec t)
   : Option (BitVec c) :=
   if not $ length_constraints IV C A then
