@@ -6,6 +6,7 @@ Author(s): Yan Peng
 import Arm.BitVec
 import Arm.Insts.DPSFP.Crypto_aes
 import Specs.AESCommon
+import Tactics.Enum_bv
 
 -- References : https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
 --              https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/aes-development/rijndael-ammended.pdf
@@ -165,18 +166,21 @@ def MixColumns {Param : KBR} (state : BitVec Param.block_size)
   let FFmul03 := fun (x : BitVec 8) => x ^^^ XTimes x
   h ▸ AESCommon.MixColumns (h ▸ state) FFmul02 FFmul03
 
--- TODO: looks like a SAT/SMT problem
+set_option maxRecDepth 3000 in
+set_option maxHeartbeats 300000 in
+set_option profiler true in
 protected theorem FFmul02_equiv : (fun x => XTimes x) = DPSFP.FFmul02 := by
   funext x
-  simp only [XTimes, DPSFP.FFmul02]
-  sorry
+  enum_bv 8 x
+  -- sorry
 
--- TODO: looks like a SAT/SMT problem
+set_option maxRecDepth 3000 in
+set_option maxHeartbeats 300000 in
+set_option profiler true in
 protected theorem FFmul03_equiv : (fun x => x ^^^ XTimes x) = DPSFP.FFmul03 := by
   funext x
-  simp only [XTimes, DPSFP.FFmul03]
-  sorry
-
+  enum_bv 8 x
+  -- sorry
 
 theorem MixColumns_table_lookup_equiv {Param : KBR}
   (state : BitVec Param.block_size):
