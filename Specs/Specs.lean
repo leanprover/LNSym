@@ -5,5 +5,5 @@ Author(s): Shilpi Goel
 -/
 import «Specs».SHA512
 import «Specs».AESCommon
-import «Specs».AES
+import «Specs».AESArm
 import «Specs».GCM

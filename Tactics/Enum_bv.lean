@@ -164,4 +164,3 @@ elab "enum_bv" n:num var:ident : tactic => do
 -- theorem example_lemma : carry_less_add = lookup_cla := by
 --   funext x
 --   enum_bv 2 x
-

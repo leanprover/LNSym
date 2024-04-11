@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Yan Peng
 -/
 
-import Specs.AES
+import Specs.AESArm
 import Arm.BitVec
 
 -- Reference : https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf Section B
@@ -37,6 +37,6 @@ protected def output : BitVec 128 :=
       0xdc#8, 0x11#8, 0x85#8, 0x97#8,
       0x19#8, 0x6a#8, 0x0b#8, 0x32#8 ].reverse
 
-example : AES.AES_encrypt (Param := AES.AES128KBR) AESSpecTest.input AESSpecTest.key = AESSpecTest.output := by native_decide
+example : AESArm.AES_encrypt (Param := AESArm.AES128KBR) AESSpecTest.input AESSpecTest.key = AESSpecTest.output := by native_decide
 
 end AESSpecTest

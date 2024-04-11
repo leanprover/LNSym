@@ -37,7 +37,7 @@ import Tactics.Enum_bv
 --
 --------------------------------------------------
 
-namespace AES
+namespace AESArm
 
 open BitVec
 
@@ -118,7 +118,7 @@ protected def InitKey {Param : KBR} (i : Nat) (key : BitVec Param.key_len)
     let wd := h₁ ▸ extractLsb (i * 32 + 32 - 1) (i * 32) key
     let (x:KeySchedule) := [wd]
     have _ : Param.Nk - (i + 1) < Param.Nk - i := by omega
-    AES.InitKey (Param := Param) (i + 1) key (acc ++ x)
+    AESArm.InitKey (Param := Param) (i + 1) key (acc ++ x)
   termination_by (Param.Nk - i)
 
 protected def KeyExpansion_helper {Param : KBR} (i : Nat) (ks : KeySchedule)
@@ -137,13 +137,13 @@ protected def KeyExpansion_helper {Param : KBR} (i : Nat) (ks : KeySchedule)
     let res := (List.get! ks (i - Param.Nk)) ^^^ tmp
     let ks := List.append ks [ res ]
     have _ : 4 * Param.Nr + 4 - (i + 1) < 4 * Param.Nr + 4 - i := by omega
-    AES.KeyExpansion_helper (Param := Param) (i + 1) ks
+    AESArm.KeyExpansion_helper (Param := Param) (i + 1) ks
   termination_by (4 * Param.Nr + 4 - i)
 
 def KeyExpansion {Param : KBR} (key : BitVec Param.key_len)
   : KeySchedule :=
-  let seeded := AES.InitKey (Param := Param) 0 key []
-  AES.KeyExpansion_helper (Param := Param) Param.Nk seeded
+  let seeded := AESArm.InitKey (Param := Param) 0 key []
+  AESArm.KeyExpansion_helper (Param := Param) Param.Nk seeded
 
 def SubBytes {Param : KBR} (state : BitVec Param.block_size)
   : BitVec Param.block_size :=
@@ -166,28 +166,28 @@ def MixColumns {Param : KBR} (state : BitVec Param.block_size)
   let FFmul03 := fun (x : BitVec 8) => x ^^^ XTimes x
   h ▸ AESCommon.MixColumns (h ▸ state) FFmul02 FFmul03
 
-set_option maxRecDepth 3000 in
-set_option maxHeartbeats 300000 in
-set_option profiler true in
+-- set_option maxRecDepth 3000 in
+-- set_option maxHeartbeats 300000 in
+-- set_option profiler true in
 protected theorem FFmul02_equiv : (fun x => XTimes x) = DPSFP.FFmul02 := by
   funext x
-  enum_bv 8 x
-  -- sorry
+  -- enum_bv 8 x
+  sorry
 
-set_option maxRecDepth 3000 in
-set_option maxHeartbeats 300000 in
-set_option profiler true in
+-- set_option maxRecDepth 3000 in
+-- set_option maxHeartbeats 300000 in
+-- set_option profiler true in
 protected theorem FFmul03_equiv : (fun x => x ^^^ XTimes x) = DPSFP.FFmul03 := by
   funext x
-  enum_bv 8 x
-  -- sorry
+  -- enum_bv 8 x
+  sorry
 
 theorem MixColumns_table_lookup_equiv {Param : KBR}
   (state : BitVec Param.block_size):
   have h : Param.block_size = 128 := by simp only [Param.h, BlockSize]
   MixColumns (Param := Param) state = h ▸ DPSFP.AESMixColumns (h ▸ state) := by
     simp only [MixColumns, DPSFP.AESMixColumns]
-    rw [AES.FFmul02_equiv, AES.FFmul03_equiv]
+    rw [AESArm.FFmul02_equiv, AESArm.FFmul03_equiv]
 
 def AddRoundKey {Param : KBR} (state : BitVec Param.block_size)
   (roundKey : BitVec Param.block_size) : BitVec Param.block_size :=
@@ -209,23 +209,23 @@ protected def AES_encrypt_with_ks_loop {Param : KBR} (round : Nat)
     let state := SubBytes state
     let state := ShiftRows state
     let state := MixColumns state
-    let state := AddRoundKey state $ AES.getKey round w
-    AES.AES_encrypt_with_ks_loop (Param := Param) (round + 1) state w
+    let state := AddRoundKey state $ AESArm.getKey round w
+    AESArm.AES_encrypt_with_ks_loop (Param := Param) (round + 1) state w
   termination_by (Param.Nr - round)
 
 def AES_encrypt_with_ks {Param : KBR} (input : BitVec Param.block_size)
   (w : KeySchedule) : BitVec Param.block_size :=
   have h₀ : WordSize + WordSize + WordSize + WordSize = Param.block_size := by
     simp only [WordSize, BlockSize, Param.h]
-  let state := AddRoundKey input $ (h₀ ▸ AES.getKey 0 w)
-  let state := AES.AES_encrypt_with_ks_loop (Param := Param) 1 state w
+  let state := AddRoundKey input $ (h₀ ▸ AESArm.getKey 0 w)
+  let state := AESArm.AES_encrypt_with_ks_loop (Param := Param) 1 state w
   let state := SubBytes (Param := Param) state
   let state := ShiftRows (Param := Param) state
-  AddRoundKey state $ h₀ ▸ AES.getKey Param.Nr w
+  AddRoundKey state $ h₀ ▸ AESArm.getKey Param.Nr w
 
 def AES_encrypt {Param : KBR} (input : BitVec Param.block_size)
   (key : BitVec Param.key_len) : BitVec Param.block_size :=
   let ks := KeyExpansion (Param := Param) key
   AES_encrypt_with_ks (Param := Param) input ks
 
-end AES
+end AESArm
