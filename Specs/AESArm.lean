@@ -6,7 +6,6 @@ Author(s): Yan Peng
 import Arm.BitVec
 import Arm.Insts.DPSFP.Crypto_aes
 import Specs.AESCommon
-import Tactics.Enum_bv
 
 -- References : https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf
 --              https://csrc.nist.gov/csrc/media/projects/cryptographic-standards-and-guidelines/documents/aes-development/rijndael-ammended.pdf
@@ -166,21 +165,32 @@ def MixColumns {Param : KBR} (state : BitVec Param.block_size)
   let FFmul03 := fun (x : BitVec 8) => x ^^^ XTimes x
   h ▸ AESCommon.MixColumns (h ▸ state) FFmul02 FFmul03
 
--- set_option maxRecDepth 3000 in
--- set_option maxHeartbeats 300000 in
--- set_option profiler true in
+-- Convert bitvector quantification into bounded natural number quantification
+theorem P_of_bv_to_of_nat {n : Nat} {P : BitVec n -> Prop}:
+  (∀(x : Nat), x < 2^n → P (BitVec.ofNat n x)) →
+  ∀(p : BitVec n), P p := by
+  intro H p
+  let x := p.toNat
+  have p_eq : p = x#n := by simp only [x, BitVec.ofNat_toNat, truncate_eq]
+  simp only [p_eq]
+  apply H
+  apply BitVec.isLt
+
+set_option maxRecDepth 1000 in
 protected theorem FFmul02_equiv : (fun x => XTimes x) = DPSFP.FFmul02 := by
   funext x
-  -- enum_bv 8 x
-  sorry
+  let P := fun (x : BitVec 8) => XTimes x = DPSFP.FFmul02 x
+  apply @P_of_bv_to_of_nat 8 P
+  simp only [P]
+  decide
 
--- set_option maxRecDepth 3000 in
--- set_option maxHeartbeats 300000 in
--- set_option profiler true in
+set_option maxRecDepth 1000 in
 protected theorem FFmul03_equiv : (fun x => x ^^^ XTimes x) = DPSFP.FFmul03 := by
   funext x
-  -- enum_bv 8 x
-  sorry
+  let P := fun (x : BitVec 8) => x ^^^ XTimes x = DPSFP.FFmul03 x
+  apply @P_of_bv_to_of_nat 8 P
+  simp only [P]
+  decide
 
 theorem MixColumns_table_lookup_equiv {Param : KBR}
   (state : BitVec Param.block_size):
