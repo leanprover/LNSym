@@ -9,4 +9,6 @@ import «Tests».SHA512SpecTest
 -- import «Tests».SHA512StandardSpecTest
 import «Tests».SHA512ProgramTest
 import «Tests».LDSTTest
+import «Tests».AESSpecTest
+import «Tests».AESGCMSpecTest
 
