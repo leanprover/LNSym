@@ -34,8 +34,7 @@ theorem n_minus_1_lt_2_64_1 (n : Nat)
   refine BitVec.val_bitvec_lt.mp ?a
   simp [BitVec.bitvec_to_nat_of_nat]
   have : n - 1 < 2 ^ 64 := by omega
-  simp_all [Nat.mod_eq_of_lt]
-  exact Nat.sub_lt_left_of_lt_add h1 h2
+  omega
 
 -- (FIXME) Prove for all bitvector widths.
 theorem BitVec.add_sub_self_left_64 (a m : BitVec 64) :

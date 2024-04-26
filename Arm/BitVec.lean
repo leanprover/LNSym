@@ -241,7 +241,7 @@ protected theorem zero_le_sub (x y : BitVec n) :
 
 @[simp]
 protected theorem zero_or (x : BitVec n) : 0#n ||| x = x := by
-  unfold HOr.hOr instHOr OrOp.or instOrOpBitVec BitVec.or
+  unfold HOr.hOr instHOrOfOrOp BitVec.instOrOp BitVec.or
   simp only [toNat_ofNat, Nat.or_zero]
   congr
 
