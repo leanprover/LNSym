@@ -391,6 +391,26 @@ protected theorem truncate_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitV
   truncate n (x ++ y) = y := by
   simp only [truncate_append, Nat.le_refl, ↓reduceDite, zeroExtend_eq]
 
+@[simp] theorem extractLsb'_cast {k l: Nat} (e: k=l) (lo : Nat) (x : BitVec n):
+   BitVec.cast e (extractLsb' lo k x) = extractLsb' lo l x := by cases e; simp
+
+@[simp] theorem extractLsb'_cast' {k: Nat} (e: n=m) (lo : Nat) (x : BitVec n):
+   (extractLsb' lo k (BitVec.cast e x)) = extractLsb' lo k x := by cases e; simp
+
+@[simp] theorem getLsb'_extract (lo k : Nat) (x : BitVec n) (i : Nat) :
+    getLsb (extractLsb' lo k x) i = (i < k && getLsb x (lo+i)) := by
+  unfold getLsb
+  simp [Nat.lt_succ]
+
+@[simp] theorem extractLsb'_of_append {x : BitVec w} {y : BitVec v} :
+    (x ++ y).extractLsb' v w = x := by
+  apply eq_of_getLsb_eq
+  intro i
+  have k: ¬(v + i) < v := by omega
+  have k': v + i - v = i := by omega
+  simp [getLsb'_extract, k, k']
+  done
+
 ----------------------------------------------------------------------
 
 /- Bitvector pattern component syntax category, originally written by
