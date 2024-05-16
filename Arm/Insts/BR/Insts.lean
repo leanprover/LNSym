@@ -7,3 +7,9 @@ import Arm.Insts.BR.Compare_branch
 import Arm.Insts.BR.Uncond_branch_imm
 import Arm.Insts.BR.Uncond_branch_reg
 import Arm.Insts.BR.Cond_branch_imm
+import Arm.Insts.BR.Hints
+
+/-- List of functions to generate random instructions of the
+BR class. -/
+def BR.rand : List (IO (Option (BitVec 32))) :=
+  [ BR.Hints_cls.rand ]

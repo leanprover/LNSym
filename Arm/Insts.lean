@@ -10,6 +10,7 @@ import Arm.Insts.DPSFP.Insts
 import Arm.Insts.LDST.Insts
 
 def Insts.rand : List (IO (Option (BitVec 32))) :=
+  BR.rand ++
   DPI.rand ++
   DPR.rand ++
   DPSFP.rand

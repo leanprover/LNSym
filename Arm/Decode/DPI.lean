@@ -71,6 +71,20 @@ instance : ToString Bitfield_cls where toString a := toString (repr a)
 def Bitfield_cls.toBitVec32 (x : Bitfield_cls) : BitVec 32 :=
   x.sf ++ x.opc ++ x._fixed ++ x.N ++ x.immr ++ x.imms ++ x.Rn ++ x.Rd
 
+structure Move_wide_imm_cls where
+  sf     : BitVec 1                -- [31:31]
+  opc    : BitVec 2                -- [30:29]
+  _fixed : BitVec 6 := 0b100101#6  -- [28:23]
+  hw     : BitVec 2                -- [22:21]
+  imm16  : BitVec 16               -- [20:5]
+  Rd     : BitVec 5                -- [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Move_wide_imm_cls where toString a := toString (repr a)
+
+def Move_wide_imm_cls.toBitVec32 (x : Move_wide_imm_cls) : BitVec 32 :=
+  x.sf ++ x.opc ++ x._fixed ++ x.hw ++ x.imm16 ++ x.Rd
+
 inductive DataProcImmInst where
   | Add_sub_imm :
     Add_sub_imm_cls → DataProcImmInst
@@ -80,6 +94,8 @@ inductive DataProcImmInst where
     PC_rel_addressing_cls → DataProcImmInst
   | Bitfield :
     Bitfield_cls → DataProcImmInst
+  | Move_wide_imm :
+    Move_wide_imm_cls → DataProcImmInst
 deriving DecidableEq, Repr
 
 instance : ToString DataProcImmInst where toString a := toString (repr a)

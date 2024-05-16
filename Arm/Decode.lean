@@ -50,6 +50,8 @@ def decode_data_proc_imm (i : BitVec 32) : Option ArmInst :=
     DPI (PC_rel_addressing {op, immlo, immhi, Rd})
   | [sf:1, opc:2, 100110, N:1, immr:6, imms:6, Rn:5, Rd:5] =>
     DPI (Bitfield {sf, opc, N, immr, imms, Rn, Rd})
+  | [sf:1, opc:2, 100101, hw:2, imm16:16, Rd:5] =>
+    DPI (Move_wide_imm {sf, opc, hw, imm16, Rd})
   | _ => none
 
 def decode_branch (i : BitVec 32) : Option ArmInst :=
@@ -64,6 +66,8 @@ def decode_branch (i : BitVec 32) : Option ArmInst :=
     BR (Uncond_branch_reg {opc, op2, op3, Rn, op4})
   | [01010100, imm19:19, o0:1, cond:4] =>
     BR (Cond_branch_imm {imm19, o0, cond})
+  | [11010101000000110010, CRm:4, op2:3, 11111] =>
+    BR (Hints {CRm, op2})
   | _ => none
 
 def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=

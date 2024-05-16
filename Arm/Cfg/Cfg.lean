@@ -193,6 +193,9 @@ protected def addArmInstToCfg (pc : BitVec 64) (arm_inst : ArmInst) (cfg : Cfg)
             (fun state => BR.Cond_branch_imm_inst.condition_holds inst state)
         (false, BrOrg pc condition_holds,
           [Seq default_to_pc, BrTgt branch_taken_pc condition_holds])
+      -- Currently only consider NOP
+      | Hints _ =>
+        (false, Seq pc, [Seq default_to_pc])
    let new_cfg ← addEntry pc_inst to_insts cfg
    pure (haltp, new_cfg)
 
