@@ -118,17 +118,8 @@ def Map.size (m : Map α β) : Nat :=
 @[simp] theorem Map.size_erase_le [DecidableEq α] (m : Map α β) (a : α) : (m.erase a).size ≤ m.size := by
   induction m <;> simp [erase, size] at *
   split
-  next =>
-    -- (FIXME) This could be discharged by omega in
-    -- leanprover/lean4:nightly-2024-02-24, but not in
-    -- leanprover/lean4:nightly-2024-03-01.
-    exact Nat.le_succ_of_le (by assumption)
-  next =>
-    simp;
-    -- (FIXME) This could be discharged by omega in
-    -- leanprover/lean4:nightly-2024-02-24, but not in
-    -- leanprover/lean4:nightly-2024-03-01.
-    exact Nat.succ_le_succ (by assumption)
+  next => omega
+  next => simp; omega
 
 @[simp] theorem Map.size_erase_eq [DecidableEq α] (m : Map α β) (a : α) : m.contains a = false → (m.erase a).size = m.size := by
   induction m <;> simp [erase, size] at *

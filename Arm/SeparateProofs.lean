@@ -29,7 +29,7 @@ open BitVec
 ---- Some helpful bitvector lemmas ----
 
 theorem n_minus_1_lt_2_64_1 (n : Nat)
-  (h1 : Nat.succ 0 ≤ n) (h2 : n + 1 ≤ 2 ^ 64) :
+  (h1 : Nat.succ 0 ≤ n) (h2 : n < 2 ^ 64) :
   (n - 1)#64 < (2 ^ 64 - 1)#64 := by
   refine BitVec.val_bitvec_lt.mp ?a
   simp [BitVec.bitvec_to_nat_of_nat]
