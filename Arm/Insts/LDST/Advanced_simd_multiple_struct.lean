@@ -27,7 +27,7 @@ deriving DecidableEq, Repr
 @[state_simp_rules]
 def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
   (inst_str : String) (s : ArmState)
-  (H_opcode : inst.opcode ∈
+  (_H_opcode : inst.opcode ∈
               [0b0000#4, 0b0010#4, 0b0100#4, 0b0110#4, 0b0111#4,
               0b1000#4, 0b1010#4])
   : ArmState :=

@@ -6,6 +6,7 @@ Author(s): Shilpi Goel
 import Arm.Exec
 import Arm.Cfg.Cfg
 import Specs.SHA512
+import Tests.Debug
 
 section SHA512ProgramTest
 
@@ -595,6 +596,10 @@ def init_sha512_test : ArmState :=
   let s := write_mem_bytes (512 / 8) ctx_address (h_H0 ▸ SHA512_H0) s
   let s := write_mem_bytes (80 * 8) ktbl_address SHA512_K s
   s
+
+-- Log the PCs of all the instructions that were simulated in
+-- `Tests/SHA512_PC.log`.
+-- #eval (log_run "Tests/SHA512_PC.log" pc_trace 503 init_sha512_test)
 
 def final_sha512_state : ArmState := run 503 init_sha512_test
 def final_sha512_pc : BitVec 64 := final_sha512_state.pc
