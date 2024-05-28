@@ -51,6 +51,11 @@ def unsigned_compare (a b : BitVec n) : Ordering :=
 abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
   rotateRight x r
 
+/-- Return the `i`-th least significant bit (or `0` if `i >= w`) of
+    the `n`-bit bitvector `x`. -/
+abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
+  BitVec.ofBool (getLsb x i)
+
 abbrev partInstall (hi lo : Nat) (val : BitVec (hi - lo + 1)) (x : BitVec n): BitVec n :=
   let mask := allOnes (hi - lo + 1)
   let val_aligned := (zeroExtend n val) <<< lo
@@ -125,14 +130,6 @@ theorem fin_bitvec_lt (x y : BitVec n) :
 theorem fin_bitvec_le (x y : BitVec n) :
   (x.toFin <= y.toFin) ↔ (x <= y) := by rfl
 
--- theorem fin_lt_asymm {n : Nat} {x y : Fin n} (h : x < y) :
---   ¬ y < x := by
---   simp_all only [not_lt]
---   exact le_of_lt h
-
--- instance : IsAsymm (Fin n) LT.lt := by infer_instance
--- -- x < y => ¬ y < x
-
 -------------------------- Nat and BitVec Lemmas ---------------------
 
 theorem bitvec_to_nat_of_nat :
@@ -165,23 +162,10 @@ theorem nat_bitvec_add (x y : BitVec n) :
 theorem nat_bitvec_sub (x y : BitVec n) :
   (x - y).toNat = (x.toNat + (2^n - y.toNat)) % 2^n := rfl
 
--- theorem nat_bitvec_or (x y : BitVec n) :
---   (x ||| y).toNat = (x.toNat ||| y.toNat) := ...
-
--- theorem nat_bitvec_and (x y : BitVec n) :
---   (x &&& y).toNat = (x.toNat &&& y.toNat) := by ...
-
-
 ---------------------------- Comparison Lemmas -----------------------
 
 @[simp] protected theorem not_lt {n : Nat} {a b : BitVec n} : ¬ a < b ↔ b ≤ a := by
   exact Fin.not_lt ..
-
--- protected theorem lt_of_le_ne (x y : BitVec n) (h1 : x <= y) (h2 : ¬ x = y) : x < y := by
---   simp only [←nat_bitvec_le] at h1
---   replace h2 := BitVec.extensionality_nat_contrapositive h2
---   simp only [←nat_bitvec_lt]
---   omega
 
 protected theorem le_of_eq (x y : BitVec n) (h : x = y) :
   x <= y := by
@@ -212,43 +196,42 @@ protected theorem val_nat_le (x y n : Nat)
 
 ----------------------------- Add/Sub  Lemmas ------------------------
 
--- protected theorem add_comm (x y : BitVec n) : x + y = y + x := by
---   ext
---   simp [nat_bitvec_add, bitvec_to_nat_of_nat]
---   revert x
---   simp only [BitVec, BitVec.toNat, Nat.add_comm, forall_const]
-
--- @[simp]
--- protected theorem zero_add (x : BitVec n) : (0#n) + x = x := by
---   simp [BitVec.add_comm, BitVec.add_zero]
-
 protected theorem zero_le_sub (x y : BitVec n) :
   0#n <= x - y := by
   refine (BitVec.nat_bitvec_le (0#n) (x - y)).mp ?a
   simp only [toNat_ofNat, Nat.zero_mod, toNat_sub, Nat.zero_le]
 
--- @[simp]
--- protected theorem sub_zero (x : BitVec n) : x - (0#n) = x := by
---   ext
---   simp [nat_bitvec_sub, bitvec_to_nat_of_nat]
-
--- @[simp]
--- protected theorem sub_self (x : BitVec n) : x - x = (0#n) := by
---   ext
---   simp [nat_bitvec_sub, bitvec_to_nat_of_nat]
-
 ----------------------------- Logical  Lemmas ------------------------
 
-@[simp]
+protected theorem or_comm (x y : BitVec n) : x ||| y = y ||| x := by
+  refine eq_of_toNat_eq ?_
+  simp only [toNat_or]
+  apply Nat.eq_of_testBit_eq
+  intro i
+  simp only [Nat.testBit_or]
+  exact Bool.or_comm (x.toNat.testBit i) (y.toNat.testBit i)
+  done
+
+@[bitvec_rules]
 protected theorem zero_or (x : BitVec n) : 0#n ||| x = x := by
   unfold HOr.hOr instHOrOfOrOp OrOp.or instOrOp BitVec.or
   simp only [toNat_ofNat, Nat.zero_mod, Nat.zero_or]
   congr
 
-theorem BitVec.toNat_or (x y : BitVec n):
-  BitVec.toNat (x ||| y) = BitVec.toNat x ||| BitVec.toNat y := by
-  rw [←BitVec.or_eq]
-  simp [BitVec.or]
+@[bitvec_rules]
+protected theorem or_zero (x : BitVec n) : x ||| 0#n = x := by
+  rw [BitVec.or_comm]
+  rw [BitVec.zero_or]
+  done
+
+@[bitvec_rules]
+protected theorem or_self (x : BitVec n) :
+  x ||| x = x := by
+  refine eq_of_toNat_eq ?_
+  rw [BitVec.toNat_or]
+  apply Nat.eq_of_testBit_eq
+  simp only [Nat.testBit_or, Bool.or_self, implies_true]
+  done
 
 --------------------- ZeroExtend/Append/Extract  Lemmas ----------------
 

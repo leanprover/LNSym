@@ -39,7 +39,7 @@ def Cond_branch_imm_inst.condition_holds
     | 0b110#3 => N == V && Z == 0#1
     | 0b111#3 => true
   let result :=
-    if extractLsb 0 0 inst.cond == 1#1 && inst.cond != 0b1111#4
+    if lsb inst.cond 0 == 1#1 && inst.cond != 0b1111#4
     then !result
     else result
   result

@@ -21,7 +21,7 @@ def polynomial_mult_aux (i : Nat) (result : BitVec (m+n))
   if h₀ : i ≥ m then
     result
   else
-    let new_res := if extractLsb i i op1 == 1 then result ^^^ (op2 <<< i) else result
+    let new_res := if lsb op1 i == 1 then result ^^^ (op2 <<< i) else result
     have h : m - (i + 1) < m - i := by omega
     polynomial_mult_aux (i+1) new_res op1 op2
   termination_by (m - i)

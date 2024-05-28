@@ -17,7 +17,7 @@ open BitVec
 @[state_simp_rules]
 def exec_shift_right_vector
   (inst : Advanced_simd_shift_by_immediate_cls) (s : ArmState) : ArmState :=
-  if (extractLsb 3 3 inst.immh) ++ inst.Q == 0b10#2 then
+  if (lsb inst.immh 3) ++ inst.Q == 0b10#2 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let l := Option.get! $ highest_set_bit inst.immh
@@ -31,8 +31,8 @@ def exec_shift_right_vector
         elements := datasize / esize,
         shift := (2 * esize) - (inst.immh ++ inst.immb).toNat,
         unsigned := inst.U == 0b1#1,
-        round := (extractLsb 2 2 inst.opcode) == 0b1#1,
-        accumulate := (extractLsb 1 1 inst.opcode) == 0b1#1,
+        round := (lsb inst.opcode 2) == 0b1#1,
+        accumulate := (lsb inst.opcode 1) == 0b1#1,
         h := h }
     let result := shift_right_common info datasize inst.Rn inst.Rd s
     -- State Update
@@ -43,7 +43,7 @@ def exec_shift_right_vector
 @[state_simp_rules]
 def exec_shl_vector 
   (inst : Advanced_simd_shift_by_immediate_cls) (s : ArmState) : ArmState :=
-  if (extractLsb 3 3 inst.immh) ++ inst.Q == 0b10#2 then
+  if (lsb inst.immh 3) ++ inst.Q == 0b10#2 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let l := Option.get! $ highest_set_bit inst.immh
@@ -88,7 +88,7 @@ partial def Advanced_simd_shift_by_immediate_cls.shr_all.rand
   (opcode : BitVec 5) : IO (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let immh := ← BitVec.rand 4
-  if immh == 0b0000#4 || (extractLsb 3 3 immh) ++ Q == 0b10#2 then
+  if immh == 0b0000#4 || (lsb immh 3) ++ Q == 0b10#2 then
     Advanced_simd_shift_by_immediate_cls.shr_all.rand opcode
   else
     let (inst : Advanced_simd_shift_by_immediate_cls) :=
@@ -106,7 +106,7 @@ partial def Advanced_simd_shift_by_immediate_cls.shl.rand
   : IO (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let immh := ← BitVec.rand 4
-  if immh == 0b0000#4 || (extractLsb 3 3 immh) ++ Q == 0b10#2 then
+  if immh == 0b0000#4 || (lsb immh 3) ++ Q == 0b10#2 then
     Advanced_simd_shift_by_immediate_cls.shl.rand
   else
     let (inst : Advanced_simd_shift_by_immediate_cls) :=

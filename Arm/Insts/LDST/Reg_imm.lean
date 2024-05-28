@@ -83,7 +83,7 @@ def supported_reg_imm (size : BitVec 2) (opc : BitVec 2) (SIMD? : Bool) : Bool :
 def exec_reg_imm_common
   (inst : Reg_imm_cls) (inst_str : String) (s : ArmState) : ArmState :=
   let scale :=
-    if inst.SIMD? then ((extractLsb 1 1 inst.opc) ++ inst.size).toNat
+    if inst.SIMD? then ((lsb inst.opc 1) ++ inst.size).toNat
     else inst.size.toNat
   -- Only allow supported LDST Reg immediate instructions
   if not $ supported_reg_imm inst.size inst.opc inst.SIMD? then
@@ -107,7 +107,7 @@ def exec_reg_imm_common
       simp_all! only [Nat.shiftLeft_eq, Nat.dvd_mul_right, datasize]
     -- State Updates
     let s' := reg_imm_operation inst_str
-              (extractLsb 0 0 inst.opc) inst.wback inst.postindex
+              (lsb inst.opc 0) inst.wback inst.postindex
               inst.SIMD? datasize regsize inst.Rn inst.Rt offset s (H)
     let s' := write_pc ((read_pc s) + 4#64) s'
     s'

@@ -80,16 +80,16 @@ def exec_advanced_simd_two_reg_misc
   open BitVec in
   let datasize := if inst.Q == 1#1 then 128 else 64 -- 64 << Uint(inst.Q)
   let esize := 8 <<< inst.size.toNat
-  let container_size := 64 >>> ((extractLsb 0 0 inst.opcode) ++ inst.U).toNat
+  let container_size := 64 >>> ((lsb inst.opcode 0) ++ inst.U).toNat
   if h0 : container_size <= esize then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     have h1 : esize ∣ container_size := by
       simp only [Nat.not_le] at h0
-      exact esize_dvd_container_size inst.size (extractLsb 0 0 inst.opcode ++ inst.U) h0
+      exact esize_dvd_container_size inst.size (lsb inst.opcode 0 ++ inst.U) h0
     have h2 : container_size ∣ datasize := by
       simp_all [datasize]
-      exact container_size_dvd_datasize (extractLsb 0 0 inst.opcode ++ inst.U) inst.Q
+      exact container_size_dvd_datasize (lsb inst.opcode 0 ++ inst.U) inst.Q
     have h3 : 0 < esize := by
       simp_all only [Nat.sub_zero, Nat.shiftLeft_eq, Nat.not_le, beq_iff_eq, esize]
       rw [Nat.mul_pos_iff_of_pos_left]
@@ -126,7 +126,7 @@ partial def Advanced_simd_two_reg_misc_cls.rev64_16.rand : IO (Option (BitVec 32
       Rn := ← BitVec.rand 5,
       Rd := ← BitVec.rand 5 }
   let esize := 8 <<< inst.size.toNat
-  let container_size := 64 >>> ((extractLsb 0 0 inst.opcode) ++ inst.U).toNat
+  let container_size := 64 >>> ((lsb inst.opcode 0) ++ inst.U).toNat
   if container_size <= esize then
     -- Keep generating random instructions until a legal one is encountered.
     Advanced_simd_two_reg_misc_cls.rev64_16.rand
@@ -142,7 +142,7 @@ partial def Advanced_simd_two_reg_misc_cls.rev32.rand : IO (Option (BitVec 32)) 
       Rn := ← BitVec.rand 5,
       Rd := ← BitVec.rand 5 }
   let esize := 8 <<< inst.size.toNat
-  let container_size := 64 >>> ((extractLsb 0 0 inst.opcode) ++ inst.U).toNat
+  let container_size := 64 >>> ((lsb inst.opcode 0) ++ inst.U).toNat
   if container_size <= esize then
     -- Keep generating random instructions until a legal one is encountered.
     Advanced_simd_two_reg_misc_cls.rev32.rand

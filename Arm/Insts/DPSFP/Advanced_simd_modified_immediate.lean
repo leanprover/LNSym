@@ -44,7 +44,7 @@ def decode_immediate_op (cmode : BitVec 4) (op : BitVec 1) : ImmediateOp :=
 
 def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitVec 64 :=
   let cmode_high3 := extractLsb 3 1 cmode
-  let cmode_low1 := extractLsb 0 0 cmode
+  let cmode_low1 := lsb cmode 0
   match cmode_high3 with
   | 0b000#3 => replicate 2 $ BitVec.zero 24 ++ imm8
   | 0b001#3 => replicate 2 $ BitVec.zero 16 ++ imm8 ++ BitVec.zero 8
@@ -61,25 +61,25 @@ def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitV
     if cmode_low1 == 0 && op == 0 then
       replicate 8 imm8
     else if cmode_low1 == 0 && op == 1 then
-      let imm8a := replicate 8 $ extractLsb 7 7 imm8
-      let imm8b := replicate 8 $ extractLsb 6 6 imm8
-      let imm8c := replicate 8 $ extractLsb 5 5 imm8
-      let imm8d := replicate 8 $ extractLsb 4 4 imm8
-      let imm8e := replicate 8 $ extractLsb 3 3 imm8
-      let imm8f := replicate 8 $ extractLsb 2 2 imm8
-      let imm8g := replicate 8 $ extractLsb 1 1 imm8
-      let imm8h := replicate 8 $ extractLsb 0 0 imm8
+      let imm8a := replicate 8 $ lsb imm8 7
+      let imm8b := replicate 8 $ lsb imm8 6
+      let imm8c := replicate 8 $ lsb imm8 5
+      let imm8d := replicate 8 $ lsb imm8 4
+      let imm8e := replicate 8 $ lsb imm8 3
+      let imm8f := replicate 8 $ lsb imm8 2
+      let imm8g := replicate 8 $ lsb imm8 1
+      let imm8h := replicate 8 $ lsb imm8 0
       imm8a ++ imm8b ++ imm8c ++ imm8d ++ imm8e ++ imm8f ++ imm8g ++ imm8h
     else if cmode_low1 == 1 && op == 0 then
-      let imm32 := extractLsb 7 7 imm8 ++ ~~~(extractLsb 6 6 imm8) ++
-                   (replicate 5 $ extractLsb 6 6 imm8) ++
+      let imm32 := lsb imm8 7 ++ ~~~(lsb imm8 6) ++
+                   (replicate 5 $ lsb imm8 6) ++
                    extractLsb 5 0 imm8 ++ BitVec.zero 19
       replicate 2 imm32
     else
       -- Assume not UsingAArch32()
       -- if UsingAArch32() then ReservedEncoding();
-      extractLsb 7 7 imm8 ++ ~~~(extractLsb 6 6 imm8) ++
-        (replicate 8 $ extractLsb 6 6 imm8) ++ extractLsb 5 0 imm8 ++ BitVec.zero 48
+      lsb imm8 7 ++ ~~~(lsb imm8 6) ++
+        (replicate 8 $ lsb imm8 6) ++ extractLsb 5 0 imm8 ++ BitVec.zero 48
 
 
 private theorem mul_div_norm_form_lemma  (n m : Nat) (_h1 : 0 < m) (h2 : n ∣ m) :

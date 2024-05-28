@@ -19,7 +19,7 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   let signed_sum := BitVec.toInt x + BitVec.toInt y + carry_in_nat
   let result := (BitVec.ofNat n unsigned_sum)
   have h: n - 1 - (n - 1) + 1 = 1 := by simp
-  let N := h ▸ (extractLsb (n - 1) (n - 1) result)
+  let N := h ▸ (lsb result (n - 1))
   let Z := if result = (BitVec.zero n) then 1#1 else 0#1
   let C := if BitVec.toNat result = unsigned_sum then 0#1 else 1#1
   let V := if BitVec.toInt result = signed_sum then 0#1 else 1#1
@@ -41,7 +41,7 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
       | 0b101#3 => N == V
       | 0b110#3 => N == V && Z == 0#1
       | 0b111#3 => true
-  if (extractLsb 0 0 cond) = 1#1 && cond ≠ 0b1111#4 then
+  if (lsb cond 0) = 1#1 && cond ≠ 0b1111#4 then
     not result
   else
     result
@@ -127,7 +127,7 @@ instance : ToString LogicalImmType where toString a := toString (repr a)
 def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
   let mut acc := none
   for i in List.reverse $ List.range n do
-    if extractLsb i i bv = 1
+    if lsb bv i = 1
     then acc := some i
          break
   return acc
@@ -135,7 +135,7 @@ def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
 def lowest_set_bit (bv : BitVec n) : Nat := Id.run do
   let mut acc := n
   for i in List.range n do
-    if extractLsb i i bv == 1
+    if lsb bv i == 1
     then acc := i
          break
   return acc

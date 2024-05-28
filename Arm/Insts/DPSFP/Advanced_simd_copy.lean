@@ -31,7 +31,7 @@ def exec_dup_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let index := (extractLsb 4 (size + 1) inst.imm5).toNat
-    let idxdsize := 64 <<< (extractLsb 4 4 inst.imm5).toNat
+    let idxdsize := 64 <<< (lsb inst.imm5 4).toNat
     let esize := 8 <<< size
     let datasize := 64 <<< inst.Q.toNat
     let elements := datasize / esize
@@ -67,7 +67,7 @@ def exec_ins_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
   else
     let dst_index := (extractLsb 4 (size + 1) inst.imm5).toNat
     let src_index := (extractLsb 3 size inst.imm4).toNat
-    let idxdsize := 64 <<< (extractLsb 3 3 inst.imm4).toNat
+    let idxdsize := 64 <<< (lsb inst.imm4 3).toNat
     let esize := 8 <<< size
     let operand := read_sfp idxdsize inst.Rn s
     let result := read_sfp 128 inst.Rd s
@@ -106,7 +106,7 @@ def exec_smov_umov (inst : Advanced_simd_copy_cls) (s : ArmState) (signed : Bool
      write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let index := (extractLsb 4 (size + 1) inst.imm5).toNat
-    let idxdsize := 64 <<< (extractLsb 4 4 inst.imm5).toNat
+    let idxdsize := 64 <<< (lsb inst.imm5 4).toNat
     -- if index == 0 then CheckFPEnabled64 else CheckFPAdvSIMDEnabled64
     let operand := read_sfp idxdsize inst.Rn s
     have h₀ : esize > 0 := by apply zero_lt_shift_left_pos (by decide)

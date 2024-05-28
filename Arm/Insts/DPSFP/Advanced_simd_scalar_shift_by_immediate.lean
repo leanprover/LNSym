@@ -17,7 +17,7 @@ open BitVec
 @[state_simp_rules]
 def exec_shift_right_scalar
   (inst : Advanced_simd_scalar_shift_by_immediate_cls) (s : ArmState) : ArmState :=
-  if extractLsb 3 3 inst.immh != 0b1#1 then
+  if lsb inst.immh 3 != 0b1#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let esize := 8 <<< 3
@@ -28,8 +28,8 @@ def exec_shift_right_scalar
         elements := 1,
         shift := (esize * 2) - (inst.immh ++ inst.immb).toNat,
         unsigned := inst.U == 0b1#1,
-        round := (extractLsb 2 2 inst.opcode) == 0b1#1,
-        accumulate := (extractLsb 1 1 inst.opcode) == 0b1#1,
+        round := (lsb inst.opcode 2) == 0b1#1,
+        accumulate := (lsb inst.opcode 1) == 0b1#1,
         h := h
        }
     let result := shift_right_common info datasize inst.Rn inst.Rd s
@@ -41,7 +41,7 @@ def exec_shift_right_scalar
 @[state_simp_rules]
 def exec_shl_scalar
   (inst : Advanced_simd_scalar_shift_by_immediate_cls) (s : ArmState) : ArmState :=
-  if extractLsb 3 3 inst.immh != 0b1#1 then
+  if lsb inst.immh 3 != 0b1#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let esize := 8 <<< 3
@@ -80,7 +80,7 @@ def exec_advanced_simd_scalar_shift_by_immediate
 partial def Advanced_simd_scalar_shift_by_immediate_cls.shr_all.rand
   (opcode : BitVec 5) : IO (Option (BitVec 32)) := do
   let immh := ← BitVec.rand 4
-  if extractLsb 3 3 immh != 0b1#1 then
+  if lsb immh 3 != 0b1#1 then
     Advanced_simd_scalar_shift_by_immediate_cls.shr_all.rand opcode
   else
     let (inst : Advanced_simd_scalar_shift_by_immediate_cls) :=
@@ -96,7 +96,7 @@ partial def Advanced_simd_scalar_shift_by_immediate_cls.shr_all.rand
 partial def Advanced_simd_scalar_shift_by_immediate_cls.shl.rand
   : IO (Option (BitVec 32)) := do
   let immh := ← BitVec.rand 4
-  if extractLsb 3 3 immh != 0b1#1 then
+  if lsb immh 3 != 0b1#1 then
     Advanced_simd_scalar_shift_by_immediate_cls.shl.rand
   else
     let (inst : Advanced_simd_scalar_shift_by_immediate_cls) :=

@@ -86,7 +86,7 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
 def exec_reg_pair_common (inst : Reg_pair_cls) (inst_str : String) (s : ArmState) : ArmState :=
   if -- UNDEFINED case for none-SIMD Reg Pair
      not inst.SIMD? &&
-     ((not inst.L? && extractLsb 0 0 inst.opc == 1#1) || (inst.opc == 0b11#2))
+     ((not inst.L? && lsb inst.opc 0 == 1#1) || (inst.opc == 0b11#2))
      -- UNDEFINED case for SIMD Reg Pair
      || inst.SIMD? && (inst.opc == 0b11#2)
      -- constrain unpredictable
@@ -94,9 +94,9 @@ def exec_reg_pair_common (inst : Reg_pair_cls) (inst_str : String) (s : ArmState
   then
     write_err (StateError.Illegal "Illegal instruction {inst_str} encountered!") s
   else
-    let signed := (extractLsb 0 0 inst.opc) != 0#1
+    let signed := (lsb inst.opc 0) != 0#1
     let scale := if not inst.SIMD?
-                 then 2 + (BitVec.toNat (extractLsb 1 1 inst.opc))
+                 then 2 + (BitVec.toNat (lsb inst.opc 1))
                  else 2 + (BitVec.toNat inst.opc)
     let datasize := 8 <<< scale
     let offset := (signExtend 64 inst.imm7) <<< scale

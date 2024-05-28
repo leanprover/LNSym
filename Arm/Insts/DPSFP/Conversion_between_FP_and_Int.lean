@@ -55,7 +55,7 @@ def exec_fmov_general
     if decode_fltsize != 16 && decode_fltsize != intsize then
       write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
     else
-      let op := if extractLsb 0 0 inst.opcode == 1
+      let op := if lsb inst.opcode 0 == 1
                 then FPConvOp.FPConvOp_MOV_ItoF
                 else FPConvOp.FPConvOp_MOV_FtoI
       let part := 0
@@ -64,7 +64,7 @@ def exec_fmov_general
     if intsize != 64 || inst.ftype != 0b10#2 then
       write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
     else
-      let op := if extractLsb 0 0 inst.opcode == 1
+      let op := if lsb inst.opcode 0 == 1
                 then FPConvOp.FPConvOp_MOV_ItoF
                 else FPConvOp.FPConvOp_MOV_FtoI
       let part := 1

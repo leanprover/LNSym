@@ -17,7 +17,7 @@ def exec_add_sub_shifted_reg (inst : Add_sub_shifted_reg_cls) (s : ArmState) : A
   let datasize := 32 <<< inst.sf.toNat
   if inst.shift == 0b11#2 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
-  else if inst.sf == 0 && extractLsb 5 5 inst.imm6 == 1 then
+  else if inst.sf == 0 && lsb inst.imm6 5 == 1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let sub_op := inst.op == 1#1
@@ -44,7 +44,7 @@ partial def Add_sub_shifted_reg_cls.rand : IO (Option (BitVec 32)) := do
   let imm6 := ← BitVec.rand 6
   if shift == 0b11#2 then
     Add_sub_shifted_reg_cls.rand
-  else if sf == 0 && extractLsb 5 5 imm6 == 1 then
+  else if sf == 0 && lsb imm6 5 == 1 then
     Add_sub_shifted_reg_cls.rand
   else
     let (inst : Add_sub_shifted_reg_cls) :=

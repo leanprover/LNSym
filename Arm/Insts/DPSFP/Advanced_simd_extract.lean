@@ -22,7 +22,7 @@ def exec_advanced_simd_extract
   open BitVec in
   if inst.op2 ≠ 0#2 then
     write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
-  else if inst.Q == 0b0#1 && extractLsb 3 3 inst.imm4 == 0b1#1 then
+  else if inst.Q == 0b0#1 && lsb inst.imm4 3 == 0b1#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let datasize := if inst.Q = 1#1 then 128 else 64
