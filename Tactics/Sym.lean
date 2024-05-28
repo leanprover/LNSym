@@ -41,7 +41,7 @@ macro "fetch_and_decode_inst" h_step:ident h_program:ident : tactic =>
 -- an instruction and generates 's_next = w .. (w .. (... s))'.
 macro "exec_inst" h_step:ident : tactic =>
   `(tactic|
-    (simp only [*, exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident;
+    (simp (config := { decide := true }) only [*, exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident;
      (try (repeat simp (config := {ground := true}) only [↓reduceIte, state_simp_rules, minimal_theory, bitvec_rules] at $h_step:ident))))
 
 -- Given h_step which is 's_next = w .. (w .. (... s))', it creates assumptions
