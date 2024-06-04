@@ -87,7 +87,7 @@ def exec_reg_imm_common
     else inst.size.toNat
   -- Only allow supported LDST Reg immediate instructions
   if not $ supported_reg_imm inst.size inst.opc inst.SIMD? then
-    write_err (StateError.Illegal "Unsupported or Illegal instruction {inst_str} encountered!") s
+    write_err (StateError.Unimplemented "Unsupported instruction {inst_str} encountered!") s
   -- UNDEFINED case in LDR/STR SIMD/FP instructions
   -- FIXME: prove that this branch condition is trivially false
   else if inst.SIMD? && scale > 4 then

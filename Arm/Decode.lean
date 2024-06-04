@@ -137,6 +137,8 @@ def decode_ldst_inst (i : BitVec 32) : Option ArmInst :=
     LDST (Reg_imm_post_indexed {size, V, opc, imm9, Rn, Rt})
   | [size:2, 111, V:1, 01, opc:2, imm12:12, Rn:5, Rt:5] =>
     LDST (Reg_unsigned_imm {size, V, opc, imm12, Rn, Rt})
+  | [size:2, 111, VR:1, 00, opc:2, 0, imm9:9, 00, Rn:5, Rt:5] =>
+    LDST (Reg_unscaled_imm {size, VR, opc, imm9, Rn, Rt})
   | [opc:2, 101, V:1, 011, L:1, imm7:7, Rt2:5, Rn:5, Rt:5] =>
     LDST (Reg_pair_pre_indexed {opc, V, L, imm7, Rt2, Rn, Rt})
   | [opc:2, 101, V:1, 001, L:1, imm7:7, Rt2:5, Rn:5, Rt:5] =>
