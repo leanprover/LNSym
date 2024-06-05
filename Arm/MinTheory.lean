@@ -50,6 +50,7 @@ attribute [minimal_theory] or_iff_right_iff_imp
 attribute [minimal_theory] Bool.or_false
 attribute [minimal_theory] Bool.or_true
 attribute [minimal_theory] Bool.false_or
+attribute [minimal_theory] Bool.false_eq_true
 attribute [minimal_theory] Bool.true_or
 attribute [minimal_theory] Bool.or_self
 attribute [minimal_theory] Bool.or_eq_true

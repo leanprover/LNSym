@@ -101,40 +101,35 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
+  sym_n 4 h_s0_program
+  -- Final steps
+  unfold run at h_run
+  subst s_final s_4
+  simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
+  done
 
-  sym_i_n 0 1 h_s0_program
+-- example: ofBool ((2#2).getLsb 1) = 1 := by
+--   simp only [reduceGetLsb, ofBool_true, ofNat_eq_ofNat]
 
-  -- sym_i_n 1 1 h_s0_program
-  init_next_step h_run
-  rename_i s_2 h_step_2 h_run
-  fetch_and_decode_inst h_step_2 h_s0_program
-  clear h_step_1
-  -- exec_inst h_step_2
-  simp only [*, exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at h_step_2
-  simp only [Nat.reduceAdd, reduceAppend, reduceNot, beq_iff_eq, ofNat_add_ofNat, reduceToNat,
-    Nat.reduceSub, Nat.reducePow] at h_step_2
-  -- FIXME: simproc for first args. of write_mem_bytes and zeroExtend
-  -- simp only [exec_inst, DPI.exec_add_sub_imm, write_gpr, Nat.sub_zero, read_gpr, ne_eq,
-  --   not_false_eq_true, r_of_w_different, r_of_w_same, beq_self_eq_true, ite_true, write_pstate,
-  --   write_pc, read_pc, w_of_w_shadow, w_program, write_mem_bytes_program, h_s0_program] at h_step_2
-  -- simp only [beq_iff_eq, ofNat_add_ofNat, Nat.reduceAdd] at h_step_2
-  -- -- simp (config := {ground := true}) only at h_step_2 -- max. recursion depth is reached.
-  -- conv at h_step_2 =>
-  --   rhs
-  --   arg 3
-  --   tactic => simp (config := {ground := true}) only [minimal_theory, bitvec_rules, ↓reduceIte, reduceAdd, reduceSub, Fin.reduceEq, Fin.mk_one]
-  -- (try simp only [BitVec.ofFin_eq_ofNat] at h_step_2)
-
-  -- sym_i_n 2 1 h_s0_program
-  -- init_next_step h_run
-  -- rename_i s_3 h_step_3 h_run
-  -- fetch_and_decode_inst h_step_3 h_s0_program
-  -- clear h_step_2
-  -- -- exec_inst h_step_3
-  -- -- LDST.exec_advanced_simd_multiple_struct_post_indexed
-  -- simp only [exec_inst, state_simp_rules, minimal_theory, bitvec_rules, ↓reduceIte] at h_step_3
-  -- rw [CheckSPAligment_of_w_different] at h_step_3
-  sorry
+-- theorem test4 (s0 : ArmState) :
+-- read_mem_bytes 16 (read_gpr 64 31#5 s0 + 18446744073709551600#64)
+--  (w StateField.PC (1205444#64)
+--     (w (StateField.GPR 31#5) (read_gpr 64 31#5 s0 + 18446744073709551600#64)
+--       (write_mem_bytes (2 * ((8 <<< if (!0#1 == 1#1) = true then 2 + ((2#2).lsb 1).toNat else 2 + (2#2).toNat) / 8))
+--         (read_gpr 64 31#5 s0 + 18446744073709551600#64)
+--         (zeroExtend (8 <<< if (!0#1 == 1#1) = true then 2 + ((2#2).lsb 1).toNat else 2 + (2#2).toNat)
+--             (r (StateField.GPR 30#5) s0) ++
+--           zeroExtend (8 <<< if (!0#1 == 1#1) = true then 2 + ((2#2).lsb 1).toNat else 2 + (2#2).toNat)
+--             (r (StateField.GPR 29#5) s0))
+--         s0))) ==
+--   (zeroExtend (8 <<< if (!0#1 == 1#1) = true then 2 + ((2#2).lsb 1).toNat else 2 + (2#2).toNat)
+--             (r (StateField.GPR 30#5) s0) ++
+--           zeroExtend (8 <<< if (!0#1 == 1#1) = true then 2 + ((2#2).lsb 1).toNat else 2 + (2#2).toNat)
+--             (r (StateField.GPR 29#5) s0)) := by
+--           simp (config := {decide := true}) [state_simp_rules, minimal_theory, bitvec_rules, lsb, reduceGetLsb, ofBool_true, ofNat_eq_ofNat]
+--           apply read_mem_bytes_of_write_mem_bytes_same
+--           simp only [Nat.reducePow, Nat.reduceLeDiff]
+--           done
 
 ----------------------------------------------------------------------
 

@@ -22,9 +22,92 @@ attribute [bitvec_rules] BitVec.ofFin.injEq
 attribute [bitvec_rules] BitVec.extractLsb_toNat
 attribute [bitvec_rules] BitVec.truncate_or
 attribute [bitvec_rules] BitVec.zeroExtend_zeroExtend_of_le
-attribute [bitvec_rules] BitVec.zeroExtend_eq
 
--- attribute [bitvec_rules] add_ofFin
+-- See Lean/Meta/Tactic/Simp/BuiltinSimprocs for the built-in
+-- simprocs.
+
+-- BitVec Simproc rules:
+attribute [bitvec_rules] BitVec.reduceNeg
+attribute [bitvec_rules] BitVec.reduceNot
+attribute [bitvec_rules] BitVec.reduceAbs
+attribute [bitvec_rules] BitVec.reduceAnd
+attribute [bitvec_rules] BitVec.reduceOr
+attribute [bitvec_rules] BitVec.reduceXOr
+attribute [bitvec_rules] BitVec.reduceAdd
+attribute [bitvec_rules] BitVec.reduceMul
+attribute [bitvec_rules] BitVec.reduceSub
+attribute [bitvec_rules] BitVec.reduceDiv
+attribute [bitvec_rules] BitVec.reduceMod
+attribute [bitvec_rules] BitVec.reduceUMod
+attribute [bitvec_rules] BitVec.reduceUDiv
+attribute [bitvec_rules] BitVec.reduceSMTUDiv
+attribute [bitvec_rules] BitVec.reduceSMod
+attribute [bitvec_rules] BitVec.reduceSRem
+attribute [bitvec_rules] BitVec.reduceSDiv
+attribute [bitvec_rules] BitVec.reduceSMTSDiv
+attribute [bitvec_rules] BitVec.reduceGetLsb
+attribute [bitvec_rules] BitVec.reduceGetMsb
+attribute [bitvec_rules] BitVec.reduceShiftLeft
+attribute [bitvec_rules] BitVec.reduceUShiftRight
+attribute [bitvec_rules] BitVec.reduceSShiftRight
+attribute [bitvec_rules] BitVec.reduceHShiftLeft
+attribute [bitvec_rules] BitVec.reduceHShiftLeft'
+attribute [bitvec_rules] BitVec.reduceHShiftRight
+attribute [bitvec_rules] BitVec.reduceHShiftRight'
+attribute [bitvec_rules] BitVec.reduceRotateLeft
+attribute [bitvec_rules] BitVec.reduceRotateRight
+attribute [bitvec_rules] BitVec.reduceAppend
+attribute [bitvec_rules] BitVec.reduceCast
+attribute [bitvec_rules] BitVec.reduceToNat
+attribute [bitvec_rules] BitVec.reduceToInt
+attribute [bitvec_rules] BitVec.reduceOfInt
+attribute [bitvec_rules] BitVec.reduceOfNat
+attribute [bitvec_rules] BitVec.reduceLT
+attribute [bitvec_rules] BitVec.reduceLE
+attribute [bitvec_rules] BitVec.reduceGT
+attribute [bitvec_rules] BitVec.reduceGE
+attribute [bitvec_rules] BitVec.reduceULT
+attribute [bitvec_rules] BitVec.reduceULE
+attribute [bitvec_rules] BitVec.reduceSLT
+attribute [bitvec_rules] BitVec.reduceSLE
+attribute [bitvec_rules] BitVec.reduceZeroExtend'
+attribute [bitvec_rules] BitVec.reduceShiftLeftZeroExtend
+attribute [bitvec_rules] BitVec.reduceExtracLsb'
+attribute [bitvec_rules] BitVec.reduceReplicate
+attribute [bitvec_rules] BitVec.reduceZeroExtend
+attribute [bitvec_rules] BitVec.reduceSignExtend
+attribute [bitvec_rules] BitVec.reduceAllOnes
+attribute [bitvec_rules] BitVec.reduceBitVecOfFin
+attribute [bitvec_rules] BitVec.reduceBitVecToFin
+attribute [bitvec_rules] BitVec.reduceShiftLeftShiftLeft
+attribute [bitvec_rules] BitVec.reduceShiftRightShiftRight
+
+-- BitVec->Nat Simproc rules
+attribute [bitvec_rules] BitVec.reduceToNat
+attribute [bitvec_rules] Nat.reduceAdd
+attribute [bitvec_rules] Nat.reduceMul
+attribute [bitvec_rules] Nat.reduceSub
+attribute [bitvec_rules] Nat.reduceDiv
+attribute [bitvec_rules] Nat.reduceMod
+attribute [bitvec_rules] Nat.reducePow
+attribute [bitvec_rules] Nat.reduceGcd
+attribute [bitvec_rules] Nat.reduceLT
+attribute [bitvec_rules] Nat.reduceGT
+attribute [bitvec_rules] Nat.reduceBEq
+attribute [bitvec_rules] Nat.reduceBNe
+attribute [bitvec_rules] Nat.reduceEqDiff
+attribute [bitvec_rules] Nat.reduceBeqDiff
+attribute [bitvec_rules] Nat.reduceBneDiff
+attribute [bitvec_rules] Nat.reduceLTLE
+attribute [bitvec_rules] Nat.reduceLeDiff
+attribute [bitvec_rules] Nat.reduceSubDiff
+
+-- Some Fin lemmas useful for bitvector reasoning:
+attribute [bitvec_rules] Fin.eta
+
+-- Some lemmas useful for clean-up after the use of simp/ground
+-- leaves some terms exposed:
+attribute [bitvec_rules] BitVec.val_toFin
 
 ----------------------------------------------------------------------
 -- Some BitVec definitions
@@ -53,6 +136,7 @@ abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
 
 /-- Return the `i`-th least significant bit (or `0` if `i >= w`) of
     the `n`-bit bitvector `x`. -/
+@[bitvec_rules]
 abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
   BitVec.ofBool (getLsb x i)
 
@@ -235,7 +319,7 @@ protected theorem or_self (x : BitVec n) :
 
 --------------------- ZeroExtend/Append/Extract  Lemmas ----------------
 
-@[simp]
+@[bitvec_rules]
 theorem zeroExtend_zero_width : (zeroExtend 0 x) = 0#0 := by
   unfold zeroExtend
   split <;> simp [bitvec_zero_is_unique]
@@ -246,6 +330,7 @@ theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
   ext1
   simp [←h]
 
+@[bitvec_rules]
 protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
     extractLsb j 0 (zeroExtend i x) = zeroExtend (j + 1) x := by
   apply BitVec.eq_of_getLsb_eq
@@ -256,6 +341,7 @@ protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
   simp_all
   omega
 
+@[bitvec_rules]
 theorem empty_bitvector_append_left
   (x : BitVec n) (h : 0 + n = n) :
   BitVec.cast h (0#0 ++ x) = x := by
@@ -370,6 +456,7 @@ theorem leftshift_n_or_mod_2n :
   case neg =>
     simp [h₀]
 
+@[bitvec_rules]
 protected theorem truncate_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitVec n) :
   truncate n (x ++ y) = y := by
   simp only [truncate_append, Nat.le_refl, ↓reduceDite, zeroExtend_eq]
