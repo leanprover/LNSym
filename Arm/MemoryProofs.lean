@@ -5,20 +5,8 @@ Author(s): Shilpi Goel
 -/
 import Arm.SeparateProofs
 import Arm.FromMathlib
--- import Auto
 
--- In this file, we have memory (non-)interference proofs. Many of
--- these are skipped right now as we eliminate our dependency on auto
--- (and SMT solving).
-
--- set_option auto.smt true
--- set_option auto.smt.trust true
--- set_option auto.smt.timeout 20 -- seconds
--- set_option auto.smt.save true
--- -- set_option trace.auto.smt.printCommands true
--- set_option trace.auto.smt.result true -- Print the SMT solver's output
--- set_option trace.auto.smt.model true  -- Print the counterexample, if any
--- set_option trace.auto.smt.proof false -- Do not print the proof.
+-- In this file, we have memory (non-)interference proofs.
 
 ----------------------------------------------------------------------
 
@@ -639,8 +627,8 @@ theorem BitVec.to_nat_zero_lt_sub_64 (x y : BitVec 64) (h : ¬x = y) :
   (x - y).toNat ≠ 0 := by
   simp only [BitVec.toNat_sub]
   simp only [toNat_eq] at h
-  have := x.toNat_lt
-  have := y.toNat_lt
+  have := x.isLt
+  have := y.isLt
   simp_all only [ne_eq]
   omega
 
@@ -768,16 +756,14 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_helper2
   done
 
 
--- set_option auto.smt.savepath "/tmp/mem_legal_lemma.smt2" in
 private theorem mem_legal_lemma (h0 : 0 < n) (h1 : n < 2^64)
   (h2 : mem_legal a (a + n#64)) :
   mem_legal (a + 1#64) (a + 1#64 + (n - 1)#64) := by
   revert h0 h1 h2
   have : 2^64 = 18446744073709551616 := by decide
-  simp_all [mem_legal, le_and_bitvec_le, lt_and_bitvec_lt]
-  sorry -- auto
+  simp_all [mem_legal]
+  bv_omega
 
--- set_option auto.smt.savepath "/tmp/addr_diff_upper_bound_lemma.smt2" in
 private theorem addr_diff_upper_bound_lemma (h0 : 0 < n1) (h1 : n1 ≤ 2 ^ 64)
   (h2 : 0 < n2) (h3 : n2 < 2^64)
   (h4 : mem_legal addr1 (addr1 + (n1 - 1)#64))
@@ -787,8 +773,8 @@ private theorem addr_diff_upper_bound_lemma (h0 : 0 < n1) (h1 : n1 ≤ 2 ^ 64)
   revert h0 h1 h2 h3 h4 h5 h6
   have _ : 2^64 = 18446744073709551616 := by decide
   have _ : 2^64 - 1 = 18446744073709551615 := by decide
-  simp_all [mem_subset_and_mem_subset_for_auto, mem_legal]
-  sorry -- auto d[mem_subset_for_auto]
+  simp_all [mem_subset, mem_legal]
+  bv_omega
 
 private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_lt
   (h0 : 0 < n1) (h1 : n1 <= 2^64) (h2 : 0 < n2) (h3 : n2 < 2^64)
@@ -876,17 +862,15 @@ theorem my_pow_2_gt_zero :
   0 < my_pow 2 n := by
   unfold my_pow; exact Nat.one_le_two_pow
 
--- set_option auto.smt.savepath "/tmp/entire_memory_subset_of_only_itself.smt2" in
 theorem entire_memory_subset_of_only_itself
   (h0 : n <= my_pow 2 64)
   (h1 : mem_subset addr2 (addr2 + (my_pow 2 64 - 1)#64) addr1 (addr1 + (n - 1)#64)) :
   n = my_pow 2 64 := by
   have : 2^64 = 18446744073709551616 := by decide
   unfold my_pow at *
-  simp_all [mem_subset, BitVec.add_sub_self_left_64, lt_and_bitvec_lt, le_and_bitvec_le]
-  sorry -- auto
+  simp_all [mem_subset, BitVec.add_sub_self_left_64]
+  bv_omega
 
--- set_option auto.smt.savepath "/tmp/entire_memory_subset_legal_regions_eq_addr.smt2" in
 theorem entire_memory_subset_legal_regions_eq_addr
   (h1 : mem_subset addr2 (addr2 + (my_pow 2 64 - 1)#64) addr1 (addr1 + (my_pow 2 64 - 1)#64))
   (h2 : mem_legal addr1 (addr1 + (my_pow 2 64 - 1)#64))
@@ -894,8 +878,8 @@ theorem entire_memory_subset_legal_regions_eq_addr
   addr1 = addr2 := by
   have : 2^64-1 = 18446744073709551615 := by decide
   unfold my_pow at *
-  simp_all [mem_subset, mem_legal, lt_and_bitvec_lt, le_and_bitvec_le]
-  sorry -- auto
+  simp_all [mem_subset, mem_legal]
+  bv_omega
 
 private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_eq_alt_helper (val : BitVec (x * 8))
   (h0 : 0 < x)
@@ -1036,7 +1020,6 @@ theorem write_mem_bytes_irrelevant :
 --   case succ =>
 --     rename_i n n_ih
 --     simp only [read_mem_bytes, write_mem_bytes]
---     sorry
 
 ----------------------------------------------------------------------
 
