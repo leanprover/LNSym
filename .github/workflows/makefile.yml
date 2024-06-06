@@ -26,8 +26,8 @@ jobs:
     - name: Setup CaDiCaL
       run: |
           set -o pipefail
-          git clone https://github.com/arminbiere/cadical.git
-          cd cadical; ./configure && make
+          git clone https://github.com/arminbiere/cadical.git $HOME/cadical
+          cd $HOME/cadical; ./configure && make
           echo "$HOME/cadical/build" >> $GITHUB_PATH
 
     - name: Setup Z3
