@@ -80,7 +80,8 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   repeat (unfold binary_vector_op_aux elem_set elem_get; simp)
   unfold BitVec.partInstall
   unfold sha512h compression_update_t1 sigma_big_1 ch allOnes ror
-  simp only [Nat.reduceAdd, Nat.reduceSub, Nat.sub_zero, Nat.reducePow]
+  simp
+  -- simp only [Nat.reduceAdd, Nat.reduceSub, Nat.sub_zero, Nat.reducePow]
   -- bv_decide
   sorry
 /-
@@ -160,7 +161,7 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   repeat (unfold BitVec.partInstall; simp)
   unfold sha512h compression_update_t1 sigma_big_1 ch ror elem_set elem_get partInstall
   simp
-  -- bv_decide
-  sorry
+  bv_decide
+  -- sorry
 
 end sha512_block_armv8_rules
