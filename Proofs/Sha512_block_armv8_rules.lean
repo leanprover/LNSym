@@ -58,6 +58,7 @@ theorem sha512h2_rule (a b c : BitVec 128) :
 --           simp (config := { ground := true })
 --           simp [sha512h2_rule]
 
+set_option pp.deepTerms true in
 theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let elements := 2
   let esize := 64
@@ -80,8 +81,8 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   repeat (unfold binary_vector_op_aux elem_set elem_get; simp)
   unfold BitVec.partInstall
   unfold sha512h compression_update_t1 sigma_big_1 ch allOnes ror
-  simp
-  -- simp only [Nat.reduceAdd, Nat.reduceSub, Nat.sub_zero, Nat.reducePow]
+  -- simp (config := { ground := true }) only [Nat.reduceAdd, Nat.reduceSub, Nat.sub_zero,
+  --   Nat.reducePow, reduceZeroExtend, reduceHShiftLeft, reduceNot, reduceAnd, BitVec.zero_or]
   -- bv_decide
   sorry
 /-
@@ -159,9 +160,8 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   hi64_spec ++ lo64_spec := by
   repeat (unfold binary_vector_op_aux; simp)
   repeat (unfold BitVec.partInstall; simp)
-  unfold sha512h compression_update_t1 sigma_big_1 ch ror elem_set elem_get partInstall
+  unfold sha512h compression_update_t1 elem_set elem_get partInstall sigma_big_1 ch ror
   simp
   bv_decide
-  -- sorry
 
 end sha512_block_armv8_rules
