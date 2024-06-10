@@ -25,22 +25,25 @@ deriving DecidableEq, Repr
 
 instance : ToString ImmediateOp where toString a := toString (repr a)
 
-def decode_immediate_op (cmode : BitVec 4) (op : BitVec 1) : ImmediateOp :=
-  match_bv cmode ++ op with
-  | [0, _xx:2, 00] => ImmediateOp.MOVI
-  | [0, _xx:2, 01] => ImmediateOp.MVNI
-  | [0, _xx:2, 10] => ImmediateOp.ORR
-  | [0, _xx:2, 11] => ImmediateOp.BIC
-  | [10, _x:1, 00] => ImmediateOp.MOVI
-  | [10, _x:1, 01] => ImmediateOp.MVNI
-  | [10, _x:1, 10] => ImmediateOp.ORR
-  | [10, _x:1, 11] => ImmediateOp.BIC
-  | [110, _x:1, 0] => ImmediateOp.MOVI
-  | [110, _x:1, 1] => ImmediateOp.MVNI
-  | [1110, _x:1] => ImmediateOp.MOVI
-  | [11110] => ImmediateOp.MOVI
+def decode_immediate_op (inst : Advanced_simd_modified_immediate_cls)
+  (s : ArmState) : (Option ImmediateOp) × ArmState :=
+  match_bv inst.cmode ++ inst.op with
+  | [0, _xx:2, 00] => (some ImmediateOp.MOVI, s)
+  | [0, _xx:2, 01] => (some ImmediateOp.MVNI, s)
+  | [0, _xx:2, 10] => (some ImmediateOp.ORR, s)
+  | [0, _xx:2, 11] => (some ImmediateOp.BIC, s)
+  | [10, _x:1, 00] => (some ImmediateOp.MOVI, s)
+  | [10, _x:1, 01] => (some ImmediateOp.MVNI, s)
+  | [10, _x:1, 10] => (some ImmediateOp.ORR, s)
+  | [10, _x:1, 11] => (some ImmediateOp.BIC, s)
+  | [110, _x:1, 0] => (some ImmediateOp.MOVI, s)
+  | [110, _x:1, 1] => (some ImmediateOp.MVNI, s)
+  | [1110, _x:1] => (some ImmediateOp.MOVI, s)
+  | [11110] => (some ImmediateOp.MOVI, s)
   -- | case [11111]
-  | _ => ImmediateOp.MOVI
+  | _ => if inst.Q = 0#1
+         then (none, write_err (StateError.Illegal s!"Illegal {inst} encountered!") s)
+         else (some ImmediateOp.MOVI, s)
 
 def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitVec 64 :=
   let cmode_high3 := extractLsb 3 1 cmode
@@ -91,46 +94,50 @@ private theorem mul_div_norm_form_lemma  (n m : Nat) (_h1 : 0 < m) (h2 : n ∣ m
 -- Assumes CheckFPAdvSIMDEnabled64();
 def exec_advanced_simd_modified_immediate
   (inst : Advanced_simd_modified_immediate_cls) (s : ArmState) : ArmState :=
-  if inst.cmode == 0b1111#4 && inst.op == 0b0#1 && inst.o2 == 0b1#1 then
-    write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
-  else if inst.cmode == 0b1111#4 && inst.op == 0b1#1 && inst.Q == 0b0#1 || inst.o2 == 0b1#1 then
+  -- All UNALLOCATED cases when inst.o2 = 1
+  if inst.o2 == 0b1#1 ∧ inst.cmode ++ inst.op != 0b11110#5 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
-    let datasize := 64 <<< inst.Q.toNat
-    let operation := decode_immediate_op inst.cmode inst.op
-    let imm8 := inst.a ++ inst.b ++ inst.c ++ inst.d ++ inst.e ++ inst.f ++ inst.g ++ inst.h
-    let imm64 := AdvSIMDExpandImm inst.op inst.cmode imm8
-    let imm := replicate (datasize/64) imm64
-    have h₀ : 0 < datasize := by 
-      simp [datasize]
-      apply zero_lt_shift_left_pos (by decide)
-    have h₁ : 64 ∣ datasize := by
-      simp only [datasize, Nat.shiftLeft_eq, Nat.dvd_mul_right]
-    have h : (64 * (datasize / 64)) = datasize := by 
-      rw [mul_div_norm_form_lemma 64 datasize h₀ h₁]
-      refine Nat.mul_div_cancel_left datasize ?H; decide
-    let result := match operation with
-                  | ImmediateOp.MOVI => (h ▸ imm)
-                  | ImmediateOp.MVNI => ~~~(h ▸ imm)
+    let (maybe_operation, s) := decode_immediate_op inst s
+    match maybe_operation with
+    | none => s
+    | some operation =>
+      let datasize := 64 <<< inst.Q.toNat
+      let imm8 := inst.a ++ inst.b ++ inst.c ++ inst.d ++ inst.e ++ inst.f ++ inst.g ++ inst.h
+      let imm16 : BitVec 16 :=
+                   extractLsb 7 7 imm8 ++ ~~~ (extractLsb 6 6 imm8) ++
+                   (replicate 2 $ extractLsb 6 6 imm8) ++ extractLsb 5 0 imm8 ++
+                   BitVec.zero 6
+      let imm64 := AdvSIMDExpandImm inst.op inst.cmode imm8
+      have h₁ : 16 * (datasize / 16) = datasize := by omega
+      have h₂ : 16 * (datasize / 16) = 64 * (datasize / 64) := by omega
+      -- Assumes IsFeatureImplemented(FEAT_FP16)
+      let imm := if inst.op ++ inst.cmode ++ inst.o2 = 0b011111#6
+                 then replicate (datasize/16) imm16
+                 else h₂ ▸ replicate (datasize/64) imm64
+      let result := match operation with
+                  | ImmediateOp.MOVI => (h₁ ▸ imm)
+                  | ImmediateOp.MVNI => ~~~(h₁ ▸ imm)
                   | ImmediateOp.ORR =>
                     let operand := read_sfp datasize inst.Rd s
-                    operand ||| (h ▸ imm)
+                    operand ||| (h₁ ▸ imm)
                   | _ =>
                     let operand := read_sfp datasize inst.Rd s
-                    operand &&& ~~~(h ▸ imm)
-    -- State Updates
-    let s := write_pc ((read_pc s) + 4#64) s
-    let s := write_sfp datasize inst.Rd result s
-    s
+                    operand &&& ~~~(h₁ ▸ imm)
+      -- State Updates
+      let s := write_pc ((read_pc s) + 4#64) s
+      let s := write_sfp datasize inst.Rd result s
+      s
 
 ----------------------------------------------------------------------
 
-partial def Advanced_simd_modified_immediate_cls.nonfp.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_modified_immediate_cls.all.rand : IO (Option (BitVec 32)) := do
   let cmode := ← BitVec.rand 4
   let op := ← BitVec.rand 1
   let Q := ← BitVec.rand 1
-  if cmode == 0b1111#4 && op == 0b1#1 && Q = 0b0#1 then
-    Advanced_simd_modified_immediate_cls.nonfp.rand
+  let o2 := ← BitVec.rand 1
+  if (cmode == 0b1111#4 && op == 0b1#1 && Q = 0b0#1) || (o2 == 0b1#1 && cmode ++ op != 0b11110#5) then
+    Advanced_simd_modified_immediate_cls.all.rand
   else
     let (inst : Advanced_simd_modified_immediate_cls) :=
       { Q     := Q,
@@ -139,7 +146,7 @@ partial def Advanced_simd_modified_immediate_cls.nonfp.rand : IO (Option (BitVec
         b     := ← BitVec.rand 1,
         c     := ← BitVec.rand 1,
         cmode := cmode,
-        o2    := 0b0#1,
+        o2    := o2,
         d     := ← BitVec.rand 1,
         e     := ← BitVec.rand 1,
         f     := ← BitVec.rand 1,
@@ -151,7 +158,7 @@ partial def Advanced_simd_modified_immediate_cls.nonfp.rand : IO (Option (BitVec
 
 /-- Generate random instructions of Advanced_simd_modified_immediate class. -/
 def Advanced_simd_modified_immediate_cls.rand : List (IO (Option (BitVec 32))) :=
-  [ Advanced_simd_modified_immediate_cls.nonfp.rand ]
+  [ Advanced_simd_modified_immediate_cls.all.rand ]
 
 ----------------------------------------------------------------------
 
