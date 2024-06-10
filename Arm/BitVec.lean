@@ -405,7 +405,8 @@ protected theorem val_bitvec_le {n : Nat} {a b : BitVec n} : a.toNat ≤ b.toNat
   Iff.rfl
 
 protected theorem val_nat_le (x y n : Nat)
-  (h0 : x <= y) (h1 : x < 2^n) (h2 : y < 2^n) : x#n <= y#n := by
+  (h0 : x <= y) (h1 : x < 2^n) (h2 : y < 2^n) : 
+  BitVec.ofNat n x <= BitVec.ofNat n y := by
   rw [BitVec.le_iff_val_le_val]
   simp [bitvec_to_nat_of_nat]
   rw [Nat.mod_eq_of_lt h1]

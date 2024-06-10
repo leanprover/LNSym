@@ -7,6 +7,8 @@ import Arm.Insts.DPSFP.Insts
 import Specs.SHA512
 import LeanSAT
 
+set_option sat.timeout 60
+
 section sha512_block_armv8_rules
 
 open BitVec
@@ -58,7 +60,7 @@ theorem sha512h2_rule (a b c : BitVec 128) :
 --           simp (config := { ground := true })
 --           simp [sha512h2_rule]
 
-set_option pp.deepTerms true in
+set_option sat.timeout 180 in
 theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let elements := 2
   let esize := 64
@@ -81,17 +83,9 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   repeat (unfold binary_vector_op_aux elem_set elem_get; simp)
   unfold BitVec.partInstall
   unfold sha512h compression_update_t1 sigma_big_1 ch allOnes ror
-  -- simp (config := { ground := true }) only [Nat.reduceAdd, Nat.reduceSub, Nat.sub_zero,
-  --   Nat.reducePow, reduceZeroExtend, reduceHShiftLeft, reduceNot, reduceAnd, BitVec.zero_or]
-  -- bv_decide
-  sorry
-/-
-  simp_all! only [Nat.sub_zero];
-  repeat (unfold binary_vector_op_aux; simp)
-  unfold BitVec.partInstall
-  unfold sha512h compression_update_t1 sigma_big_1 ch allOnes
-  auto
--/
+  simp only [Nat.reduceAdd, Nat.reduceSub, Nat.sub_zero, Nat.reducePow, reduceZeroExtend,
+    reduceHShiftLeft, reduceNot, reduceAnd, BitVec.zero_or]
+  bv_decide
 
 -- (FIXME) Generalize to arbitrary-length bitvecs.
 theorem rev_elems_of_rev_elems_64_8 (x : BitVec 64) :
@@ -140,6 +134,7 @@ theorem rev_vector_of_rev_vector_128_64_8 (x : BitVec 128) :
       rsh_concat_identity_128]
   done
 
+set_option sat.timeout 180 in
 theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   let a0 := extractLsb 63 0   a
   let a1 := extractLsb 127 64 a
@@ -161,7 +156,8 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   repeat (unfold binary_vector_op_aux; simp)
   repeat (unfold BitVec.partInstall; simp)
   unfold sha512h compression_update_t1 elem_set elem_get partInstall sigma_big_1 ch ror
-  simp
+  simp only [Nat.reduceAdd, Nat.reduceSub, Nat.reduceMul, Nat.sub_zero, reduceAllOnes,
+    reduceZeroExtend, Nat.zero_mul, reduceHShiftLeft, reduceNot, reduceAnd, Nat.one_mul]
   bv_decide
 
 end sha512_block_armv8_rules

@@ -12,12 +12,14 @@ section MemoryProofs
 
 open BitVec
 
+set_option sat.timeout 60
+
 ----------------------------------------------------------------------
 ---- Some helpful bitvector lemmas ----
 
 theorem n_minus_1_lt_2_64_1 (n : Nat)
   (h1 : Nat.succ 0 ≤ n) (h2 : n < 2 ^ 64) :
-  (n - 1)#64 < (2 ^ 64 - 1)#64 := by
+  (BitVec.ofNat 64 (n - 1)) < (BitVec.ofNat 64 (2^64 - 1)) := by
   refine BitVec.val_bitvec_lt.mp ?a
   simp [BitVec.bitvec_to_nat_of_nat]
   have : n - 1 < 2 ^ 64 := by omega
@@ -58,12 +60,13 @@ theorem nat_bitvec_sub1 (x y : BitVec 64)
 
 theorem nat_bitvec_sub2 (x y : Nat)
   (h : y <= x) (xub : x < 2^64) :
-  (x - y)#64 = x#64 - y#64 := by
+  BitVec.ofNat 64 (x - y) = 
+  (BitVec.ofNat 64 x) - (BitVec.ofNat 64 y) := by
   bv_omega
 
 theorem addr_add_one_add_m_sub_one  (n : Nat) (addr : BitVec 64)
   (h_lb : Nat.succ 0 ≤ n) (h_ub : n + 1 ≤ 2 ^ 64) :
-  (addr + 1#64 + (n - 1)#64) = addr + n#64 := by
+  (addr + 1#64 + (BitVec.ofNat 64 (n - 1))) = addr + (BitVec.ofNat 64 n) := by
   bv_omega
 
 ----------------------------------------------------------------------
@@ -116,7 +119,7 @@ private theorem first_address_add_one_is_subset_of_region_helper (n addr : BitVe
 
 theorem first_address_add_one_is_subset_of_region (n : Nat) (addr : BitVec 64)
   (_h_lb : 0 < n) (h_ub : n < 2 ^ 64) :
-  mem_subset (addr + 1#64) (addr + n#64) addr (addr + n#64) := by
+  mem_subset (addr + 1#64) (addr + (BitVec.ofNat 64 n)) addr (addr + (BitVec.ofNat 64 n)) := by
   simp [mem_subset]
   apply first_address_add_one_is_subset_of_region_helper
   bv_omega
@@ -132,8 +135,8 @@ private theorem first_addresses_add_one_is_subset_of_region_general_helper
 
 theorem first_addresses_add_one_is_subset_of_region_general
   (h0 : 0 < m) (h1 : m < 2 ^ 64) (h2 : n < 2 ^ 64)
-  (h3 : mem_subset addr1 (addr1 + m#64) addr2 (addr2 + n#64)) :
-  mem_subset (addr1 + 1#64) (addr1 + m#64) addr2 (addr2 + n#64) := by
+  (h3 : mem_subset addr1 (addr1 + (BitVec.ofNat 64 m)) addr2 (addr2 + (BitVec.ofNat 64 n))) :
+  mem_subset (addr1 + 1#64) (addr1 + (BitVec.ofNat 64 m)) addr2 (addr2 + (BitVec.ofNat 64 n)) := by
   -- auto creates an uninterpreted function for the exponentiation, so
   -- we evaluate it here.
   have : (2^64 = 0x10000000000000000) := by decide
@@ -145,15 +148,15 @@ theorem first_addresses_add_one_is_subset_of_region_general
   -- bv_decide
 
 private theorem first_addresses_add_one_preserves_subset_same_addr_helper (h1l : 0#64 < m) :
-  m - 1#64 ≤ (2 ^ 64 - 1)#64 - 1#64 := by
+  m - 1#64 ≤ (BitVec.ofNat 64 (2^64 - 1)) - 1#64 := by
   revert h1l
   bv_decide
 
 theorem first_addresses_add_one_preserves_subset_same_addr
   (h1l : 0 < m) (h1u : m < 2 ^ 64)
   (h2l : 0 < n) (h2u : n < 2 ^ 64)
-  (h3 : mem_subset addr (addr + m#64) addr (addr + n#64)) :
-  mem_subset (addr + 1#64) (addr + m#64) (addr + 1#64) (addr + n#64) := by
+  (h3 : mem_subset addr (addr + (BitVec.ofNat 64 m)) addr (addr + (BitVec.ofNat 64 n))) :
+  mem_subset (addr + 1#64) (addr + (BitVec.ofNat 64 m)) (addr + 1#64) (addr + (BitVec.ofNat 64 n)) := by
   simp [mem_subset]
   apply Or.inr
   apply And.intro
@@ -177,7 +180,7 @@ theorem first_addresses_add_one_preserves_subset_same_addr
       rw [BitVec.add_sub_self_left_64] at h3_0
       rw [←BitVec.nat_bitvec_le] at h3_0
       simp_all [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt]
-      apply (BitVec.nat_bitvec_le (m#64 - 1#64) (n#64 - 1#64)).mp
+      apply (BitVec.nat_bitvec_le ((BitVec.ofNat 64 m) - 1#64) ((BitVec.ofNat 64 n) - 1#64)).mp
       rw [nat_bitvec_sub1]; rw [nat_bitvec_sub1]
       simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt]
       · rw [Nat.mod_eq_of_lt h1u]
@@ -199,19 +202,19 @@ private theorem mem_subset_one_addr_region_lemma_helper (n1 addr1 addr2 : BitVec
   bv_decide
 
 theorem mem_subset_one_addr_region_lemma (addr1 addr2 : BitVec 64) (h : n1 <= 2 ^ 64) :
-  mem_subset addr1 (addr1 + n1#64 - 1#64) addr2 addr2 → (n1 = 1) ∧ (addr1 = addr2) := by
+  mem_subset addr1 (addr1 + (BitVec.ofNat 64 n1) - 1#64) addr2 addr2 → (n1 = 1) ∧ (addr1 = addr2) := by
   -- simp (config := {ground := true}) at h
   simp [mem_subset]
-  have h0 := mem_subset_one_addr_region_lemma_helper n1#64 addr1 addr2
+  have h0 := mem_subset_one_addr_region_lemma_helper (BitVec.ofNat 64 n1) addr1 addr2
   have h1 : 0#64 ≠ 18446744073709551615#64 := by bv_omega
   simp_all only [ofNat_eq_ofNat, and_imp, ne_eq, false_or]
-  have h2 : n1#64 = 1#64 → n1 = 1 := by bv_omega
+  have h2 : (BitVec.ofNat 64 n1) = 1#64 → n1 = 1 := by bv_omega
   intro h₀ h₁
   simp_all only [true_implies, BitVec.sub_self, and_self]
 
 theorem mem_subset_one_addr_region_lemma_alt (addr1 addr2 : BitVec 64)
   (h : n1 < 2 ^ 64) :
-  mem_subset addr1 (addr1 + n1#64) addr2 addr2 → (n1 = 0) ∧ (addr1 = addr2) := by
+  mem_subset addr1 (addr1 + (BitVec.ofNat 64 n1)) addr2 addr2 → (n1 = 0) ∧ (addr1 = addr2) := by
   simp only [mem_subset, bitvec_rules, minimal_theory]
   have h1 : 0#64 ≠ 18446744073709551615#64 := by bv_omega
   simp_all only [ne_eq, false_or, and_imp]
@@ -220,7 +223,7 @@ theorem mem_subset_one_addr_region_lemma_alt (addr1 addr2 : BitVec 64)
 theorem mem_subset_same_region_lemma
   (h0 : 0 < n)
   (h1 : Nat.succ n ≤ 2 ^ 64) :
-  mem_subset (addr + 1#64) (addr + 1#64 + (n - 1)#64) addr (addr + (Nat.succ n - 1)#64) := by
+  mem_subset (addr + 1#64) (addr + 1#64 + (BitVec.ofNat 64 (n - 1))) addr (addr + (BitVec.ofNat 64 (Nat.succ n - 1))) := by
   simp [mem_subset]
   bv_omega
   done
@@ -272,9 +275,9 @@ private theorem mem_separate_contiguous_regions_one_address_helper (n' addr : Bi
 
 -- TODO: Perhaps use/modify mem_separate_contiguous_regions instead?
 theorem mem_separate_contiguous_regions_one_address (addr : BitVec 64) (h : n' < 2 ^ 64) :
-  mem_separate addr addr (addr + 1#64) (addr + 1#64 + (n' - 1)#64) := by
+  mem_separate addr addr (addr + 1#64) (addr + 1#64 + (BitVec.ofNat 64 (n' - 1))) := by
   simp [mem_separate, mem_overlap]
-  have h' : (n' - 1)#64 < 0xffffffffffffffff#64 := by
+  have h' : (BitVec.ofNat 64 (n' - 1)) < 0xffffffffffffffff#64 := by
     bv_omega
   apply mem_separate_contiguous_regions_one_address_helper
   assumption
