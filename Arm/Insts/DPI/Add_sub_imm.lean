@@ -14,11 +14,11 @@ open BitVec
 
 @[state_simp_rules]
 def exec_add_sub_imm (inst : Add_sub_imm_cls) (s : ArmState) : ArmState :=
-    let sub_op        := inst.op == 1#1
-    let setflags      := inst.S == 1#1
-    let datasize      := if inst.sf == 1#1 then 64 else 32
+    let sub_op        := inst.op = 1#1
+    let setflags      := inst.S = 1#1
+    let datasize      := if inst.sf = 1#1 then 64 else 32
     let imm           := 0#52 ++ inst.imm12
-    let imm           := if inst.sh == 0#1 then
+    let imm           := if inst.sh = 0#1 then
                           imm
                         else
                           imm <<< 12
@@ -28,7 +28,7 @@ def exec_add_sub_imm (inst : Add_sub_imm_cls) (s : ArmState) : ArmState :=
                           (1#1, ~~~imm)
                         else
                           (0#1, imm)
-    let operand2      := BitVec.zeroExtend datasize operand2
+    let operand2         := BitVec.zeroExtend datasize operand2
     let (result, pstate) := AddWithCarry operand1 operand2 carry_in
     -- State Updates
     let s'            := write_pc ((read_pc s) + 4#64) s

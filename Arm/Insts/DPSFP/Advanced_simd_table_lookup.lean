@@ -66,7 +66,7 @@ def exec_tblx (inst : Advanced_simd_table_lookup_cls) (s : ArmState) : ArmState 
 @[state_simp_rules]
 def exec_advanced_simd_table_lookup
   (inst : Advanced_simd_table_lookup_cls) (s : ArmState) : ArmState :=
-  if inst.op2 == 0b00#2 then
+  if inst.op2 = 0b00#2 then
     exec_tblx inst s
   else write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
 

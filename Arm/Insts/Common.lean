@@ -25,6 +25,13 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   let V := if BitVec.toInt result = signed_sum then 0#1 else 1#1
   (result, (make_pstate N Z C V))
 
+-- TODO: Is this rule helpful at all?
+@[bitvec_rules]
+theorem zeroExtend_eq_of_AddWithCarry :
+  zeroExtend n (AddWithCarry x y carry_in).fst =
+  (AddWithCarry x y carry_in).fst := by
+  simp only [zeroExtend_eq]
+
 def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   open PFlag in
   let N := read_flag N s

@@ -6,17 +6,10 @@ Author(s): Shilpi Goel
 import Arm.Exec
 import Arm.Util
 import Tactics.Sym
--- import Auto
 
 section multi_insts_proofs
 
 open BitVec
-
--- set_option auto.smt true
--- set_option auto.smt.trust true
--- set_option trace.auto.smt.printCommands true
--- set_option trace.auto.smt.result true
--- set_option auto.proofReconstruction false
 
 def test_program : program :=
   def_program
@@ -40,6 +33,7 @@ theorem small_asm_snippet_sym (s0 s_final : ArmState)
   unfold run at h_run
   subst s_final s_4
   simp_all (config := {decide := true}) only [state_simp_rules, minimal_theory, bitvec_rules]
+  rw [@zeroExtend_eq 128]
   done
 
 end multi_insts_proofs

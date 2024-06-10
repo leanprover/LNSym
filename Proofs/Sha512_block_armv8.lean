@@ -138,17 +138,28 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
 -- we'd like to verify).
 
 -- set_option profiler true in
-theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
-  (h_s0_ok : read_err s0 = StateError.None)
-  (h_s0_sp_aligned : CheckSPAlignment s0 = true)
-  (h_s0_pc : read_pc s0 = 0x1264c0#64)
-  (h_s0_program : s0.program = sha512_program_map)
-  (h_run : s_final = run 32 s0) :
-  read_err s_final = StateError.None := by
-  -- Prelude
-  simp_all only [state_simp_rules, -h_run]
-  -- Symbolic simulation
-  -- sym_n 1 h_s0_program
-  sorry
+-- theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
+--   (h_s0_ok : read_err s0 = StateError.None)
+--   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
+--   (h_s0_pc : read_pc s0 = 0x1264c0#64)
+--   (h_s0_program : s0.program = sha512_program_map)
+--   (h_run : s_final = run 32 s0) :
+--   read_err s_final = StateError.None := by
+--   -- Prelude
+--   simp_all only [state_simp_rules, -h_run]
+--   -- Symbolic simulation
+--   -- sym_i_n 0 1 h_s0_program
+--   init_next_step h_run
+--   rename_i s1 h_step_1 h_run
+--   -- fetch_and_decode_inst h_step_1 h_s0_program
+--   simp only [*, stepi, state_simp_rules, minimal_theory, bitvec_rules] at h_step_1
+--   rw [fetch_inst_from_program] at h_step_1
+--   simp only [h_s0_program] at h_step_1
+--   conv at h_step_1 =>
+--     pattern Map.find? _ _
+--     tactic => unfold sha512_program_map
+--   sorry
+
+----------------------------------------------------------------------
 
 end SHA512_proof

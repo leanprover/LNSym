@@ -20,11 +20,11 @@ def exec_bitfield (inst: Bitfield_cls) (s : ArmState) : ArmState :=
   else
     let immr5 := inst.immr >>> 5
     let imms5 := inst.imms >>> 5
-    if (inst.sf == 1 && inst.N != 1) ||
-      (inst.sf == 0 && (inst.N != 0 || immr5 != 0 || imms5 != 0)) then
+    if (inst.sf = 1 ∧ inst.N ≠ 1) ∨
+      (inst.sf = 0 ∧ (inst.N ≠ 0 ∨ immr5 ≠ 0 ∨ imms5 ≠ 0)) then
       write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
     else
-      let datasize  := if inst.sf == 1#1 then 64 else 32
+      let datasize  := if inst.sf = 1#1 then 64 else 32
       let wtmask    := decode_bit_masks inst.N inst.imms inst.immr false datasize
       match wtmask with
       | none => write_err (StateError.Illegal s!"Illegal {inst} encountered!") s

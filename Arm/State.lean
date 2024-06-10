@@ -433,11 +433,10 @@ section Load_program_and_fetch_inst
 -- fetch_inst_from_program below).
 abbrev program := Map (BitVec 64) (BitVec 32)
 
--- We define a program as an Array of address and instruction pairs,
--- which are then converted to an RBMap.
 def def_program (p : Map (BitVec 64) (BitVec 32)) : program :=
   p
 
+/-- Get the smallest address in a program `p`. -/
 def program.min (p : program) : Option (BitVec 64) :=
   loop p none
 where
@@ -447,6 +446,7 @@ where
     | (addr, _) :: p, none => loop p (some addr)
     | (addr, _) :: p, some min => if addr < min then loop p (some addr) else loop p (some min)
 
+/-- Get the largest address in a program `p`. -/
 def program.max (p : program) : Option (BitVec 64) :=
   loop p none
 where
@@ -460,7 +460,7 @@ theorem fetch_inst_from_program
   {address: BitVec 64} :
   fetch_inst address s = s.program.find? address := by
     unfold fetch_inst
-    simp_all!
+    simp only
 
 end Load_program_and_fetch_inst
 

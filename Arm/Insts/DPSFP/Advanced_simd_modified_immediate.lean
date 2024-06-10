@@ -53,14 +53,14 @@ def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitV
   | 0b100#3 => replicate 4 $ BitVec.zero 8 ++ imm8
   | 0b101#3 => replicate 4 $ imm8 ++ BitVec.zero 8
   | 0b110#3 =>
-    if cmode_low1 == 0 then
+    if cmode_low1 = 0 then
       replicate 2 $ BitVec.zero 16 ++ imm8 ++ allOnes 8
     else
       replicate 2 $ BitVec.zero 8 ++ imm8 ++ allOnes 16
   | _ =>
-    if cmode_low1 == 0 && op == 0 then
+    if cmode_low1 = 0 ∧ op = 0 then
       replicate 8 imm8
-    else if cmode_low1 == 0 && op == 1 then
+    else if cmode_low1 = 0 ∧ op = 1 then
       let imm8a := replicate 8 $ lsb imm8 7
       let imm8b := replicate 8 $ lsb imm8 6
       let imm8c := replicate 8 $ lsb imm8 5
@@ -70,7 +70,7 @@ def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitV
       let imm8g := replicate 8 $ lsb imm8 1
       let imm8h := replicate 8 $ lsb imm8 0
       imm8a ++ imm8b ++ imm8c ++ imm8d ++ imm8e ++ imm8f ++ imm8g ++ imm8h
-    else if cmode_low1 == 1 && op == 0 then
+    else if cmode_low1 = 1 ∧ op = 0 then
       let imm32 := lsb imm8 7 ++ ~~~(lsb imm8 6) ++
                    (replicate 5 $ lsb imm8 6) ++
                    extractLsb 5 0 imm8 ++ BitVec.zero 19
@@ -91,9 +91,9 @@ private theorem mul_div_norm_form_lemma  (n m : Nat) (_h1 : 0 < m) (h2 : n ∣ m
 -- Assumes CheckFPAdvSIMDEnabled64();
 def exec_advanced_simd_modified_immediate
   (inst : Advanced_simd_modified_immediate_cls) (s : ArmState) : ArmState :=
-  if inst.cmode == 0b1111#4 && inst.op == 0b0#1 && inst.o2 == 0b1#1 then
+  if inst.cmode = 0b1111#4 ∧ inst.op = 0b0#1 ∧ inst.o2 = 0b1#1 then
     write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
-  else if inst.cmode == 0b1111#4 && inst.op == 0b1#1 && inst.Q == 0b0#1 || inst.o2 == 0b1#1 then
+  else if (inst.cmode = 0b1111#4 ∧ inst.op = 0b1#1 ∧ inst.Q = 0b0#1) ∨ inst.o2 = 0b1#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let datasize := 64 <<< inst.Q.toNat
@@ -101,12 +101,12 @@ def exec_advanced_simd_modified_immediate
     let imm8 := inst.a ++ inst.b ++ inst.c ++ inst.d ++ inst.e ++ inst.f ++ inst.g ++ inst.h
     let imm64 := AdvSIMDExpandImm inst.op inst.cmode imm8
     let imm := replicate (datasize/64) imm64
-    have h₀ : 0 < datasize := by 
+    have h₀ : 0 < datasize := by
       simp [datasize]
       apply zero_lt_shift_left_pos (by decide)
     have h₁ : 64 ∣ datasize := by
       simp only [datasize, Nat.shiftLeft_eq, Nat.dvd_mul_right]
-    have h : (64 * (datasize / 64)) = datasize := by 
+    have h : (64 * (datasize / 64)) = datasize := by
       rw [mul_div_norm_form_lemma 64 datasize h₀ h₁]
       refine Nat.mul_div_cancel_left datasize ?H; decide
     let result := match operation with

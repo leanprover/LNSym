@@ -78,7 +78,7 @@ theorem container_size_dvd_datasize (x : BitVec 2) (q : BitVec 1) :
 def exec_advanced_simd_two_reg_misc
   (inst : Advanced_simd_two_reg_misc_cls) (s : ArmState) : ArmState :=
   open BitVec in
-  let datasize := if inst.Q == 1#1 then 128 else 64 -- 64 << Uint(inst.Q)
+  let datasize := if inst.Q = 1#1 then 128 else 64 -- 64 << Uint(inst.Q)
   let esize := 8 <<< inst.size.toNat
   let container_size := 64 >>> ((lsb inst.opcode 0) ++ inst.U).toNat
   if h0 : container_size <= esize then

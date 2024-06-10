@@ -44,19 +44,19 @@ private theorem container_size_dvd_datasize (opc : Nat) (sf : Nat)
   apply Nat.pow_dvd_pow_iff_le_right'.mpr H3
 
 private theorem opc_and_sf_constraint (x : BitVec 2) (y : BitVec 1)
-  (h : ¬(x == 0b11#2 && y == 0b0#1) ) :
+  (h : ¬(x = 0b11#2 ∧ y = 0b0#1)) :
   ¬(x.toNat = 3 ∧ y.toNat = 0) := by
   revert h
   simp only [BitVec.toNat_eq_nat]
   have h₁ : 3 < 2 ^ 2 := by decide
-  simp [h₁]
+  simp only [not_and, Nat.reducePow, h₁, true_and, Nat.pow_one, Nat.zero_lt_succ, imp_self]
 
 @[state_simp_rules]
 def exec_data_processing_rev
   (inst : Data_processing_one_source_cls) (s : ArmState) : ArmState :=
   have H₀: 1 - 0 + 1 = 2 := by decide
   let opc := H₀ ▸ extractLsb 1 0 inst.opcode
-  if H₁ : opc == 0b11#2 && inst.sf == 0b0#1 then
+  if H₁ : opc = 0b11#2 ∧ inst.sf = 0b0#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let datasize := 32 <<< inst.sf.toNat
@@ -64,11 +64,11 @@ def exec_data_processing_rev
     let operand := read_gpr_zr datasize inst.Rn s
     let esize := 8
     have opc_h₁ : opc.toNat ≥ 0 := by simp only [ge_iff_le, Nat.zero_le]
-    have opc_h₂ : opc.toNat < 4 := by      
+    have opc_h₂ : opc.toNat < 4 := by
       refine BitVec.isLt (extractLsb 1 0 inst.opcode)
     have opc_sf_h : ¬(opc.toNat = 3 ∧ inst.sf.toNat = 0) := by
       apply opc_and_sf_constraint (extractLsb 1 0 inst.opcode) inst.sf H₁
-    have h₀ : 0 < esize := by native_decide
+    have h₀ : 0 < esize := by decide
     have h₁ : esize ≤ container_size := by apply shiftLeft_ge
     have h₂ : container_size ≤ datasize := by
       apply container_size_le_datasize opc.toNat inst.sf.toNat opc_h₁ opc_h₂ opc_sf_h
