@@ -27,23 +27,27 @@ instance : ToString ImmediateOp where toString a := toString (repr a)
 
 def decode_immediate_op (inst : Advanced_simd_modified_immediate_cls)
   (s : ArmState) : (Option ImmediateOp) × ArmState :=
-  match_bv inst.cmode ++ inst.op with
-  | [0, _xx:2, 00] => (some ImmediateOp.MOVI, s)
-  | [0, _xx:2, 01] => (some ImmediateOp.MVNI, s)
-  | [0, _xx:2, 10] => (some ImmediateOp.ORR, s)
-  | [0, _xx:2, 11] => (some ImmediateOp.BIC, s)
-  | [10, _x:1, 00] => (some ImmediateOp.MOVI, s)
-  | [10, _x:1, 01] => (some ImmediateOp.MVNI, s)
-  | [10, _x:1, 10] => (some ImmediateOp.ORR, s)
-  | [10, _x:1, 11] => (some ImmediateOp.BIC, s)
-  | [110, _x:1, 0] => (some ImmediateOp.MOVI, s)
-  | [110, _x:1, 1] => (some ImmediateOp.MVNI, s)
-  | [1110, _x:1] => (some ImmediateOp.MOVI, s)
-  | [11110] => (some ImmediateOp.MOVI, s)
-  -- | case [11111]
-  | _ => if inst.Q = 0#1
-         then (none, write_err (StateError.Illegal s!"Illegal {inst} encountered!") s)
-         else (some ImmediateOp.MOVI, s)
+  -- All UNALLOCATED cases when inst.o2 = 1
+  if inst.o2 == 0b1#1 ∧ inst.cmode ++ inst.op != 0b11110#5 then
+    (none, write_err (StateError.Illegal s!"Illegal {inst} encountered!") s)
+  else
+    match_bv inst.cmode ++ inst.op with
+    | [0, _xx:2, 00] => (some ImmediateOp.MOVI, s)
+    | [0, _xx:2, 01] => (some ImmediateOp.MVNI, s)
+    | [0, _xx:2, 10] => (some ImmediateOp.ORR, s)
+    | [0, _xx:2, 11] => (some ImmediateOp.BIC, s)
+    | [10, _x:1, 00] => (some ImmediateOp.MOVI, s)
+    | [10, _x:1, 01] => (some ImmediateOp.MVNI, s)
+    | [10, _x:1, 10] => (some ImmediateOp.ORR, s)
+    | [10, _x:1, 11] => (some ImmediateOp.BIC, s)
+    | [110, _x:1, 0] => (some ImmediateOp.MOVI, s)
+    | [110, _x:1, 1] => (some ImmediateOp.MVNI, s)
+    | [1110, _x:1] => (some ImmediateOp.MOVI, s)
+    | [11110] => (some ImmediateOp.MOVI, s)
+    -- | case [11111]
+    | _ => if inst.Q = 0#1
+           then (none, write_err (StateError.Illegal s!"Illegal {inst} encountered!") s)
+           else (some ImmediateOp.MOVI, s)
 
 def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitVec 64 :=
   let cmode_high3 := extractLsb 3 1 cmode
@@ -94,40 +98,36 @@ private theorem mul_div_norm_form_lemma  (n m : Nat) (_h1 : 0 < m) (h2 : n ∣ m
 -- Assumes CheckFPAdvSIMDEnabled64();
 def exec_advanced_simd_modified_immediate
   (inst : Advanced_simd_modified_immediate_cls) (s : ArmState) : ArmState :=
-  -- All UNALLOCATED cases when inst.o2 = 1
-  if inst.o2 == 0b1#1 ∧ inst.cmode ++ inst.op != 0b11110#5 then
-    write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
-  else
-    let (maybe_operation, s) := decode_immediate_op inst s
-    match maybe_operation with
-    | none => s
-    | some operation =>
-      let datasize := 64 <<< inst.Q.toNat
-      let imm8 := inst.a ++ inst.b ++ inst.c ++ inst.d ++ inst.e ++ inst.f ++ inst.g ++ inst.h
-      let imm16 : BitVec 16 :=
-                   extractLsb 7 7 imm8 ++ ~~~ (extractLsb 6 6 imm8) ++
-                   (replicate 2 $ extractLsb 6 6 imm8) ++ extractLsb 5 0 imm8 ++
-                   BitVec.zero 6
-      let imm64 := AdvSIMDExpandImm inst.op inst.cmode imm8
-      have h₁ : 16 * (datasize / 16) = datasize := by omega
-      have h₂ : 16 * (datasize / 16) = 64 * (datasize / 64) := by omega
-      -- Assumes IsFeatureImplemented(FEAT_FP16)
-      let imm := if inst.op ++ inst.cmode ++ inst.o2 = 0b011111#6
-                 then replicate (datasize/16) imm16
-                 else h₂ ▸ replicate (datasize/64) imm64
-      let result := match operation with
-                  | ImmediateOp.MOVI => (h₁ ▸ imm)
-                  | ImmediateOp.MVNI => ~~~(h₁ ▸ imm)
-                  | ImmediateOp.ORR =>
-                    let operand := read_sfp datasize inst.Rd s
-                    operand ||| (h₁ ▸ imm)
-                  | _ =>
-                    let operand := read_sfp datasize inst.Rd s
-                    operand &&& ~~~(h₁ ▸ imm)
-      -- State Updates
-      let s := write_pc ((read_pc s) + 4#64) s
-      let s := write_sfp datasize inst.Rd result s
-      s
+  let (maybe_operation, s) := decode_immediate_op inst s
+  match maybe_operation with
+  | none => s
+  | some operation =>
+    let datasize := 64 <<< inst.Q.toNat
+    let imm8 := inst.a ++ inst.b ++ inst.c ++ inst.d ++ inst.e ++ inst.f ++ inst.g ++ inst.h
+    let imm16 : BitVec 16 :=
+                 extractLsb 7 7 imm8 ++ ~~~ (extractLsb 6 6 imm8) ++
+                 (replicate 2 $ extractLsb 6 6 imm8) ++ extractLsb 5 0 imm8 ++
+                 BitVec.zero 6
+    let imm64 := AdvSIMDExpandImm inst.op inst.cmode imm8
+    have h₁ : 16 * (datasize / 16) = datasize := by omega
+    have h₂ : 16 * (datasize / 16) = 64 * (datasize / 64) := by omega
+    -- Assumes IsFeatureImplemented(FEAT_FP16)
+    let imm := if inst.op ++ inst.cmode ++ inst.o2 = 0b011111#6
+               then replicate (datasize/16) imm16
+               else h₂ ▸ replicate (datasize/64) imm64
+    let result := match operation with
+                | ImmediateOp.MOVI => (h₁ ▸ imm)
+                | ImmediateOp.MVNI => ~~~(h₁ ▸ imm)
+                | ImmediateOp.ORR =>
+                  let operand := read_sfp datasize inst.Rd s
+                  operand ||| (h₁ ▸ imm)
+                | _ =>
+                  let operand := read_sfp datasize inst.Rd s
+                  operand &&& ~~~(h₁ ▸ imm)
+    -- State Updates
+    let s := write_pc ((read_pc s) + 4#64) s
+    let s := write_sfp datasize inst.Rd result s
+    s
 
 ----------------------------------------------------------------------
 
