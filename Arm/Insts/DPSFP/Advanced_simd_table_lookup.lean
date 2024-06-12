@@ -50,7 +50,7 @@ def exec_tblx (inst : Advanced_simd_table_lookup_cls) (s : ArmState) : ArmState 
   let datasize := 64 <<< inst.Q.toNat
   let elements := datasize / 8
   let regs := inst.len.toNat + 1
-  let is_tbl := (inst.op == 0b0#1)
+  let is_tbl := (inst.op = 0b0#1)
   let indices := read_sfp datasize inst.Rm s
   let table := BitVec.zero (128 * regs)
   let table := create_table 0 regs inst.Rn table s

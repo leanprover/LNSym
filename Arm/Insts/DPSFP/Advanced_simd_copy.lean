@@ -104,7 +104,7 @@ def exec_smov_umov (inst : Advanced_simd_copy_cls) (s : ArmState) (signed : Bool
   else if (not signed) ∧
           ((size > 3) ∨
            (datasize = 64 ∧ esize < 64) ∨
-           (datasize = 32 && esize >= 64)) then
+           (datasize = 32 ∧ esize >= 64)) then
      write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let index := (extractLsb 4 (size + 1) inst.imm5).toNat

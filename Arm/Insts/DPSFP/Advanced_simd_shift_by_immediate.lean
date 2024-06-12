@@ -30,9 +30,9 @@ def exec_shift_right_vector
       { esize := esize,
         elements := datasize / esize,
         shift := (2 * esize) - (inst.immh ++ inst.immb).toNat,
-        unsigned := inst.U == 0b1#1,
-        round := (lsb inst.opcode 2) == 0b1#1,
-        accumulate := (lsb inst.opcode 1) == 0b1#1,
+        unsigned := inst.U = 0b1#1,
+        round := (lsb inst.opcode 2) = 0b1#1,
+        accumulate := (lsb inst.opcode 1) = 0b1#1,
         h := h }
     let result := shift_right_common info datasize inst.Rn inst.Rd s
     -- State Update

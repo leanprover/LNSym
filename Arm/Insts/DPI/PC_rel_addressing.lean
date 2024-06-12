@@ -20,7 +20,7 @@ def exec_pc_rel_addressing (inst : PC_rel_addressing_cls) (s : ArmState) : ArmSt
   let imm := if inst.op = 0#1 then
                 signExtend 64 (inst.immhi ++ inst.immlo) -- ADR
              else
-                signExtend 64 ((inst.immhi ++ inst.immlo) <<< 12) -- ADRP
+                signExtend 64 (inst.immhi ++ inst.immlo ++ (BitVec.zero 12)) -- ADRP
   let result := if inst.op = 0#1 then
                    orig_pc + imm -- ADR
                 else

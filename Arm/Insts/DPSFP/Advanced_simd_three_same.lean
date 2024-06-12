@@ -48,7 +48,7 @@ def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : Ar
     let datasize := if inst.Q = 1#1 then 128 else 64
     let esize := 8 <<< (BitVec.toNat inst.size)
     have h_esize : 0 < esize := by simp [esize]; apply zero_lt_shift_left_pos (by decide)
-    let sub_op := inst.U == 1
+    let sub_op := inst.U = 1
     let operand1 := read_sfp datasize inst.Rn s
     let operand2 := read_sfp datasize inst.Rm s
     let op := if sub_op then BitVec.sub else BitVec.add
