@@ -19,6 +19,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     DPI.exec_logical_imm i s
   | DPI (DataProcImmInst.Bitfield i) =>
     DPI.exec_bitfield i s
+  | DPI (DataProcImmInst.Move_wide_imm i) =>
+    DPI.exec_move_wide_imm i s
 
   | BR (BranchInst.Compare_branch i) =>
     BR.exec_compare_branch i s
@@ -28,6 +30,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     BR.exec_uncond_branch_reg i s
   | BR (BranchInst.Cond_branch_imm i) =>
     BR.exec_cond_branch_imm i s
+  | BR (BranchInst.Hints i) =>
+    BR.exec_hints i s
 
   | DPR (DataProcRegInst.Add_sub_carry i) =>
     DPR.exec_add_sub_carry i s
@@ -79,6 +83,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     LDST.exec_reg_imm_post_indexed i s
   | LDST (LDSTInst.Reg_unsigned_imm i) =>
     LDST.exec_reg_imm_unsigned_offset i s
+  | LDST (LDSTInst.Reg_unscaled_imm i) =>
+    LDST.exec_reg_unscaled_imm i s
   | LDST (LDSTInst.Reg_pair_pre_indexed i) =>
     LDST.exec_reg_pair_pre_indexed i s
   | LDST (LDSTInst.Reg_pair_post_indexed i) =>

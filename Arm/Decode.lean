@@ -50,6 +50,8 @@ def decode_data_proc_imm (i : BitVec 32) : Option ArmInst :=
     DPI (PC_rel_addressing {op, immlo, immhi, Rd})
   | [sf:1, opc:2, 100110, N:1, immr:6, imms:6, Rn:5, Rd:5] =>
     DPI (Bitfield {sf, opc, N, immr, imms, Rn, Rd})
+  | [sf:1, opc:2, 100101, hw:2, imm16:16, Rd:5] =>
+    DPI (Move_wide_imm {sf, opc, hw, imm16, Rd})
   | _ => none
 
 def decode_branch (i : BitVec 32) : Option ArmInst :=
@@ -64,6 +66,8 @@ def decode_branch (i : BitVec 32) : Option ArmInst :=
     BR (Uncond_branch_reg {opc, op2, op3, Rn, op4})
   | [01010100, imm19:19, o0:1, cond:4] =>
     BR (Cond_branch_imm {imm19, o0, cond})
+  | [11010101000000110010, CRm:4, op2:3, 11111] =>
+    BR (Hints {CRm, op2})
   | _ => none
 
 def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=
@@ -133,6 +137,8 @@ def decode_ldst_inst (i : BitVec 32) : Option ArmInst :=
     LDST (Reg_imm_post_indexed {size, V, opc, imm9, Rn, Rt})
   | [size:2, 111, V:1, 01, opc:2, imm12:12, Rn:5, Rt:5] =>
     LDST (Reg_unsigned_imm {size, V, opc, imm12, Rn, Rt})
+  | [size:2, 111, VR:1, 00, opc:2, 0, imm9:9, 00, Rn:5, Rt:5] =>
+    LDST (Reg_unscaled_imm {size, VR, opc, imm9, Rn, Rt})
   | [opc:2, 101, V:1, 011, L:1, imm7:7, Rt2:5, Rn:5, Rt:5] =>
     LDST (Reg_pair_pre_indexed {opc, V, L, imm7, Rt2, Rn, Rt})
   | [opc:2, 101, V:1, 001, L:1, imm7:7, Rt2:5, Rn:5, Rt:5] =>

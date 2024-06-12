@@ -445,4 +445,13 @@ def shift_left_common
   let result := BitVec.zero datasize
   shift_left_common_aux 0 info operand result
 
+----------------------------------------------------------------------
+
+-- MemOp: Memory access instruction types
+inductive MemOp where
+  | MemOp_LOAD : MemOp
+  | MemOp_STORE : MemOp
+  | MemOp_PREFETCH : MemOp
+deriving DecidableEq, Repr
+
 end Common
