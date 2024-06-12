@@ -11,7 +11,7 @@ section multi_insts_proofs
 
 open BitVec
 
-def test_program : program :=
+def test_program : Program :=
   def_program
   [(0x12650c#64 , 0x4ea01c1a#32),      --  mov     v26.16b, v0.16b
     (0x126510#64 , 0x4ea11c3b#32),      --  mov     v27.16b, v1.16b

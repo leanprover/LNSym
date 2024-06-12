@@ -121,7 +121,7 @@ structure ArmState where
   -- Program: maps 64-bit addresses to 32-bit instructions.
   -- Note that we have the following assumption baked into our machine model:
   -- the program is always disjoint from the rest of the memory.
-  program    : Map (BitVec 64) (BitVec 32)
+  program    : Program
 
   -- The error field is an artifact of this model; it is set to a
   -- non-None value when some irrecoverable error is encountered
@@ -427,30 +427,24 @@ end Accessor_updater_functions
 
 section Load_program_and_fetch_inst
 
--- Programs are defined as an Map of 64-bit addresses to 32-bit
--- instructions. Map has nice lemmas that allow us to smoothly fetch
--- an instruction from the map during proofs (see
--- fetch_inst_from_program below).
-abbrev program := Map (BitVec 64) (BitVec 32)
-
-def def_program (p : Map (BitVec 64) (BitVec 32)) : program :=
+def def_program (p : Program) : Program :=
   p
 
 /-- Get the smallest address in a program `p`. -/
-def program.min (p : program) : Option (BitVec 64) :=
+def Program.min (p : Program) : Option (BitVec 64) :=
   loop p none
 where
-  loop (p : program) (min? : Option (BitVec 64)) : Option (BitVec 64) :=
+  loop (p : Program) (min? : Option (BitVec 64)) : Option (BitVec 64) :=
     match p, min? with
     | [], _ => min?
     | (addr, _) :: p, none => loop p (some addr)
     | (addr, _) :: p, some min => if addr < min then loop p (some addr) else loop p (some min)
 
 /-- Get the largest address in a program `p`. -/
-def program.max (p : program) : Option (BitVec 64) :=
+def Program.max (p : Program) : Option (BitVec 64) :=
   loop p none
 where
-  loop (p : program) (max? : Option (BitVec 64)) : Option (BitVec 64) :=
+  loop (p : Program) (max? : Option (BitVec 64)) : Option (BitVec 64) :=
     match p, max? with
     | [], _ => max?
     | (addr, _) :: p, none => loop p (some addr)

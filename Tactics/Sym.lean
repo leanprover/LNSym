@@ -30,7 +30,9 @@ macro "fetch_and_decode_inst" h_step:ident h_program:ident : tactic =>
      simp only [$h_program:ident] at $h_step:ident
      conv at $h_step:ident =>
       pattern Map.find? _ _
-      simp (config := {ground := true}) only
+      tactic => set_option maxRecDepth 1200 in
+                simp (config := {ground := true}) only
+                -- simp only [def_program, reduceMapFind?]
      (try dsimp only at $h_step:ident);
      conv at $h_step:ident =>
       pattern decode_raw_inst _

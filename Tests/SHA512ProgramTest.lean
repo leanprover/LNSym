@@ -14,7 +14,7 @@ open BitVec
 
 -- sha512_block_armv8
 -- Source: https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/sha/asm/sha512-armv8.pl#L454
-def sha512_program_map : program :=
+def sha512_program_map : Program :=
   def_program
   [(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
     (0x1264c4#64 , 0x910003fd#32),      --  mov     x29, sp
