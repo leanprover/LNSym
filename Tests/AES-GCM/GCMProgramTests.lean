@@ -139,7 +139,7 @@ def init_gcm_init_test : ArmState :=
   let s := write_mem_bytes 256 Htable_address (h ▸ revflat Htable_before_init) s
   s
 
-def final_state : ArmState := run 150 init_gcm_init_test
+def final_state : ArmState := run GCMInitV8Program.gcm_init_v8_program.length init_gcm_init_test
 def final_pc : BitVec 64 := final_state.pc
 def final_table : BitVec 2048 := read_mem_bytes 256 Htable_address final_state
 example : final_table = revflat Htable := by native_decide
@@ -175,7 +175,7 @@ def gcm_gmult_final_state : ArmState :=
   let s := write_mem_bytes 16 x_address flat_X_before s
   have h : 2048 = (128 * 16 / 8) * 8 := by decide
   let s := write_mem_bytes (128 * 16 / 8) Htable_address (h ▸ (revflat Htable)) s
-  let final_state := run 26 s
+  let final_state := run GCMGmultV8Program.gcm_gmult_v8_program.length s
   final_state
 
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address gcm_gmult_final_state
