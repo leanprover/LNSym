@@ -13,6 +13,8 @@ import Tests.«AES-GCM».AESHWCtr32EncryptBlocksProgram
 
 open BitVec
 
+-- Tests are taken from AWS-LC's ABI tests for these assembly routines
+
 -- Test generation:
 --   Compile AWS-LC:
 --     0. export CC=clang; export CXX=clang++ (make sure clang version is 10+)
@@ -25,6 +27,25 @@ open BitVec
 --     3. ninja-build
 --   Run test:
 --     1. aws-lc-build/crypto/crypto_test --gtest_filter="AESTest.ABI"
+
+/- 
+  How to get the number of steps to run for a program?
+
+  When a program finishes, ArmState.pc would be set to 0x0#64 and ArmState.error
+  will be `StateError.None`. If a program hasn't reached the last instruction,
+  its ArmState.pc will be some number other than 0x0#64. This is based on an
+  assumption that programs don't typically start at pc 0x0#64.
+  If a program runs past the last instruction, its ArmState.error will be:
+
+    StateError.NotFound "No instruction found at PC 0x0000000000000000#64!"
+
+  Based on above information, we could do a binary search for the number of steps
+  to run a program and the stopping criterion is that ArmState.pc = 0x0#64 and
+  ArmState.error = StateError.None. This sounds awfully programmable, but for
+  now we reply on this comment.
+
+-/
+
 
 namespace AESHWSetEncryptKeyProgramTest
 
