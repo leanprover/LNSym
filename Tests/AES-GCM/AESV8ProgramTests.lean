@@ -7,9 +7,9 @@ import Arm.BitVec
 import Arm.Exec
 import Arm.Cfg.Cfg
 import Tests.Common
-import Tests.AESHWSetEncryptKeyProgram
-import Tests.AESHWEncryptProgram
-import Tests.AESHWCtr32EncryptBlocksProgram
+import Tests.«AES-GCM».AESHWSetEncryptKeyProgram
+import Tests.«AES-GCM».AESHWEncryptProgram
+import Tests.«AES-GCM».AESHWCtr32EncryptBlocksProgram
 
 open BitVec
 
