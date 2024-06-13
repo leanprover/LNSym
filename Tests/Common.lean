@@ -6,7 +6,9 @@ Author(s): Yan Peng
 import Arm.BitVec
 import Arm.FromMathlib
 
-def revflat (x : List (BitVec n)) : BitVec (n * x.reverse.length) := BitVec.flatten (List.reverse x)
+def revflat (x : List (BitVec n)) : BitVec (n * x.length) := 
+  have h : x.reverse.length = x.length := by simp only [List.length_reverse]
+  h ▸ BitVec.flatten (List.reverse x)
 
 def list_create_helper (x : BitVec n) (len : Nat) (acc : List (BitVec n)) : List (BitVec n) :=
   if len <= 0 then acc

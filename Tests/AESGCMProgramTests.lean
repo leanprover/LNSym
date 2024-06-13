@@ -193,9 +193,9 @@ namespace enc
 
 -- AES_128_GCM encrypt test
 def final_state : ArmState :=
-  have h1 : 8 * in_blocks.reverse.length = 4096 := by
+  have h1 : 8 * in_blocks.length = 4096 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_in_blocks]
-  have h2 : 8 * ivec.reverse.length = 128 := by
+  have h2 : 8 * ivec.length = 128 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_ivec]
   aes_gcm_enc_kernel_test 1514 (h1 ▸ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (h2 ▸ revflat ivec)
@@ -215,7 +215,7 @@ namespace dec
 
 -- AES_128_GCM decrypt test
 def final_state : ArmState :=
-  have h : 8 * ivec.reverse.length = 128 := by
+  have h : 8 * ivec.length = 128 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_ivec]
   aes_gcm_dec_kernel_test 1519 (revflat ciphertext) (revflat Xi) (revflat Htable)
     rounds (revflat key) (h ▸ revflat ivec)
@@ -227,7 +227,7 @@ def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 example : final_state.error = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
 example :
-  have h : 8 * in_blocks.reverse.length = 4096 := by
+  have h : 8 * in_blocks.length = 4096 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_in_blocks]
   final_ciphertext = h ▸ revflat in_blocks := by native_decide
 example : final_ivec = revflat ivec_res := by native_decide
@@ -299,9 +299,9 @@ namespace enc
 
 -- AES_192_GCM encrypt test
 def final_state : ArmState :=
-  have h1 : 8 * in_blocks.reverse.length = 4096 := by
+  have h1 : 8 * in_blocks.length = 4096 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_in_blocks]
-  have h2 : 8 * ivec.reverse.length = 128 := by
+  have h2 : 8 * ivec.length = 128 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_ivec]
   aes_gcm_enc_kernel_test 1650 (h1 ▸ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (h2 ▸ revflat ivec)
@@ -321,7 +321,7 @@ namespace dec
 
 -- AES_192_GCM decrypt test
 def final_state : ArmState :=
-  have h : 8 * ivec.reverse.length = 128 := by
+  have h : 8 * ivec.length = 128 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_ivec]
   aes_gcm_dec_kernel_test 1655 (revflat ciphertext) (revflat Xi) (revflat Htable)
     rounds (revflat key) (h ▸ revflat ivec)
@@ -333,7 +333,7 @@ def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 example : final_state.error = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
 example :
-  have h : 8 * in_blocks.reverse.length = 4096 := by
+  have h : 8 * in_blocks.length = 4096 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_in_blocks]
   final_ciphertext = h ▸ revflat in_blocks := by native_decide
 example : final_ivec = revflat ivec_res := by native_decide
@@ -408,9 +408,9 @@ namespace enc
 
 -- AES_256_GCM encrypt test
 def final_state : ArmState :=
-  have h1 : 8 * in_blocks.reverse.length = 4096 := by
+  have h1 : 8 * in_blocks.length = 4096 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_in_blocks]
-  have h2 : 8 * ivec.reverse.length = 128 := by
+  have h2 : 8 * ivec.length = 128 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_ivec]
   aes_gcm_enc_kernel_test 1778 (h1 ▸ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (h2 ▸ revflat ivec)
@@ -430,7 +430,7 @@ namespace dec
 
 -- AES_256_GCM decrypt test
 def final_state : ArmState :=
-  have h : 8 * ivec.reverse.length = 128 := by
+  have h : 8 * ivec.length = 128 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_ivec]
   aes_gcm_dec_kernel_test 1783 (revflat ciphertext) (revflat Xi) (revflat Htable)
     rounds (revflat key) (h ▸ revflat ivec)
@@ -442,7 +442,7 @@ def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 example : final_state.error = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
 example :
-  have h : 8 * in_blocks.reverse.length = 4096 := by
+  have h : 8 * in_blocks.length = 4096 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_in_blocks]
   final_ciphertext = h ▸ revflat in_blocks := by native_decide
 example : final_ivec = revflat ivec_res := by native_decide

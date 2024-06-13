@@ -67,7 +67,7 @@ def aes_hw_set_encrypt_key_test (n : Nat) (key_bits : BitVec 64) : ArmState :=
              error := StateError.None
           }
   -- write kKey
-  have h : 8 * kKey.reverse.length = 32 * 8 := by
+  have h : 8 * kKey.length = 32 * 8 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_kKey]
   let s := write_mem_bytes 32 kKey_address (h ▸ revflat kKey) s
   -- write rcon
@@ -217,7 +217,7 @@ def out_block : List (BitVec 8) :=
   ]
 
 def final_state : ArmState :=
-  have h : 8 * in_block.reverse.length = 128 := by
+  have h : 8 * in_block.length = 128 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_in_block]
   aes_hw_encrypt_test 44 (h ▸ revflat in_block) rounds (revflat key_schedule)
 def final_ciphertext : BitVec 128 := read_mem_bytes 16 out_address final_state
@@ -246,7 +246,7 @@ def out_block : List (BitVec 8) :=
   ]
 
 def final_state : ArmState :=
-  have h : 8 * in_block.reverse.length = 128 := by
+  have h : 8 * in_block.length = 128 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_in_block]
   aes_hw_encrypt_test 52 (h ▸ revflat in_block) rounds (revflat key_schedule)
 def final_ciphertext : BitVec 128 := read_mem_bytes 16 out_address final_state
@@ -274,7 +274,7 @@ def out_block : List (BitVec 8) :=
   ]
 
 def final_state : ArmState :=
-  have h : 8 * in_block.reverse.length = 128 := by
+  have h : 8 * in_block.length = 128 := by
     simp only [List.length_reverse, Nat.reduceMul, length_of_in_block]
   aes_hw_encrypt_test 60 (h ▸ revflat in_block) rounds (revflat key_schedule)
 def final_ciphertext : BitVec 128 := read_mem_bytes 16 out_address final_state
@@ -318,11 +318,11 @@ def aes_hw_ctr32_encrypt_blocks_test (n : Nat)
                error := StateError.None
              }
   -- write in_block
-  have h1 : 8 * in_block.reverse.length = in_block.reverse.length * 8 := by omega
-  let s := write_mem_bytes in_block.reverse.length in_address (h1 ▸ (revflat in_block)) s
+  have h1 : 8 * in_block.length = in_block.length * 8 := by omega
+  let s := write_mem_bytes in_block.length in_address (h1 ▸ (revflat in_block)) s
   -- write key_schedule
-  have h2 : 4 * key_schedule.reverse.length * 8 = 32 * key_schedule.reverse.length := by omega
-  let s := write_mem_bytes (4 * key_schedule.reverse.length) key_address (h2 ▸ (revflat key_schedule)) s
+  have h2 : 4 * key_schedule.length * 8 = 32 * key_schedule.length := by omega
+  let s := write_mem_bytes (4 * key_schedule.length) key_address (h2 ▸ (revflat key_schedule)) s
   -- write rounds
   let s := write_mem_bytes 8 round_address rounds s
   -- write ivec
