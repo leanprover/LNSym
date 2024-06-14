@@ -56,11 +56,7 @@ def In_address := 0x120#64
 def H : List (BitVec 64) :=
   [ 0x66e94bd4ef8a2c3b#64, 0x884cfa59ca342b2e#64 ]
 
-def Htable_before_init : List (BitVec 64) :=
-  List.create 0x0#64 32
-theorem length_of_Htable_before_init : Htable_before_init.length = 32 := by
-  unfold Htable_before_init
-  apply length_of_list_create
+def Htable_before_init : List (BitVec 64) := List.replicate 32 0x0#64
 
 def Htable : List (BitVec 64) :=
   [ 0x1099f4b39468565c#64, 0xcdd297a9df145877#64,
@@ -81,11 +77,7 @@ def Htable : List (BitVec 64) :=
     0x0#64, 0x0#64 ]
 
 def buf : List (BitVec 64) :=
-  List.create 0x2a2a2a2a2a2a2a2a#64 14
-
-theorem length_of_buf : buf.length = 14 := by
-  unfold buf
-  apply length_of_list_create
+  List.replicate 14 0x2a2a2a2a2a2a2a2a#64
 
 def X : List (List (BitVec 8)) :=
   [ [ 0x10#8, 0x54#8, 0x43#8, 0xb0#8, 0x2c#8, 0x4b#8, 0x1f#8, 0x24#8,
@@ -134,9 +126,7 @@ def init_gcm_init_test : ArmState :=
              error := StateError.None
            }
   let s := write_mem_bytes 16 H_address (revflat H) s
-  have h : 64 * Htable_before_init.length = 256 * 8 := by
-    simp only [List.length_reverse, Nat.reduceMul, length_of_Htable_before_init]
-  let s := write_mem_bytes 256 Htable_address (h ▸ revflat Htable_before_init) s
+  let s := write_mem_bytes 256 Htable_address (revflat Htable_before_init) s
   s
 
 def final_state : ArmState := run GCMInitV8Program.gcm_init_v8_program.length init_gcm_init_test
@@ -224,9 +214,7 @@ def X_before : List (BitVec 8) := List.get! X 2
 def X_after : List (BitVec 8) := List.get! X 3
 
 def final_state : ArmState :=
-  have h : 64 * buf.length = 896 := by
-    simp only [List.length_reverse, Nat.reduceMul, length_of_buf]
-  gcm_ghash_test 68 len (h ▸ revflat buf) (revflat X_before)
+  gcm_ghash_test 68 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
 example : final_hash = revflat X_after := by native_decide
@@ -242,9 +230,7 @@ def X_before : List (BitVec 8) := List.get! X 4
 def X_after : List (BitVec 8) := List.get! X 5
 
 def final_state : ArmState :=
-  have h : 64 * buf.length = 896 := by
-    simp only [List.length_reverse, Nat.reduceMul, length_of_buf]
-  gcm_ghash_test 63 len (h ▸ revflat buf) (revflat X_before)
+  gcm_ghash_test 63 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
 example : final_hash = revflat X_after := by native_decide
@@ -260,9 +246,7 @@ def X_before : List (BitVec 8) := List.get! X 5
 def X_after : List (BitVec 8) := List.get! X 6
 
 def final_state : ArmState :=
-  have h : 64 * buf.length = 896 := by
-    simp only [List.length_reverse, Nat.reduceMul, length_of_buf]
-  gcm_ghash_test 86 len (h ▸ revflat buf) (revflat X_before)
+  gcm_ghash_test 86 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
 example : final_hash = revflat X_after := by native_decide
@@ -278,9 +262,7 @@ def X_before : List (BitVec 8) := List.get! X 6
 def X_after : List (BitVec 8) := List.get! X 7
 
 def final_state : ArmState :=
-  have h : 64 * buf.length = 896 := by
-    simp only [List.length_reverse, Nat.reduceMul, length_of_buf]
-  gcm_ghash_test 97 len (h ▸ revflat buf) (revflat X_before)
+  gcm_ghash_test 97 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
 example : final_hash = revflat X_after := by native_decide
@@ -296,9 +278,7 @@ def X_before : List (BitVec 8) := List.get! X 7
 def X_after : List (BitVec 8) := List.get! X 8
 
 def final_state : ArmState :=
-  have h : 64 * buf.length = 896 := by
-    simp only [List.length_reverse, Nat.reduceMul, length_of_buf]
-  gcm_ghash_test 106 len (h ▸ revflat buf) (revflat X_before)
+  gcm_ghash_test 106 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
 example : final_hash = revflat X_after := by native_decide
