@@ -52,11 +52,7 @@ namespace AESHWSetEncryptKeyProgramTest
 -- The assembly checks that kKey address cannot be 0, so we add 8 to the address
 def kKey_address : BitVec 64 := 0#64 + 8#64
 
-def kKey : List (BitVec 8) :=
-  List.create 0x00#8 32
-theorem length_of_kKey : kKey.length = 32 := by
-  unfold kKey
-  apply length_of_list_create
+def kKey : List (BitVec 8) := List.replicate 32 0x00#8
 
 -- Start address for the AES_KEY struct
 def key_address : BitVec 64 := 128#64 + 8#64
@@ -88,9 +84,7 @@ def aes_hw_set_encrypt_key_test (n : Nat) (key_bits : BitVec 64) : ArmState :=
              error := StateError.None
           }
   -- write kKey
-  have h : 8 * kKey.length = 32 * 8 := by
-    simp only [List.length_reverse, Nat.reduceMul, length_of_kKey]
-  let s := write_mem_bytes 32 kKey_address (h ▸ revflat kKey) s
+  let s := write_mem_bytes 32 kKey_address (revflat kKey) s
   -- write rcon
   let s := write_mem_bytes 48 rcon_address (revflat rcon) s
   let final_state := run n s
@@ -223,11 +217,7 @@ def aes_hw_encrypt_test (n : Nat) (in_block : BitVec 128)
 
 namespace AES128
 
-def in_block : List (BitVec 8) :=
-  List.create 0x00#8 16
-theorem length_of_in_block : in_block.length = 16 := by
-  unfold in_block
-  apply length_of_list_create
+def in_block : List (BitVec 8) := List.replicate 16 0x00#8
 
 def key_schedule : List (BitVec 32) := AESHWSetEncryptKeyProgramTest.AES128.rd_key
 def rounds : BitVec 64 := 10
@@ -238,9 +228,7 @@ def out_block : List (BitVec 8) :=
   ]
 
 def final_state : ArmState :=
-  have h : 8 * in_block.length = 128 := by
-    simp only [List.length_reverse, Nat.reduceMul, length_of_in_block]
-  aes_hw_encrypt_test 44 (h ▸ revflat in_block) rounds (revflat key_schedule)
+  aes_hw_encrypt_test 44 (revflat in_block) rounds (revflat key_schedule)
 def final_ciphertext : BitVec 128 := read_mem_bytes 16 out_address final_state
 
 example : final_state.error = StateError.None := by native_decide
@@ -252,11 +240,7 @@ end AES128
 
 namespace AES192
 
-def in_block : List (BitVec 8) :=
-  List.create 0x00#8 16
-theorem length_of_in_block : in_block.length = 16 := by
-  unfold in_block
-  apply length_of_list_create
+def in_block : List (BitVec 8) := List.replicate 16 0x00#8
 
 def key_schedule : List (BitVec 32) := AESHWSetEncryptKeyProgramTest.AES192.rd_key
 def rounds : BitVec 64 := 12
@@ -267,9 +251,7 @@ def out_block : List (BitVec 8) :=
   ]
 
 def final_state : ArmState :=
-  have h : 8 * in_block.length = 128 := by
-    simp only [List.length_reverse, Nat.reduceMul, length_of_in_block]
-  aes_hw_encrypt_test 52 (h ▸ revflat in_block) rounds (revflat key_schedule)
+  aes_hw_encrypt_test 52 (revflat in_block) rounds (revflat key_schedule)
 def final_ciphertext : BitVec 128 := read_mem_bytes 16 out_address final_state
 
 example : final_state.error = StateError.None := by native_decide
@@ -280,11 +262,7 @@ end AES192
 
 namespace AES256
 
-def in_block : List (BitVec 8) :=
-  List.create 0x00#8 16
-theorem length_of_in_block : in_block.length = 16 := by
-  unfold in_block
-  apply length_of_list_create
+def in_block : List (BitVec 8) := List.replicate 16 0x00#8
 
 def key_schedule : List (BitVec 32) := AESHWSetEncryptKeyProgramTest.AES256.rd_key
 def rounds : BitVec 64 := 14
@@ -295,9 +273,7 @@ def out_block : List (BitVec 8) :=
   ]
 
 def final_state : ArmState :=
-  have h : 8 * in_block.length = 128 := by
-    simp only [List.length_reverse, Nat.reduceMul, length_of_in_block]
-  aes_hw_encrypt_test 60 (h ▸ revflat in_block) rounds (revflat key_schedule)
+  aes_hw_encrypt_test 60 (revflat in_block) rounds (revflat key_schedule)
 def final_ciphertext : BitVec 128 := read_mem_bytes 16 out_address final_state
 
 example : final_state.error = StateError.None := by native_decide
@@ -351,7 +327,7 @@ def aes_hw_ctr32_encrypt_blocks_test (n : Nat)
   let final_state := run n s
   final_state
 
-def in_block : List (BitVec 8) := List.create 0x00#8 80
+def in_block : List (BitVec 8) := List.replicate 80 0x00#8
 
 def ivec : BitVec 128 := 0x0#128
 
