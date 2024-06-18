@@ -156,48 +156,44 @@ abbrev Program := Map (BitVec 64) (BitVec 32)
 
 open Lean.ToExpr Lean Meta Simp
 
--- TODO: Can we cache the result of Map.fromExpr? somewhere? We expect to call
--- this function quite a bit for the same program map during symbolic simulation.
-partial def Map.fromExpr? (e : Expr) : SimpM (Option Program) :=
-  do
-  match_expr e with
-  | List.nil _ => return some List.nil
-  | List.cons _ hd tl =>
-    -- dbg_trace f!"Map.fromExpr? cons: hd {hd} \n \ntl {tl}"
-    let_expr Prod.mk _ _ key_lit val_lit ← hd | return none
-    -- dbg_trace f!"Map.fromExpr? cons: key_lit {key_lit} \n \nval_lit {val_lit}"
-    let some key_lit_val ← BitVec.fromExpr? key_lit | return none
-    let some val_lit_val ← BitVec.fromExpr? val_lit | return none
-    let some tl_val ← Map.fromExpr? tl | return none
-    if h₁ : key_lit_val.n = 64 then
-      if h₂ : val_lit_val.n = 32 then
-        return (some
-                (List.cons
-                  (h₁ ▸ key_lit_val.value, h₂ ▸ val_lit_val.value)
-                  tl_val))
-      else
-        return none
-    else
-        return none
-  | _ =>
-    -- dbg_trace f!"Map.fromExpr? e: {e}"
-    return none
+deriving instance DecidableEq for BitVec.Literal
 
--- TODO: Add to [simp, seval] or [state_simp_rules]?
-simproc reduceMapFind? ((Map.find? _ _ : Option _)) :=
-  fun e => do
-  -- dbg_trace "e: {e}"
+partial def Map.findBitVecLiteral? (find_key_lit : BitVec.Literal) (map_expr : Expr)
+  : SimpM (Option BitVec.Literal) := do
+  -- `whnfD e` reduces `e` to its weak-head-normal form. This is an efficient operation for
+  -- functions defined by structural recursion such as `Map.find?`
+  -- It will reveal the `List.cons`-application.
+  let map_expr ← whnfD map_expr
+  match_expr map_expr with
+  | List.nil _ => return none
+  | List.cons _ hd tl =>
+    let hd ← whnfD hd
+    let_expr Prod.mk _ _ key_expr val_expr ← hd | return none
+    let some key_lit ← BitVec.fromExpr? key_expr | return none
+    if find_key_lit = key_lit then
+      let some val_lit ← BitVec.fromExpr? val_expr | return none
+      return some val_lit
+    else
+      return (← Map.findBitVecLiteral? find_key_lit tl)
+  | _ => return none
+
+simproc reduceMapFind? ((Map.find? _ _ : Option _)) := fun e => do
   let_expr Map.find? _ _ _ map key ← e | return .continue
-  -- dbg_trace "map: {map}"
-  let some map_lit ← Map.fromExpr? map | return .continue
-  -- dbg_trace "e: {e}"
-  let some key_lit ← BitVec.fromExpr? key | return .continue
-  if h : key_lit.n = 64 then
-    let new_expr := toExpr (Map.find? map_lit (h ▸ key_lit.value))
-    let proof := (mkAppN (mkConst ``Eq.refl) #[(mkConst ``Bool), (mkConst ``Bool.true)])
-    return .done { expr := new_expr, proof? := proof }
-  else
-    return .continue
+  -- "Abort" if `map` is not ground, that is, it contains
+  -- metavariables or free variables.
+  if map.hasExprMVar || map.hasFVar then return .continue
+  let some find_key_lit ← BitVec.fromExpr? key | return .continue
+  let maybe_val_lit ← Map.findBitVecLiteral? find_key_lit map
+  match maybe_val_lit with
+  | none =>
+      let new_expr := toExpr (Option.none : Option (BitVec 32))
+      return .done { expr := new_expr } -- We don't need to return `rfl` proofs.
+  | some val_lit =>
+      let new_expr := toExpr (some val_lit.value)
+      return .done { expr := new_expr }
 
 example : Map.find? [(3#64, 1#32)] 3#64 = some 1#32 := by
+  simp only [reduceMapFind?]
+
+example : Map.find? [(1#64, 2#32), (3#64, 5#32)] 2#64 = none := by
   simp only [reduceMapFind?]

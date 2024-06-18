@@ -100,6 +100,13 @@ inductive PFlag where
   | V : PFlag
 deriving DecidableEq, Repr
 
+instance : ToString PFlag :=
+  ⟨fun p => match p with
+    | PFlag.N => "N"
+    | PFlag.Z => "Z"
+    | PFlag.C => "C"
+    | PFlag.V => "V"⟩
+
 structure PState where
   n : BitVec 1
   z : BitVec 1
@@ -223,11 +230,20 @@ inductive StateField where
   | ERR    : StateField
 deriving DecidableEq, Repr
 
+instance : ToString StateField :=
+  ⟨fun s => match s with
+  | StateField.GPR i  => "x" ++ (ToString.toString i.toNat)
+  | StateField.SFP i  => "q" ++ (ToString.toString i.toNat)
+  | StateField.PC     => "pc"
+  | StateField.FLAG p => "flag" ++ (ToString.toString p)
+  | StateField.ERR    => "err"⟩
+
 -- Injective Lemmas for StateField
 attribute [state_simp_rules] StateField.GPR.injEq
 attribute [state_simp_rules] StateField.SFP.injEq
 attribute [state_simp_rules] StateField.FLAG.injEq
 
+@[reducible]
 def state_value (fld : StateField) : Type :=
   open StateField in
   match fld with

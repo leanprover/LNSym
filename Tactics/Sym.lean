@@ -30,9 +30,8 @@ macro "fetch_and_decode_inst" h_step:ident h_program:ident : tactic =>
      simp only [$h_program:ident] at $h_step:ident
      conv at $h_step:ident =>
       pattern Map.find? _ _
-      tactic => set_option maxRecDepth 1200 in
-                simp (config := {ground := true}) only
-                -- simp only [def_program, reduceMapFind?]
+      tactic => set_option maxRecDepth 3000 in
+                simp only [reduceMapFind?]
      (try dsimp only at $h_step:ident);
      conv at $h_step:ident =>
       pattern decode_raw_inst _
@@ -50,43 +49,43 @@ macro "exec_inst" h_step:ident : tactic =>
 -- 'read .. s_next = value'.
 -- TODO: update_invariants must add all register and memory updates as
 -- assumptions.
-macro "update_invariants" st_next:ident progname:ident
-                          h_s_ok_new:ident
-                          h_pc:ident h_pc_new:ident
-                          h_sp_aligned:ident h_sp_aligned_new:ident
-                          h_program_new:ident
-                          h_step:ident pc_next:term : tactic =>
-  `(tactic|
-     (have $h_s_ok_new:ident : r StateField.ERR $st_next:ident = StateError.None := by
-        rw [$h_step:ident]; simp_all
-      -- Q: How can we automatically infer the next PC?
-      have $h_pc_new:ident : r StateField.PC $st_next:ident = $pc_next:term := by
-        rw [$h_step:ident,$h_pc:ident]; simp; simp (config := {ground := true})
-      have $h_sp_aligned_new:ident : CheckSPAlignment $st_next:ident = true := by
-        unfold CheckSPAlignment at *
-        rw [$h_step:ident]
-        simp
-        simp at $h_sp_aligned:ident
-        /-
-          This sorry will be resovled after lean4 that has improved
-          `simp (config := { ground := true })` is used.
-          See also:
-          https://leanprover.zulipchat.com/#narrow/stream/270676-lean4/topic/Simplifying.20a.20bitvector.20constant/near/422077748
-          The goal:
+-- macro "update_invariants" st_next:ident progname:ident
+--                           h_s_ok_new:ident
+--                           h_pc:ident h_pc_new:ident
+--                           h_sp_aligned:ident h_sp_aligned_new:ident
+--                           h_program_new:ident
+--                           h_step:ident pc_next:term : tactic =>
+--   `(tactic|
+--      (have $h_s_ok_new:ident : r StateField.ERR $st_next:ident = StateError.None := by
+--         rw [$h_step:ident]; simp_all
+--       -- Q: How can we automatically infer the next PC?
+--       have $h_pc_new:ident : r StateField.PC $st_next:ident = $pc_next:term := by
+--         rw [$h_step:ident,$h_pc:ident]; simp; simp (config := {ground := true})
+--       have $h_sp_aligned_new:ident : CheckSPAlignment $st_next:ident = true := by
+--         unfold CheckSPAlignment at *
+--         rw [$h_step:ident]
+--         simp
+--         simp at $h_sp_aligned:ident
+--         /-
+--           This sorry will be resovled after lean4 that has improved
+--           `simp (config := { ground := true })` is used.
+--           See also:
+--           https://leanprover.zulipchat.com/#narrow/stream/270676-lean4/topic/Simplifying.20a.20bitvector.20constant/near/422077748
+--           The goal:
 
-          h_s0_sp_aligned: extractLsb 3 0 (r (StateField.GPR 31#5) s0) &&& 15#4 = 0#4
-          ⊢ extractLsb 3 0 (r (StateField.GPR 31#5) s0 +
-            signExtend 64 126#7 <<< (2 + BitVec.toNat (extractLsb 1 1 2#2))) &&&
-              15#4 =
-            0#4
-        -/
-        sorry
-      have $h_program_new:ident : ($st_next:ident).program =
-              Map.find? ($progname:ident) := by
-        rw [$h_step:ident]
-        try (repeat rw [w_program])
-        try (rw [write_mem_bytes_program])
-        assumption))
+--           h_s0_sp_aligned: extractLsb 3 0 (r (StateField.GPR 31#5) s0) &&& 15#4 = 0#4
+--           ⊢ extractLsb 3 0 (r (StateField.GPR 31#5) s0 +
+--             signExtend 64 126#7 <<< (2 + BitVec.toNat (extractLsb 1 1 2#2))) &&&
+--               15#4 =
+--             0#4
+--         -/
+--         sorry
+--       have $h_program_new:ident : ($st_next:ident).program =
+--               Map.find? ($progname:ident) := by
+--         rw [$h_step:ident]
+--         try (repeat rw [w_program])
+--         try (rw [write_mem_bytes_program])
+--         assumption))
 
 def sym_one (curr_state_number : Nat) (prog : Lean.Ident) :
     Lean.Elab.Tactic.TacticM Unit :=
@@ -103,7 +102,7 @@ def sym_one (curr_state_number : Nat) (prog : Lean.Ident) :
     let mk_name (s : String) : Lean.Name :=
       Lean.Name.mkStr Lean.Name.anonymous s
     -- st': name of the next state
-    let st' := Lean.mkIdent (mk_name ("s_" ++ n'_str))
+    let st' := Lean.mkIdent (mk_name ("s" ++ n'_str))
     -- let h_st_ok := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_ok"))
     -- let h_st'_ok := Lean.mkIdent (mk_name ("h_s" ++ n'_str ++ "_ok"))
     -- let h_st_pc := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_pc"))
