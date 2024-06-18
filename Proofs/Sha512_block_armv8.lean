@@ -5,7 +5,7 @@ Author(s): Shilpi Goel
 -/
 import Arm.Exec
 import Arm.Util
-import Tactics.Sym
+import Tactics
 import Tests.SHA512ProgramTest
 
 section SHA512_proof
@@ -171,6 +171,7 @@ theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
   (try dsimp only at h_step_2)
   (try clear h_s1_program h_s1_err)
   -- exec_inst h_step_2
+  -- explode_step h_step_1
   have h_s1_gpr31 : r (StateField.GPR 31#5) s1 = (r (StateField.GPR 31#5) s0 + 18446744073709551600#64) := by
     simp_all only [stepi, state_simp_rules, minimal_theory, bitvec_rules]
   simp (config := { decide := true }) only [*, -h_step_1, exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at h_step_2
