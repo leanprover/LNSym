@@ -31,8 +31,6 @@ open BitVec
   now we reply on this comment.
 
 -/
--- TODO: make revflat use tail recursive version of `flatten` might reduce this number
-set_option maxRecDepth 2100
 
 namespace AESGCMEncDecKernelProgramTest
 
@@ -207,6 +205,7 @@ def Xi_res : List (BitVec 8) :=
 namespace enc
 
 -- AES_128_GCM encrypt test
+set_option maxRecDepth 2100 in
 def final_state : ArmState :=
   aes_gcm_enc_kernel_test 1514 (revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
@@ -235,6 +234,7 @@ def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
 example : final_state.error = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
+set_option maxRecDepth 2100 in
 example : final_ciphertext = revflat in_blocks := by native_decide
 example : final_ivec = revflat ivec_res := by native_decide
 
@@ -304,6 +304,7 @@ def Xi_res : List (BitVec 8) :=
 namespace enc
 
 -- AES_192_GCM encrypt test
+set_option maxRecDepth 2100 in
 def final_state : ArmState :=
   aes_gcm_enc_kernel_test 1650 (revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
@@ -332,6 +333,7 @@ def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
 example : final_state.error = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
+set_option maxRecDepth 2100 in
 example : final_ciphertext = revflat in_blocks := by native_decide
 example : final_ivec = revflat ivec_res := by native_decide
 
@@ -404,6 +406,7 @@ def Xi_res : List (BitVec 8) :=
 namespace enc
 
 -- AES_256_GCM encrypt test
+set_option maxRecDepth 2100 in
 def final_state : ArmState :=
   aes_gcm_enc_kernel_test 1778 (revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
@@ -432,6 +435,7 @@ def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
 example : final_state.error = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
+set_option maxRecDepth 2100 in
 example : final_ciphertext = revflat in_blocks := by native_decide
 example : final_ivec = revflat ivec_res := by native_decide
 
