@@ -7,3 +7,4 @@ import «Specs».SHA512
 import «Specs».AESCommon
 import «Specs».AESArm
 import «Specs».GCM
+import «Specs».GCMV8
