@@ -205,9 +205,11 @@ def Xi_res : List (BitVec 8) :=
 namespace enc
 
 -- AES_128_GCM encrypt test
-set_option maxRecDepth 2100 in
 def final_state : ArmState :=
-  aes_gcm_enc_kernel_test 1514 (revflat in_blocks) (revflat Xi) (revflat Htable)
+  have h : 8 * in_blocks.length = 4096 := by
+    unfold in_blocks
+    simp only [List.length_replicate]
+  aes_gcm_enc_kernel_test 1514 (h ▸ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
@@ -304,9 +306,11 @@ def Xi_res : List (BitVec 8) :=
 namespace enc
 
 -- AES_192_GCM encrypt test
-set_option maxRecDepth 2100 in
 def final_state : ArmState :=
-  aes_gcm_enc_kernel_test 1650 (revflat in_blocks) (revflat Xi) (revflat Htable)
+  have h : 8 * in_blocks.length = 4096 := by
+    unfold in_blocks
+    simp only [List.length_replicate]
+  aes_gcm_enc_kernel_test 1650 (h ▸ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
@@ -406,9 +410,11 @@ def Xi_res : List (BitVec 8) :=
 namespace enc
 
 -- AES_256_GCM encrypt test
-set_option maxRecDepth 2100 in
 def final_state : ArmState :=
-  aes_gcm_enc_kernel_test 1778 (revflat in_blocks) (revflat Xi) (revflat Htable)
+  have h : 8 * in_blocks.length = 4096 := by
+    unfold in_blocks
+    simp only [List.length_replicate]
+  aes_gcm_enc_kernel_test 1778 (h ▸ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
