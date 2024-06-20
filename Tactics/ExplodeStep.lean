@@ -20,8 +20,8 @@ conclusion
 
 `explode_step h` modifies the goal as follows; note the new hypotheses
 `h_s1_x31` and `h_s1_pc`. `explode_step h` also attempts to prove each
-of these new hypotheses; any new hypotheses that couldn't be proven by
-`explode_step` are pushed on to the stack of unsolved goals.
+of these new hypotheses using `simp/decide` with theorems in own custom
+simp sets, `minimal_theory`, `bitvec_rules`, and `state_simp_rules`.
 
 Goal:
 h : s1 = w (StateField.GPR 31#5) 1#64 (w StateField.PC 2#64 s0)
@@ -51,7 +51,7 @@ def getPFlagString? (e : Expr) : MetaM (Option String) := OptionT.run do
   | PFlag.Z => return "z_flag"
   | PFlag.C => return "c_flag"
   | PFlag.V => return "v_flag"
-  | _       => panic s!"[getPFlagString?] Unexpected expression: {e}"
+  | _       => panic! s!"[getPFlagString?] Unexpected expression: {e}"
 
 /- Get the string representation of `e` if it denotes a `StateField`. -/
 def getStateFieldString? (e : Expr) : MetaM (Option String) := OptionT.run do
@@ -61,7 +61,7 @@ def getStateFieldString? (e : Expr) : MetaM (Option String) := OptionT.run do
   | StateField.PC         => return "pc"
   | StateField.FLAG pExpr => getPFlagString? pExpr
   | StateField.ERR        => return "err"
-  | _                     => panic s!"[getStateFieldName?] Unexpected expression: {e}"
+  | _                     => panic! s!"[getStateFieldName?] Unexpected expression: {e}"
 
 partial def explodeWriteNest (goal : MVarId)
   (st_var : Expr) (e : Expr) (seen_fields : List String)
@@ -98,21 +98,56 @@ partial def explodeWriteNest (goal : MVarId)
             return (goal :: rest_goals)
           | some p =>
             -- logInfo m!"p: {p}"
-            let new_goals ←
-              evalTacticAt
-                (← `(tactic|
-                      (try (repeat
-                             (simp (config := {decide := true}) only
-                                   [state_simp_rules, minimal_theory, bitvec_rules])))))
-                p
+            let some minimal_theory_ext ←
+              (getSimpExtension? `minimal_theory) |
+               logInfo m!"[explodeWriteNest] Error: minimal_theory simp attribute not found!"
+               return (goal :: rest_goals)
+            let some state_simp_rules_ext ←
+              (getSimpExtension? `state_simp_rules) |
+                logInfo m!"[explodeWriteNest] Error: state_simp_rules simp attribute not found!"
+                return (goal :: rest_goals)
+            let some bitvec_rules_ext ←
+              (getSimpExtension? `bitvec_rules) |
+               logInfo m!"[explodeWriteNest] Error: bitvec_rules simp attribute not found!"
+               return (goal :: rest_goals)
+            let (ctx : Lean.Meta.Simp.Context) :=
+                { config := { decide := true },
+                  simpTheorems := #[← minimal_theory_ext.getTheorems,
+                                    ← state_simp_rules_ext.getTheorems,
+                                    ← bitvec_rules_ext.getTheorems],
+                  congrTheorems := (← Meta.getSimpCongrTheorems) }
+            let (p_simp?, _) ←
+              simpGoal p ctx #[(← Simp.getSimprocs)]
+                (simplifyTarget := true)
+                (discharge? := none)
+            let new_goals :=
+              match p_simp? with
+              | none => []
+              | some (_, p_simp_mvarid) => [p_simp_mvarid]
+            -- let new_goals ←
+            --   evalTacticAt
+            --     (← `(tactic|
+            --           (simp (config := {decide := true}) only
+            --                        [state_simp_rules, minimal_theory, bitvec_rules])))
+            --     p
             -- logInfo m!"new_goals: {new_goals}"
             let (_, goal') ← MVarId.intro1P $ ← Lean.MVarId.assert goal name new_prop_type new_prop_val
             explodeWriteNest goal' st_var rest (field_str :: seen_fields) (rest_goals ++ new_goals)
 
       | write_mem_bytes n addr val rest =>
-        let n ← (if n.hasExprMVar || n.hasFVar then pure n else whnf n)
-        let addr ← (if addr.hasExprMVar || addr.hasFVar then pure addr else whnf addr)
-        let val ← (if val.hasExprMVar || val.hasFVar then pure val else whnf val)
+        let n ← (if n.hasExprMVar || n.hasFVar then pure n else whnfD n)
+        -- TODO: Define normalizers for addresses and values.
+        let addr ← (if addr.hasExprMVar || addr.hasFVar then pure addr else whnfD addr)
+        let val ← (if val.hasExprMVar || val.hasFVar then pure val else whnfD val)
+        -- logInfo m!"val.appFn!: {val.appFn!} val.appArg!: {val.appArg!}"
+        -- let val_arg := val.appArg!
+        -- let val_arg ← match_expr val_arg with
+        --               | BitVec.zeroExtend _ zn _ =>
+        --                 let zn ← whnfD zn
+        --                 logInfo m!"zn: {zn}"
+        --                 pure val_arg
+        --               | _ => pure val_arg
+        -- logInfo m!"val_arg: {val_arg}"
         logInfo m!"Skipping hypothesis generation for memory writes for now. \
                    \nn: {n} \naddr: {addr}\n val: {val}"
         explodeWriteNest goal st_var rest seen_fields rest_goals
@@ -169,6 +204,11 @@ example (s0 s1 : ArmState) (x : BitVec 64)
   assumption
   done
 
+-- explode_step is a best-effort tactic. It creates new hypotheses until it
+-- encounters an unsupported term (i.e., `if` in the example below).
+-- TODO:
+--  Force a case-split if an `if` with a symbolic test is encountered?
+--  Simp/ground if an `if` with a concrete test is encountered?
 example (s0 s1 : ArmState)
   (h : s1 = w (StateField.GPR 31#5) 12#64 (if (1 = 1) then (w StateField.PC 0x2000#64 s0) else (w StateField.PC 0x2001#64 s0))) :
   r StateField.PC s1 = 0x2000#64 := by

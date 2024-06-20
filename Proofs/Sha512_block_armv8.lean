@@ -113,6 +113,8 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
 -- simulation test for the AWS-LC production SHA512 code (the program
 -- we'd like to verify).
 
+example : StateError.None = StateError.None := by decide
+
 -- set_option profiler true in
 -- set_option profiler.threshold 10 in
 theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
@@ -149,13 +151,14 @@ theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
   sym_i_n 0 1 h_s0_program
   init_next_step h_run
   rename_i s2 h_step_2 h_run
+  -- project_program_and_error_fields h_step_1
   -- fetch_and_decode_inst h_step_2 h_s0_program
   simp only [stepi, state_simp_rules, minimal_theory, bitvec_rules] at h_step_2
   rw [fetch_inst_from_program] at h_step_2
   have h_s1_program : s1.program = s0.program := by
     simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
   have h_s1_err : r StateField.ERR s1 = StateError.None := by
-    simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
+    simp only [*, state_simp_rules, minimal_theory, bitvec_rules]
   have h_s1_pc : r StateField.PC s1 = (1205444#64) := by
     simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
   simp only [h_s0_program, h_s1_program, h_s1_err, h_s1_pc] at h_step_2
@@ -171,7 +174,7 @@ theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
   (try dsimp only at h_step_2)
   (try clear h_s1_program h_s1_err)
   -- exec_inst h_step_2
-  -- explode_step h_step_1
+  explode_step h_step_1
   have h_s1_gpr31 : r (StateField.GPR 31#5) s1 = (r (StateField.GPR 31#5) s0 + 18446744073709551600#64) := by
     simp_all only [stepi, state_simp_rules, minimal_theory, bitvec_rules]
   simp (config := { decide := true }) only [*, -h_step_1, exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at h_step_2
