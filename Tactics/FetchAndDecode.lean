@@ -50,17 +50,17 @@ TODO: More error checks: e.g., checks whether `h_step` and the
 resulting hypothesis have the expected forms (i.e., in terms of
 `stepi` and `exec_inst`, respectively).
 -/
-def fetchAndDecodeInst (goal : MVarId) (h_step : Expr) (hyp_prefix : String)
+def fetchAndDecodeInst (goal : MVarId) (h_step : Name) (hyp_prefix : String)
   : TacticM Bool := goal.withContext do
   -- Find all the FVars in the local context whose name begins with
   -- hyp_prefix.
+  let h_step_expr ← getFVarFromUserName h_step
   let lctx ← getLCtx
   let matching_decls := filterDeclsWithPrefix lctx hyp_prefix.toName
   -- logInfo m!"matching_decls: {matching_decls[0]!.userName}"
 
-  -- Simplify `fetch_inst` and `decode_raw_inst`: note: using
-  -- `ground := true` here causes maxRecDepth to be reached. Use
-  -- reduceMapFind? instead.
+  -- Simplify `fetch_inst`: note: using `ground := true` here causes
+  -- maxRecDepth to be reached. Use reduceMapFind? instead.
   let (ctx, simprocs) ←
     LNSymSimpContext (config := {decide := true})
                      (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules])
@@ -68,20 +68,24 @@ def fetchAndDecodeInst (goal : MVarId) (h_step : Expr) (hyp_prefix : String)
                      (thms := #[``fetch_inst_from_program])
                      (decls := matching_decls)
                      (simprocs := #[``reduceMapFind?])
-  let maybe_goal ← LNSymSimp goal ctx simprocs (fvarid := h_step.fvarId!)
-  match maybe_goal with
-  | none =>
-    logInfo m!"[fetchAndDecodeInst] The goal appears to be solved, but this tactic \
-                  is not a finishing tactic! Something went wrong?"
-    return false
-  | some goal' =>
-      replaceMainGoal [goal']
-      return true
+  let some goal' ← LNSymSimp goal ctx simprocs (fvarid := h_step_expr.fvarId!) |
+                   logInfo m!"[fetchAndDecodeInst] The goal appears to be solved, but this tactic \
+                              is not a finishing tactic! Something went wrong?"
+                   return false
+  goal'.withContext do
+  let h_step_expr ← getFVarFromUserName h_step
+  -- Simplify `decode_raw_inst` using simp/ground.
+  let some goal' ← LNSymSimp goal' { ctx with config := {ground := true} }
+                             simprocs (fvarid := h_step_expr.fvarId!) |
+                   logInfo m!"[fetchAndDecodeInst] The goal appears to be solved, but this tactic \
+                              is not a finishing tactic! Something went wrong?"
+                   return false
+  replaceMainGoal [goal']
+  return true
 
 def fetchAndDecodeElab (h_step : Name) (hyp_prefix : String) : TacticM Unit :=
   withMainContext
   (do
-    let h_step ← getFVarFromUserName h_step
     let success ← fetchAndDecodeInst (← getMainGoal) h_step hyp_prefix
     if ! success then
       failure)

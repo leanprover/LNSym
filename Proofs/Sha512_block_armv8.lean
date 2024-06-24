@@ -114,8 +114,8 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
 -- simulation test for the AWS-LC production SHA512 code (the program
 -- we'd like to verify).
 
--- set_option profiler true in
--- set_option profiler.threshold 10 in
+set_option profiler true in
+set_option profiler.threshold 10 in
 -- set_option trace.profiler.output.pp true in
 theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
   (h_s0_err : read_err s0 = StateError.None)
