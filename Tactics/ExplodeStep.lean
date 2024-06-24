@@ -124,12 +124,6 @@ partial def explodeWriteNest (goal : MVarId)
               match p_simp? with
               | none => []
               | some (_, p_simp_mvarid) => [p_simp_mvarid]
-            -- let new_goals ←
-            --   evalTacticAt
-            --     (← `(tactic|
-            --           (simp (config := {decide := true}) only
-            --                        [state_simp_rules, minimal_theory, bitvec_rules])))
-            --     p
             -- logInfo m!"new_goals: {new_goals}"
             let (_, goal') ← MVarId.intro1P $ ← Lean.MVarId.assert goal name new_prop_type new_prop_val
             explodeWriteNest goal' st_var rest (field_str :: seen_fields) (rest_goals ++ new_goals)
@@ -226,7 +220,7 @@ example (s0 s1 : ArmState)
   (h : s1 = w (StateField.GPR 31#5) 12#64
               (w StateField.PC 1#64
                 (w (StateField.GPR 31#5) 13#64 s0))) :
-  r StateField.PC s1 = 1#64 := by
+  (r StateField.PC s1) + 1#64 = 2#64 := by
   explode_step h
-  assumption
+  simp (config := {decide := true}) [h_s1_pc]
   done

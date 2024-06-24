@@ -26,22 +26,24 @@ def sha512_program_test_1 : Program :=
      ]
 
 -- set_option profiler true in
+-- set_option trace.profiler.output "new_sym.log" in
+-- set_option trace.profiler.output.pp true in
 -- set_option pp.deepTerms true in
 theorem sha512_program_test_1_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x126538#64)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
   (h_s0_program : s0.program = sha512_program_test_1)
-  (h_s0_ok : read_err s0 = StateError.None)
+  (h_s0_err : read_err s0 = StateError.None)
   (h_run : s_final = run 4 s0) :
   read_err s_final = StateError.None := by
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
-  sym_n 4 h_s0_program
+  sym_n 4
   -- Final steps
   unfold run at h_run
-  subst s_final s4
-  simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
+  subst s_final
+  simp only [h_s4_err]
   done
 
 ----------------------------------------------------------------------
@@ -62,17 +64,16 @@ def sha512_program_test_2 : Program :=
 theorem sha512_program_test_2_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x126538#64)
   (h_s0_program : s0.program = sha512_program_test_2)
-  (h_s0_ok : read_err s0 = StateError.None)
+  (h_s0_err : read_err s0 = StateError.None)
   (h_run : s_final = run 6 s0) :
   read_err s_final = StateError.None := by
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
-  sym_n 6 h_s0_program
+  sym_n 6
   -- Final steps
   unfold run at h_run
-  subst s_final s6
-  simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
+  simp only [h_run, h_s6_err]
   done
 
 ----------------------------------------------------------------------
@@ -91,7 +92,7 @@ def sha512_program_test_3 : Program :=
 set_option pp.deepTerms false in
 set_option pp.deepTerms.threshold 10 in
 theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
-  (h_s0_ok : read_err s0 = StateError.None)
+  (h_s0_err : read_err s0 = StateError.None)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
   (h_s0_pc : read_pc s0 = 0x1264c0#64)
   (h_s0_program : s0.program = sha512_program_test_3)
@@ -100,11 +101,11 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
-  sym_n 4 h_s0_program
+  sym_n 4
   -- Final steps
   unfold run at h_run
-  subst s_final s4
-  simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
+  subst s_final
+  apply h_s4_err
   done
 
 ----------------------------------------------------------------------
@@ -113,73 +114,43 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
 -- simulation test for the AWS-LC production SHA512 code (the program
 -- we'd like to verify).
 
-example : StateError.None = StateError.None := by decide
-
 -- set_option profiler true in
 -- set_option profiler.threshold 10 in
+-- set_option trace.profiler.output.pp true in
 theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
-  (h_s0_ok : read_err s0 = StateError.None)
+  (h_s0_err : read_err s0 = StateError.None)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
   (h_s0_pc : read_pc s0 = 0x1264c0#64)
   (h_s0_program : s0.program = sha512_program_map)
-  (h_run : s_final = run 32 s0) :
+  (h_run : s_final = run 10 s0) :
   read_err s_final = StateError.None := by
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
-  -- sym_n 5 h_s0_program
-  -- sym_i_n 0 1 h_s0_program
-  -- init_next_step h_run
-  -- rename_i s1 h_step_1 h_run
-  -- -- fetch_and_decode_inst h_step_1 h_s0_program
-  -- simp only [*, stepi, state_simp_rules, minimal_theory, bitvec_rules] at h_step_1
-  -- rw [fetch_inst_from_program] at h_step_1
-  -- simp only [h_s0_program] at h_step_1
-  -- conv at h_step_1 =>
-  --   pattern Map.find? _ _
-  --   tactic => set_option maxRecDepth 3000 in
-  --             simp (config := {ground := true}) only [reduceMapFind?]
-  -- (try dsimp only at h_step_1)
-  -- conv at h_step_1 =>
-  --   pattern decode_raw_inst _
-  --   tactic =>
-  --     simp (config := {ground := true}) only
-  -- (try dsimp only at h_step_1)
-  -- simp (config := {decide := true}) only
-  --   [exec_inst, state_simp_rules, minimal_theory]
-  --   at h_step_1
-  sym_i_n 0 1 h_s0_program
-  init_next_step h_run
-  rename_i s2 h_step_2 h_run
-  -- project_program_and_error_fields h_step_1
-  -- fetch_and_decode_inst h_step_2 h_s0_program
-  simp only [stepi, state_simp_rules, minimal_theory, bitvec_rules] at h_step_2
-  rw [fetch_inst_from_program] at h_step_2
-  have h_s1_program : s1.program = s0.program := by
-    simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
-  have h_s1_err : r StateField.ERR s1 = StateError.None := by
-    simp only [*, state_simp_rules, minimal_theory, bitvec_rules]
-  have h_s1_pc : r StateField.PC s1 = (1205444#64) := by
-    simp_all only [state_simp_rules, minimal_theory, bitvec_rules]
-  simp only [h_s0_program, h_s1_program, h_s1_err, h_s1_pc] at h_step_2
-  conv at h_step_2 =>
-    pattern Map.find? _ _
-    tactic => set_option maxRecDepth 3000 in
-              simp only [reduceMapFind?]
-  (try dsimp only at h_step_2)
-  conv at h_step_2 =>
-    pattern decode_raw_inst _
-    tactic =>
-      simp (config := {ground := true}) only
-  (try dsimp only at h_step_2)
-  (try clear h_s1_program h_s1_err)
-  -- exec_inst h_step_2
-  explode_step h_step_1
-  have h_s1_gpr31 : r (StateField.GPR 31#5) s1 = (r (StateField.GPR 31#5) s0 + 18446744073709551600#64) := by
-    simp_all only [stepi, state_simp_rules, minimal_theory, bitvec_rules]
-  simp (config := { decide := true }) only [*, -h_step_1, exec_inst, state_simp_rules, minimal_theory, bitvec_rules] at h_step_2
-  (try (repeat simp (config := {ground := true}) only [↓reduceIte, state_simp_rules, minimal_theory, bitvec_rules] at h_step_2))
-
+  -- sym_n 32
+  -- sym_n 10
+  -- -- Final Steps
+  -- unfold run at h_run
+  -- simp only [h_run, h_s10_err]
+  -- done
+  sym_n 10
+  -- sym_i_n 0 1
+  -- sym_i_n 1 1
+  -- sym_i_n 2 1
+  -- sym_i_n 3 1
+  -- sym_i_n 4 1
+  -- sym_i_n 5 1
+  -- sym_i_n 6 1
+  -- sym_i_n 7 1
+  -- sym_i_n 8 1
+  -- sym_i_n 9 1
+  -- Final Steps
+  unfold run at h_run
+  subst s_final
+  -- save
+  -- rw [h_s10_err]
+  -- apply h_s10_err
+  -- done
   sorry
 
 ----------------------------------------------------------------------

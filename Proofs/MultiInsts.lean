@@ -21,17 +21,16 @@ def test_program : Program :=
 theorem small_asm_snippet_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x12650c#64)
   (h_s0_program : s0.program = test_program)
-  (h_s0_ok : read_err s0 = StateError.None)
+  (h_s0_err : read_err s0 = StateError.None)
   (h_run : s_final = run 4 s0) :
   read_sfp 128 26#5 s_final = read_sfp 128 0#5 s0 ∧
   read_err s_final = StateError.None := by
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation
-  sym_n 4 h_s0_program
+  sym_n 4
   -- Wrapping up the result:
   unfold run at h_run
-  subst s_final s4
   simp_all (config := {decide := true}) only [state_simp_rules, minimal_theory, bitvec_rules]
   rw [@zeroExtend_eq 128]
   done
