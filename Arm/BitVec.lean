@@ -378,7 +378,9 @@ theorem nat_bitvec_add (x y : BitVec n) :
   (x + y).toNat = (x.toNat + y.toNat) % 2 ^ n := rfl
 
 theorem nat_bitvec_sub (x y : BitVec n) :
-  (x - y).toNat = (x.toNat + (2^n - y.toNat)) % 2^n := rfl
+  (x - y).toNat = (x.toNat + (2^n - y.toNat)) % 2^n := by
+  have : (x - y).toNat = ((2^n - y.toNat) + x.toNat) % 2^n := rfl
+  rw [this, Nat.add_comm]
 
 ---------------------------- Comparison Lemmas -----------------------
 
@@ -405,7 +407,7 @@ protected theorem val_bitvec_le {n : Nat} {a b : BitVec n} : a.toNat ≤ b.toNat
   Iff.rfl
 
 protected theorem val_nat_le (x y n : Nat)
-  (h0 : x <= y) (h1 : x < 2^n) (h2 : y < 2^n) : 
+  (h0 : x <= y) (h1 : x < 2^n) (h2 : y < 2^n) :
   BitVec.ofNat n x <= BitVec.ofNat n y := by
   rw [BitVec.le_iff_val_le_val]
   simp [bitvec_to_nat_of_nat]
@@ -612,7 +614,7 @@ theorem leftshift_n_or_mod_2n :
 @[bitvec_rules]
 protected theorem truncate_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitVec n) :
   truncate n (x ++ y) = y := by
-  simp only [truncate_append, Nat.le_refl, ↓reduceDite, zeroExtend_eq]
+  simp only [truncate_append, Nat.le_refl, ↓reduceDIte, zeroExtend_eq]
 
 ----------------------------------------------------------------------
 
