@@ -298,6 +298,15 @@ theorem mem_separate_for_subset1
   rw [mem_separate_commutative] at *
   rw [@mem_separate_for_subset2 b1 b2 a1 a2 c1 c2 h1 h2]
 
+theorem mem_separate_for_subset_general
+  (h1 : mem_separate a1 a2 b1 b2) 
+  (h2 : mem_subset c1 c2 a1 a2)
+  (h3 : mem_subset d1 d2 b1 b2):
+  mem_separate c1 c2 d1 d2 := by
+  have h₁ := @mem_separate_for_subset2 a1 a2 b1 b2 d1 d2
+  have h₂ := @mem_separate_for_subset1 a1 a2 d1 d2 c1 c2
+  simp_all only 
+
 ----------------------------------------------------------------------
 
 end MemoryProofs
