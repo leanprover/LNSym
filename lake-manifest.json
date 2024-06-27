@@ -13,7 +13,7 @@
   {"url": "https://github.com/leanprover/leansat",
    "type": "git",
    "subDir": null,
-   "rev": "4f74ea6a51b0887302eb438c4929c06120041890",
+   "rev": "52629f2db5a5fb6bf767cba4bb254f10a5369b21",
    "name": "LeanSAT",
    "manifestFile": "lake-manifest.json",
    "inputRev": "main",

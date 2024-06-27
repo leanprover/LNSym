@@ -32,7 +32,5 @@ theorem small_asm_snippet_sym (s0 s_final : ArmState)
   -- Wrapping up the result:
   unfold run at h_run
   simp_all (config := {decide := true}) only [state_simp_rules, minimal_theory, bitvec_rules]
-  rw [@zeroExtend_eq 128]
-  done
 
 end multi_insts_proofs
