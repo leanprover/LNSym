@@ -11,7 +11,7 @@ namespace GCMGmultV8Program
 open BitVec
 
 /-
- void gcm_gmult_v8(u64 Xi[2],const u128 Htable[16]);
+ void gcm_gmult_v8(u8 Xi[16],const u128 Htable[16]);
 
  input: Xi - current hash value; (x0)
         Htable - table precomputed in gcm_init_v8; (x1)
