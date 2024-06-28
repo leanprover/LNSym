@@ -60,7 +60,7 @@ theorem sha512h2_rule (a b c : BitVec 128) :
 --           simp (config := { ground := true })
 --           simp [sha512h2_rule]
 
-set_option sat.timeout 180 in
+set_option sat.timeout 350 in
 theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let elements := 2
   let esize := 64
