@@ -616,6 +616,15 @@ protected theorem truncate_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitV
   truncate n (x ++ y) = y := by
   simp only [truncate_append, Nat.le_refl, ↓reduceDIte, zeroExtend_eq]
 
+---------------------------- Shift Lemmas ---------------------------
+
+@[bitvec_rules]
+protected theorem shift_left_zero_eq (n : Nat) (x : BitVec n) : x <<< 0 = x := by
+    refine eq_of_toNat_eq ?_
+    apply Nat.eq_of_testBit_eq
+    intro i
+    simp only [toNat_shiftLeft, Nat.shiftLeft_zero, toNat_mod_cancel]
+
 ----------------------------------------------------------------------
 
 /- Bitvector pattern component syntax category, originally written by
