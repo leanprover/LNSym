@@ -124,7 +124,7 @@ def introFetchDecodeLemmas (goal : MVarId) (hStep : Expr) (hProgram : Expr)
   let st_var_str := toString (← (getFVarLocalDecl st_var)).userName
   -- Introduce a hypothesis (and attempt to prove) that the error field in the
   -- new state is `StateError.None`.
-  let (goal', err_goals) ←
+  let (goal', maybe_err_goal) ←
     introLNSymHyp goal st_var (gen_hyp_name st_var_str "err")
       (mkAppN (Expr.const ``Eq [1])
             #[(mkConst ``StateError),
@@ -138,7 +138,7 @@ def introFetchDecodeLemmas (goal : MVarId) (hStep : Expr) (hProgram : Expr)
                 in the state update equation. Right now, we cannot determine the PC value \
                 from the expression: {nest}."
     return false
-  let (goal', pc_goals) ←
+  let (goal', maybe_pc_goal) ←
     introLNSymHyp goal' st_var (gen_hyp_name st_var_str "pc")
       (mkAppN (Expr.const ``Eq [1])
         #[(← inferType pc_val),
@@ -147,14 +147,16 @@ def introFetchDecodeLemmas (goal : MVarId) (hStep : Expr) (hProgram : Expr)
       ctx simprocs
   -- Introduce a hypothesis (and attempt to prove) that the program in
   -- the new state is the same as it was earlier in `hProgram`.
-  let (goal', prog_goals) ←
+  let (goal', maybe_prog_goal) ←
     introLNSymHyp goal' st_var (gen_hyp_name st_var_str "program")
       (mkAppN (Expr.const ``Eq [1])
         #[(mkConst ``Program),
           (mkAppN (Expr.const ``ArmState.program []) #[st_var]),
           program])
       ctx simprocs
-  replaceMainGoal (goal' :: (err_goals ++ prog_goals ++ pc_goals))
+
+  let other_unsolved_goals := optionListtoList [maybe_err_goal, maybe_pc_goal, maybe_prog_goal]
+  replaceMainGoal (goal' :: other_unsolved_goals)
   return true
 
 def introFetchDecodeLemmasElab (h_step : Name) (h_program : Name) (hyp_prefix : String)

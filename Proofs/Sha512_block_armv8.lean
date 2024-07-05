@@ -89,8 +89,8 @@ def sha512_program_test_3 : Program :=
   ]
 
 -- set_option profiler true in
-set_option pp.deepTerms false in
-set_option pp.deepTerms.threshold 10 in
+-- set_option pp.deepTerms false in
+-- set_option pp.deepTerms.threshold 10 in
 theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   (h_s0_err : read_err s0 = StateError.None)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
@@ -114,44 +114,44 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
 -- simulation test for the AWS-LC production SHA512 code (the program
 -- we'd like to verify).
 
-set_option profiler true in
-set_option profiler.threshold 10 in
+-- set_option profiler true in
+-- set_option profiler.threshold 10 in
 -- set_option trace.profiler.output.pp true in
-theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
-  (h_s0_err : read_err s0 = StateError.None)
-  (h_s0_sp_aligned : CheckSPAlignment s0 = true)
-  (h_s0_pc : read_pc s0 = 0x1264c0#64)
-  (h_s0_program : s0.program = sha512_program_map)
-  (h_run : s_final = run 10 s0) :
-  read_err s_final = StateError.None := by
-  -- Prelude
-  simp_all only [state_simp_rules, -h_run]
-  -- Symbolic simulation
-  -- sym_n 32
-  -- sym_n 10
-  -- -- Final Steps
-  -- unfold run at h_run
-  -- simp only [h_run, h_s10_err]
-  -- done
-  sym_n 10
-  -- sym_i_n 0 1
-  -- sym_i_n 1 1
-  -- sym_i_n 2 1
-  -- sym_i_n 3 1
-  -- sym_i_n 4 1
-  -- sym_i_n 5 1
-  -- sym_i_n 6 1
-  -- sym_i_n 7 1
-  -- sym_i_n 8 1
-  -- sym_i_n 9 1
-  -- Final Steps
-  unfold run at h_run
-  subst s_final
-  -- save
-  -- rw [h_s10_err]
-  -- apply h_s10_err
-  -- done
-  sorry
+-- theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
+--   (h_s0_err : read_err s0 = StateError.None)
+--   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
+--   (h_s0_pc : read_pc s0 = 0x1264c0#64)
+--   (h_s0_program : s0.program = sha512_program_map)
+--   (h_run : s_final = run 10 s0) :
+--   read_err s_final = StateError.None := by
+--   -- Prelude
+--   simp_all only [state_simp_rules, -h_run]
+--   -- Symbolic simulation
+--   -- sym_n 32
+--   -- sym_n 10
+--   -- -- Final Steps
+--   -- unfold run at h_run
+--   -- simp only [h_run, h_s10_err]
+--   -- done
+--   sym_n 10
+--   -- sym_i_n 0 1
+--   -- sym_i_n 1 1
+--   -- sym_i_n 2 1
+--   -- sym_i_n 3 1
+--   -- sym_i_n 4 1
+--   -- sym_i_n 5 1
+--   -- sym_i_n 6 1
+--   -- sym_i_n 7 1
+--   -- sym_i_n 8 1
+--   -- sym_i_n 9 1
+--   -- Final Steps
+--   unfold run at h_run
+--   subst s_final
+--   -- save
+--   -- rw [h_s10_err]
+--   -- apply h_s10_err
+--   -- done
+--   sorry
 
 ----------------------------------------------------------------------
 

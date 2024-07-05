@@ -107,6 +107,7 @@ instance : ToString PFlag :=
     | PFlag.C => "C"
     | PFlag.V => "V"⟩
 
+@[ext]
 structure PState where
   n : BitVec 1
   z : BitVec 1
@@ -114,6 +115,7 @@ structure PState where
   v : BitVec 1
 deriving DecidableEq, Repr
 
+@[ext]
 structure ArmState where
   -- General-purpose registers: register 31 is the stack pointer.
   gpr        : Store (BitVec 5) (BitVec 64)
