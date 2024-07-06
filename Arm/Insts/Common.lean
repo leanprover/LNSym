@@ -96,10 +96,11 @@ def decode_shift (shift : BitVec 2) : ShiftType :=
   | 0b10 => ShiftType.ASR
   | 0b11 => ShiftType.ROR
 
+@[state_simp_rules]
 def shift_reg (bv : BitVec n) (st : ShiftType) (sa : BitVec 6)
   : BitVec n :=
   match st with
-  | ShiftType.LSL => BitVec.shiftLeft bv sa.toNat
+  | ShiftType.LSL => bv <<< sa.toNat -- BitVec.shiftLeft operation
   | ShiftType.LSR => ushiftRight bv sa.toNat
   | ShiftType.ASR => sshiftRight bv sa.toNat
   | ShiftType.ROR => rotateRight bv sa.toNat

@@ -12,6 +12,7 @@ namespace DPR
 
 open BitVec
 
+@[state_simp_rules]
 def decode_op (opc : BitVec 2) (N : BitVec 1) : LogicalShiftedRegType :=
   match opc, N with
   | 0b00, 0b0 => LogicalShiftedRegType.AND
@@ -31,6 +32,7 @@ def logical_shifted_reg_update_pstate (bv : BitVec n) : PState :=
   let V := 0#1
   (make_pstate N Z C V)
 
+@[state_simp_rules]
 def exec_logical_shifted_reg_op (op : LogicalShiftedRegType) (opd1 : BitVec n) (opd2 : BitVec n)
   : (BitVec n × Option PState) :=
   match op with
