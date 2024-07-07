@@ -56,6 +56,7 @@ def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : Ar
     let s := write_sfp datasize inst.Rd result s
     s
 
+@[state_simp_rules]
 def decode_logical_op (U : BitVec 1) (size : BitVec 2) : SIMDThreeSameLogicalType :=
   match U, size with
   | 0#1, 0b00#2 => SIMDThreeSameLogicalType.AND
