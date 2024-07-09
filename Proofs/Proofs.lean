@@ -5,6 +5,4 @@ Author(s): Shilpi Goel
 -/
 import «Proofs».MultiInsts
 import «Proofs».Test
-import «Proofs».Sha512_block_armv8_rules
-import «Proofs».Sha512_block_armv8
-
+import «Proofs».«SHA512».Sha512

@@ -21,7 +21,7 @@ def LNSymSimpContext
   (decls : Array LocalDecl := #[])
   -- Simprocs to add to the default set.
   (simprocs : Array Name := #[])
-  : TacticM (Simp.Context ×  Array Simp.Simprocs) := do
+  : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
   let mut ext_simpTheorems := #[]
   for a in simp_attrs do
     let some ext ← (getSimpExtension? a) |
@@ -43,7 +43,7 @@ def LNSymSimpContext
   let default_simprocs ← Simp.getSimprocs
   let mut all_simprocs := (#[default_simprocs] : Simp.SimprocsArray)
   for s in simprocs do
-    all_simprocs ← Simp.SimprocsArray.add all_simprocs s false  
+    all_simprocs ← Simp.SimprocsArray.add all_simprocs s false
   return (ctx, all_simprocs)
 
 /- Invoke the `simp` tactic during symbolic simulation in LNSym
@@ -52,7 +52,7 @@ def LNSymSimp (goal : MVarId)
    (ctx : Simp.Context) (simprocs : Array Simp.Simprocs)
   -- Provide an FVarID (i.e., a hypothesis) to simplify; when none is provided,
   -- the goal is simplified.
-   (fvarid : Option FVarId := none) : TacticM (Option MVarId) := goal.withContext do
+   (fvarid : Option FVarId := none) : MetaM (Option MVarId) := goal.withContext do
   match fvarid with
   | none =>
     let (new_goal, _) ← simpGoal goal ctx simprocs
