@@ -125,7 +125,7 @@ theorem r_of_w_general :
       r fld1 s := by
   by_cases h : fld1 = fld2
   case pos =>
-    rw [h]; simp only [↓reduceDite, r_of_w_same]
+    rw [h]; simp only [r_of_w_same, ↓reduceDIte]
   case neg =>
     simp_all only [dite_false]
     apply r_of_w_different

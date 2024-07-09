@@ -25,6 +25,7 @@ deriving DecidableEq, Repr
 
 instance : ToString ImmediateOp where toString a := toString (repr a)
 
+@[state_simp_rules]
 def decode_immediate_op (inst : Advanced_simd_modified_immediate_cls)
   (s : ArmState) : (Option ImmediateOp) × ArmState :=
   -- All UNALLOCATED cases when inst.o2 = 1

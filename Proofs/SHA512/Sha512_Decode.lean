@@ -7,6 +7,6 @@ set_option maxHeartbeats 1000000 in
 #genDecodeTheorems sha512_program_map namePrefix:="sha512_" simpExt:=`state_simp_rules
 
 -- #check sha512_fetch_0x1264e8
--- #check sha512_decode_0x1264e8
+-- #print sha512_decode_0x1264e8
 -- #check sha512_fetch_0x126c9c
 -- #check sha512_decode_0x126c9c

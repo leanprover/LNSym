@@ -6,28 +6,29 @@ import Tactics.Simp
 open Lean Lean.Expr Lean.Meta Lean.Elab Lean.Elab.Command
 
 /-
-Command to autogenerate decode theorems for a given program. Invocation:
-genDecodeTheorems <program_map>
+Command to autogenerate fetch and decode theorems for a given program.
+Invocation:
+`#genDecodeTheorems <program_map> namePrefix:=<prefix> simpExt:=<simpExtension>`
 
-Each generated theorem looks like the following, where the name of the theorem
-is "decode_<address>".
+The theorems are generated with the prefix `<prefix>` and are added to the
+`simpExtension` simp set (typically, `state_simp_rules`).
 
-theorem decode_0x4ea31c7d :
-  decode_raw_inst 0x4ea31c7d#32 = some (ArmInst.DPSFP
-  (DataProcSFPInst.Advanced_simd_three_same
-    { _fixed1 := 0x0#1,
-      Q := 0x1#1,
-      U := 0x0#1,
-      _fixed2 := 0x0e#5,
-      size := 0x2#2,
-      _fixed3 := 0x1#1,
-      Rm := 0x03#5,
-      opcode := 0x03#5,
-      _fixed4 := 0x1#1,
-      Rn := 0x03#5,
-      Rd := 0x1d#5 })) := by
-      rfl
+For example, `#genDecodeTheorems` generates and proves the following two
+theorems for the instruction at address `0x1264e8` of the program
+`sha512_program_map` (see `Tests.SHA2.SHA512ProgramTest`):
 
+```
+sha512_fetch_0x1264e8 (s : ArmState) (h : s.program = sha512_program_map) :
+   fetch_inst (1205480#64) s = some 1310722675#32
+
+sha512_decode_0x1264e8 :
+  decode_raw_inst 1310722675#32 =
+    some
+      (ArmInst.DPSFP
+        (DataProcSFPInst.Advanced_simd_two_reg_misc
+          { _fixed1 := 0#1, Q := 1#1, U := 0#1, _fixed2 := 14#5, size := 0#2, _fixed3 := 16#5, opcode := 0#5,
+            _fixed4 := 2#2, Rn := 19#5, Rd := 19#5 }))
+```
 -/
 
 /- When true, prints the names of the generated theorems. -/
