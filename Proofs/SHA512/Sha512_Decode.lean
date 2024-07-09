@@ -1,5 +1,5 @@
 import Tactics.DecodeThms
-import Tests.SHA512ProgramTest
+import Tests.SHA2.SHA512ProgramTest
 
 -- set_option trace.gen_decode.debug.heartBeats true in
 -- set_option trace.gen_decode.print_names true in

@@ -283,6 +283,15 @@ abbrev partInstall (hi lo : Nat) (val : BitVec (hi - lo + 1)) (x : BitVec n): Bi
 
 example : (partInstall 3 0 0xC#4 0xAB0D#16 = 0xAB0C#16) := by native_decide
 
+def flattenTR {n : Nat} (xs : List (BitVec n)) (i : Nat)
+  (acc : BitVec len) (H : n > 0) : BitVec len :=
+  match xs with
+  | [] => acc
+  | x :: rest =>
+    have h : n = (i * n + n - 1 - i * n + 1) := by omega
+    let new_acc := (BitVec.partInstall (i * n + n - 1) (i * n) (h ▸ x) acc)
+    flattenTR rest (i + 1) new_acc H
+
 ----------------------------------------------------------------------
 
 attribute [ext] BitVec

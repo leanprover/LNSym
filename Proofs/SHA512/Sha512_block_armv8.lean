@@ -5,8 +5,8 @@ Author(s): Shilpi Goel
 -/
 import Arm.Exec
 import Arm.Util
-import Tactics
-import Tests.SHA512ProgramTest
+import Tactics.Sym
+import Tests.SHA2.SHA512ProgramTest
 
 section SHA512_proof
 
