@@ -276,6 +276,21 @@ def w (fld : StateField) (v : (state_value fld)) (s : ArmState) : ArmState :=
   | ERR    => write_base_error v s
 
 @[state_simp_rules]
+theorem zeroExtend_eq_of_r_gpr :
+  zeroExtend 64 (r (StateField.GPR i) s) = (r (StateField.GPR i) s) := by
+  simp only [bitvec_rules]
+
+@[state_simp_rules]
+theorem zeroExtend_eq_of_r_sfp :
+  zeroExtend 128 (r (StateField.SFP i) s) = (r (StateField.SFP i) s) := by
+  simp only [bitvec_rules]
+
+@[state_simp_rules]
+theorem zeroExtend_eq_of_r_pc :
+  zeroExtend 64 (r (StateField.PC) s) = (r (StateField.PC) s) := by
+  simp only [bitvec_rules]
+
+@[state_simp_rules]
 theorem r_of_w_same : r fld (w fld v s) = v := by
   unfold r w
   unfold read_base_gpr write_base_gpr
