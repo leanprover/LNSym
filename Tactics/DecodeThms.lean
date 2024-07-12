@@ -38,13 +38,11 @@ initialize registerTraceClass `gen_decode.debug
 /- When true, prints the number of heartbeats taken per theorem. -/
 initialize registerTraceClass `gen_decode.debug.heartBeats
 
-def addToSimpExt (declName : Name) (simp_ext : Name) : MetaM Unit := do
-  let some ext ← getSimpExtension? simp_ext |
-    throwError "Simp Extension [simp_ext] not found!"
-  addSimpTheorem ext declName false false Lean.AttributeKind.global default
-
-def genFetchTheorem (name : String) (orig_map address_expr raw_inst_expr : Expr) (simp_ext : Name) :
+def genFetchTheorem (thm_prefix address_str : String) (orig_map address_expr raw_inst_expr : Expr) (simp_ext : Name) :
   MetaM Unit := do
+  let startHB ← IO.getNumHeartbeats
+  trace[gen_decode.debug.heartBeats] "[genFetchTheorem] Start heartbeats: {startHB}"
+  let name := thm_prefix ++ "fetch_0x" ++ address_str
   let declName := Lean.Name.mkSimple name
   let s_program_hyp_fn :=
       fun s =>  (mkAppN (mkConst ``Eq [1])
@@ -104,10 +102,58 @@ def genFetchTheorem (name : String) (orig_map address_expr raw_inst_expr : Expr)
     addAndCompile decl
     addToSimpExt declName simp_ext
     trace[gen_decode.print_names] "[Proved theorem {declName}.]"
+    let stopHB ← IO.getNumHeartbeats
+    trace[gen_decode.debug.heartBeats] "[genFetchTheorem]: Stop heartbeats: {stopHB}"
+    trace[gen_decode.debug.heartBeats] "[genFetchTheorem]: HeartBeats used: {stopHB - startHB}"
 
+def genExecTheorem (thm_prefix address_str : String) (decoded_inst : Expr) (simp_ext : Name) : MetaM Unit := do
+  let startHB ← IO.getNumHeartbeats
+  trace[gen_decode.debug.heartBeats] "[genExecTheorem] Start heartbeats: {startHB}"
+  let name := thm_prefix ++ "exec_0x" ++ address_str
+  let declName := Lean.Name.mkSimple name
+  withLocalDeclD `s (mkConst ``ArmState) fun s => do
+    let exec_inst_expr := (mkAppN (mkConst ``exec_inst) #[decoded_inst, s])
+    trace[gen_decode.debug] "[Exec_inst Expression: {exec_inst_expr}]"
+    -- let sp_aligned ← (mkAppM ``Eq #[(← mkAppM ``CheckSPAlignment #[s]), (mkConst ``true)])
+    -- logInfo m!"sp_aligned: {sp_aligned}"
+    -- withLocalDeclD `h_sp_aligned sp_aligned fun _h_sp_aligned => do
+    let (ctx, _simprocs) ←
+            LNSymSimpContext
+              (config := {decide := true})
+              (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules])
+              (decls_to_unfold := #[``exec_inst])
+    -- Adding local declarations to the context.
+    let mut simpTheorems := ctx.simpTheorems
+    let hs ← getPropHyps
+    for h in hs do
+      trace[gen_decode.debug] "[genExecTheorem] Prop. in Local Context: {← h.getType}"
+      unless simpTheorems.isErased (.fvar h) do
+        simpTheorems ← simpTheorems.addTheorem (.fvar h) (← h.getDecl).toExpr
+    let ctx := { ctx with simpTheorems }
+    let (exec_inst_result, _) ← simp exec_inst_expr ctx
+    trace[gen_decode.debug] "[Exec_inst Simplified Expression: {exec_inst_result.expr}]"
+    let hs ← getPropHyps
+    let args := #[s] ++ (hs.map (fun f => (.fvar f)))
+    let thm ← mkAppM ``Eq #[exec_inst_expr, exec_inst_result.expr]
+    let type ← mkForallFVars args thm -- (usedOnly := true) (usedLetOnly := false)
+    trace[gen_decode.debug] "[Exec_inst Theorem: {type}.]"
+    let value ← mkLambdaFVars args exec_inst_result.proof?.get!
+                    -- (usedOnly := true) (usedLetOnly := false)
+    let decl := Declaration.thmDecl
+                { name := declName, levelParams := [],
+                  type := type, value := value }
+    addAndCompile decl
+    addToSimpExt declName simp_ext
+    trace[gen_decode.print_names] "[Proved theorem {declName}.]"
+    let stopHB ← IO.getNumHeartbeats
+    trace[gen_decode.debug.heartBeats] "[genExecTheorem]: Stop heartbeats: {stopHB}"
+    trace[gen_decode.debug.heartBeats] "[genExecTheorem]: HeartBeats used: {stopHB - startHB}"
 
-def genDecodeTheorem (name : String) (raw_inst : Expr) (simp_ext : Name) :
+def genDecodeAndExecTheorems (thm_prefix address_str : String) (raw_inst : Expr) (simp_ext : Name) :
   MetaM Unit := do
+  let startHB ← IO.getNumHeartbeats
+  trace[gen_decode.debug.heartBeats] "[genDecodeTheorem] Start heartbeats: {startHB}"
+  let name := thm_prefix ++ "decode_0x" ++ address_str
   let declName := Lean.Name.mkSimple name
   let lhs := (mkAppN (Expr.const ``decode_raw_inst []) #[raw_inst])
   -- let rhs ← reduce lhs -- whnfD?
@@ -125,6 +171,12 @@ def genDecodeTheorem (name : String) (raw_inst : Expr) (simp_ext : Name) :
   addAndCompile decl
   addToSimpExt declName simp_ext
   trace[gen_decode.print_names] "[Proved theorem {declName}.]"
+  let_expr Option.some _ decoded_inst ← rhs.expr |
+    throwError "[genDecodeTheorem] Instruction {raw_inst} could not be decoded!"
+  let stopHB ← IO.getNumHeartbeats
+  trace[gen_decode.debug.heartBeats] "[genDecodeTheorem]: Stop heartbeats: {stopHB}"
+  trace[gen_decode.debug.heartBeats] "[genDecodeTheorem]: HeartBeats used: {stopHB - startHB}"
+  genExecTheorem thm_prefix address_str decoded_inst simp_ext
 
 partial def genDecodeTheoremsForMap (program : Expr) (map : Expr) (thm_prefix : String) (simp_ext : Name) : MetaM Unit := do
   trace[gen_decode.debug] "[genDecodeTheoremsForMap: Poised to run whnfD on the map: {map}]"
@@ -141,20 +193,11 @@ partial def genDecodeTheoremsForMap (program : Expr) (map : Expr) (thm_prefix : 
     if address_str.isNone then
       throwError "We expect program addresses to be concrete. \
                   Found this instead: {address_expr}."
-    let fetch_name := thm_prefix ++ "fetch_0x" ++ address_str.get!
-    let decode_name := thm_prefix ++ "decode_0x" ++ address_str.get!
+    let address_string := address_str.get!
     trace[gen_decode.debug] "[genDecodeTheoremsForMap: address_expr {address_expr} \
                               raw_inst_expr {raw_inst_expr}]"
-    let startHB ← IO.getNumHeartbeats
-    trace[gen_decode.debug.heartBeats] "Start heartBeats: {startHB}"
-    genFetchTheorem fetch_name program address_expr raw_inst_expr simp_ext
-    let stopHB ← IO.getNumHeartbeats
-    trace[gen_decode.debug.heartBeats] "Heartbeats used for {fetch_name}: {stopHB - startHB}"
-    let startHB ← IO.getNumHeartbeats
-    genDecodeTheorem decode_name raw_inst_expr simp_ext
-    let stopHB ← IO.getNumHeartbeats
-    trace[gen_decode.debug.heartBeats] "Heartbeats used for {decode_name}: {stopHB - startHB}"
-    trace[gen_decode.debug.heartBeats] "Stop heartBeats: {stopHB}"
+    genFetchTheorem thm_prefix address_string program address_expr raw_inst_expr simp_ext
+    genDecodeAndExecTheorems thm_prefix address_string raw_inst_expr simp_ext
     genDecodeTheoremsForMap program tl thm_prefix simp_ext
   | List.nil _ => return
   | _ =>
