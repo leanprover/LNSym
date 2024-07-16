@@ -100,6 +100,14 @@ inductive PFlag where
   | V : PFlag
 deriving DecidableEq, Repr
 
+instance : ToString PFlag :=
+  ⟨fun p => match p with
+    | PFlag.N => "N"
+    | PFlag.Z => "Z"
+    | PFlag.C => "C"
+    | PFlag.V => "V"⟩
+
+@[ext]
 structure PState where
   n : BitVec 1
   z : BitVec 1
@@ -107,6 +115,7 @@ structure PState where
   v : BitVec 1
 deriving DecidableEq, Repr
 
+@[ext]
 structure ArmState where
   -- General-purpose registers: register 31 is the stack pointer.
   gpr        : Store (BitVec 5) (BitVec 64)
@@ -121,7 +130,7 @@ structure ArmState where
   -- Program: maps 64-bit addresses to 32-bit instructions.
   -- Note that we have the following assumption baked into our machine model:
   -- the program is always disjoint from the rest of the memory.
-  program    : Map (BitVec 64) (BitVec 32)
+  program    : Program
 
   -- The error field is an artifact of this model; it is set to a
   -- non-None value when some irrecoverable error is encountered
@@ -223,11 +232,20 @@ inductive StateField where
   | ERR    : StateField
 deriving DecidableEq, Repr
 
+instance : ToString StateField :=
+  ⟨fun s => match s with
+  | StateField.GPR i  => "x" ++ (ToString.toString i.toNat)
+  | StateField.SFP i  => "q" ++ (ToString.toString i.toNat)
+  | StateField.PC     => "pc"
+  | StateField.FLAG p => "flag" ++ (ToString.toString p)
+  | StateField.ERR    => "err"⟩
+
 -- Injective Lemmas for StateField
 attribute [state_simp_rules] StateField.GPR.injEq
 attribute [state_simp_rules] StateField.SFP.injEq
 attribute [state_simp_rules] StateField.FLAG.injEq
 
+@[reducible]
 def state_value (fld : StateField) : Type :=
   open StateField in
   match fld with
@@ -256,6 +274,21 @@ def w (fld : StateField) (v : (state_value fld)) (s : ArmState) : ArmState :=
   | PC     => write_base_pc v s
   | FLAG i => write_base_flag i v s
   | ERR    => write_base_error v s
+
+@[state_simp_rules]
+theorem zeroExtend_eq_of_r_gpr :
+  zeroExtend 64 (r (StateField.GPR i) s) = (r (StateField.GPR i) s) := by
+  simp only [bitvec_rules]
+
+@[state_simp_rules]
+theorem zeroExtend_eq_of_r_sfp :
+  zeroExtend 128 (r (StateField.SFP i) s) = (r (StateField.SFP i) s) := by
+  simp only [bitvec_rules]
+
+@[state_simp_rules]
+theorem zeroExtend_eq_of_r_pc :
+  zeroExtend 64 (r (StateField.PC) s) = (r (StateField.PC) s) := by
+  simp only [bitvec_rules]
 
 @[state_simp_rules]
 theorem r_of_w_same : r fld (w fld v s) = v := by
@@ -427,30 +460,24 @@ end Accessor_updater_functions
 
 section Load_program_and_fetch_inst
 
--- Programs are defined as an Map of 64-bit addresses to 32-bit
--- instructions. Map has nice lemmas that allow us to smoothly fetch
--- an instruction from the map during proofs (see
--- fetch_inst_from_program below).
-abbrev program := Map (BitVec 64) (BitVec 32)
-
--- We define a program as an Array of address and instruction pairs,
--- which are then converted to an RBMap.
-def def_program (p : Map (BitVec 64) (BitVec 32)) : program :=
+def def_program (p : Program) : Program :=
   p
 
-def program.min (p : program) : Option (BitVec 64) :=
+/-- Get the smallest address in a program `p`. -/
+def Program.min (p : Program) : Option (BitVec 64) :=
   loop p none
 where
-  loop (p : program) (min? : Option (BitVec 64)) : Option (BitVec 64) :=
+  loop (p : Program) (min? : Option (BitVec 64)) : Option (BitVec 64) :=
     match p, min? with
     | [], _ => min?
     | (addr, _) :: p, none => loop p (some addr)
     | (addr, _) :: p, some min => if addr < min then loop p (some addr) else loop p (some min)
 
-def program.max (p : program) : Option (BitVec 64) :=
+/-- Get the largest address in a program `p`. -/
+def Program.max (p : Program) : Option (BitVec 64) :=
   loop p none
 where
-  loop (p : program) (max? : Option (BitVec 64)) : Option (BitVec 64) :=
+  loop (p : Program) (max? : Option (BitVec 64)) : Option (BitVec 64) :=
     match p, max? with
     | [], _ => max?
     | (addr, _) :: p, none => loop p (some addr)
@@ -460,7 +487,7 @@ theorem fetch_inst_from_program
   {address: BitVec 64} :
   fetch_inst address s = s.program.find? address := by
     unfold fetch_inst
-    simp_all!
+    simp only
 
 end Load_program_and_fetch_inst
 

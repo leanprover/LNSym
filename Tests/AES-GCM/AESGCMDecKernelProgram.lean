@@ -30,7 +30,7 @@ open BitVec
 
 -/
 
-def aes_gcm_dec_kernel_program : program :=
+def aes_gcm_dec_kernel_program : Program :=
   def_program
   [ -- 00000000007a1880 <aes_gcm_dec_kernel>:
     (0x7a1880#64,  0xa9b87bfd#32),   -- stp  x29, x30, [sp, #-128]!

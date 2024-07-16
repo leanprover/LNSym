@@ -15,13 +15,13 @@ open BitVec
 @[state_simp_rules]
 def exec_add_sub_shifted_reg (inst : Add_sub_shifted_reg_cls) (s : ArmState) : ArmState :=
   let datasize := 32 <<< inst.sf.toNat
-  if inst.shift == 0b11#2 then
+  if inst.shift = 0b11#2 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
-  else if inst.sf == 0 && lsb inst.imm6 5 == 1 then
+  else if inst.sf = 0 ∧ lsb inst.imm6 5 = 1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
-    let sub_op := inst.op == 1#1
-    let setflags := inst.S == 1#1
+    let sub_op := inst.op = 1#1
+    let setflags := inst.S = 1#1
     let shift_type := decode_shift inst.shift
     let operand1 := read_gpr_zr datasize inst.Rn s
     let operand2_unshifted := read_gpr_zr datasize inst.Rm s

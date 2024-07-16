@@ -27,7 +27,7 @@ def dup_aux (e : Nat) (elements : Nat) (esize : Nat)
 
 def exec_dup_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :=
   let size := lowest_set_bit inst.imm5
-  if size > 3 || (size == 3 && inst.Q == 0) then
+  if size > 3 ∨ (size = 3 ∧ inst.Q = 0) then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let index := (extractLsb 4 (size + 1) inst.imm5).toNat
@@ -46,7 +46,7 @@ def exec_dup_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
 
 def exec_dup_general (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :=
   let size := lowest_set_bit inst.imm5
-  if size > 3 || (size == 3 && inst.Q == 0) then
+  if size > 3 ∨ (size = 3 ∧ inst.Q = 0) then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let esize := 8 <<< size
@@ -99,10 +99,12 @@ def exec_smov_umov (inst : Advanced_simd_copy_cls) (s : ArmState) (signed : Bool
   let size := lowest_set_bit inst.imm5
   let esize := 8 <<< size
   let datasize := 32 <<< inst.Q.toNat
-  if signed && (size > 2 || datasize <= esize) then
+  if signed ∧ (size > 2 ∨ datasize <= esize) then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
-  else if (not signed)
-       && (size > 3 || datasize == 64 && esize < 64 || datasize == 32 && esize >= 64) then
+  else if (not signed) ∧
+          ((size > 3) ∨
+           (datasize = 64 ∧ esize < 64) ∨
+           (datasize = 32 ∧ esize >= 64)) then
      write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let index := (extractLsb 4 (size + 1) inst.imm5).toNat
@@ -135,7 +137,7 @@ partial def Advanced_simd_copy_cls.dup_element.rand : IO (Option (BitVec 32)) :=
   let Q := ← BitVec.rand 1
   let imm5 := ← BitVec.rand 5
   let size := lowest_set_bit imm5
-  if size > 3 || (size == 3 && Q == 0) then
+  if size > 3 ∨ (size = 3 ∧ Q = 0) then
     Advanced_simd_copy_cls.dup_element.rand
   else
     let (inst : Advanced_simd_copy_cls) :=
@@ -152,7 +154,7 @@ partial def Advanced_simd_copy_cls.dup_general.rand : IO (Option (BitVec 32)) :=
   let Q := ← BitVec.rand 1
   let imm5 := ← BitVec.rand 5
   let size := lowest_set_bit imm5
-  if size > 3 || (size == 3 && Q == 0) then
+  if size > 3 ∨ (size = 3 ∧ Q = 0) then
     Advanced_simd_copy_cls.dup_general.rand
   else
     let (inst : Advanced_simd_copy_cls) :=
@@ -203,7 +205,7 @@ partial def Advanced_simd_copy_cls.smov.rand : IO (Option (BitVec 32)) := do
   let size := lowest_set_bit imm5
   let esize := 8 <<< size
   let datasize := 32 <<< Q.toNat
-  if size > 2 || datasize <= esize then
+  if size > 2 ∨ datasize <= esize then
     Advanced_simd_copy_cls.smov.rand
   else
     let (inst : Advanced_simd_copy_cls) :=

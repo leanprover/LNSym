@@ -35,7 +35,7 @@ def reg_imm_operation (inst_str : String) (op : BitVec 1)
   (Rt : BitVec 5) (offset : BitVec 64) (s : ArmState)
   (H : 8 ∣ datasize) : ArmState :=
   let address := read_gpr 64 Rn s
-  if Rn == 31#5 && not (CheckSPAlignment s) then
+  if Rn = 31#5 ∧ not (CheckSPAlignment s) then
       write_err (StateError.Fault s!"[Inst: {inst_str}] SP {address} is not aligned!") s
       -- Note: we do not need to model the ASL function
       -- "CreateAccDescGPR" here, given the simplicity of our memory
@@ -62,7 +62,7 @@ def reg_imm_operation (inst_str : String) (op : BitVec 1)
 @[state_simp_rules]
 def reg_imm_constrain_unpredictable (wback : Bool) (SIMD? : Bool) (Rn : BitVec 5)
   (Rt : BitVec 5) : Bool :=
-  if SIMD? then false else wback && Rn == Rt && Rn != 31#5
+  if SIMD? then false else wback ∧ Rn = Rt ∧ Rn ≠ 31#5
 
 @[state_simp_rules]
 def supported_reg_imm (size : BitVec 2) (opc : BitVec 2) (SIMD? : Bool) : Bool :=
@@ -90,7 +90,7 @@ def exec_reg_imm_common
     write_err (StateError.Unimplemented "Unsupported instruction {inst_str} encountered!") s
   -- UNDEFINED case in LDR/STR SIMD/FP instructions
   -- FIXME: prove that this branch condition is trivially false
-  else if inst.SIMD? && scale > 4 then
+  else if inst.SIMD? ∧ scale > 4 then
     write_err (StateError.Illegal "Illegal instruction {inst_str} encountered!") s
   -- constrain unpredictable when GPR
   else if reg_imm_constrain_unpredictable inst.wback inst.SIMD? inst.Rn inst.Rt then
@@ -102,7 +102,7 @@ def exec_reg_imm_common
     let datasize := 8 <<< scale
     let regsize :=
       if inst.SIMD? then none
-      else if inst.size == 0b11#2 then some 64 else some 32
+      else if inst.size = 0b11#2 then some 64 else some 32
     have H : 8 ∣ datasize := by
       simp_all! only [Nat.shiftLeft_eq, Nat.dvd_mul_right, datasize]
     -- State Updates
@@ -120,7 +120,7 @@ def exec_reg_imm_unsigned_offset
       opc       := inst.opc,
       Rn        := inst.Rn,
       Rt        := inst.Rt,
-      SIMD?     := inst.V == 1#1,
+      SIMD?     := inst.V = 1#1,
       wback     := false,
       postindex := false,
       imm       := Sum.inl inst.imm12 }
@@ -134,7 +134,7 @@ def exec_reg_imm_post_indexed
       opc       := inst.opc,
       Rn        := inst.Rn,
       Rt        := inst.Rt,
-      SIMD?     := inst.V == 1#1,
+      SIMD?     := inst.V = 1#1,
       wback     := true,
       postindex := true,
       imm       := Sum.inr inst.imm9 }

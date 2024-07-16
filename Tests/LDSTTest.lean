@@ -14,7 +14,7 @@ open BitVec
 -- The cosimulation tests do not cover instructions related to memory access
 -- TODO: use macros to simplify the tests
 
-def set_init_state (program : Map (BitVec 64) (BitVec 32)) : ArmState :=
+def set_init_state (program : Program) : ArmState :=
   let s := { gpr := (fun (_ : BitVec 5) => 0#64),
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc := 0#64,
@@ -26,7 +26,7 @@ def set_init_state (program : Map (BitVec 64) (BitVec 32)) : ArmState :=
 
 ----------------------------------------------------------------------
 -- test ldr, 32-bit gpr, unsigned offset
-def ldr_gpr_unsigned_offset : program :=
+def ldr_gpr_unsigned_offset : Program :=
   def_program [ (0x0#64, 0xb9400fe0#32) ]  -- ldr w0, [sp, #12]
 
 def ldr_gpr_unsigned_offset_state : ArmState :=
@@ -42,7 +42,7 @@ example : ldr_gpr_unsigned_offset_final_state.pc = 4#64 := by native_decide
 
 ----------------------------------------------------------------------
 -- test str, 64-bit gpr, post-index
-def str_gpr_post_index : program :=
+def str_gpr_post_index : Program :=
   def_program [ (0x0#64, 0xf8003420#32) ] -- str x0, [x1], #3
 
 def str_gpr_post_index_state : ArmState :=
@@ -60,7 +60,7 @@ example : str_gpr_post_index_final_state.pc = 4#64 := by native_decide
 
 ----------------------------------------------------------------------
 -- test ldr, 64-bit sfp, post-index
-def ldr_sfp_post_index : program :=
+def ldr_sfp_post_index : Program :=
   def_program [ (0x0#64, 0xfc408420#32) ] -- ldr d0, [x1], #8
 
 def ldr_sfp_post_index_state : ArmState :=
@@ -75,7 +75,7 @@ example : (read_gpr 64 1#5 ldr_sfp_post_index_final_state) = 8#64 := by native_d
 
 ----------------------------------------------------------------------
 -- test str, 128-bit sfp, unsigned offset
-def str_stp_unsigned_offset : program :=
+def str_stp_unsigned_offset : Program :=
   def_program [ (0x0#64, 0x3d800420#32) ] -- str q0, [x1, #1]
 
 def str_sfp_unsigned_offset_state : ArmState :=
@@ -88,7 +88,7 @@ example : (read_mem_bytes 16 16#64 str_sfp_unsigned_offset_final_state) = 123#12
 
 ----------------------------------------------------------------------
 -- test ldrb, unsigned offset
-def ldrb_unsigned_offset : program :=
+def ldrb_unsigned_offset : Program :=
   def_program [ (0x0#64, 0x39401020#32) ] -- ldrb x0, [x1, #4]
 
 def ldrb_unsigned_offset_state: ArmState :=
@@ -101,7 +101,7 @@ example : (read_gpr 64 0#5 ldrb_unsigned_offset_final_state) = 20#64 := by nativ
 
 ----------------------------------------------------------------------
 -- test strb, post-index
-def strb_post_index : program :=
+def strb_post_index : Program :=
   def_program [ (0x0#64, 0x381fc420#32) ] -- strb x0, [x1], #-4
 
 def strb_post_index_state : ArmState :=
@@ -116,7 +116,7 @@ example : (read_gpr 64 1#5 strb_post_index_final_state) = 1#64 := by native_deci
 
 ----------------------------------------------------------------------
 -- test ldp
-def ldp_gpr_pre_index : program :=
+def ldp_gpr_pre_index : Program :=
   def_program [ (0x0#64, 0xa9c00820#32) ] -- ldp x0, x2, [x1]!
 
 def ldp_gpr_pre_index_state : ArmState :=
@@ -130,7 +130,7 @@ example : (read_gpr 64 2#5 ldp_gpr_pre_index_final_state) = 0x1234#64 := by nati
 
 ----------------------------------------------------------------------
 -- test stp
-def stp_sfp_signed_offset : program :=
+def stp_sfp_signed_offset : Program :=
   def_program [ (0x0#64, 0xad008820#32) ] -- stp q0, q2, [q1,#1]
 
 def stp_sfp_signed_offset_state : ArmState :=

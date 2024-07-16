@@ -23,14 +23,12 @@ jobs:
           ./elan-init -y --default-toolchain none
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
 
-    - name: Setup Z3
-      id: z3
-      uses: cda-tum/setup-z3@v1
-      with:
-        version: 4.11.2
-        add_to_library_path: true
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Setup CaDiCaL
+      run: |
+          set -o pipefail
+          git clone https://github.com/arminbiere/cadical.git $HOME/cadical
+          cd $HOME/cadical; ./configure && make
+          echo "$HOME/cadical/build" >> $GITHUB_PATH
 
     - uses: actions/checkout@v3
 

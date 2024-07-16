@@ -171,7 +171,7 @@ theorem P_of_bv_to_of_nat {n : Nat} {P : BitVec n -> Prop}:
   ∀(p : BitVec n), P p := by
   intro H p
   let x := p.toNat
-  have p_eq : p = x#n := by simp only [x, BitVec.ofNat_toNat, truncate_eq]
+  have p_eq : p = (BitVec.ofNat n x) := by simp only [x, BitVec.ofNat_toNat, truncate_eq]
   simp only [p_eq]
   apply H
   apply BitVec.isLt
@@ -225,13 +225,13 @@ protected def AES_encrypt_with_ks_loop {Param : KBR} (round : Nat)
 
 def AES_encrypt_with_ks {Param : KBR} (input : BitVec Param.block_size)
   (w : KeySchedule) : BitVec Param.block_size :=
-  have h₀ : WordSize + WordSize + WordSize + WordSize = Param.block_size := by
-    simp only [WordSize, BlockSize, Param.h]
-  let state := AddRoundKey input $ (h₀ ▸ AESArm.getKey 0 w)
+  -- have h₀ : WordSize + WordSize + WordSize + WordSize = Param.block_size := by
+  --   simp only [WordSize, BlockSize, Param.h]
+  let state := AddRoundKey input $ (AESArm.getKey 0 w)
   let state := AESArm.AES_encrypt_with_ks_loop (Param := Param) 1 state w
   let state := SubBytes (Param := Param) state
   let state := ShiftRows (Param := Param) state
-  AddRoundKey state $ h₀ ▸ AESArm.getKey Param.Nr w
+  AddRoundKey state $ AESArm.getKey Param.Nr w
 
 def AES_encrypt {Param : KBR} (input : BitVec Param.block_size)
   (key : BitVec Param.key_len) : BitVec Param.block_size :=

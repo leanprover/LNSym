@@ -31,11 +31,11 @@ instance : ToString Reg_pair_cls where toString a := toString (repr a)
 @[state_simp_rules]
 def reg_pair_constrain_unpredictable (wback : Bool) (inst : Reg_pair_cls) : Bool :=
   match inst.SIMD?, inst.L? with
-  | false, false => wback && ((inst.Rt == inst.Rn) || inst.Rt2 == inst.Rn) && inst.Rn != 31#5
-  | false, true => (wback && ((inst.Rt == inst.Rn) || inst.Rt2 == inst.Rn) && inst.Rn != 31#5 )
-                || (inst.Rt == inst.Rt2)
+  | false, false => wback ∧ ((inst.Rt = inst.Rn) ∨ inst.Rt2 = inst.Rn) ∧ inst.Rn ≠ 31#5
+  | false, true => (wback ∧ ((inst.Rt = inst.Rn) ∨ inst.Rt2 = inst.Rn) ∧ inst.Rn ≠ 31#5)
+                ∨ (inst.Rt = inst.Rt2)
   | true, false => false
-  | true, true => inst.Rt == inst.Rt2
+  | true, true => inst.Rt = inst.Rt2
 
 @[state_simp_rules]
 def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
@@ -45,7 +45,7 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
   -- "CreateAccDescGPR" here, given the simplicity of our memory
   -- model
   let address := read_gpr 64 inst.Rn s
-  if inst.Rn == 31#5 && not (CheckSPAlignment s) then
+  if inst.Rn = 31#5 ∧ not (CheckSPAlignment s) then
     write_err (StateError.Fault s!"[Inst: {inst_str}] SP {address} is not aligned!") s
   else
     let address := if inst.postindex then address else address + offset
@@ -70,7 +70,7 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
         let full_data := read_mem_bytes (2 * (datasize / 8)) address s
         let data1 := extractLsb (datasize - 1) 0 full_data
         let data2 := extractLsb ((2 * datasize) - 1) datasize full_data
-        if not inst.SIMD? && signed then
+        if not inst.SIMD? ∧ signed then
           let s := write_gpr 64 inst.Rt (signExtend 64 data1) s
           write_gpr 64 inst.Rt2 (signExtend 64 data2) s
         else
@@ -85,12 +85,12 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
 @[state_simp_rules]
 def exec_reg_pair_common (inst : Reg_pair_cls) (inst_str : String) (s : ArmState) : ArmState :=
   if -- UNDEFINED case for none-SIMD Reg Pair
-     not inst.SIMD? &&
-     ((not inst.L? && lsb inst.opc 0 == 1#1) || (inst.opc == 0b11#2))
+     not inst.SIMD? ∧
+     ((not inst.L? ∧ lsb inst.opc 0 = 1#1) ∨ (inst.opc = 0b11#2))
      -- UNDEFINED case for SIMD Reg Pair
-     || inst.SIMD? && (inst.opc == 0b11#2)
+     ∨ inst.SIMD? ∧ (inst.opc = 0b11#2)
      -- constrain unpredictable
-     || reg_pair_constrain_unpredictable inst.wback inst
+     ∨ reg_pair_constrain_unpredictable inst.wback inst
   then
     write_err (StateError.Illegal "Illegal instruction {inst_str} encountered!") s
   else
@@ -115,8 +115,8 @@ def exec_reg_pair_pre_indexed
   (inst : Reg_pair_pre_indexed_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_pair_cls) :=
     { opc := inst.opc,
-      SIMD? := inst.V == 1#1,
-      L? := inst.L == 1#1,
+      SIMD? := inst.V = 1#1,
+      L? := inst.L = 1#1,
       wback := true,
       postindex := false,
       imm7 := inst.imm7,
@@ -130,8 +130,8 @@ def exec_reg_pair_post_indexed
   (inst : Reg_pair_post_indexed_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_pair_cls) :=
     { opc := inst.opc,
-      SIMD? := inst.V == 1#1,
-      L? := inst.L == 1#1,
+      SIMD? := inst.V = 1#1,
+      L? := inst.L = 1#1,
       wback := true,
       postindex := true,
       imm7 := inst.imm7,
@@ -145,8 +145,8 @@ def exec_reg_pair_signed_offset
   (inst : Reg_pair_signed_offset_cls) (s : ArmState) : ArmState :=
   let (extracted_inst : Reg_pair_cls) :=
     { opc := inst.opc,
-      SIMD? := inst.V == 1#1,
-      L? := inst.L == 1#1,
+      SIMD? := inst.V = 1#1,
+      L? := inst.L = 1#1,
       wback := false,
       postindex := false,
       imm7 := inst.imm7,

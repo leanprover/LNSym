@@ -19,7 +19,7 @@ open BitVec
 -/
 
 
-def aes_hw_encrypt_program : program :=
+def aes_hw_encrypt_program : Program :=
   def_program
   [ -- 000000000079f5a0 <aes_hw_encrypt>:
     (0x79f5a0#64,       0xb940f043#32),        -- ldr     w3, [x2, #240]

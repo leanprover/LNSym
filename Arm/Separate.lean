@@ -89,7 +89,7 @@ def mem_separate (a1 a2 b1 b2 : BitVec 64) : Bool :=
 ----------------------------------------------------------------------
 -- `mem_subset`: returns true when A is a subset of B.
 def mem_subset (a1 a2 b1 b2 : BitVec 64) : Bool :=
-  (b2 - b1 = (2^64 - 1)#64) ||
+  (b2 - b1 = BitVec.ofNat 64 (2^64 - 1)) ||
   ((a2 - b1 <= b2 - b1 && a1 - b1 <= a2 - b1))
 
 example : mem_subset 0#64 2#64 0#64 10#64 = true := rfl
@@ -100,14 +100,14 @@ example : mem_subset 10#64 1#64 8#64 2#64 = true := rfl
 
 example : mem_subset 0#64 1#64 8#64 2#64 = true := rfl
 
-example : mem_subset 0#64 2#64 (2^64 - 1)#64 10#64 = true := rfl
+example : mem_subset 0#64 2#64 (BitVec.ofNat 64 (2^64 - 1)) 10#64 = true := rfl
 
 -- The second region is just 2 bytes long, but the first one spans the
 -- whole memory.
-example : mem_subset 0#64 (2^64 - 1)#64 (2^64 - 1)#64 0#64 = false := rfl
+example : mem_subset 0#64 (BitVec.ofNat 64 (2^64 - 1)) (BitVec.ofNat 64 (2^64 - 1)) 0#64 = false := rfl
 
 -- Every region is a subset of the whole memory.
-example : mem_subset (2^64 - 1)#64 0#64 0#64 (2^64 - 1)#64 = true := rfl
+example : mem_subset (BitVec.ofNat 64 (2^64 - 1)) 0#64 0#64 (BitVec.ofNat 64 (2^64 - 1)) = true := rfl
 
 ----------------------------------------------------------------------
 -- `mem_legal`: returns true when the specified region does not wrap

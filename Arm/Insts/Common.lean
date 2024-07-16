@@ -25,6 +25,13 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   let V := if BitVec.toInt result = signed_sum then 0#1 else 1#1
   (result, (make_pstate N Z C V))
 
+-- TODO: Is this rule helpful at all?
+@[bitvec_rules]
+theorem zeroExtend_eq_of_AddWithCarry :
+  zeroExtend n (AddWithCarry x y carry_in).fst =
+  (AddWithCarry x y carry_in).fst := by
+  simp only [zeroExtend_eq]
+
 def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   open PFlag in
   let N := read_flag N s
@@ -33,15 +40,15 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   let V := read_flag V s
   let result :=
     match (extractLsb 3 1 cond) with
-      | 0b000#3 => Z == 1#1
-      | 0b001#3 => C == 1#1
-      | 0b010#3 => N == 1#1
-      | 0b011#3 => V == 1#1
-      | 0b100#3 => C == 1#1 && Z == 0#1
-      | 0b101#3 => N == V
-      | 0b110#3 => N == V && Z == 0#1
+      | 0b000#3 => Z = 1#1
+      | 0b001#3 => C = 1#1
+      | 0b010#3 => N = 1#1
+      | 0b011#3 => V = 1#1
+      | 0b100#3 => C = 1#1 ∧ Z = 0#1
+      | 0b101#3 => N = V
+      | 0b110#3 => N = V ∧ Z = 0#1
       | 0b111#3 => true
-  if (lsb cond 0) = 1#1 && cond ≠ 0b1111#4 then
+  if (lsb cond 0) = 1#1 ∧ cond ≠ 0b1111#4 then
     not result
   else
     result
@@ -54,7 +61,7 @@ def CheckSPAlignment (s : ArmState) : Bool :=
   let sp := read_gpr 64 31#5 s
   -- If the low 4 bits of SP are 0, then it is divisible by 16 and
   -- 16-aligned.
-  (extractLsb 3 0 sp) &&& 0xF#4 == 0#4
+  ((extractLsb 3 0 sp) &&& 0xF#4) = 0#4
 
 @[state_simp_rules]
 theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
@@ -63,7 +70,7 @@ theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
 
 @[state_simp_rules]
 theorem CheckSPAligment_of_w_sp :
-  CheckSPAlignment (w (StateField.GPR 31#5) v s) = ((extractLsb 3 0 v) &&& 0xF#4 == 0#4) := by
+  CheckSPAlignment (w (StateField.GPR 31#5) v s) = ((extractLsb 3 0 v) &&& 0xF#4 = 0#4) := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
 @[state_simp_rules]
@@ -89,10 +96,11 @@ def decode_shift (shift : BitVec 2) : ShiftType :=
   | 0b10 => ShiftType.ASR
   | 0b11 => ShiftType.ROR
 
+@[state_simp_rules]
 def shift_reg (bv : BitVec n) (st : ShiftType) (sa : BitVec 6)
   : BitVec n :=
   match st with
-  | ShiftType.LSL => BitVec.shiftLeft bv sa.toNat
+  | ShiftType.LSL => bv <<< sa.toNat -- BitVec.shiftLeft operation
   | ShiftType.LSR => ushiftRight bv sa.toNat
   | ShiftType.ASR => sshiftRight bv sa.toNat
   | ShiftType.ROR => rotateRight bv sa.toNat
@@ -135,7 +143,7 @@ def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
 def lowest_set_bit (bv : BitVec n) : Nat := Id.run do
   let mut acc := n
   for i in List.range n do
-    if lsb bv i == 1
+    if lsb bv i = 1
     then acc := i
          break
   return acc
@@ -226,7 +234,7 @@ def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState) (H : width > 0)
   -- assert part IN {0, 1};
   have h1: width - 1 + 1 = width := by omega
   have h2: (width * 2 - 1 - width + 1) = width := by omega
-  if part == 0 then
+  if part = 0 then
     -- assert width < 128;
     h1 ▸ extractLsb (width-1) 0 $ read_sfp 128 n s
   else
@@ -239,7 +247,7 @@ def Vpart_write (n : BitVec 5) (part width : Nat) (val : BitVec width) (s : ArmS
   : ArmState :=
   -- assert n >= 0 && n <= 31;
   -- assert part IN {0, 1};
-  if part == 0 then
+  if part = 0 then
     -- assert width < 128
     write_sfp width n val s
   else

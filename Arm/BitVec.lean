@@ -14,19 +14,152 @@ namespace BitVec
 
 open BitVec
 
--- Adding some useful simp lemmas to `bitvec_rules`:
+-- Adding some useful simp lemmas to `bitvec_rules`: we do not include
+-- `bv_toNat` lemmas here.
+-- See Init.Data.BitVec.Lemmas.
 attribute [bitvec_rules] BitVec.ofFin_eq_ofNat
-attribute [bitvec_rules] BitVec.extractLsb_ofFin
-attribute [bitvec_rules] BitVec.zeroExtend_eq
 attribute [bitvec_rules] BitVec.ofFin.injEq
-attribute [bitvec_rules] BitVec.extractLsb_toNat
-attribute [bitvec_rules] BitVec.truncate_or
+attribute [bitvec_rules] BitVec.cast_eq
+attribute [bitvec_rules] BitVec.zeroExtend_eq
+attribute [bitvec_rules] BitVec.truncate_eq
+attribute [bitvec_rules] BitVec.getLsb_ofFin
+attribute [bitvec_rules] BitVec.getLsb_ge
+attribute [bitvec_rules] BitVec.getMsb_ge
+attribute [bitvec_rules] BitVec.toNat_zero_length
+attribute [bitvec_rules] BitVec.getLsb_zero_length
+attribute [bitvec_rules] BitVec.getMsb_zero_length
+attribute [bitvec_rules] BitVec.msb_zero_length
+attribute [bitvec_rules] BitVec.toNat_ofBool
+attribute [bitvec_rules] BitVec.msb_ofBool
+attribute [bitvec_rules] BitVec.not_ofBool
+attribute [bitvec_rules] BitVec.toNat_ofFin
+attribute [bitvec_rules] BitVec.toNat_ofNatLt
+attribute [bitvec_rules] BitVec.getLsb_ofNatLt
+attribute [bitvec_rules] BitVec.toFin_ofNat
+attribute [bitvec_rules] BitVec.toNat_zero
+attribute [bitvec_rules] BitVec.getLsb_zero
+attribute [bitvec_rules] BitVec.getMsb_zero
+attribute [bitvec_rules] BitVec.toNat_mod_cancel
+attribute [bitvec_rules] BitVec.msb_zero
+attribute [bitvec_rules] BitVec.toNat_cast
+attribute [bitvec_rules] BitVec.getLsb_cast
+attribute [bitvec_rules] BitVec.getMsb_cast
+attribute [bitvec_rules] BitVec.toNat_ofInt
+attribute [bitvec_rules] BitVec.toInt_ofInt
+attribute [bitvec_rules] BitVec.ofInt_natCast
+attribute [bitvec_rules] BitVec.toNat_zeroExtend'
+attribute [bitvec_rules] BitVec.toNat_zeroExtend
+attribute [bitvec_rules] BitVec.toNat_truncate
+attribute [bitvec_rules] BitVec.zeroExtend_zero
+attribute [bitvec_rules] BitVec.ofNat_toNat
+attribute [bitvec_rules] BitVec.getLsb_zeroExtend'
+attribute [bitvec_rules] BitVec.getMsb_zeroExtend'
+attribute [bitvec_rules] BitVec.getLsb_zeroExtend
+attribute [bitvec_rules] BitVec.getMsb_zeroExtend_add
+attribute [bitvec_rules] BitVec.getLsb_truncate
 attribute [bitvec_rules] BitVec.zeroExtend_zeroExtend_of_le
-
--- See Lean/Meta/Tactic/Simp/BuiltinSimprocs for the built-in
--- simprocs.
+attribute [bitvec_rules] BitVec.truncate_truncate_of_le
+attribute [bitvec_rules] BitVec.truncate_cast
+attribute [bitvec_rules] BitVec.extractLsb_ofFin
+attribute [bitvec_rules] BitVec.extractLsb_ofNat
+attribute [bitvec_rules] BitVec.extractLsb'_toNat
+attribute [bitvec_rules] BitVec.extractLsb_toNat
+attribute [bitvec_rules] BitVec.getLsb_extract
+attribute [bitvec_rules] BitVec.toNat_allOnes
+attribute [bitvec_rules] BitVec.getLsb_allOnes
+attribute [bitvec_rules] BitVec.toNat_or
+attribute [bitvec_rules] BitVec.toFin_or
+attribute [bitvec_rules] BitVec.getLsb_or
+attribute [bitvec_rules] BitVec.getMsb_or
+attribute [bitvec_rules] BitVec.msb_or
+attribute [bitvec_rules] BitVec.truncate_or
+attribute [bitvec_rules] BitVec.toNat_and
+attribute [bitvec_rules] BitVec.toFin_and
+attribute [bitvec_rules] BitVec.getLsb_and
+attribute [bitvec_rules] BitVec.getMsb_and
+attribute [bitvec_rules] BitVec.msb_and
+attribute [bitvec_rules] BitVec.truncate_and
+attribute [bitvec_rules] BitVec.toNat_xor
+attribute [bitvec_rules] BitVec.toFin_xor
+attribute [bitvec_rules] BitVec.getLsb_xor
+attribute [bitvec_rules] BitVec.truncate_xor
+attribute [bitvec_rules] BitVec.toNat_not
+attribute [bitvec_rules] BitVec.toFin_not
+attribute [bitvec_rules] BitVec.getLsb_not
+attribute [bitvec_rules] BitVec.truncate_not
+attribute [bitvec_rules] BitVec.not_cast
+attribute [bitvec_rules] BitVec.and_cast
+attribute [bitvec_rules] BitVec.or_cast
+attribute [bitvec_rules] BitVec.xor_cast
+attribute [bitvec_rules] BitVec.toNat_shiftLeft
+attribute [bitvec_rules] BitVec.toFin_shiftLeft
+attribute [bitvec_rules] BitVec.getLsb_shiftLeft
+attribute [bitvec_rules] BitVec.getMsb_shiftLeft
+attribute [bitvec_rules] BitVec.getLsb_shiftLeftZeroExtend
+attribute [bitvec_rules] BitVec.getMsb_shiftLeftZeroExtend
+attribute [bitvec_rules] BitVec.msb_shiftLeftZeroExtend
+attribute [bitvec_rules] BitVec.toNat_ushiftRight
+attribute [bitvec_rules] BitVec.getLsb_ushiftRight
+attribute [bitvec_rules] BitVec.toNat_append
+attribute [bitvec_rules] BitVec.getLsb_append
+attribute [bitvec_rules] BitVec.getMsb_append
+attribute [bitvec_rules] BitVec.truncate_append
+attribute [bitvec_rules] BitVec.truncate_cons
+attribute [bitvec_rules] BitVec.not_append
+attribute [bitvec_rules] BitVec.and_append
+attribute [bitvec_rules] BitVec.or_append
+attribute [bitvec_rules] BitVec.xor_append
+attribute [bitvec_rules] BitVec.toNat_cons
+attribute [bitvec_rules] BitVec.getLsb_cons
+attribute [bitvec_rules] BitVec.msb_cons
+attribute [bitvec_rules] BitVec.getMsb_cons_zero
+attribute [bitvec_rules] BitVec.getMsb_cons_succ
+attribute [bitvec_rules] BitVec.not_cons
+attribute [bitvec_rules] BitVec.cons_or_cons
+attribute [bitvec_rules] BitVec.cons_and_cons
+attribute [bitvec_rules] BitVec.cons_xor_cons
+attribute [bitvec_rules] BitVec.toNat_concat
+attribute [bitvec_rules] BitVec.getLsb_concat_zero
+attribute [bitvec_rules] BitVec.getLsb_concat_succ
+attribute [bitvec_rules] BitVec.not_concat
+attribute [bitvec_rules] BitVec.concat_or_concat
+attribute [bitvec_rules] BitVec.concat_and_concat
+attribute [bitvec_rules] BitVec.concat_xor_concat
+attribute [bitvec_rules] BitVec.toNat_add
+attribute [bitvec_rules] BitVec.toFin_add
+attribute [bitvec_rules] BitVec.ofFin_add
+attribute [bitvec_rules] BitVec.add_ofFin
+attribute [bitvec_rules] BitVec.add_zero
+attribute [bitvec_rules] BitVec.zero_add
+attribute [bitvec_rules] BitVec.toInt_add
+attribute [bitvec_rules] BitVec.toNat_sub
+attribute [bitvec_rules] BitVec.toFin_sub
+attribute [bitvec_rules] BitVec.ofFin_sub
+attribute [bitvec_rules] BitVec.sub_ofFin
+attribute [bitvec_rules] BitVec.sub_zero
+attribute [bitvec_rules] BitVec.sub_self
+attribute [bitvec_rules] BitVec.toNat_neg
+attribute [bitvec_rules] BitVec.toFin_neg
+attribute [bitvec_rules] BitVec.neg_zero
+attribute [bitvec_rules] BitVec.toNat_mul
+attribute [bitvec_rules] BitVec.toFin_mul
+attribute [bitvec_rules] BitVec.mul_one
+attribute [bitvec_rules] BitVec.one_mul
+attribute [bitvec_rules] BitVec.toInt_mul
+attribute [bitvec_rules] BitVec.le_ofFin
+attribute [bitvec_rules] BitVec.ofFin_le
+attribute [bitvec_rules] BitVec.ofNat_le_ofNat
+attribute [bitvec_rules] BitVec.lt_ofFin
+attribute [bitvec_rules] BitVec.ofFin_lt
+attribute [bitvec_rules] BitVec.ofNat_lt_ofNat
+attribute [bitvec_rules] BitVec.rotateLeft_mod_eq_rotateLeft
+attribute [bitvec_rules] BitVec.getLsb_rotateLeft
+attribute [bitvec_rules] BitVec.rotateRight_mod_eq_rotateRight
+attribute [bitvec_rules] BitVec.getLsb_rotateRight
 
 -- BitVec Simproc rules:
+-- See Lean/Meta/Tactic/Simp/BuiltinSimprocs for the built-in
+-- simprocs.
 attribute [bitvec_rules] BitVec.reduceNeg
 attribute [bitvec_rules] BitVec.reduceNot
 attribute [bitvec_rules] BitVec.reduceAbs
@@ -104,6 +237,7 @@ attribute [bitvec_rules] Nat.reduceSubDiff
 
 -- Some Fin lemmas useful for bitvector reasoning:
 attribute [bitvec_rules] Fin.eta
+attribute [bitvec_rules] Fin.isValue -- To normalize Fin literals
 
 -- Some lemmas useful for clean-up after the use of simp/ground
 -- leaves some terms exposed:
@@ -253,7 +387,9 @@ theorem nat_bitvec_add (x y : BitVec n) :
   (x + y).toNat = (x.toNat + y.toNat) % 2 ^ n := rfl
 
 theorem nat_bitvec_sub (x y : BitVec n) :
-  (x - y).toNat = (x.toNat + (2^n - y.toNat)) % 2^n := rfl
+  (x - y).toNat = (x.toNat + (2^n - y.toNat)) % 2^n := by
+  have : (x - y).toNat = ((2^n - y.toNat) + x.toNat) % 2^n := rfl
+  rw [this, Nat.add_comm]
 
 ---------------------------- Comparison Lemmas -----------------------
 
@@ -280,7 +416,8 @@ protected theorem val_bitvec_le {n : Nat} {a b : BitVec n} : a.toNat ≤ b.toNat
   Iff.rfl
 
 protected theorem val_nat_le (x y n : Nat)
-  (h0 : x <= y) (h1 : x < 2^n) (h2 : y < 2^n) : x#n <= y#n := by
+  (h0 : x <= y) (h1 : x < 2^n) (h2 : y < 2^n) :
+  BitVec.ofNat n x <= BitVec.ofNat n y := by
   rw [BitVec.le_iff_val_le_val]
   simp [bitvec_to_nat_of_nat]
   rw [Nat.mod_eq_of_lt h1]
@@ -332,6 +469,24 @@ protected theorem or_self (x : BitVec n) :
 theorem zeroExtend_zero_width : (zeroExtend 0 x) = 0#0 := by
   unfold zeroExtend
   split <;> simp [bitvec_zero_is_unique]
+
+-- During symbolic simulation, we often encounter an `if` in the first argument
+-- of `zeroExtend` (e.g., `read_gpr` reads a specified `width` of the register,
+-- which is often computed by checking whether the `instruction.sf` bit is 0 or
+-- 1). I've found the rules `zeroExtend_if_true` and `zeroExtend_if_false` to be
+-- helpful to reduce such occurrences of `zeroExtend` terms.
+
+@[bitvec_rules]
+theorem zeroExtend_if_true [Decidable p] (x : BitVec n)
+  (h_eq : a = (if p then a else b)) :
+  (zeroExtend (if p then a else b) x) = BitVec.cast h_eq (zeroExtend a x) := by
+  simp only [toNat_eq, toNat_truncate, ← h_eq, toNat_cast]
+
+@[bitvec_rules]
+theorem zeroExtend_if_false [Decidable p] (x : BitVec n)
+  (h_eq : b = (if p then a else b)) :
+  (zeroExtend (if p then a else b) x) = BitVec.cast h_eq (zeroExtend b x) := by
+  simp only [toNat_eq, toNat_truncate, ← h_eq, toNat_cast]
 
 theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
   BitVec.extractLsb (n - 1) 0 x = BitVec.cast h x := by
@@ -468,7 +623,16 @@ theorem leftshift_n_or_mod_2n :
 @[bitvec_rules]
 protected theorem truncate_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitVec n) :
   truncate n (x ++ y) = y := by
-  simp only [truncate_append, Nat.le_refl, ↓reduceDite, zeroExtend_eq]
+  simp only [truncate_append, Nat.le_refl, ↓reduceDIte, zeroExtend_eq]
+
+---------------------------- Shift Lemmas ---------------------------
+
+@[bitvec_rules]
+protected theorem shift_left_zero_eq (n : Nat) (x : BitVec n) : x <<< 0 = x := by
+    refine eq_of_toNat_eq ?_
+    apply Nat.eq_of_testBit_eq
+    intro i
+    simp only [toNat_shiftLeft, Nat.shiftLeft_zero, toNat_mod_cancel]
 
 ----------------------------------------------------------------------
 

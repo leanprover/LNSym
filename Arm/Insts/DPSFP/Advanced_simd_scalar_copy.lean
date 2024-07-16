@@ -19,7 +19,7 @@ open BitVec
 def exec_advanced_simd_scalar_copy
   (inst : Advanced_simd_scalar_copy_cls) (s : ArmState) : ArmState :=
   let size := lowest_set_bit inst.imm5
-  if size > 3 || inst.imm4 != 0b0000#4 || inst.op != 0 then
+  if size > 3 ∨ inst.imm4 ≠ 0b0000#4 ∨ inst.op ≠ 0 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let index := extractLsb 4 (size + 1) inst.imm5

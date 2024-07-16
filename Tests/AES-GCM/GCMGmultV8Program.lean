@@ -18,7 +18,7 @@ open BitVec
  output: Xi - next hash value Xi;
 -/
 
-def gcm_gmult_v8_program : program :=
+def gcm_gmult_v8_program : Program :=
  def_program
  [ -- 00000000007aa420 <gcm_gmult_v8>:
    (0x7aa420#64,  0x4c407c11#32),   -- ld1  {v17.2d}, [x0]

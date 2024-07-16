@@ -22,7 +22,7 @@ open BitVec
 
 -/
 
-def aes_hw_set_encrypt_key_program : program :=
+def aes_hw_set_encrypt_key_program : Program :=
   def_program
   [ -- 000000000079f380 <aes_hw_set_encrypt_key>:
     (0x79f380#64,  0xa9bf7bfd#32),   -- stp  x29, x30, [sp, #-16]!

@@ -17,7 +17,7 @@ open BitVec
  output: Htable - powers of H precomputed up to H^12 (x0)
 -/
 
-def gcm_init_v8_program : program :=
+def gcm_init_v8_program : Program :=
   def_program
   [ -- 00000000007aa1c0 <gcm_init_v8>:
     (0x7aa1c0#64,  0x4c407c31#32),   -- ld1  {v17.2d}, [x1]

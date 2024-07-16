@@ -22,7 +22,7 @@ open BitVec
 
 -/
 
-def aes_hw_ctr32_encrypt_blocks_program : program :=
+def aes_hw_ctr32_encrypt_blocks_program : Program :=
   def_program
   [ -- 000000000079f8a0 <aes_hw_ctr32_encrypt_blocks>:
     (0x79f8a0#64,  0xa9bf7bfd#32),   -- stp  x29, x30, [sp, #-16]!

@@ -25,10 +25,11 @@ deriving DecidableEq, Repr
 
 instance : ToString ImmediateOp where toString a := toString (repr a)
 
+@[state_simp_rules]
 def decode_immediate_op (inst : Advanced_simd_modified_immediate_cls)
   (s : ArmState) : (Option ImmediateOp) × ArmState :=
   -- All UNALLOCATED cases when inst.o2 = 1
-  if inst.o2 == 0b1#1 ∧ inst.cmode ++ inst.op != 0b11110#5 then
+  if inst.o2 = 0b1#1 ∧ inst.cmode ++ inst.op ≠ 0b11110#5 then
     (none, write_err (StateError.Illegal s!"Illegal {inst} encountered!") s)
   else
     match_bv inst.cmode ++ inst.op with
@@ -60,14 +61,14 @@ def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitV
   | 0b100#3 => replicate 4 $ BitVec.zero 8 ++ imm8
   | 0b101#3 => replicate 4 $ imm8 ++ BitVec.zero 8
   | 0b110#3 =>
-    if cmode_low1 == 0 then
+    if cmode_low1 = 0 then
       replicate 2 $ BitVec.zero 16 ++ imm8 ++ allOnes 8
     else
       replicate 2 $ BitVec.zero 8 ++ imm8 ++ allOnes 16
   | _ =>
-    if cmode_low1 == 0 && op == 0 then
+    if cmode_low1 = 0 ∧ op = 0 then
       replicate 8 imm8
-    else if cmode_low1 == 0 && op == 1 then
+    else if cmode_low1 = 0 ∧ op = 1 then
       let imm8a := replicate 8 $ lsb imm8 7
       let imm8b := replicate 8 $ lsb imm8 6
       let imm8c := replicate 8 $ lsb imm8 5
@@ -77,7 +78,7 @@ def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitV
       let imm8g := replicate 8 $ lsb imm8 1
       let imm8h := replicate 8 $ lsb imm8 0
       imm8a ++ imm8b ++ imm8c ++ imm8d ++ imm8e ++ imm8f ++ imm8g ++ imm8h
-    else if cmode_low1 == 1 && op == 0 then
+    else if cmode_low1 = 1 ∧ op = 0 then
       let imm32 := lsb imm8 7 ++ ~~~(lsb imm8 6) ++
                    (replicate 5 $ lsb imm8 6) ++
                    extractLsb 5 0 imm8 ++ BitVec.zero 19

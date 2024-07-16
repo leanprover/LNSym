@@ -31,7 +31,7 @@ def trn_aux (p : Nat) (pairs : Nat) (esize : Nat) (part : Nat)
 
 @[state_simp_rules]
 def exec_trn (inst : Advanced_simd_permute_cls) (s : ArmState) : ArmState :=
-  if inst.size ++ inst.Q == 0b110#3 then
+  if inst.size ++ inst.Q = 0b110#3 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let esize := 8 <<< inst.size.toNat
@@ -62,7 +62,7 @@ def exec_advanced_simd_permute
 partial def Advanced_simd_permute_cls.trn1.rand : IO (Option (BitVec 32)) := do
   let size := ← BitVec.rand 2
   let Q := ← BitVec.rand 1
-  if size ++ Q == 0b110#3 then
+  if size ++ Q = 0b110#3 then
     Advanced_simd_permute_cls.trn1.rand
   else
     let (inst : Advanced_simd_permute_cls) :=
@@ -78,7 +78,7 @@ partial def Advanced_simd_permute_cls.trn1.rand : IO (Option (BitVec 32)) := do
 partial def Advanced_simd_permute_cls.trn2.rand : IO (Option (BitVec 32)) := do
   let size := ← BitVec.rand 2
   let Q := ← BitVec.rand 1
-  if size ++ Q == 0b110#3 then
+  if size ++ Q = 0b110#3 then
     Advanced_simd_permute_cls.trn2.rand
   else
     let (inst : Advanced_simd_permute_cls) :=

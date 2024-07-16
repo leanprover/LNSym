@@ -63,8 +63,8 @@ attribute [minimal_theory] Bool.and_eq_true
 attribute [minimal_theory] Bool.not_not
 attribute [minimal_theory] Bool.not_true
 attribute [minimal_theory] Bool.not_false
-attribute [minimal_theory] Bool.not_beq_true
-attribute [minimal_theory] Bool.not_beq_false
+attribute [minimal_theory] beq_true
+attribute [minimal_theory] beq_false
 attribute [minimal_theory] Bool.not_eq_true'
 attribute [minimal_theory] Bool.not_eq_false'
 attribute [minimal_theory] Bool.beq_to_eq

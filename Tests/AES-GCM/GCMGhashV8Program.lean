@@ -20,7 +20,7 @@ open BitVec
   output: Xi - next hash value Xi; (x0)
 -/
 
-def gcm_ghash_v8_program : program :=
+def gcm_ghash_v8_program : Program :=
   def_program
   [ -- 00000000007aa490 <gcm_ghash_v8>:
     (0x7aa490#64,  0xf101007f#32),   -- cmp  x3, #0x40

@@ -55,7 +55,7 @@ theorem zeroExtend_irrelevant (x : BitVec 64) :
   zeroExtend 64 x = x := by simp
 
 theorem add_x1_x1_1_sym_helper (x1_var : BitVec 64) :
-  (BitVec.toNat x1_var + 1)#64 = x1_var + 1#64 := by
+  BitVec.ofNat 64 (BitVec.toNat x1_var + 1) = x1_var + 1#64 := by
   sorry
 
 theorem add_x1_x1_1_sym

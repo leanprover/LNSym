@@ -42,13 +42,13 @@ def binary_vector_op (esize : Nat) (op : BitVec esize → BitVec esize → BitVe
 
 @[state_simp_rules]
 def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : ArmState :=
-  if inst.size == 0b11#2 && inst.Q == 0b0#1 then
+  if inst.size = 0b11#2 ∧ inst.Q = 0b0#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let datasize := if inst.Q = 1#1 then 128 else 64
     let esize := 8 <<< (BitVec.toNat inst.size)
     have h_esize : 0 < esize := by simp [esize]; apply zero_lt_shift_left_pos (by decide)
-    let sub_op := inst.U == 1
+    let sub_op := inst.U = 1
     let operand1 := read_sfp datasize inst.Rn s
     let operand2 := read_sfp datasize inst.Rm s
     let op := if sub_op then BitVec.sub else BitVec.add
@@ -56,6 +56,7 @@ def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : Ar
     let s := write_sfp datasize inst.Rd result s
     s
 
+@[state_simp_rules]
 def decode_logical_op (U : BitVec 1) (size : BitVec 2) : SIMDThreeSameLogicalType :=
   match U, size with
   | 0#1, 0b00#2 => SIMDThreeSameLogicalType.AND
@@ -110,9 +111,9 @@ theorem pc_of_exec_advanced_simd_three_same
   -- (r StateField.PC s) + 4#64 -- TODO: How do I use + here?
   (BitVec.add (r StateField.PC s) 4#64) := by
   simp_all!
-  simp only [exec_advanced_simd_three_same, exec_binary_vector, 
+  simp only [exec_advanced_simd_three_same, exec_binary_vector,
              Bool.and_eq_true, beq_iff_eq, binary_vector_op,
-             ofNat_eq_ofNat, zero_eq, exec_logic_vector, 
+             ofNat_eq_ofNat, zero_eq, exec_logic_vector,
              logic_vector_op]
   split
   · split <;> simp only [state_simp_rules, minimal_theory]

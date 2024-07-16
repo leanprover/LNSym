@@ -4,6 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Leonardo de Moura
 -/
 
+import Lean
+
 /-!
 A simple Map-like type based on lists
 -/
@@ -140,3 +142,58 @@ def Map.size (m : Map α β) : Nat :=
           -- leanprover/lean4:nightly-2024-02-24, but not in
           -- leanprover/lean4:nightly-2024-03-01.
              exact Nat.succ_lt_succ ih
+
+-------------------------------------------------------------------------------
+
+-- Programs are defined as an Map of 64-bit addresses to 32-bit
+-- instructions. Map has nice lemmas that allow us to smoothly fetch
+-- an instruction from the map during proofs (see
+-- fetch_inst_from_program below).
+abbrev Program := Map (BitVec 64) (BitVec 32)
+
+-- Custom simplification procedure for concrete evaluation of Map.find? terms,
+-- where the first argument is of type Program.
+
+open Lean.ToExpr Lean Meta Simp
+
+deriving instance DecidableEq for BitVec.Literal
+
+partial def Map.findBitVecLiteral? (find_key_lit : BitVec.Literal) (map_expr : Expr)
+  : SimpM (Option BitVec.Literal) := do
+  -- `whnfD e` reduces `e` to its weak-head-normal form. This is an efficient operation for
+  -- functions defined by structural recursion such as `Map.find?`
+  -- It will reveal the `List.cons`-application.
+  let map_expr ← whnfD map_expr
+  match_expr map_expr with
+  | List.nil _ => return none
+  | List.cons _ hd tl =>
+    let hd ← whnfD hd
+    let_expr Prod.mk _ _ key_expr val_expr ← hd | return none
+    let some key_lit ← BitVec.fromExpr? key_expr | return none
+    if find_key_lit = key_lit then
+      let some val_lit ← BitVec.fromExpr? val_expr | return none
+      return some val_lit
+    else
+      return (← Map.findBitVecLiteral? find_key_lit tl)
+  | _ => return none
+
+simproc reduceMapFind? ((Map.find? _ _ : Option _)) := fun e => do
+  let_expr Map.find? _ _ _ map key ← e | return .continue
+  -- "Abort" if `map` is not ground, that is, it contains
+  -- metavariables or free variables.
+  if map.hasExprMVar || map.hasFVar then return .continue
+  let some find_key_lit ← BitVec.fromExpr? key | return .continue
+  let maybe_val_lit ← Map.findBitVecLiteral? find_key_lit map
+  match maybe_val_lit with
+  | none =>
+      let new_expr := toExpr (Option.none : Option (BitVec 32))
+      return .done { expr := new_expr } -- We don't need to return `rfl` proofs.
+  | some val_lit =>
+      let new_expr := toExpr (some val_lit.value)
+      return .done { expr := new_expr }
+
+example : Map.find? [(3#64, 1#32)] 3#64 = some 1#32 := by
+  simp only [reduceMapFind?]
+
+example : Map.find? [(1#64, 2#32), (3#64, 5#32)] 2#64 = none := by
+  simp only [reduceMapFind?]

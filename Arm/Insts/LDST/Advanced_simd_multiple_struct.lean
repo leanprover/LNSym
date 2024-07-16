@@ -51,7 +51,7 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
     write_err (StateError.Illegal s!"Illegal instruction {inst_str} encountered!") s
   else
     let address := read_gpr 64 inst.Rn s
-    if inst.Rn == 31#5 && not (CheckSPAlignment s) then
+    if inst.Rn = 31#5 ∧ not (CheckSPAlignment s) then
       write_err (StateError.Fault s!"[Inst: {inst_str}] SP {address} is not aligned!") s
     else
       have h : datasize / 8 * 8 = datasize := by
@@ -118,7 +118,7 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
             let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) data3 s
             let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (3 * datasize_bytes))) data4 s
             (4 * datasize_bytes, s)
-      let offs := if wback && not (inst.Rm == some 31#5) then
+      let offs := if wback ∧ not (inst.Rm = some 31#5) then
                      read_gpr 64 (Option.getD inst.Rm 0#5) s
                   else
                     BitVec.ofNat 64 offs

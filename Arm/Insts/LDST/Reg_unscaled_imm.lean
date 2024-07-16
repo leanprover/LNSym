@@ -25,12 +25,12 @@ def exec_ldstur
     let memop := if getLsb inst.opc 0 then MemOp.MemOp_LOAD else MemOp.MemOp_STORE
     let datasize := 8 <<< scale
     let address := read_gpr 64 inst.Rn s
-    if inst.Rn == 31#5 && not (CheckSPAlignment s) then
+    if inst.Rn = 31#5 ∧ not (CheckSPAlignment s) then
       write_err (StateError.Fault s!"[Inst: {inst}] SP {address} is not aligned!") s
     else
       let address := address + offset
       -- State Updates
-      let s := if memop == MemOp.MemOp_STORE then
+      let s := if memop = MemOp.MemOp_STORE then
                  have h : datasize = datasize / 8 * 8 := by omega
                  let data := read_sfp datasize inst.Rt s
                  write_mem_bytes (datasize / 8) address (h ▸ data) s
@@ -44,8 +44,9 @@ def exec_ldstur
 @[state_simp_rules]
 def exec_reg_unscaled_imm
   (inst : Reg_unscaled_imm_cls) (s : ArmState) : ArmState :=
-  if inst.VR == 0b1#1
-  then exec_ldstur inst s
-  else write_err (StateError.Unimplemented s!"Unsupported instruction {inst} encountered!") s
+  if inst.VR = 0b1#1 then 
+    exec_ldstur inst s
+  else 
+    write_err (StateError.Unimplemented s!"Unsupported instruction {inst} encountered!") s
 
 end LDST

@@ -199,7 +199,7 @@ protected def addArmInstToCfg (pc : BitVec 64) (arm_inst : ArmInst) (cfg : Cfg)
    let new_cfg ← addEntry pc_inst to_insts cfg
    pure (haltp, new_cfg)
 
-protected def addToCfg (address : BitVec 64) (program : program) (cfg : Cfg)
+protected def addToCfg (address : BitVec 64) (program : Program) (cfg : Cfg)
   : IO (Bool × Cfg) :=
   let maybe_raw_inst := program.find? address
   match maybe_raw_inst with
@@ -258,7 +258,7 @@ private theorem termination_lemma (i j max : Fin n) (h : n > 0)
   done
 
 private def create' (address : BitVec 64) (max_address : BitVec 64)
-  (program : program) (cfg : Cfg)  : IO Cfg := do
+  (program : Program) (cfg : Cfg)  : IO Cfg := do
   if h₀ : max_address < address then
     pure cfg
   else
@@ -286,7 +286,7 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
                 s!"address is {max_address}."))
   termination_by (max_address - address).toNat
 
-protected def create (program : program) : IO Cfg :=
+protected def create (program : Program) : IO Cfg :=
   let maybe_start_address := program.min
   let maybe_max_address := program.max
   match maybe_start_address, maybe_max_address with

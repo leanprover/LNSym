@@ -9,9 +9,9 @@ guidelines.
 
 ## Prerequisites
 
-1. Install Z3, recommended version
-   [4.11.2](https://github.com/Z3Prover/z3/releases/tag/z3-4.11.2),
-   and make sure that it is in your path.
+1. Install the [Cadical SAT
+   Solver](https://github.com/arminbiere/cadical), and make sure that
+   it is in your path.
 
 2. Install Lean4 and your preferred editor's plug-in on your machine
    by following [these
