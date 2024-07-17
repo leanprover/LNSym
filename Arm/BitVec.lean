@@ -292,6 +292,36 @@ def flattenTR {n : Nat} (xs : List (BitVec n)) (i : Nat)
     let new_acc := (BitVec.partInstall (i * n + n - 1) (i * n) (h ▸ x) acc)
     flattenTR rest (i + 1) new_acc H
 
+/-- Reverse bits of a bit-vector. -/
+def reverse (x : BitVec n) : BitVec n :=
+  let rec reverseTR (x : BitVec n) (i : Nat) (acc : BitVec n) :=
+    if i < n then
+      let xi := extractLsb i i x
+      have h : i - i + 1 = (n - i - 1) - (n - i - 1) + 1 := by omega
+      let acc := BitVec.partInstall (n - i - 1) (n - i - 1) (h ▸ xi) acc
+      reverseTR x (i + 1) acc
+    else acc
+  reverseTR x 0 $ BitVec.zero n
+
+example : reverse 0b11101#5 = 0b10111#5 := by rfl
+
+/-- Split a bit-vector into sub vectors of size e. -/
+def split (x : BitVec n) (e : Nat) (h : 0 < e): List (BitVec e) :=
+  let rec splitTR (x : BitVec n) (e : Nat) (h : 0 < e)
+    (i : Nat) (acc : List (BitVec e)) : List (BitVec e) :=
+    if i < n/e then
+      let lo := i * e
+      let hi := lo + e - 1
+      have h₀ : e = hi - lo + 1 := by simp only [hi, lo]; omega
+      let part : BitVec e := h₀ ▸ extractLsb hi lo x
+      let newacc := part :: acc
+      splitTR x e h (i + 1) newacc
+    else acc
+  splitTR x e h 0 []
+
+example : split 0xabcd1234#32 8 (by omega) = [0xab#8, 0xcd#8, 0x12#8, 0x34#8] :=
+  by rfl
+
 ----------------------------------------------------------------------
 
 attribute [ext] BitVec
