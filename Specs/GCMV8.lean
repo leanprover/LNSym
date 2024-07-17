@@ -19,37 +19,6 @@ namespace GCMV8
 open BitVec
 
 ------------------------------------------------------------------------------
--- Functions related to bit vectors
-
-/-- Reverse bits of a bit-vector. -/
-def reverse (x : BitVec n) : BitVec n :=
-  let rec reverseTR (x : BitVec n) (i : Nat) (acc : BitVec n) :=
-    if i < n then
-      let xi := extractLsb i i x
-      have h : i - i + 1 = (n - i - 1) - (n - i - 1) + 1 := by omega
-      let acc := BitVec.partInstall (n - i - 1) (n - i - 1) (h ▸ xi) acc
-      reverseTR x (i + 1) acc
-    else acc
-  reverseTR x 0 $ BitVec.zero n
-
-example : reverse 0b11101#5 = 0x17#5 := by native_decide
-
-/-- Split a bit-vector into sub vectors of size e. -/
-def split (x : BitVec n) (e : Nat) (h : 0 < e): List (BitVec e) :=
-  let rec splitTR (x : BitVec n) (e : Nat) (h : 0 < e)
-    (i : Nat) (acc : List (BitVec e)) : List (BitVec e) :=
-    if i < n/e then
-      let lo := i * e
-      let hi := lo + e - 1
-      have h₀ : e = hi - lo + 1 := by simp only [hi, lo]; omega
-      let part : BitVec e := h₀ ▸ extractLsb hi lo x
-      let newacc := part :: acc
-      splitTR x e h (i + 1) newacc
-    else acc
-  splitTR x e h 0 []
-
-example : split 0xabcd1234#32 8 (by omega) = [0xab#8, 0xcd#8, 0x12#8, 0x34#8] :=
-  by native_decide
 
 def hi (x : BitVec 128) : BitVec 64 :=
   extractLsb 127 64 x
@@ -77,7 +46,7 @@ def pmult (x: BitVec (m + 1)) (y : BitVec (n + 1)) : BitVec (m + n + 1) :=
     else acc
   pmultTR x y 0 (BitVec.zero (m + n + 1))
 
-example: pmult 0b1101#4 0b10#2 = 0b11010#5 := by native_decide
+example: pmult 0b1101#4 0b10#2 = 0b11010#5 := by rfl
 
 /-- Degree of x. -/
 protected def degree (x : BitVec n) : Nat :=
@@ -85,7 +54,7 @@ protected def degree (x : BitVec n) : Nat :=
     if n = 0 then 0
     else if getLsb x n then n else degreeTR x (n - 1)
   degreeTR x (n - 1)
-example: GCMV8.degree 0b0101#4 = 2 := by native_decide
+example: GCMV8.degree 0b0101#4 = 2 := by rfl
 
 /-- Subtract x from y if y's x-degree-th bit is 1. -/
 protected def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
@@ -103,14 +72,14 @@ def pdiv (x: BitVec n) (y : BitVec m) (h : 0 < m): BitVec n :=
       have h1 : 1 = GCMV8.degree y - GCMV8.degree y + 1 := by omega
       let bit : BitVec 1 := h1 ▸ extractLsb (GCMV8.degree y) (GCMV8.degree y) zi
       have h4 : 1 = (n - i - 1) - (n - i - 1) + 1 := by omega
-      let newacc : BitVec n := BitVec.partInstall (n - i - 1) (n - i - 1) (h4 ▸ bit) acc
+      let newacc : BitVec n := partInstall (n - i - 1) (n - i - 1) (h4 ▸ bit) acc
       pdivTR x y (i + 1) zi newacc
     else acc
   pdivTR x y 0 (BitVec.zero m) (BitVec.zero n)
 
-example : pdiv 0b1101#4 0b10#2 (by omega) = 0b110#4 := by native_decide
-example : pdiv 0x1a#5 0b10#2 (by omega) = 0b1101#5 := by native_decide
-example : pdiv 0b1#1 0b10#2 (by omega) = 0b0#1 := by native_decide
+example : pdiv 0b1101#4 0b10#2 (by omega) = 0b110#4 := by rfl
+example : pdiv 0x1a#5 0b10#2 (by omega) = 0b1101#5 := by rfl
+example : pdiv 0b1#1 0b10#2 (by omega) = 0b0#1 := by rfl
 
 /-- Performs modulus of polynomials over GF(2). -/
 def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : m > 0) : BitVec m :=
@@ -125,12 +94,12 @@ def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : m > 0) : BitVec m :=
     else r
   if y = 0 then 0 else pmodTR x y (GCMV8.reduce y 1) 0 (BitVec.zero m) H
 
-example: pmod 0b011#3 0b00#2 (by omega) = 0b0#1 := by native_decide
-example: pmod 0b011#3 0b01#2 (by omega) = 0b0#1 := by native_decide
-example: pmod 0b011#3 0b10#2 (by omega) = 0b1#1 := by native_decide
-example: pmod 0b011#3 0b11#2 (by omega) = 0b0#1 := by native_decide
-example: pmod 0b011#3 0b100#3 (by omega) = 0b11#2 := by native_decide
-example: pmod 0b011#3 0b1001#4 (by omega) = 0b11#3 := by native_decide
+example: pmod 0b011#3 0b00#2 (by omega) = 0b0#1 := by rfl
+example: pmod 0b011#3 0b01#2 (by omega) = 0b0#1 := by rfl
+example: pmod 0b011#3 0b10#2 (by omega) = 0b1#1 := by rfl
+example: pmod 0b011#3 0b11#2 (by omega) = 0b0#1 := by rfl
+example: pmod 0b011#3 0b100#3 (by omega) = 0b11#2 := by rfl
+example: pmod 0b011#3 0b1001#4 (by omega) = 0b11#3 := by rfl
 
 ------------------------------------------------------------------------------
 -- Functions related to GCM
@@ -195,6 +164,7 @@ def GCMInitV8 (H : BitVec 128) : (List (BitVec 128)) :=
   let H10 := ((hi H11) ^^^ (lo H11)) ++ ((hi H9) ^^^ (lo H9))
   [H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11]
 
+-- TODO: This test could not be proved using rfl
 example :  GCMInitV8 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128 =
   [ 0xcdd297a9df1458771099f4b39468565c#128,
     0x62d81a7fe5da3296dd4b631a4b7c0e2b#128,
@@ -222,7 +192,7 @@ example : GCMGmultV8 0xcdd297a9df1458771099f4b39468565c#128
   [ 0x10#8, 0x54#8, 0x43#8, 0xb0#8, 0x2c#8, 0x4b#8, 0x1f#8, 0x24#8,
     0x3b#8, 0xcd#8, 0xd4#8, 0x87#8, 0x16#8, 0x65#8, 0xb3#8, 0x2b#8 ] (by decide) =
   [ 0xa2#8, 0xc9#8, 0x9c#8, 0x56#8, 0xeb#8, 0xa7#8, 0x91#8, 0xf6#8,
-    0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ] := by native_decide
+    0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ] := by rfl
 
 
 protected def gcm_ghash_block (H : BitVec 128) (Xi : BitVec 128)
@@ -257,6 +227,6 @@ example : GCMGhashV8 0xcdd297a9df1458771099f4b39468565c#128
     0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ]
   (List.replicate 16 0x2a#8) (by simp) (by simp only [List.length_replicate]; omega) =
   [ 0x20#8, 0x60#8, 0x2e#8, 0x75#8, 0x7a#8, 0x4e#8, 0xec#8, 0x90#8,
-    0xc0#8, 0x9d#8, 0x49#8, 0xfd#8, 0xdc#8, 0xf2#8, 0xc9#8, 0x35#8 ] := by native_decide
+    0xc0#8, 0x9d#8, 0x49#8, 0xfd#8, 0xdc#8, 0xf2#8, 0xc9#8, 0x35#8 ] := by rfl
 
 end GCMV8
