@@ -338,14 +338,9 @@ instance : Ord (BitVec n) where
 instance : Hashable (BitVec n) where
   hash x := ⟨Fin.ofNat' x.toNat (by decide)⟩
 
+-- Making sure that the following are decidable.
 example : 5#4 = 5#4 := by decide
 example : ¬ 4#4 = 5#4 := by decide
-
-instance BitVec.decLt {n} (a b : BitVec n) : Decidable (LT.lt a b) := Fin.decLt ..
-instance BitVec.decLe {n} (a b : BitVec n) : Decidable (LE.le a b) := Fin.decLe ..
-
--- The following can be discharged by the decide tactic only after
--- creating the instances above.
 example : 3#4 < 4#4 := by decide
 example : 3#4 <= 4#4 := by decide
 example : 4#4 >= 4#4 := by decide

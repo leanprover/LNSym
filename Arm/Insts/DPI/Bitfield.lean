@@ -84,8 +84,52 @@ partial def Bitfield_cls.all.rand : IO (Option (BitVec 32)) := do
   else
     pure opc
 
+-- We have separate functions to test LSR and LSL specifically
+-- because we want to make sure they are hit during conformance testing,
+-- which may not be the case when `Bitfield_cls.all.rand` is used to
+-- generate a small number of test cases.
+partial def Bitfield_cls.lsr.rand : IO (Option (BitVec 32)) := do
+  -- Specifically test the assignment that results in LSR
+  let sf := ← BitVec.rand 1
+  let N := sf
+  let immr := sf ++ (← BitVec.rand 5)
+  let imms := sf ++ 0b11111#5
+  let (inst : Bitfield_cls) :=
+    { sf    := sf,
+      opc   := ← pure 0b10#2,
+      N     := N,
+      immr  := immr,
+      imms  := imms,
+      Rn    := ← BitVec.rand 5,
+      Rd    := ← BitVec.rand 5 }
+  pure (some (inst.toBitVec32))
+
+partial def Bitfield_cls.lsl.rand : IO (Option (BitVec 32)) := do
+  -- Specifically test the assignment that results in LSL
+  let sf := ← BitVec.rand 1
+  let N := sf
+  let imms := sf ++ (← pick_legal_lsl_low_imms_bits)
+  let immr := imms + 1#6
+  let (inst : Bitfield_cls) :=
+    { sf    := sf,
+      opc   := ← pure 0b10#2,
+      N     := N,
+      immr  := immr,
+      imms  := imms,
+      Rn    := ← BitVec.rand 5,
+      Rd    := ← BitVec.rand 5 }
+  pure (some (inst.toBitVec32))
+  where pick_legal_lsl_low_imms_bits : IO (BitVec 5) := do
+    let bits ← BitVec.rand 5
+    if bits = 0b11111#5 then
+      pick_legal_lsl_low_imms_bits
+    else
+      return bits
+
 def Bitfield_cls.rand : List (IO (Option (BitVec 32))) :=
-  [ Bitfield_cls.all.rand ]
+  [ Bitfield_cls.all.rand,
+    Bitfield_cls.lsr.rand,
+    Bitfield_cls.lsl.rand ]
 
 ----------------------------------------------------------------------
 

@@ -25,7 +25,7 @@ tests:
 
 .PHONY: cosim
 cosim:
-	time -p lake exe lnsym $(VERBOSE) --num_tests $(NUM_TESTS)
+	time -p lake exe lnsym $(VERBOSE) --num-tests $(NUM_TESTS)
 
 .PHONY: clean clean_all
 clean: 
