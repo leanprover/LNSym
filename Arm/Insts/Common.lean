@@ -89,6 +89,7 @@ deriving DecidableEq, Repr
 
 instance : ToString ShiftType where toString a := toString (repr a)
 
+@[state_simp_rules]
 def decode_shift (shift : BitVec 2) : ShiftType :=
   match shift with
   | 0b00 => ShiftType.LSL
@@ -132,6 +133,8 @@ deriving DecidableEq, Repr
 
 instance : ToString LogicalImmType where toString a := toString (repr a)
 
+-- TODO: Define a simproc -- we expect this function to be called on concrete
+-- values only.
 def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
   let mut acc := none
   for i in List.reverse $ List.range n do
@@ -140,6 +143,8 @@ def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
          break
   return acc
 
+-- TODO: Define a simproc -- we expect this function to be called on concrete
+-- values only.
 def lowest_set_bit (bv : BitVec n) : Nat := Id.run do
   let mut acc := n
   for i in List.range n do
@@ -148,6 +153,8 @@ def lowest_set_bit (bv : BitVec n) : Nat := Id.run do
          break
   return acc
 
+-- TODO: Define a simproc -- we expect this function to be called on concrete
+-- values only.
 def invalid_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immediate : Bool)
   (M : Nat) : Bool :=
   let len := highest_set_bit $ immN ++ ~~~imms
@@ -185,6 +192,8 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
         . simp only [Decidable.not_not, imp_self]
     done
 
+-- TODO: Define a simproc -- we expect this function to be called on concrete
+-- values only.
 -- Resources on Arm bitmask immediate:
 --   https://developer.arm.com/documentation/dui0802/b/A64-General-Instructions/MOV--bitmask-immediate-
 --   https://kddnewton.com/2022/08/11/aarch64-bitmask-immediates.html
