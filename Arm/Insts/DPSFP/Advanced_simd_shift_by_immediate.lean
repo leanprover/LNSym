@@ -20,7 +20,7 @@ def exec_shift_right_vector
   if (lsb inst.immh 3) ++ inst.Q = 0b10#2 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
-    let l := Option.get! $ highest_set_bit inst.immh
+    let l := highest_set_bit inst.immh
     let esize := 8 <<< l
     have h : esize > 0 := by
       simp only [esize]
@@ -46,7 +46,7 @@ def exec_shl_vector
   if (lsb inst.immh 3) ++ inst.Q = 0b10#2 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
-    let l := Option.get! $ highest_set_bit inst.immh
+    let l := highest_set_bit inst.immh
     let esize := 8 <<< l
     have h : esize > 0 := by
       simp only [esize]

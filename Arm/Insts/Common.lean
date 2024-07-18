@@ -133,25 +133,51 @@ deriving DecidableEq, Repr
 
 instance : ToString LogicalImmType where toString a := toString (repr a)
 
--- TODO: Define a simproc -- we expect this function to be called on concrete
--- values only.
-def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
-  let mut acc := none
-  for i in List.reverse $ List.range n do
-    if lsb bv i = 1
-    then acc := some i
-         break
-  return acc
+/- Find the index of the most significant set bit, if any, in `bv`.
+This function differs from the Arm's HighestSetBit
+(https://developer.arm.com/documentation/ddi0602/2022-03/Shared-Pseudocode/Shared-Functions?lang=en#impl-shared.HighestSetBit.1)
+because it returns `n` when no set bit is found, instead of returning `-1`.
+-/
+def highest_set_bit (bv : BitVec n) : Nat :=
+  go (n - 1) bv where
+  go (i : Nat) (bv : BitVec n) :=
+    if lsb bv i = 1#1 then
+      i
+    else
+      if i = 0 then
+        n
+      else
+        go (i - 1) bv
 
--- TODO: Define a simproc -- we expect this function to be called on concrete
--- values only.
-def lowest_set_bit (bv : BitVec n) : Nat := Id.run do
-  let mut acc := n
-  for i in List.range n do
-    if lsb bv i = 1
-    then acc := i
-         break
-  return acc
+/- Find the index of the least significant set bit, if any, in `bv`.
+This function matches Arm's LowestSetBit
+(https://developer.arm.com/documentation/ddi0602/2022-03/Shared-Pseudocode/Shared-Functions?lang=en#impl-shared.LowestSetBit.1)
+-- it returns `n` when no set bit is found.
+-/
+def lowest_set_bit (bv : BitVec n) : Nat :=
+  go 0 bv where
+  go (i : Nat) (bv : BitVec n) :=
+    if i >= n then
+      n
+    else
+      if lsb bv i = 1#1 then
+        i
+      else
+        go (i + 1) bv
+  termination_by (n - i)
+
+open Lean Meta Simp in
+@[inline] def reduceFindSetBit (declName : Name) (arity : Nat)
+    (op : {n : Nat} → BitVec n → Nat) (e : Expr) : Lean.Meta.Simp.SimpM DStep := do
+  unless e.isAppOfArity declName arity do return .continue
+  let some v ← fromExpr? e.appArg! | return .continue
+  return .done <| toExpr (op v.value)
+
+dsimproc [state_simp_rules] reduce_highest_set_bit (highest_set_bit _) :=
+  reduceFindSetBit ``highest_set_bit 2 highest_set_bit
+
+dsimproc [state_simp_rules] reduce_lowest_set_bit (lowest_set_bit _) :=
+  reduceFindSetBit ``lowest_set_bit 2 lowest_set_bit
 
 -- TODO: Define a simproc -- we expect this function to be called on concrete
 -- values only.
@@ -159,8 +185,8 @@ def invalid_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immediate : Bool)
   (M : Nat) : Bool :=
   let len := highest_set_bit $ immN ++ ~~~imms
   match len with
-  | none => true
-  | some len =>
+  | 7 => true
+  | _ =>
     if len < 1 ∧ M < (1 <<< len) then true
     else
       let levels := zeroExtend 6 (allOnes len)
@@ -176,7 +202,7 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
   (immediate : Bool) (M : Nat):
   ¬ invalid_bit_masks immN imms immediate M →
   let len := highest_set_bit $ immN ++ ~~~imms
-  let esize := 1 <<< len.get!
+  let esize := 1 <<< len
   esize * (M / esize) = M := by
     unfold invalid_bit_masks
     simp only [Nat.lt_one_iff, ite_not, Bool.not_eq_true]
@@ -184,7 +210,6 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
     · simp only
       exact fun a => False.elim a
     . simp_all only [Bool.ite_eq_false_distrib, ite_eq_left_iff, imp_false]
-      rw [option_get_bang_of_some]
       split
       . simp only [false_implies]
       . split
