@@ -37,7 +37,7 @@ def exec_advanced_simd_scalar_copy
 
 partial def Advanced_simd_scalar_copy_cls.dup.rand : IO (Option (BitVec 32)) := do
   let imm5 := ← BitVec.rand 5
-  if (Option.get! $ lowest_set_bit imm5) > 3 then
+  if (lowest_set_bit imm5) > 3 then
     Advanced_simd_scalar_copy_cls.dup.rand
   else
     let (inst : Advanced_simd_scalar_copy_cls) :=
