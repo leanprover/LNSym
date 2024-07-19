@@ -1,4 +1,5 @@
 import Arm.Exec
+import Tactics.Common
 import Lean
 
 /-
@@ -34,34 +35,6 @@ conclusion
 
 open Lean Elab Tactic Expr Meta
 open BitVec
-
-/- Get the string representation of `e` if it denotes a bitvector
-literal. The bitvector's width is not represented in the resulting
-string. -/
-def getBitVecString? (e : Expr) : MetaM (Option String) := do
-  let maybe_e_literal ← getBitVecValue? e
-  match maybe_e_literal with
-  | some ⟨_, value⟩ => return some (ToString.toString value.toNat)
-  | none => return none
-
-/- Get the string representation of `e` if it denotes a `PFlag`. -/
-def getPFlagString? (e : Expr) : MetaM (Option String) := OptionT.run do
-  match_expr e with
-  | PFlag.N => return "n_flag"
-  | PFlag.Z => return "z_flag"
-  | PFlag.C => return "c_flag"
-  | PFlag.V => return "v_flag"
-  | _       => panic! s!"[getPFlagString?] Unexpected expression: {e}"
-
-/- Get the string representation of `e` if it denotes a `StateField`. -/
-def getStateFieldString? (e : Expr) : MetaM (Option String) := OptionT.run do
-  match_expr e with
-  | StateField.GPR iExpr  => return ("x" ++ (← getBitVecString? iExpr))
-  | StateField.SFP iExpr  => return ("q" ++ (← getBitVecString? iExpr))
-  | StateField.PC         => return "pc"
-  | StateField.FLAG pExpr => getPFlagString? pExpr
-  | StateField.ERR        => return "err"
-  | _                     => panic! s!"[getStateFieldName?] Unexpected expression: {e}"
 
 partial def explodeWriteNest (goal : MVarId)
   (st_var : Expr) (e : Expr) (seen_fields : List String)

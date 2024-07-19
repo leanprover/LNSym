@@ -89,6 +89,7 @@ deriving DecidableEq, Repr
 
 instance : ToString ShiftType where toString a := toString (repr a)
 
+@[state_simp_rules]
 def decode_shift (shift : BitVec 2) : ShiftType :=
   match shift with
   | 0b00 => ShiftType.LSL
@@ -132,35 +133,94 @@ deriving DecidableEq, Repr
 
 instance : ToString LogicalImmType where toString a := toString (repr a)
 
-def highest_set_bit (bv : BitVec n) : Option Nat := Id.run do
-  let mut acc := none
-  for i in List.reverse $ List.range n do
-    if lsb bv i = 1
-    then acc := some i
-         break
-  return acc
+/- Find the index of the most significant set bit, if any, in `bv`.
+This function differs from the Arm's HighestSetBit
+(https://developer.arm.com/documentation/ddi0602/2022-03/Shared-Pseudocode/Shared-Functions?lang=en#impl-shared.HighestSetBit.1)
+because it returns `n` when no set bit is found, instead of returning `-1`.
+-/
+def highest_set_bit (bv : BitVec n) : Nat :=
+  go (n - 1) bv where
+  go (i : Nat) (bv : BitVec n) :=
+    if lsb bv i = 1#1 then
+      i
+    else
+      if i = 0 then
+        n
+      else
+        go (i - 1) bv
 
-def lowest_set_bit (bv : BitVec n) : Nat := Id.run do
-  let mut acc := n
-  for i in List.range n do
-    if lsb bv i = 1
-    then acc := i
-         break
-  return acc
+/- Find the index of the least significant set bit, if any, in `bv`.
+This function matches Arm's LowestSetBit
+(https://developer.arm.com/documentation/ddi0602/2022-03/Shared-Pseudocode/Shared-Functions?lang=en#impl-shared.LowestSetBit.1)
+-- it returns `n` when no set bit is found.
+-/
+def lowest_set_bit (bv : BitVec n) : Nat :=
+  go 0 bv where
+  go (i : Nat) (bv : BitVec n) :=
+    if i >= n then
+      n
+    else
+      if lsb bv i = 1#1 then
+        i
+      else
+        go (i + 1) bv
+  termination_by (n - i)
+
+open Lean Meta Simp in
+@[inline] def reduceFindSetBit (declName : Name) (arity : Nat)
+    (op : {n : Nat} → BitVec n → Nat) (e : Expr) : Lean.Meta.Simp.SimpM DStep := do
+  unless e.isAppOfArity declName arity do return .continue
+  let some v ← fromExpr? e.appArg! | return .continue
+  return .done <| toExpr (op v.value)
+
+dsimproc [state_simp_rules] reduce_highest_set_bit (highest_set_bit _) :=
+  reduceFindSetBit ``highest_set_bit 2 highest_set_bit
+
+dsimproc [state_simp_rules] reduce_lowest_set_bit (lowest_set_bit _) :=
+  reduceFindSetBit ``lowest_set_bit 2 lowest_set_bit
 
 def invalid_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immediate : Bool)
   (M : Nat) : Bool :=
-  let len := highest_set_bit $ immN ++ ~~~imms
-  match len with
-  | none => true
-  | some len =>
-    if len < 1 ∧ M < (1 <<< len) then true
+  let inp := immN ++ ~~~imms
+  let len := highest_set_bit inp
+  if len = inp.width then
+    -- If no set bit is found in `inp`, then `highest_set_bit` returns the width
+    -- of `inp`.
+    true
+  else if len < 1 ∧ M < (1 <<< len) then
+   true
+  else
+    let levels := zeroExtend 6 (allOnes len)
+    if immediate ∧ (imms &&& levels = levels) then
+      true
     else
-      let levels := zeroExtend 6 (allOnes len)
-      if immediate ∧ (imms &&& levels = levels) then true
-      else
-        let esize := 1 <<< len
-        if esize * (M / esize) ≠ M then true else false
+      let esize := 1 <<< len
+      if esize * (M / esize) ≠ M then true else false
+
+open Lean Meta Simp in
+dsimproc [state_simp_rules] reduceInvalidBitMasks (invalid_bit_masks _ _ _ _) := fun e => do
+  let_expr invalid_bit_masks immN imms imm M ← e | return .continue
+  let immN ← simp immN
+  let imms ← simp imms
+  let imm ← simp imm
+  let M ← simp M
+  let some ⟨immN_width, immN⟩ ← getBitVecValue? immN.expr | return .continue
+  if h1 : ¬ (immN_width = 1) then
+    return .continue
+  else
+    let some ⟨imms_width, imms⟩ ← getBitVecValue? imms.expr | return .continue
+    if h2 : ¬ (imms_width = 6) then
+      return .continue
+    else
+      let some M ← Nat.fromExpr? M.expr | return .continue
+      have h1' : immN_width = 1 := by simp_all only [Decidable.not_not]
+      have h2' : imms_width = 6 := by simp_all only [Decidable.not_not]
+      return .done <|
+          toExpr (invalid_bit_masks
+                      (BitVec.cast h1' immN)
+                      (BitVec.cast h2' imms)
+                      imm.expr.isTrue
+                      M)
 
 theorem Nat.lt_one_iff {n : Nat} : n < 1 ↔ n = 0 := by
   omega
@@ -169,15 +229,13 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
   (immediate : Bool) (M : Nat):
   ¬ invalid_bit_masks immN imms immediate M →
   let len := highest_set_bit $ immN ++ ~~~imms
-  let esize := 1 <<< len.get!
+  let esize := 1 <<< len
   esize * (M / esize) = M := by
     unfold invalid_bit_masks
     simp only [Nat.lt_one_iff, ite_not, Bool.not_eq_true]
     split
-    · simp only
-      exact fun a => False.elim a
+    · simp only [Nat.reduceAdd, false_implies]
     . simp_all only [Bool.ite_eq_false_distrib, ite_eq_left_iff, imp_false]
-      rw [option_get_bang_of_some]
       split
       . simp only [false_implies]
       . split
@@ -209,6 +267,38 @@ def decode_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immr : BitVec 6)
       apply M_divisible_by_esize_of_valid_bit_masks immN imms immediate M
       simp_all
     some (h ▸ wmask, h ▸ tmask)
+
+open Lean Meta Simp in
+dsimproc [state_simp_rules] reduceDecodeBitMasks (decode_bit_masks _ _ _ _ _) := fun e => do
+  let_expr decode_bit_masks immN imms immr imm M ← e | return .continue
+  let immN ← simp immN
+  let imms ← simp imms
+  let immr ← simp immr
+  let imm ← simp imm
+  let M ← simp M
+  let some ⟨immN_width, immN⟩ ← getBitVecValue? immN.expr | return .continue
+  if h1 : ¬ (immN_width = 1) then
+    return .continue
+  else
+    let some ⟨imms_width, imms⟩ ← getBitVecValue? imms.expr | return .continue
+    if h2 : ¬ (imms_width = 6) then
+      return .continue
+    else
+      let some ⟨immr_width, immr⟩ ← getBitVecValue? immr.expr | return .continue
+      if h3 : ¬ (immr_width = 6) then
+        return .continue
+      else
+        let some M ← Nat.fromExpr? M.expr | return .continue
+        have h1' : immN_width = 1 := by simp_all only [Decidable.not_not]
+        have h2' : imms_width = 6 := by simp_all only [Decidable.not_not]
+        have h3' : immr_width = 6 := by simp_all only [Decidable.not_not]
+        return .done <|
+            toExpr (decode_bit_masks
+                        (BitVec.cast h1' immN)
+                        (BitVec.cast h2' imms)
+                        (BitVec.cast h3' immr)
+                        imm.expr.isTrue
+                        M)
 
 ----------------------------------------------------------------------
 
