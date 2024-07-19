@@ -157,7 +157,8 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   repeat (unfold BitVec.partInstall; simp)
   unfold sha512h compression_update_t1 elem_set elem_get partInstall sigma_big_1 ch ror
   simp only [Nat.reduceAdd, Nat.reduceSub, Nat.reduceMul, Nat.sub_zero, reduceAllOnes,
-    reduceZeroExtend, Nat.zero_mul, reduceHShiftLeft, reduceNot, reduceAnd, Nat.one_mul]
+    reduceZeroExtend, Nat.zero_mul, reduceHShiftLeft, reduceNot, reduceAnd, Nat.one_mul,
+    BitVec.cast_eq]
   bv_decide
 
 end sha512_block_armv8_rules

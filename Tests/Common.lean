@@ -6,5 +6,5 @@ Author(s): Yan Peng
 import Arm.BitVec
 
 def revflat (x : List (BitVec n)) : BitVec (n * x.length) := 
-  have h : x.reverse.length = x.length := by simp only [List.length_reverse]
-  h ▸ BitVec.flatten (List.reverse x)
+  have h : n * x.reverse.length = n * x.length := by simp only [List.length_reverse]
+  BitVec.cast h $ BitVec.flatten (List.reverse x)

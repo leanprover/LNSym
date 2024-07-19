@@ -60,59 +60,59 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
       match (rpt, selem) with
         | (1, 1) => -- one register
           if inst.L = 1#1 then -- LD1
-            let data := h ▸ read_mem_bytes datasize_bytes address s
+            let data := BitVec.cast h $ read_mem_bytes datasize_bytes address s
             let s := write_sfp datasize t data s
             (datasize_bytes, s)
           else -- ST1
-            let data := h.symm ▸ read_sfp datasize t s
+            let data := BitVec.cast h.symm $ read_sfp datasize t s
             let s := write_mem_bytes datasize_bytes address data s
             (datasize_bytes, s)
         | (2, 1) => -- two registers
           if inst.L = 1#1 then -- LD1
-            let data1 := h ▸ read_mem_bytes datasize_bytes address s
-            let data2 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) s
+            let data1 := BitVec.cast h $ read_mem_bytes datasize_bytes address s
+            let data2 := BitVec.cast h $ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) s
             let s := write_sfp datasize t data1 s
             let s := write_sfp datasize t2 data2 s
             (2 * datasize_bytes, s)
           else -- ST1
-            let data1 := h.symm ▸ read_sfp datasize t s
-            let data2 := h.symm ▸ read_sfp datasize t2 s
+            let data1 := BitVec.cast h.symm $ read_sfp datasize t s
+            let data2 := BitVec.cast h.symm $ read_sfp datasize t2 s
             let s := write_mem_bytes datasize_bytes address data1 s
             let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) data2 s
             (2 * datasize_bytes, s)
         | (3, 1) => -- three registers
           if inst.L = 1#1 then -- LD1
-            let data1 := h ▸ read_mem_bytes datasize_bytes address s
-            let data2 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) s
-            let data3 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) s
+            let data1 := BitVec.cast h $ read_mem_bytes datasize_bytes address s
+            let data2 := BitVec.cast h $ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) s
+            let data3 := BitVec.cast h $ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) s
             let s := write_sfp datasize t data1 s
             let s := write_sfp datasize t2 data2 s
             let s := write_sfp datasize t3 data3 s
             (3 * datasize_bytes, s)
           else -- ST1
-            let data1 := h.symm ▸ read_sfp datasize t s
-            let data2 := h.symm ▸ read_sfp datasize t2 s
-            let data3 := h.symm ▸ read_sfp datasize t3 s
+            let data1 := BitVec.cast h.symm $ read_sfp datasize t s
+            let data2 := BitVec.cast h.symm $ read_sfp datasize t2 s
+            let data3 := BitVec.cast h.symm $ read_sfp datasize t3 s
             let s := write_mem_bytes datasize_bytes address data1 s
             let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) data2 s
             let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) data3 s
             (3 * datasize_bytes, s)
         | _ => -- four registers
           if inst.L = 1#1 then -- LD1
-            let data1 := h ▸ read_mem_bytes datasize_bytes address s
-            let data2 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) s
-            let data3 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) s
-            let data4 := h ▸ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (3 * datasize_bytes))) s
+            let data1 := BitVec.cast h $ read_mem_bytes datasize_bytes address s
+            let data2 := BitVec.cast h $ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) s
+            let data3 := BitVec.cast h $ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) s
+            let data4 := BitVec.cast h $ read_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (3 * datasize_bytes))) s
             let s := write_sfp datasize t data1 s
             let s := write_sfp datasize t2 data2 s
             let s := write_sfp datasize t3 data3 s
             let s := write_sfp datasize t4 data4 s
             (4 * datasize_bytes, s)
           else -- ST1
-            let data1 := h.symm ▸ read_sfp datasize t s
-            let data2 := h.symm ▸ read_sfp datasize t2 s
-            let data3 := h.symm ▸ read_sfp datasize t3 s
-            let data4 := h.symm ▸ read_sfp datasize t4 s
+            let data1 := BitVec.cast h.symm $ read_sfp datasize t s
+            let data2 := BitVec.cast h.symm $ read_sfp datasize t2 s
+            let data3 := BitVec.cast h.symm $ read_sfp datasize t3 s
+            let data4 := BitVec.cast h.symm $ read_sfp datasize t4 s
             let s := write_mem_bytes datasize_bytes address data1 s
             let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 datasize_bytes)) data2 s
             let s := write_mem_bytes datasize_bytes (address + (BitVec.ofNat 64 (2 * datasize_bytes))) data3 s

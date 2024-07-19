@@ -49,8 +49,8 @@ def SubBytes_aux (i : Nat) (op : BitVec 128) (out : BitVec 128)
   else
     let idx := (extractLsb (i * 8 + 7) (i * 8) op).toNat
     let val := extractLsb (idx * 8 + 7) (idx * 8) $ BitVec.flatten SBOX
-    have h₁ : idx * 8 + 7 - idx * 8 = i * 8 + 7 - i * 8 := by omega
-    let out := BitVec.partInstall (i * 8 + 7) (i * 8) (h₁ ▸ val) out
+    have h₁ : idx * 8 + 7 - idx * 8 + 1 = i * 8 + 7 - i * 8 + 1 := by omega
+    let out := BitVec.partInstall (i * 8 + 7) (i * 8) (BitVec.cast h₁ val) out
     have _ : 15 - i < 16 - i := by omega
     SubBytes_aux (i + 1) op out
   termination_by (16 - i)
@@ -69,17 +69,17 @@ def MixColumns_aux (c : Nat)
     let lo := c * 8
     let hi := lo + 7
     have h₁ : hi - lo + 1 = 8 := by omega
-    let in0_byte := h₁ ▸ extractLsb hi lo in0
-    let in1_byte := h₁ ▸ extractLsb hi lo in1
-    let in2_byte := h₁ ▸ extractLsb hi lo in2
-    let in3_byte := h₁ ▸ extractLsb hi lo in3
-    let val0 := h₁.symm ▸ (FFmul02 in0_byte ^^^ FFmul03 in1_byte ^^^ in2_byte ^^^ in3_byte)
+    let in0_byte := BitVec.cast h₁ $ extractLsb hi lo in0
+    let in1_byte := BitVec.cast h₁ $ extractLsb hi lo in1
+    let in2_byte := BitVec.cast h₁ $ extractLsb hi lo in2
+    let in3_byte := BitVec.cast h₁ $ extractLsb hi lo in3
+    let val0 := BitVec.cast h₁.symm $ (FFmul02 in0_byte ^^^ FFmul03 in1_byte ^^^ in2_byte ^^^ in3_byte)
     let out0 := BitVec.partInstall hi lo val0 out0
-    let val1 := h₁.symm ▸ (FFmul02 in1_byte ^^^ FFmul03 in2_byte ^^^ in3_byte ^^^ in0_byte)
+    let val1 := BitVec.cast h₁.symm $ (FFmul02 in1_byte ^^^ FFmul03 in2_byte ^^^ in3_byte ^^^ in0_byte)
     let out1 := BitVec.partInstall hi lo val1 out1
-    let val2 := h₁.symm ▸ (FFmul02 in2_byte ^^^ FFmul03 in3_byte ^^^ in0_byte ^^^ in1_byte)
+    let val2 := BitVec.cast h₁.symm $ (FFmul02 in2_byte ^^^ FFmul03 in3_byte ^^^ in0_byte ^^^ in1_byte)
     let out2 := BitVec.partInstall hi lo val2 out2
-    let val3 := h₁.symm ▸ (FFmul02 in3_byte ^^^ FFmul03 in0_byte ^^^ in1_byte ^^^ in2_byte)
+    let val3 := BitVec.cast h₁.symm $ (FFmul02 in3_byte ^^^ FFmul03 in0_byte ^^^ in1_byte ^^^ in2_byte)
     let out3 := BitVec.partInstall hi lo val3 out3
     have _ : 3 - c < 4 - c := by omega
     MixColumns_aux (c + 1) in0 in1 in2 in3 out0 out1 out2 out3 FFmul02 FFmul03

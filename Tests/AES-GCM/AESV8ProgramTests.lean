@@ -316,10 +316,10 @@ def aes_hw_ctr32_encrypt_blocks_test (n : Nat)
              }
   -- write in_block
   have h1 : 8 * in_block.length = in_block.length * 8 := by omega
-  let s := write_mem_bytes in_block.length in_address (h1 ▸ (revflat in_block)) s
+  let s := write_mem_bytes in_block.length in_address (BitVec.cast h1 (revflat in_block)) s
   -- write key_schedule
-  have h2 : 4 * key_schedule.length * 8 = 32 * key_schedule.length := by omega
-  let s := write_mem_bytes (4 * key_schedule.length) key_address (h2 ▸ (revflat key_schedule)) s
+  have h2 : 32 * key_schedule.length = 4 * key_schedule.length * 8 := by omega
+  let s := write_mem_bytes (4 * key_schedule.length) key_address (BitVec.cast h2 (revflat key_schedule)) s
   -- write rounds
   let s := write_mem_bytes 8 round_address rounds s
   -- write ivec

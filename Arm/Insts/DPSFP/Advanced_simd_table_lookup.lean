@@ -21,7 +21,7 @@ def create_table (i : Nat) (regs : Nat) (Rn : BitVec 5) (table : BitVec (128 * r
   else
     let val := read_sfp 128 Rn s
     have h₁ : 128 = 128 * i + 127 - 128 * i + 1 := by omega
-    let table := BitVec.partInstall (128 * i + 127) (128 * i) (h₁ ▸ val) table
+    let table := BitVec.partInstall (128 * i + 127) (128 * i) (BitVec.cast h₁ val) table
     let Rn := (Rn + 1) % 32
     have h₂ : regs - (i + 1) < regs - i := by omega
     create_table (i + 1) regs Rn table s

@@ -111,20 +111,21 @@ def exec_advanced_simd_modified_immediate
                  BitVec.zero 6
     let imm64 := AdvSIMDExpandImm inst.op inst.cmode imm8
     have h₁ : 16 * (datasize / 16) = datasize := by omega
-    have h₂ : 16 * (datasize / 16) = 64 * (datasize / 64) := by omega
+    have h₂ : 64 * (datasize / 64) = datasize := by omega
     -- Assumes IsFeatureImplemented(FEAT_FP16)
-    let imm := if inst.op ++ inst.cmode ++ inst.o2 = 0b011111#6
-               then replicate (datasize/16) imm16
-               else h₂ ▸ replicate (datasize/64) imm64
+    let imm : BitVec datasize :=
+      if inst.op ++ inst.cmode ++ inst.o2 = 0b011111#6
+      then BitVec.cast h₁ $ replicate (datasize/16) imm16
+      else BitVec.cast h₂ $ replicate (datasize/64) imm64
     let result := match operation with
-                | ImmediateOp.MOVI => (h₁ ▸ imm)
-                | ImmediateOp.MVNI => ~~~(h₁ ▸ imm)
+                | ImmediateOp.MOVI => imm
+                | ImmediateOp.MVNI => ~~~imm
                 | ImmediateOp.ORR =>
                   let operand := read_sfp datasize inst.Rd s
-                  operand ||| (h₁ ▸ imm)
+                  operand ||| imm
                 | _ =>
                   let operand := read_sfp datasize inst.Rd s
-                  operand &&& ~~~(h₁ ▸ imm)
+                  operand &&& ~~~imm
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
     let s := write_sfp datasize inst.Rd result s

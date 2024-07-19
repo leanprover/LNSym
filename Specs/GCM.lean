@@ -29,9 +29,9 @@ def inc_s (s : Nat) (X : BitVec l) (H₀ : 0 < s) (H₁ : s < l) : BitVec l :=
   let lsb_lo := 0
   have h₁ : lsb_hi - lsb_lo + 1 = s := by omega
   let upper := extractLsb msb_hi msb_lo X
-  let lower := h₁ ▸ (extractLsb lsb_hi lsb_lo X) + 0b1#s
+  let lower := BitVec.cast h₁ (extractLsb lsb_hi lsb_lo X) + 0b1#s
   have h₂ : msb_hi - msb_lo + 1 + s = l := by omega
-  h₂ ▸ (upper ++ lower)
+  BitVec.cast h₂ (upper ++ lower)
 
 def mul_aux (i : Nat) (X : BitVec 128) (Z : BitVec 128) (V : BitVec 128)
   : BitVec 128 :=
@@ -58,7 +58,7 @@ def GHASH_aux (i : Nat) (H : BitVec 128) (X : BitVec n) (Y : BitVec 128)
     let hi := lo + 127
     have h₀ : hi - lo + 1 = 128 := by omega
     let Xi := extractLsb hi lo X
-    let res := Y ^^^ (h₀ ▸ Xi)
+    let res := Y ^^^ (BitVec.cast h₀ Xi)
     let Y := mul res H
     GHASH_aux (i + 1) H X Y h
   termination_by (n / 128 - i)
@@ -77,8 +77,8 @@ def GCTR_aux (CIPH : Cipher (n := 128) (m := m))
     let hi := lo + 127
     have h : hi - lo + 1 = 128 := by omega
     let Xi := extractLsb hi lo X
-    let Yi := h ▸ Xi ^^^ CIPH ICB K
-    let Y := BitVec.partInstall hi lo (h.symm ▸ Yi) Y
+    let Yi := BitVec.cast h Xi ^^^ CIPH ICB K
+    let Y := BitVec.partInstall hi lo (BitVec.cast h.symm Yi) Y
     let ICB := inc_s 32 ICB (by omega) (by omega)
     GCTR_aux CIPH (i + 1) n K ICB X Y
   termination_by (n - i)
@@ -101,7 +101,7 @@ def GCTR (CIPH : Cipher (n := 128) (m := m))
     simp only [s]
     apply Nat.add_sub_cancel'
           (by simp only [b]; apply GCM.bits_le_ceiling_in_bits)
-  let X' : BitVec b := h ▸ (shiftLeftZeroExtend X s)
+  let X' : BitVec b := BitVec.cast h (shiftLeftZeroExtend X s)
   let R := GCTR_aux CIPH 0 n K ICB X' $ BitVec.zero b
   truncate v $ R >>> s
 
@@ -114,7 +114,7 @@ protected def initialize_J0 (H : BitVec 128) (IV : BitVec lv) :=
   then have h₁ : lv + 31 + 1 = 128 := by
          simp only [Nat.succ.injEq]
          exact Nat.eq_of_beq_eq_true h₀
-       h₁ ▸ (IV ++ BitVec.zero 31 ++ 0b1#1)
+       BitVec.cast h₁ (IV ++ BitVec.zero 31 ++ 0b1#1)
   else let s := GCM.ceiling_in_bits lv - lv
        have h₂ : 128 ∣ (lv + (s + 64) + 64) := by
          simp only [s, GCM.ceiling_in_bits]

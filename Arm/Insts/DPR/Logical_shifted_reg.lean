@@ -25,8 +25,7 @@ def decode_op (opc : BitVec 2) (N : BitVec 1) : LogicalShiftedRegType :=
   | 0b11, 0b1 => LogicalShiftedRegType.BICS
 
 def logical_shifted_reg_update_pstate (bv : BitVec n) : PState :=
-  have h: n - 1 - (n - 1) + 1 = 1 := by simp
-  let N := h ▸ (BitVec.lsb bv (n-1))
+  let N : BitVec 1 := BitVec.lsb bv (n-1)
   let Z := zero_flag_spec bv
   let C := 0#1
   let V := 0#1
