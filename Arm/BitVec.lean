@@ -327,6 +327,9 @@ def split (x : BitVec n) (e : Nat) (h : 0 < e): List (BitVec e) :=
 example : split 0xabcd1234#32 8 (by omega) = [0xab#8, 0xcd#8, 0x12#8, 0x34#8] :=
   by rfl
 
+/-- Get the width of a bitvector. -/
+protected def width (_ : BitVec n) : Nat := n
+
 ----------------------------------------------------------------------
 
 attribute [ext] BitVec

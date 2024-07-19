@@ -17,7 +17,16 @@ open BitVec
 @[state_simp_rules]
 def exec_shift_right_vector
   (inst : Advanced_simd_shift_by_immediate_cls) (s : ArmState) : ArmState :=
-  if (lsb inst.immh 3) ++ inst.Q = 0b10#2 then
+  if inst.immh = 0b0000#4 then
+    -- Derived from the ASL line:
+    -- if immh == '0000' then SEE(asimdimm);
+    write_err
+     (StateError.Other
+       s!"Implementation Error: inst.immh is 0, which indicates \
+          an Advanced SIMD modified immediate class instruction! \
+          inst: {inst}")
+    s
+  else if ((lsb inst.immh 3) ++ inst.Q) = 0b10#2 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let l := highest_set_bit inst.immh
