@@ -14,15 +14,16 @@ open BitVec
 
 def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   (BitVec n × PState) :=
-  let carry_in_nat := BitVec.toNat carry_in
-  let unsigned_sum := BitVec.toNat x + BitVec.toNat y + carry_in_nat
-  let signed_sum := BitVec.toInt x + BitVec.toInt y + carry_in_nat
-  let result := (BitVec.ofNat n unsigned_sum)
-  have h: n - 1 - (n - 1) + 1 = 1 := by simp
-  let N := h ▸ (lsb result (n - 1))
+  let carry_in_ext := zeroExtend (n + 1) carry_in
+  let unsigned_sum :=
+    (zeroExtend (n + 1) x) + (zeroExtend (n + 1) y) + carry_in_ext
+  let signed_sum :=
+    (signExtend (n + 1) x) + (signExtend (n + 1) y) + carry_in_ext
+  let result := zeroExtend n unsigned_sum
+  let N := lsb result (n - 1)
   let Z := if result = (BitVec.zero n) then 1#1 else 0#1
-  let C := if BitVec.toNat result = unsigned_sum then 0#1 else 1#1
-  let V := if BitVec.toInt result = signed_sum then 0#1 else 1#1
+  let C := if zeroExtend (n + 1) result = unsigned_sum then 0#1 else 1#1
+  let V := if signExtend (n + 1) result = signed_sum then 0#1 else 1#1
   (result, (make_pstate N Z C V))
 
 -- TODO: Is this rule helpful at all?
