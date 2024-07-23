@@ -294,7 +294,7 @@ def flattenTR {n : Nat} (xs : List (BitVec n)) (i : Nat)
   | [] => acc
   | x :: rest =>
     have h : n = (i * n + n - 1 - i * n + 1) := by omega
-    let new_acc := (BitVec.partInstall (i * n + n - 1) (i * n) (h ▸ x) acc)
+    let new_acc := (BitVec.partInstall (i * n + n - 1) (i * n) (BitVec.cast h x) acc)
     flattenTR rest (i + 1) new_acc H
 
 /-- Reverse bits of a bit-vector. -/
@@ -303,7 +303,7 @@ def reverse (x : BitVec n) : BitVec n :=
     if i < n then
       let xi := extractLsb i i x
       have h : i - i + 1 = (n - i - 1) - (n - i - 1) + 1 := by omega
-      let acc := BitVec.partInstall (n - i - 1) (n - i - 1) (h ▸ xi) acc
+      let acc := BitVec.partInstall (n - i - 1) (n - i - 1) (BitVec.cast h xi) acc
       reverseTR x (i + 1) acc
     else acc
   reverseTR x 0 $ BitVec.zero n
@@ -317,8 +317,8 @@ def split (x : BitVec n) (e : Nat) (h : 0 < e): List (BitVec e) :=
     if i < n/e then
       let lo := i * e
       let hi := lo + e - 1
-      have h₀ : e = hi - lo + 1 := by simp only [hi, lo]; omega
-      let part : BitVec e := h₀ ▸ extractLsb hi lo x
+      have h₀ : hi - lo + 1 = e := by simp only [hi, lo]; omega
+      let part : BitVec e := BitVec.cast h₀ (extractLsb hi lo x)
       let newacc := part :: acc
       splitTR x e h (i + 1) newacc
     else acc

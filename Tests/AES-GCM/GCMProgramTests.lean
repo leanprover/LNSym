@@ -164,7 +164,7 @@ def gcm_gmult_final_state : ArmState :=
             }
   let s := write_mem_bytes 16 x_address flat_X_before s
   have h : 2048 = (128 * 16 / 8) * 8 := by decide
-  let s := write_mem_bytes (128 * 16 / 8) Htable_address (h ▸ (revflat Htable)) s
+  let s := write_mem_bytes (128 * 16 / 8) Htable_address (BitVec.cast h (revflat Htable)) s
   let final_state := run GCMGmultV8Program.gcm_gmult_v8_program.length s
   final_state
 
@@ -201,7 +201,7 @@ def gcm_ghash_test (n : Nat) (len : BitVec 64) (buf : BitVec 896)
            }
   let s := write_mem_bytes 16 x_address X_before s
   have h : 2048 = (128 * 16 / 8) * 8 := by decide
-  let s := write_mem_bytes (128 * 16 / 8) Htable_address (h ▸ (revflat Htable)) s
+  let s := write_mem_bytes (128 * 16 / 8) Htable_address (BitVec.cast h (revflat Htable)) s
   let s := write_mem_bytes 112 In_address buf s
   let final_state := run n s
   final_state

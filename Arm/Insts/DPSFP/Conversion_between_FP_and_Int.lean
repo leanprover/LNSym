@@ -34,7 +34,7 @@ def fmov_general_aux (intsize : Nat) (fltsize : Nat) (op : FPConvOp)
     let fltval := extractLsb (fltsize - 1) 0 intval
     -- State Update
     have h₀ : fltsize - 1 - 0 + 1 = fltsize := by omega
-    let s := Vpart_write inst.Rd part fltsize (h₀ ▸ fltval) s
+    let s := Vpart_write inst.Rd part fltsize (BitVec.cast h₀ fltval) s
     let s := write_pc ((read_pc s) + 4#64) s
     s
   | _ => write_err (StateError.Other s!"fmov_general_aux called with non-FMOV op!") s

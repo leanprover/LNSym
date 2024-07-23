@@ -267,7 +267,7 @@ def decode_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immr : BitVec 6)
     have h : esize * (M / esize) = M := by
       apply M_divisible_by_esize_of_valid_bit_masks immN imms immediate M
       simp_all
-    some (h ▸ wmask, h ▸ tmask)
+    some (BitVec.cast h wmask, BitVec.cast h tmask)
 
 open Lean Meta Simp in
 dsimproc [state_simp_rules] reduceDecodeBitMasks (decode_bit_masks _ _ _ _ _) := fun e => do
@@ -327,10 +327,10 @@ def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState) (H : width > 0)
   have h2: (width * 2 - 1 - width + 1) = width := by omega
   if part = 0 then
     -- assert width < 128;
-    h1 ▸ extractLsb (width-1) 0 $ read_sfp 128 n s
+    BitVec.cast h1 $ extractLsb (width-1) 0 $ read_sfp 128 n s
   else
     -- assert width IN {32,64};
-    h2 ▸ extractLsb (width*2-1) width $ read_sfp 128 n s
+    BitVec.cast h2 $ extractLsb (width*2-1) width $ read_sfp 128 n s
 
 
 @[state_simp_rules]
@@ -398,7 +398,7 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
     let rest_ans := rev_elems (n - esize) esize rest_x h2 h₁
     have h3 : (esize + (n - esize)) = n := by
       simp_all only [ge_iff_le, Nat.add_sub_cancel', h1]
-    h3 ▸ (element ++ rest_ans)
+    BitVec.cast h3 (element ++ rest_ans)
    termination_by n
 
 example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by rfl
@@ -417,8 +417,8 @@ def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
   (h₀ : 0 < esize) (h₁ : esize <= container_size) (h₂ : container_size <= datasize)
   (h₃ : esize ∣ container_size) (h₄ : container_size ∣ datasize) :
   BitVec datasize :=
-  if h0 : datasize = container_size then
-    h0 ▸ (rev_elems container_size esize (h0 ▸ x) h₃ h₀)
+  if h0 : container_size = datasize then
+    BitVec.cast h0 (rev_elems container_size esize (BitVec.cast h0.symm x) h₃ h₀)
   else
     let container := BitVec.zeroExtend container_size x
     let new_container := rev_elems container_size esize container h₃ h₀
@@ -435,7 +435,7 @@ def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
     let rest_ans := rev_vector new_datasize container_size esize rest_x h₀ h₁ h₂' h₃ h₄'
     have h2 : new_datasize + container_size = datasize := by
         rw [Nat.sub_add_cancel h₂]
-    h2 ▸ (rest_ans ++ new_container)
+    BitVec.cast h2 (rest_ans ++ new_container)
   termination_by datasize
 
 example : rev_vector 32 16 8 0xaabbccdd#32 (by decide)
@@ -454,7 +454,7 @@ def elem_get (vector : BitVec n) (e : Nat) (size : Nat)
   let lo := e * size
   let hi := lo + size - 1
   have h : hi - lo + 1 = size := by simp only [hi, lo]; omega
-  h ▸ extractLsb hi lo vector
+  BitVec.cast h $ extractLsb hi lo vector
 
 /-- Divide bv `vector` into elements, each of size `size`. This function sets
 the `e`'th element in the `vector`. -/
@@ -464,8 +464,8 @@ def elem_set (vector : BitVec n) (e : Nat) (size : Nat)
   -- assert (e+1)*size <= n
   let lo := e * size
   let hi := lo + size - 1
-  have h : hi - lo + 1 = size := by simp only [hi, lo]; omega
-  BitVec.partInstall hi lo (h ▸ value) vector
+  have h : size = hi - lo + 1 := by simp only [hi, lo]; omega
+  BitVec.partInstall hi lo (BitVec.cast h value) vector
 
 ----------------------------------------------------------------------
 
@@ -494,7 +494,7 @@ def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool) (h : n > 0
     else
       BitVec.ofInt (n + 1) value
   have h₀ : n - 1 - 0 + 1 = n := by omega
-  h₀ ▸ extractLsb (n-1) 0 (fn rounded_bv shift)
+  BitVec.cast h₀ $ extractLsb (n-1) 0 (fn rounded_bv shift)
 
 @[state_simp_rules]
 def Int_with_unsigned (unsigned : Bool) (value : BitVec n) : Int :=

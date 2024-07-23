@@ -33,11 +33,11 @@ def exec_ldstur
       let s := if memop = MemOp.MemOp_STORE then
                  have h : datasize = datasize / 8 * 8 := by omega
                  let data := read_sfp datasize inst.Rt s
-                 write_mem_bytes (datasize / 8) address (h ▸ data) s
+                 write_mem_bytes (datasize / 8) address (BitVec.cast h data) s
                else
                  have h : datasize / 8 * 8 = datasize := by omega
                  let data := read_mem_bytes (datasize / 8) address s
-                 write_sfp datasize inst.Rt (h ▸ data) s
+                 write_sfp datasize inst.Rt (BitVec.cast h data) s
       let s := write_pc ((read_pc s) + 4#64) s
       s
 
