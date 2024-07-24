@@ -24,8 +24,8 @@ def exec_move_wide_imm (inst : Move_wide_imm_cls) (s : ArmState) : ArmState :=
     let result := if inst.opc = 0b11#2
                   then read_gpr datasize inst.Rd s
                   else BitVec.zero datasize
-    have h : pos + 15 - pos + 1 = 16 := by omega
-    let result := partInstall (pos + 15) pos (h ▸ inst.imm16) result
+    have h : 16 = pos + 15 - pos + 1 := by omega
+    let result := partInstall (pos + 15) pos (BitVec.cast h inst.imm16) result
     let result := if inst.opc = 0b00#2 then ~~~result else result
     -- State Update
     let s := write_gpr datasize inst.Rd result s

@@ -35,7 +35,7 @@ def exec_advanced_simd_extract
     have h : (position + datasize - 1 - position + 1) = datasize := by
       rw [Nat.add_sub_assoc, Nat.add_sub_self_left]
       exact Nat.sub_add_cancel h_datasize; trivial
-    let s := write_sfp datasize inst.Rd (h ▸ result) s
+    let s := write_sfp datasize inst.Rd (BitVec.cast h result) s
     let s := write_pc ((read_pc s) + 4#64) s
     s
 

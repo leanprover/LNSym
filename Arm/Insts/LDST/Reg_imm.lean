@@ -48,10 +48,10 @@ def reg_imm_operation (inst_str : String) (op : BitVec 1)
       match op with
       | 0#1 => -- STORE
         let data := ldst_read SIMD? datasize Rt s
-        write_mem_bytes (datasize / 8) address (h.symm ▸ data) s
+        write_mem_bytes (datasize / 8) address (BitVec.cast h.symm data) s
       | _ => -- LOAD
         let data := read_mem_bytes (datasize / 8) address s
-        if SIMD? then write_sfp datasize Rt (h.symm ▸ data) s
+        if SIMD? then write_sfp datasize Rt (BitVec.cast h data) s
         else write_gpr regsize.get! Rt (zeroExtend regsize.get! data) s
     if wback then
       let address := if postindex then address + offset else address

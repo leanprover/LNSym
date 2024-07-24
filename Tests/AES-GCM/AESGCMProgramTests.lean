@@ -209,7 +209,7 @@ def final_state : ArmState :=
   have h : 8 * in_blocks.length = 4096 := by
     unfold in_blocks
     simp only [List.length_replicate]
-  aes_gcm_enc_kernel_test 1514 (h ▸ revflat in_blocks) (revflat Xi) (revflat Htable)
+  aes_gcm_enc_kernel_test 1514 (BitVec.cast h $ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
@@ -310,7 +310,7 @@ def final_state : ArmState :=
   have h : 8 * in_blocks.length = 4096 := by
     unfold in_blocks
     simp only [List.length_replicate]
-  aes_gcm_enc_kernel_test 1650 (h ▸ revflat in_blocks) (revflat Xi) (revflat Htable)
+  aes_gcm_enc_kernel_test 1650 (BitVec.cast h $ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
@@ -414,7 +414,7 @@ def final_state : ArmState :=
   have h : 8 * in_blocks.length = 4096 := by
     unfold in_blocks
     simp only [List.length_replicate]
-  aes_gcm_enc_kernel_test 1778 (h ▸ revflat in_blocks) (revflat Xi) (revflat Htable)
+  aes_gcm_enc_kernel_test 1778 (BitVec.cast h $ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state

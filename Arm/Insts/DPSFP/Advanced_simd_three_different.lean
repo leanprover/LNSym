@@ -41,7 +41,7 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
     let elem_result := polynomial_mult element1 element2
     have h₁ : esize + esize = 2 * esize := by omega
     have h₂ : 2 * esize > 0 := by omega
-    let result := elem_set result e (2 * esize) (h₁ ▸ elem_result) h₂
+    let result := elem_set result e (2 * esize) (BitVec.cast h₁ elem_result) h₂
     have _ : elements - (e + 1) < elements - e := by omega
     pmull_op (e + 1) esize elements x y result H
   termination_by (elements - e)

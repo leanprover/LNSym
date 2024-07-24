@@ -47,10 +47,11 @@ def exec_bitfield (inst: Bitfield_cls) (s : ArmState) : ArmState :=
         -- Determine extension bits (sign, zero or dest register)
         have h : 1 * datasize = datasize := by simp only [Nat.one_mul]
         let src_s := BitVec.lsb src inst.imms.toNat
-        let top := if extend then
-                      h ▸ (BitVec.replicate datasize src_s)
-                   else
-                    dst
+        let top : BitVec datasize :=
+          if extend then
+            BitVec.cast h $ BitVec.replicate datasize src_s
+          else
+            dst
         -- Combine extension bits and result bits
         let result := (top &&& ~~~tmask) ||| (bot &&& tmask)
         let s := write_gpr_zr datasize inst.Rd result s

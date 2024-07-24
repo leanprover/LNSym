@@ -54,8 +54,7 @@ private theorem opc_and_sf_constraint (x : BitVec 2) (y : BitVec 1)
 @[state_simp_rules]
 def exec_data_processing_rev
   (inst : Data_processing_one_source_cls) (s : ArmState) : ArmState :=
-  have H₀: 1 - 0 + 1 = 2 := by decide
-  let opc := H₀ ▸ extractLsb 1 0 inst.opcode
+  let opc : BitVec 2 := extractLsb 1 0 inst.opcode
   if H₁ : opc = 0b11#2 ∧ inst.sf = 0b0#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else

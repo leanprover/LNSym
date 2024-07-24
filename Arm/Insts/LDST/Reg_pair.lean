@@ -56,13 +56,13 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
           exact Nat.div_mul_cancel H1
         have h2 : datasize + datasize = 2 * datasize := by
           simp_arith
-        have h3 : (2 * (datasize / 8) * 8) = datasize + datasize := by
+        have h3 : datasize + datasize = 2 * (datasize / 8) * 8 := by
           rw [Nat.mul_assoc, h1, h2]
         let data1 := ldst_read inst.SIMD? datasize inst.Rt s
         let data2 := ldst_read inst.SIMD? datasize inst.Rt2 s
         -- (FIXME): Implement and check HaveLSE2Ext and BigEndian features.
         let full_data := data2 ++ data1
-        write_mem_bytes (2 * (datasize / 8)) address (h3 ▸ full_data) s
+        write_mem_bytes (2 * (datasize / 8)) address (BitVec.cast h3 full_data) s
       | _ => -- LOAD
         have h4 : datasize - 1 - 0 + 1 = datasize := by
           simp; apply Nat.sub_add_cancel H2
@@ -74,8 +74,8 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
           let s := write_gpr 64 inst.Rt (signExtend 64 data1) s
           write_gpr 64 inst.Rt2 (signExtend 64 data2) s
         else
-          let s:= ldst_write inst.SIMD? datasize inst.Rt (h4 ▸ data1) s
-          ldst_write inst.SIMD? datasize inst.Rt2 (h5 ▸ data2) s
+          let s:= ldst_write inst.SIMD? datasize inst.Rt (BitVec.cast h4 data1) s
+          ldst_write inst.SIMD? datasize inst.Rt2 (BitVec.cast h5 data2) s
     if inst.wback then
       let address := if inst.postindex then address + offset else address
       write_gpr 64 inst.Rn address s

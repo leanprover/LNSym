@@ -92,7 +92,7 @@ def sbox (ind : BitVec 8) : BitVec 8 :=
   | [x:4, y:4] =>
     have h : (x.toNat * 128 + y.toNat * 8 + 7) - (x.toNat * 128 + y.toNat * 8) + 1 = 8 :=
       by omega
-    h ▸ extractLsb
+    BitVec.cast h $ extractLsb
       (x.toNat * 128 + y.toNat * 8 + 7)
       (x.toNat * 128 + y.toNat * 8) $ BitVec.flatten AESCommon.SBOX
   | _ => ind -- unreachable case
@@ -114,7 +114,7 @@ protected def InitKey {Param : KBR} (i : Nat) (key : BitVec Param.key_len)
   else
     have h₁ : i * 32 + 32 - 1 - i * 32 + 1 = WordSize := by
       simp only [WordSize]; omega
-    let wd := h₁ ▸ extractLsb (i * 32 + 32 - 1) (i * 32) key
+    let wd := BitVec.cast h₁ $ extractLsb (i * 32 + 32 - 1) (i * 32) key
     let (x:KeySchedule) := [wd]
     have _ : Param.Nk - (i + 1) < Param.Nk - i := by omega
     AESArm.InitKey (Param := Param) (i + 1) key (acc ++ x)
@@ -147,12 +147,12 @@ def KeyExpansion {Param : KBR} (key : BitVec Param.key_len)
 def SubBytes {Param : KBR} (state : BitVec Param.block_size)
   : BitVec Param.block_size :=
   have h : Param.block_size = 128 := by simp only [Param.h, BlockSize]
-  h ▸ AESCommon.SubBytes (h ▸ state)
+  BitVec.cast h.symm $ AESCommon.SubBytes (BitVec.cast h state)
 
 def ShiftRows {Param : KBR} (state : BitVec Param.block_size)
   : BitVec Param.block_size :=
   have h : Param.block_size = 128 := by simp only [Param.h, BlockSize]
-  h ▸ AESCommon.ShiftRows (h ▸ state)
+  BitVec.cast h.symm $ AESCommon.ShiftRows (BitVec.cast h state)
 
 def XTimes (bv : BitVec 8) : BitVec 8 :=
   let res := truncate 7 bv ++ 0b0#1
@@ -163,7 +163,7 @@ def MixColumns {Param : KBR} (state : BitVec Param.block_size)
   have h : Param.block_size = 128 := by simp only [Param.h, BlockSize]
   let FFmul02 := fun (x : BitVec 8) => XTimes x
   let FFmul03 := fun (x : BitVec 8) => x ^^^ XTimes x
-  h ▸ AESCommon.MixColumns (h ▸ state) FFmul02 FFmul03
+  BitVec.cast h.symm $ AESCommon.MixColumns (BitVec.cast h state) FFmul02 FFmul03
 
 -- Convert bitvector quantification into bounded natural number quantification
 theorem P_of_bv_to_of_nat {n : Nat} {P : BitVec n -> Prop}:
@@ -195,7 +195,8 @@ protected theorem FFmul03_equiv : (fun x => x ^^^ XTimes x) = DPSFP.FFmul03 := b
 theorem MixColumns_table_lookup_equiv {Param : KBR}
   (state : BitVec Param.block_size):
   have h : Param.block_size = 128 := by simp only [Param.h, BlockSize]
-  MixColumns (Param := Param) state = h ▸ DPSFP.AESMixColumns (h ▸ state) := by
+  MixColumns (Param := Param) state =
+  BitVec.cast h.symm (DPSFP.AESMixColumns (BitVec.cast h state)) := by
     simp only [MixColumns, DPSFP.AESMixColumns]
     rw [AESArm.FFmul02_equiv, AESArm.FFmul03_equiv]
 
@@ -207,8 +208,9 @@ protected def getKey {Param : KBR} (n : Nat) (w : KeySchedule) : BitVec Param.bl
   let ind := 4 * n
   have h : WordSize + WordSize + WordSize + WordSize = Param.block_size := by
     simp only [WordSize, BlockSize, Param.h]
-  h ▸ ((List.get! w (ind + 3)) ++ (List.get! w (ind + 2)) ++
-       (List.get! w (ind + 1)) ++ (List.get! w ind))
+  BitVec.cast h
+    ((List.get! w (ind + 3)) ++ (List.get! w (ind + 2)) ++
+     (List.get! w (ind + 1)) ++ (List.get! w ind))
 
 protected def AES_encrypt_with_ks_loop {Param : KBR} (round : Nat)
   (state : BitVec Param.block_size) (w : KeySchedule)
