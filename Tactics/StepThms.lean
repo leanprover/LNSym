@@ -6,31 +6,27 @@ import Tactics.Simp
 import Tactics.ChangeHyps
 open Lean Lean.Expr Lean.Meta Lean.Elab Lean.Elab.Command
 
+-- NOTE: This is an experimental and probably quite shoddy method of autogenerating
+-- `stepi` theorems from a program under verification, and things may change
+-- without warning in the near future.
+
 /-
-Command to autogenerate fetch and decode theorems for a given program.
+Command to autogenerate fetch, decode, execute, and stepi theorems for
+a given program.
 Invocation:
-`#genStepTheorems <program_map> namePrefix:=<prefix> simpExt:=<simpExtension>`
+#genStepTheorems <program_map>
+                  namePrefix:=<prefix>
+                  thmType:="fetch" | "decodeExec" | "step"
+                  <simpExtension>
 
 The theorems are generated with the prefix `<prefix>` and are added to the
-`simpExtension` simp set (typically, `state_simp_rules`).
+`simpExtension` simp set (typically, `state_simp_rules`). The `thmType` value
+determines the kind of theorem being generated -- note that decode and execute
+theorems are generated in one swoop ("decodeExec").
 
-For example, `#genStepTheorems` generates and proves the following two
-theorems for the instruction at address `0x1264e8` of the program
-`sha512_program_map` (see `Tests.SHA2.SHA512ProgramTest`):
-
-```
-sha512_fetch_0x1264e8 (s : ArmState) (h : s.program = sha512_program_map) :
-   fetch_inst (1205480#64) s = some 1310722675#32
-
-sha512_decode_0x1264e8 :
-  decode_raw_inst 1310722675#32 =
-    some
-      (ArmInst.DPSFP
-        (DataProcSFPInst.Advanced_simd_two_reg_misc
-          { _fixed1 := 0#1, Q := 1#1, U := 0#1, _fixed2 := 14#5, size := 0#2, _fixed3 := 16#5, opcode := 0#5,
-            _fixed4 := 2#2, Rn := 19#5, Rd := 19#5 }))
-```
+See the end of this file for an example.
 -/
+
 
 /- When true, prints the names of the generated theorems. -/
 initialize registerTraceClass `gen_step.print_names
@@ -39,6 +35,12 @@ initialize registerTraceClass `gen_step.debug
 /- When true, prints the number of heartbeats taken per theorem. -/
 initialize registerTraceClass `gen_step.debug.heartBeats
 
+/- Generate and prove a fetch theorem of the following form:
+```
+theorem (<thm_prefix> ++ "fetch_0x" ++ <address_str>) (s : ArmState)
+ (h : s.program = <orig_map>) : fetch_inst <address_expr> s = some <raw_inst_expr>
+```
+-/
 def genFetchTheorem (thm_prefix address_str : String) (orig_map address_expr raw_inst_expr : Expr)
   : MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
@@ -46,29 +48,28 @@ def genFetchTheorem (thm_prefix address_str : String) (orig_map address_expr raw
   let name := thm_prefix ++ "fetch_0x" ++ address_str
   let declName := Lean.Name.mkSimple name
   let s_program_hyp_fn :=
-      fun s =>  (mkAppN (mkConst ``Eq [1])
-                        #[(mkConst ``Program),
-                          (mkAppN (mkConst ``ArmState.program) #[s]),
-                          orig_map])
-  let fetch_inst_fn := fun s => (mkAppN (mkConst ``fetch_inst) #[address_expr, s])
+      fun s => -- (s.program = <orig_map>)
+         (mkAppN (mkConst ``Eq [1])
+                    #[(mkConst ``Program),
+                      (mkAppN (mkConst ``ArmState.program) #[s]),
+                      orig_map])
+  let fetch_inst_fn := fun s => -- (fetch_inst <address_expr> <s>)
+                        (mkAppN (mkConst ``fetch_inst) #[address_expr, s])
   let bitvec32 := (mkAppN (mkConst ``BitVec) #[mkRawNatLit 32])
   let opt_bitvec32 := (mkAppN (mkConst ``Option [0]) #[bitvec32])
   let raw_inst_rhs := (mkAppN (mkConst ``Option.some [0]) #[bitvec32, raw_inst_expr])
-  let orig_thm := forallE `s (mkConst ``ArmState)
-              (forallE (Name.mkSimple "h")
-                -- s.program = <orig_map>
-                (s_program_hyp_fn (bvar 0))
-                -- (fetch_inst <address_expr> s = <raw_inst_rhs>)
-                  (mkAppN (mkConst ``Eq [1])
-                   #[opt_bitvec32, (fetch_inst_fn (bvar 1)), raw_inst_rhs])
+  let orig_thm := -- ∀ (s : ArmState), (h : s.program = <orig_map>) :
+                  --      fetch_inst <address_expr> s = some <raw_inst_expr>
+                forallE `s (mkConst ``ArmState)
+                  (forallE (Name.mkSimple "h")
+                    (s_program_hyp_fn (bvar 0))
+                      (mkAppN (mkConst ``Eq [1])
+                        #[opt_bitvec32, (fetch_inst_fn (bvar 1)), raw_inst_rhs])
                 Lean.BinderInfo.default)
                Lean.BinderInfo.default
   trace[gen_step.debug] "[genFetchTheorem] Statement of the theorem: {orig_thm}"
   withLocalDeclD `s (mkConst ``ArmState) fun s => do
-    withLocalDeclD `h (mkAppN (mkConst ``Eq [1])
-                        #[(mkConst ``Program),
-                          (mkAppN (mkConst ``ArmState.program) #[s]),
-                          orig_map]) fun _h => do
+    withLocalDeclD `h (s_program_hyp_fn s) fun _h => do
     let lhs := fetch_inst_fn s
     trace[gen_step.debug] "[genFetchTheorem] lhs: {lhs}"
     let (ctx, simprocs) ← LNSymSimpContext (config := {ground := false})
@@ -96,18 +97,24 @@ def genFetchTheorem (thm_prefix address_str : String) (orig_map address_expr raw
     trace[gen_step.debug] "[genFetchTheorem] Proof: {value}"
     let decl := Declaration.thmDecl {
       name := declName,
+      -- TODO: Compute levelParams instead of hard-coding it?
       levelParams := [],
       type := orig_thm,
       value := value
     }
     addDecl decl
     -- addAndCompile decl
-    -- addToSimpExt declName simp_ext
     trace[gen_step.print_names] "[Proved theorem {declName}.]"
     let stopHB ← IO.getNumHeartbeats
     trace[gen_step.debug.heartBeats] "[genFetchTheorem]: Stop heartbeats: {stopHB}"
     trace[gen_step.debug.heartBeats] "[genFetchTheorem]: HeartBeats used: {stopHB - startHB}"
 
+/- Generate and prove an exec theorem of the following form:
+```
+theorem (<thm_prefix> ++ "exec_0x" ++ <address_str>) (s : ArmState) :
+  exec_inst <decoded_inst> s = <simplified_semantics>
+```
+-/
 def genExecTheorem (thm_prefix address_str : String) (decoded_inst : Expr) : MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genExecTheorem] Start heartbeats: {startHB}"
@@ -121,7 +128,9 @@ def genExecTheorem (thm_prefix address_str : String) (decoded_inst : Expr) : Met
     -- withLocalDeclD `h_sp_aligned sp_aligned fun _h_sp_aligned => do
     let (ctx, _simprocs) ←
             LNSymSimpContext
-              (config := {decide := true})
+              -- Unfortunately, using `ground := true` exposes a lot of internal BitVec
+              -- structure in terms of Fin.
+              (config := {decide := true, ground := false})
               (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules])
               (decls_to_unfold := #[``exec_inst])
     -- Adding local declarations to the context.
@@ -142,16 +151,24 @@ def genExecTheorem (thm_prefix address_str : String) (decoded_inst : Expr) : Met
     let value ← mkLambdaFVars args exec_inst_result.proof?.get!
                     -- (usedOnly := true) (usedLetOnly := false)
     let decl := Declaration.thmDecl
+                -- TODO: Compute levelParams instead of hard-coding it?
                 { name := declName, levelParams := [],
                   type := type, value := value }
     addDecl decl
-    -- addAndCompile decl
-    -- addToSimpExt declName simp_ext
     trace[gen_step.print_names] "[Proved theorem {declName}.]"
     let stopHB ← IO.getNumHeartbeats
     trace[gen_step.debug.heartBeats] "[genExecTheorem]: Stop heartbeats: {stopHB}"
     trace[gen_step.debug.heartBeats] "[genExecTheorem]: HeartBeats used: {stopHB - startHB}"
 
+/- Generate and prove a decode theorem of the following form:
+```
+theorem (<thm_prefix> ++ "decode_0x" ++ <address_str>) (s : ArmState) :
+  decode_raw_inst <raw_inst> = <computed_decoded_inst>
+```
+
+The <computed_decoded_inst> is then used as an input to `genExecTheorem` to generate
+an exec theorem.
+-/
 def genDecodeAndExecTheorems (thm_prefix address_str : String) (raw_inst : Expr) :
   MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
@@ -159,7 +176,10 @@ def genDecodeAndExecTheorems (thm_prefix address_str : String) (raw_inst : Expr)
   let name := thm_prefix ++ "decode_0x" ++ address_str
   let declName := Lean.Name.mkSimple name
   let lhs := (mkAppN (Expr.const ``decode_raw_inst []) #[raw_inst])
-  -- let rhs ← reduce lhs -- whnfD?
+  -- reduce and whnfD do too much and expose the internal Fin structure of the
+  -- BitVecs below. whnfR does not do enough and leaves the decode_raw_inst term
+  -- unsimplified. So we use simp for this simplification.
+  -- let rhs ← reduce lhs -- whnfD or whnfR?
   let (ctx, _simprocs) ← LNSymSimpContext (config := {ground := true})
   let (rhs, _) ← simp lhs ctx
   let opt_arminst := (mkAppN (mkConst ``Option [0]) #[(mkConst ``ArmInst [])])
@@ -167,13 +187,12 @@ def genDecodeAndExecTheorems (thm_prefix address_str : String) (raw_inst : Expr)
   let value := mkAppN (Expr.const ``Eq.refl [1]) #[opt_arminst, lhs]
   let decl := Declaration.thmDecl {
     name := declName,
+    -- TODO: Compute levelParams instead of hard-coding it?
     levelParams := [],
     type := type,
     value := value
   }
   addDecl decl
-  -- addAndCompile decl
-  -- addToSimpExt declName simp_ext
   trace[gen_step.print_names] "[Proved theorem {declName}.]"
   let_expr Option.some _ decoded_inst ← rhs.expr |
     throwError "[genDecodeTheorem] Instruction {raw_inst} could not be decoded!"
@@ -182,40 +201,55 @@ def genDecodeAndExecTheorems (thm_prefix address_str : String) (raw_inst : Expr)
   trace[gen_step.debug.heartBeats] "[genDecodeTheorem]: HeartBeats used: {stopHB - startHB}"
   genExecTheorem thm_prefix address_str decoded_inst
 
+/- Generate and prove a step theorem, using pre-existing fetch, decode, and exec
+theorems. The step theorem looks like the following:
+```
+theorem (<thm_prefix> ++ "stepi_0x" ++ <address_str>) (s sn : ArmState)
+  (h_program : s.program = <orig_map>)
+  (h_pc : r StateField.PC s = <address_expr>)
+  (h_err : r StateField.ERR s = StateError.None) :
+  (sn = stepi s) =
+  (sn = <simplified_semantics>)
+```
+-/
 def genStepTheorem (thm_prefix address_str : String)
-  (orig_map address_expr : Expr) (simpExt : Name) : MetaM Unit := do
+  (orig_map address_expr : Expr) (simpExt : Option Name) : MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genStepTheorem] Start heartbeats: {startHB}"
   let name := thm_prefix ++ "stepi_0x" ++ address_str
   let declName := Lean.Name.mkSimple name
   let s_program_hyp_fn :=
-      fun s =>  (mkAppN (mkConst ``Eq [1])
-                        #[(mkConst ``Program),
-                          (mkAppN (mkConst ``ArmState.program) #[s]),
-                          orig_map])
+      fun s => -- (s.program = <orig_map>)
+        (mkAppN (mkConst ``Eq [1])
+                #[(mkConst ``Program),
+                  (mkAppN (mkConst ``ArmState.program) #[s]),
+                  orig_map])
   let bitvec64 := (mkAppN (mkConst ``BitVec) #[mkRawNatLit 64])
   let s_pc_hyp_fn :=
-      fun s => (mkAppN (Expr.const ``Eq [1])
-                          #[bitvec64,
-                             (mkAppN (Expr.const ``r []) #[mkConst ``StateField.PC, s]),
-                          address_expr])
+      fun s => -- (r StateField.PC s = <address_expr>)
+        (mkAppN (Expr.const ``Eq [1])
+                #[bitvec64,
+                  (mkAppN (Expr.const ``r []) #[mkConst ``StateField.PC, s]),
+                  address_expr])
   let s_err_hyp_fn :=
-      fun s => (mkAppN (Expr.const ``Eq [1])
-                          #[mkConst ``StateError,
-                             (mkAppN (Expr.const ``r []) #[mkConst ``StateField.ERR, s]),
-                          (mkConst ``StateError.None)])
-  let stepi_fn := fun sn s =>
+      fun s => -- (r StateField.ERR s = StateError.None)
+        (mkAppN (Expr.const ``Eq [1])
+                #[mkConst ``StateError,
+                 (mkAppN (Expr.const ``r []) #[mkConst ``StateField.ERR, s]),
+                 (mkConst ``StateError.None)])
+  let stepi_fn := fun sn s => -- (sn = stepi s)
       (mkAppN (mkConst ``Eq [1])
-          #[mkConst ``ArmState, sn, (mkAppN (mkConst ``stepi) #[s])])
+              #[mkConst ``ArmState, sn, (mkAppN (mkConst ``stepi) #[s])])
   let helper_thms :=
+      -- We assume that the necessary fetch, decode, and exec theorems already exist.
       Array.map
         (fun str => Lean.Name.mkSimple (thm_prefix ++ str ++ address_str))
         #["fetch_0x", "decode_0x", "exec_0x"]
   withLocalDeclD `sn (mkConst ``ArmState) fun sn => do
   withLocalDeclD `s (mkConst ``ArmState) fun s => do
-    withLocalDeclD `h_program (s_program_hyp_fn s) fun _h_program => do
-    withLocalDeclD `h_pc (s_pc_hyp_fn s) fun _h_program => do
-    withLocalDeclD `h_err (s_err_hyp_fn s) fun _h_err => do
+  withLocalDeclD `h_program (s_program_hyp_fn s) fun _h_program => do
+  withLocalDeclD `h_pc (s_pc_hyp_fn s) fun _h_program => do
+  withLocalDeclD `h_err (s_err_hyp_fn s) fun _h_err => do
     let lhs := stepi_fn sn s
     trace[gen_step.debug] "[genStepTheorem] lhs: {lhs}"
     let (ctx, simprocs) ← LNSymSimpContext (config := {ground := false, decide := false})
@@ -245,20 +279,25 @@ def genStepTheorem (thm_prefix address_str : String)
     trace[gen_step.debug] "[genStepTheorem] Proof: {value}"
     let decl := Declaration.thmDecl {
       name := declName,
+      -- TODO: Compute levelParams instead of hard-coding it?
       levelParams := [],
       type := type,
       value := value -- (← mkSorry type (synthetic := true))
     }
     addDecl decl
-    -- addAndCompile decl
-    addToSimpExt declName simpExt
+    -- Unlike the fetch, decode, and exec theorems, which we view as ephemeral,
+    -- the step theorems are added to the simpset `simpExt`.
+    -- TODO: We should erase the fetch, decode, and exec theorems once we
+    -- prove the corresponding step theorem.
+    if simpExt.isSome then
+      addToSimpExt declName simpExt.get!
     trace[gen_step.print_names] "[Proved theorem {declName}.]"
     let stopHB ← IO.getNumHeartbeats
     trace[gen_step.debug.heartBeats] "[genStepTheorem]: Stop heartbeats: {stopHB}"
     trace[gen_step.debug.heartBeats] "[genStepTheorem]: HeartBeats used: {stopHB - startHB}"
 
-partial def genStepTheorems (program map : Expr) (thm_prefix : String)
-  (thmType : String) (simp_ext : Name) : MetaM Unit := do
+partial def genStepTheorems (program map : Expr)
+  (thm_prefix : String) (thm_type : String) (simpExt : Option Name) : MetaM Unit := do
   trace[gen_step.debug] "[genStepTheorems: Poised to run whnfD on the map: {map}]"
   let map ← whnfD map
   trace[gen_step.debug] "[genStepTheorems: after whnfD: {map}]"
@@ -276,18 +315,27 @@ partial def genStepTheorems (program map : Expr) (thm_prefix : String)
     let address_string := address_str.get!
     trace[gen_step.debug] "[genStepTheorems: address_expr {address_expr} \
                               raw_inst_expr {raw_inst_expr}]"
-    if thmType == "fetch" then
+    if thm_type == "fetch" then
       genFetchTheorem thm_prefix address_string program address_expr raw_inst_expr
-    if thmType == "decodeExec" then
+    if thm_type == "decodeExec" then
       genDecodeAndExecTheorems thm_prefix address_string raw_inst_expr
-    if thmType == "step" then
-      genStepTheorem thm_prefix address_string program address_expr simp_ext
-    genStepTheorems program tl thm_prefix thmType simp_ext
+    if thm_type == "step" then
+      genStepTheorem thm_prefix address_string program address_expr simpExt
+    genStepTheorems program tl thm_prefix thm_type simpExt
   | List.nil _ => return
   | _ =>
     throwError s!"Unexpected program map term! {map}"
 
-elab "#genStepTheorems " arg:term "namePrefix:="thmPrefix:str "thmType:="thmType:str "simpExt:="ext:name : command => liftTermElabM do
+-- TODO:
+-- The arguments of this command are pretty clunky. For instance, they are sort
+-- of named, but we still expect them to appear in the same order.
+-- Also, it'd be nice to not have `thmType` as a string, but an inductive type
+-- of legal values.
+-- Maybe elaborate a StepTheorems object here? See, e.g., declare_config_elab.
+elab "#genStepTheorems " arg:term
+                        "namePrefix:="thmPrefix:str
+                        "thmType:="thmType:str
+                        ext:(name)? : command => liftTermElabM do
   let arg ← Term.elabTermAndSynthesize arg none
   -- Abort if there are any metavariables or free variables in arg.
   if arg.hasExprMVar || arg.hasFVar then
@@ -296,9 +344,13 @@ elab "#genStepTheorems " arg:term "namePrefix:="thmPrefix:str "thmType:="thmType
     let arg_typ ← inferType arg
     if (arg_typ != (mkConst `Program [])) then
         throwError "Arg {arg} expected to be of type Program, but instead it is: {arg_typ}"
-    genStepTheorems arg arg thmPrefix.getString thmType.getString ext.getName
+    genStepTheorems arg arg thmPrefix.getString thmType.getString
+      (if ext.isSome then ext.get!.getName else Option.none)
 
-/-
+-----------------------------------------------------------------------------
+
+section StepThmsExample
+
 def test_program : Program :=
   def_program
   [(0x12650c#64 , 0x4ea01c1a#32),      --  mov     v26.16b, v0.16b
@@ -306,37 +358,64 @@ def test_program : Program :=
     (0x126514#64 , 0x4ea21c5c#32),      --  mov     v28.16b, v2.16b
     (0x126518#64 , 0x4ea31c7d#32)]      --  mov     v29.16b, v3.16b
 
-#genStepTheorems test_program namePrefix:="test_" thmType:="fetch" simpExt:=`state_simp_rules
+#genStepTheorems test_program namePrefix:="test_" thmType:="fetch"
+/--
+info: test_fetch_0x126510 (s : ArmState) (h : s.program = test_program) : fetch_inst (1205520#64) s = some 1319181371#32
+-/
+#guard_msgs in
 #check test_fetch_0x126510
 
-#genStepTheorems test_program namePrefix:="test_" thmType:="decodeExec" simpExt:=`state_simp_rules
+#genStepTheorems test_program namePrefix:="test_" thmType:="decodeExec"
+/--
+info: test_decode_0x126510 :
+  decode_raw_inst 1319181371#32 =
+    some
+      (ArmInst.DPSFP
+        (DataProcSFPInst.Advanced_simd_three_same
+          { _fixed1 := 0#1, Q := 1#1, U := 0#1, _fixed2 := 14#5, size := 2#2, _fixed3 := 1#1, Rm := 1#5, opcode := 3#5,
+            _fixed4 := 1#1, Rn := 1#5, Rd := 27#5 }))
+-/
+#guard_msgs in
 #check test_decode_0x126510
+
+/--
+info: test_exec_0x126510 (s : ArmState) :
+  exec_inst
+      (ArmInst.DPSFP
+        (DataProcSFPInst.Advanced_simd_three_same
+          { _fixed1 := 0#1, Q := 1#1, U := 0#1, _fixed2 := 14#5, size := 2#2, _fixed3 := 1#1, Rm := 1#5, opcode := 3#5,
+            _fixed4 := 1#1, Rn := 1#5, Rd := 27#5 }))
+      s =
+    w StateField.PC (r StateField.PC s + 4#64) (w (StateField.SFP 27#5) (r (StateField.SFP 1#5) s) s)
+-/
+#guard_msgs in
 #check test_exec_0x126510
 
-#genStepTheorems test_program namePrefix:="test_" thmType:="step" simpExt:=`state_simp_rules
+#genStepTheorems test_program namePrefix:="test_" thmType:="step" `state_simp_rules
+/--
+info: test_stepi_0x126510 (s sn : ArmState) (h_program : s.program = test_program) (h_pc : r StateField.PC s = 1205520#64)
+  (h_err : r StateField.ERR s = StateError.None) :
+  (sn = stepi s) = (sn = w StateField.PC (1205524#64) (w (StateField.SFP 27#5) (r (StateField.SFP 1#5) s) s))
+-/
+#guard_msgs in
 #check test_stepi_0x126510
 
-#print test_stepi_0x126510
-
-theorem bar_test_stepi_0x126510 (s sn : ArmState)
+-- Here's the theorem that we'd actually like to obtain instead of the
+-- erstwhile test_stepi_0x126510.
+theorem test_stepi_0x126510_desired (s sn : ArmState)
   (h_program : s.program = test_program)
   (h_pc : r StateField.PC s = 1205520#64)
-  (h_err : r StateField.ERR s = StateError.None) :
-  (sn = stepi s) ↔
-    ((r (StateField.SFP 27#5) sn = r (StateField.SFP 1#5) s ∧ r StateField.PC sn = 1205524#64) ∧
-      ∀ (f : StateField), f ≠ StateField.PC ∧ f ≠ StateField.SFP 27#5 → r f sn = r f s) := by
-  simp only [*, stepi, read_err, read_pc, minimal_theory,
-             test_fetch_0x126510, test_decode_0x126510, test_exec_0x126510]
-  sorry
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_step : sn = stepi s) :
+  -- Effects
+  (r (StateField.SFP 27#5) sn = r (StateField.SFP 1#5) s) ∧
+  (r StateField.PC sn = 1205524#64) ∧
+  -- Non-Effects
+  (∀ (f : StateField), f ≠ StateField.PC ∧ f ≠ StateField.SFP 27#5 → r f sn = r f s) ∧
+  (∀ (n : Nat) (addr : BitVec 64), read_mem_bytes n addr sn = read_mem_bytes n addr s) := by
+  simp_all only [minimal_theory, state_simp_rules, bitvec_rules, test_stepi_0x126510]
+  done
 
+end StepThmsExample
 
-
-theorem foo (s : ArmState)
-  (h_program : s.program = test_program)
-  (h_pc : r StateField.PC s = 1205520#64)
-  (h_err : r StateField.ERR s = StateError.None) :
-  stepi s =
-    w StateField.PC (1205524#64) (w (StateField.SFP 27#5) (r (StateField.SFP 1#5) s) s) := by
-  simp only [*, stepi, read_err, read_pc, minimal_theory, bitvec_rules,
-             test_fetch_0x126510, test_decode_0x126510, test_exec_0x126510]
--/
+-----------------------------------------------------------------------------

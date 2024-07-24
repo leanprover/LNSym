@@ -12,20 +12,10 @@ open BitVec
 
 section SHA512_Proof
 
--- #check sha512_stepi_0x1264c4
-
--- #check Lean.Meta.mkLetFVars
-
--- example : p ∧ q → (p ∧ q) ∧ (p ∧ q) := by
---   let x := p ∧ q
---   have : x ↔ p ∧ q := by rfl
---   rw [← this]; clear this
---   simp only [and_self, imp_self]
-
-set_option debug.skipKernelTC true in
-set_option profiler true in
-set_option profiler.threshold 1 in
-set_option pp.deepTerms false in
+-- set_option debug.skipKernelTC true in
+-- set_option profiler true in
+-- set_option profiler.threshold 1 in
+-- set_option pp.deepTerms false in
 theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
   (h_s0_err : read_err s0 = StateError.None)
   (h_s0_sp_aligned : CheckSPAlignment s0 = true)
