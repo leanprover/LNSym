@@ -138,12 +138,7 @@ def stp_sfp_signed_offset_state : ArmState :=
   let s := write_sfp 128 0#5 0x1234#128 s
   write_sfp 128 2#5 0xabcd#128 s
 
-#eval stp_sfp_signed_offset_state
-
 def stp_sfp_signed_offset_final_state : ArmState := run 1 stp_sfp_signed_offset_state
-
-#eval stp_sfp_signed_offset_final_state
-#eval (read_mem_bytes 32 16#64 stp_sfp_signed_offset_final_state)
 
 example : (read_mem_bytes 32 16#64 stp_sfp_signed_offset_final_state) =
   0xabcd00000000000000000000000000001234#256 := by native_decide
