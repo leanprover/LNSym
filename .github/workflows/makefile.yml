@@ -28,8 +28,6 @@ jobs:
         use-mathlib-cache: false
         use-github-cache: true
 
-    - name: Build LNSym
+    - name: Run LNSym Makefile
       run: |
-          pwd
-          ls
-          make tests
+          make all
