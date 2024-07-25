@@ -15,7 +15,8 @@ def flatten_H := BitVec.flatten GCMProgramTestParams.H
 def spec_table := GCMV8.GCMInitV8 flatten_H
 
 example : extractLsb (12 * 128) 0 (revflat spec_table)
-        = extractLsb (12 * 128) 0 (revflat GCMProgramTestParams.Htable) := by native_decide
+        = extractLsb (12 * 128) 0 (revflat GCMProgramTestParams.Htable)
+        := by native_decide
 
 end GCMInitV8SpecTest
 
@@ -27,8 +28,7 @@ def H : BitVec 128 :=
 def X0 := List.get! GCMProgramTestParams.X 0
 def X1 := List.get! GCMProgramTestParams.X 1
 
-example : have h : 8 * X0.length = 128 := by simp [List.length]
-  GCMV8.GCMGmultV8 H X0 h = X1 := by native_decide
+example : GCMV8.GCMGmultV8 H X0 (by simp [List.length]) = X1 := by native_decide
 
 end GCMGmultV8SpecTest
 
@@ -43,12 +43,10 @@ def X3 := List.get! GCMProgramTestParams.X 3
 def inp1 := List.replicate 16 0x2a#8
 def inp2 := List.replicate 32 0x2a#8
 
-example : have h1 : X1.length = 16 := by simp [List.length]
-  have h2 : 16 ∣ inp1.length := by simp [List.length]; omega
-  GCMV8.GCMGhashV8 H X1 inp1 h1 h2 = X2 := by native_decide
+example : GCMV8.GCMGhashV8 H X1 inp1 (by simp [List.length])
+            (by simp [List.length]; omega) = X2 := by native_decide
 
-example : have h1 : X2.length = 16 := by simp [List.length]
-  have h2 : 16 ∣ inp2.length := by simp [List.length]; omega
-  GCMV8.GCMGhashV8 H X2 inp2 h1 h2 = X3 := by native_decide
+example : GCMV8.GCMGhashV8 H X2 inp2 (by simp [List.length])
+            (by simp [List.length]; omega) = X3 := by native_decide
 
 end GCMGhashV8SpecTest
