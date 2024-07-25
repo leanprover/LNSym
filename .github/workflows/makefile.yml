@@ -31,4 +31,5 @@ jobs:
     - name: Build LNSym
       run: |
           pwd
-          make all
+          ls
+          make tests
