@@ -7,7 +7,7 @@ import Arm.Exec
 import Arm.Util
 import Tactics.Sym
 
-section multi_insts_proofs
+namespace multi_insts_proofs
 
 open BitVec
 

@@ -28,5 +28,3 @@ lean_exe «lnsym» where
   -- supportInterpreter := true
 
 require LeanSAT from git "https://github.com/leanprover/leansat" @ "main"
--- require std from git "https://github.com/leanprover/std4" @ "nightly-testing-2024-02-22"
--- require auto from git "https://github.com/leanprover-community/lean-auto.git" @ "nightly-testing-2024-02-22"

@@ -5,11 +5,11 @@
    "type": "git",
    "subDir": null,
    "scope": "",
-   "rev": "a1acc2d8339d385aff8064ada34aeec4620fdfea",
+   "rev": "9906580a44cd2334f385abcf4db6787efdc39bd1",
    "name": "LeanSAT",
    "manifestFile": "lake-manifest.json",
    "inputRev": "main",
    "inherited": false,
-   "configFile": "lakefile.lean"}],
+   "configFile": "lakefile.toml"}],
  "name": "lnsym",
  "lakeDir": ".lake"}

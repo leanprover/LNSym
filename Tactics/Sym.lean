@@ -118,7 +118,7 @@ elab "stepi_tac" h_step:ident hyp_prefix:str : tactic =>
 
 end stepiTac
 
-def sym1 (curr_state_number : Nat) (hProgram : Lean.Ident) : Lean.Elab.Tactic.TacticM Unit :=
+def sym1 (curr_state_number : Nat) (_hProgram : Lean.Ident) : Lean.Elab.Tactic.TacticM Unit :=
   Lean.Elab.Tactic.withMainContext do
     let n_str := toString curr_state_number
     let n'_str := toString (curr_state_number + 1)
