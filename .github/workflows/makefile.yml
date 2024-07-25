@@ -18,7 +18,7 @@ jobs:
 
     - uses: DeterminateSystems/nix-installer-action@main
 
-    - name: install cadical
+    - name: Install cadical
       run: nix profile install nixpkgs#cadical
 
     - uses: actions/checkout@v4
@@ -29,4 +29,6 @@ jobs:
         use-github-cache: true
 
     - name: Build LNSym
-      run: make all
+      run: |
+          pwd
+	  make all
