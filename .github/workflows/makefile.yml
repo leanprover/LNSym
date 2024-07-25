@@ -31,4 +31,4 @@ jobs:
     - name: Build LNSym
       run: |
           pwd
-	  make all
+          make all
