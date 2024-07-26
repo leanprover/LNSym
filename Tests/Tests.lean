@@ -15,3 +15,5 @@ import «Tests».«AES-GCM».GCMProgramTests
 import «Tests».«AES-GCM».GCMSpecTests
 import «Tests».«AES-GCM».AESV8ProgramTests
 import «Tests».«AES-GCM».AESGCMProgramTests
+import «Tests».«ELFParser».AWSLCCrypto
+import «Tests».«ELFParser».MiscTests

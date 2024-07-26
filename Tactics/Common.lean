@@ -9,6 +9,11 @@ import Arm.Exec
 open Lean Elab Tactic Expr Meta
 open BitVec
 
+def addToSimpExt (declName : Name) (simp_ext : Name) : MetaM Unit := do
+  let some ext ← getSimpExtension? simp_ext |
+    throwError "Simp Extension [simp_ext] not found!"
+  addSimpTheorem ext declName false false Lean.AttributeKind.global default
+
 /- Obtain `List α` from `List (Option α)` by discarding any `none`
 elements. -/
 def optionListtoList (xs : List (Option α)) : List α :=

@@ -521,6 +521,13 @@ def sha512_program_map : Program :=
     (0x126c98#64 , 0xf84107fd#32),      --  ldr     x29, [sp], #16
     (0x126c9c#64 , 0xd65f03c0#32)]      --  ret
 
+/--
+info: #[(0,
+   { guard := <BrOrg>0x0000000000126c90#64,
+     target := <BrTgt>0x0000000000126500#64,
+     next := <Seq>0x0000000000126c94#64 })]
+-/
+#guard_msgs in
 #eval (do let cfg ← (Cfg.create sha512_program_map)
           IO.println s!"{cfg.loops_info}")
 

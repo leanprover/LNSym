@@ -54,7 +54,7 @@ def ms_mem := (SHA2.message_schedule_mem 0 SHA2.j_512 [])
 
 def ans_one_blk_mem : IO SHA2.Hash := do
   pure (SHA2.sha512 ms_mem ms_one_block)
-#eval timeit "sha512 one block (memoized):" ans_one_blk_mem -- ~11 ms
+-- #eval timeit "sha512 one block (memoized):" ans_one_blk_mem -- ~11 ms
 
 example : SHA2.sha512 ms_mem ms_one_block = expected := by
   native_decide
@@ -123,7 +123,8 @@ def expected2 : SHA2.Hash :=
 -- Memoized version
 def ans_two_blks_mem : IO SHA2.Hash := do
   pure (SHA2.sha512 ms_mem ms_two_blocks)
-#eval timeit "sha512 two blocks (memoized):" ans_two_blks_mem -- ~16 ms
+
+-- #eval timeit "sha512 two blocks (memoized):" ans_two_blks_mem -- ~16 ms
 
 example : SHA2.sha512 ms_mem ms_two_blocks = expected2 := by
   native_decide
