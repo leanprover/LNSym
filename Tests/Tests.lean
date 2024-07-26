@@ -12,6 +12,7 @@ import «Tests».LDSTTest
 import «Tests».«AES-GCM».AESSpecTest
 import «Tests».«AES-GCM».AESGCMSpecTest
 import «Tests».«AES-GCM».GCMProgramTests
+import «Tests».«AES-GCM».GCMSpecTests
 import «Tests».«AES-GCM».AESV8ProgramTests
 import «Tests».«AES-GCM».AESGCMProgramTests
 import «Tests».«ELFParser».AWSLCCrypto
