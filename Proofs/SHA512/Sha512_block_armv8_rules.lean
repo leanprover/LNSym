@@ -64,7 +64,22 @@ private theorem and_nop_lemma (x : BitVec 64) :
   (zeroExtend 128 x) &&& 0xffffffffffffffff#128 = (zeroExtend 128 x) := by
   bv_decide
 
-set_option sat.timeout 350 in
+private theorem extractLsb_low_64_from_zeroExtend_128_or (x y : BitVec 64) :
+  extractLsb 63 0 ((zeroExtend 128 x) ||| (zeroExtend 128 y <<< 64)) = x := by
+  bv_decide
+
+private theorem extractLsb_high_64_from_zeroExtend_128_or (x y : BitVec 64) :
+  extractLsb 127 64 ((zeroExtend 128 x) ||| (zeroExtend 128 y <<< 64)) = y := by
+  bv_decide
+
+-- This lemma takes ~5min with bv_decide and the generated LRAT
+-- file is ~207MB. It turns out this this theorem is not a good candidate for
+-- proof via bit-blasting. As Bruno Dutertre says:
+-- "Maybe spending more time simplifying and normalizing terms before
+-- bit-blasting would help here .... + is associative and commutative.
+-- Proving things like this by bit-blasting + CDCL is hard (in general circuit
+-- equivalence can be hard for CDCL solvers), but a normalization procedure
+-- would prove it in no time."
 theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let elements := 2
   let esize := 64
@@ -101,14 +116,10 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   generalize extractLsb 127 64 e = e_hi
   simp at a_lo a_hi b_lo b_hi c_lo c_hi d_lo d_hi e_lo e_hi
   clear a b c d e
-  simp only [and_nop_lemma]
-  -- (FIXME) This lemma with bv_decide takes ~5min. Moreover, the generated LRAT
-  -- file is ~195MB (and ~207MB if the generalization above is not done), which
-  -- exceeds GitHub's file size limit of 100MB. We skip his lemmas for now in
-  -- the interest of build speed.
-  -- bv_check
-  -- "lrat_files/Sha512_block_armv8_rules.lean-sha512h_rule_1-88-2.lrat"
-  sorry
+  simp only [and_nop_lemma, extractLsb_low_64_from_zeroExtend_128_or, extractLsb_high_64_from_zeroExtend_128_or]
+  generalize (b_hi.rotateRight 14 ^^^ b_hi.rotateRight 18 ^^^ b_hi.rotateRight 41) = aux0
+  generalize (b_hi &&& a_lo ^^^ ~~~b_hi &&& a_hi) = aux1
+  ac_rfl
 
 -- (FIXME) Generalize to arbitrary-length bitvecs.
 theorem rev_elems_of_rev_elems_64_8 (x : BitVec 64) :
@@ -153,7 +164,27 @@ theorem rev_vector_of_rev_vector_128_64_8 (x : BitVec 128) :
       rsh_concat_identity_128]
   done
 
-set_option sat.timeout 180 in
+private theorem sha512h_rule_2_helper_1 (x y : BitVec 64) :
+  extractLsb 63 0
+          (extractLsb 191 64
+            ((zeroExtend 128 x ||| zeroExtend 128 y <<< 64) ++
+              (zeroExtend 128 x ||| zeroExtend 128 y <<< 64)))
+  =
+  y := by
+  bv_decide
+
+private theorem sha512h_rule_2_helper_2 (x y : BitVec 64) :
+  extractLsb 127 64
+          (extractLsb 191 64
+            ((zeroExtend 128 x ||| zeroExtend 128 y <<< 64) ++
+              (zeroExtend 128 x ||| zeroExtend 128 y <<< 64)))
+  =
+  x := by
+  bv_decide
+
+-- This lemma takes 2min with bv_decide and the generated LRAT
+-- file is ~120MB. As with sha512h_rule_1 above, we prefer to just simplify and
+-- normalize here instead of doing bit-blasting.
 theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   let a0 := extractLsb 63 0   a
   let a1 := extractLsb 127 64 a
@@ -179,10 +210,21 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
     reduceZeroExtend, Nat.zero_mul, reduceHShiftLeft, reduceNot, reduceAnd, Nat.one_mul,
     BitVec.cast_eq]
   simp only [shiftLeft_zero_eq, BitVec.zero_or, and_nop_lemma]
-  -- (FIXME) This lemma with bv_decide takes ~3min. Moreover, the generated LRAT
-  -- file is ~120MB, which exceeds GitHub's file size limit of 100MB.
-  -- We skip his lemmas for now in the interest of build speed.
-  sorry
-  -- bv_check "lrat_files/Sha512_block_armv8_rules.lean-sha512h_rule_2-158-2.lrat"
+  generalize extractLsb 63   0 a = a_lo
+  generalize extractLsb 127 64 a = a_hi
+  generalize extractLsb 63   0 b = b_lo
+  generalize extractLsb 127 64 b = b_hi
+  generalize extractLsb 63   0 c = c_lo
+  generalize extractLsb 127 64 c = c_hi
+  generalize extractLsb 63   0 d = d_lo
+  generalize extractLsb 127 64 d = d_hi
+  generalize extractLsb 63   0 e = e_lo
+  generalize extractLsb 127 64 e = e_hi
+  simp at a_lo a_hi b_lo b_hi c_lo c_hi d_lo d_hi e_lo e_hi
+  clear a b c d e
+  simp only [extractLsb_high_64_from_zeroExtend_128_or, extractLsb_low_64_from_zeroExtend_128_or]
+  simp only [sha512h_rule_2_helper_1, sha512h_rule_2_helper_2]
+  generalize (b_hi.rotateRight 14 ^^^ b_hi.rotateRight 18 ^^^ b_hi.rotateRight 41) = aux1
+  ac_rfl
 
 end sha512_block_armv8_rules
