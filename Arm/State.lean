@@ -27,6 +27,12 @@ def write_store {α β : Type} [DecidableEq α]
   (a : α) (b : β) (store : Store α β) : Store α β :=
   fun x => if x = a then b else (store x)
 
+/-- A store that stores a single value `b`. This is a constant function -/
+def Store.const (b : β) : Store α β := fun _ => b
+
+@[simp]
+theorem Store.read_const [DecidableEq α] (b : β) (a : α) : read_store a (Store.const b) = b := rfl
+
 -- Let's have these theorems added to simp, but local only to this file.
 @[local simp]
 theorem store_read_over_write_same [DecidableEq α] (a : α) (b : β) (store : Store α β) :
@@ -115,6 +121,15 @@ structure PState where
   v : BitVec 1
 deriving DecidableEq, Repr
 
+def PState.default : PState where 
+  n := 0#1
+  z := 0#1
+  c := 0#1
+  v := 0#1
+
+instance : Inhabited PState where 
+  default := PState.default
+
 @[ext]
 structure ArmState where
   -- General-purpose registers: register 31 is the stack pointer.
@@ -138,6 +153,18 @@ structure ArmState where
   -- execution based off an erroneous state is invalid.
   error      : StateError
 deriving Repr
+
+def ArmState.default : ArmState where 
+  gpr := .const 0
+  sfp := .const 0
+  pc := 0#64
+  pstate := .default
+  mem := .const 0
+  error := .None
+  program := []
+
+instance : Inhabited ArmState where 
+  default := .default
 
 ---- Basic State Accessors and Updaters (except memory) ----
 

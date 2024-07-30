@@ -33,4 +33,9 @@ def maxSpec (x y : BitVec 32) : BitVec 32 :=
     y
 
 
+def state : ArmState := 
+  { 
+    ArmState.default with 
+    program := max_program, pc := 0x894#64
+  }
 
