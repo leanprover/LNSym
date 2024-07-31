@@ -27,12 +27,6 @@ def write_store {α β : Type} [DecidableEq α]
   (a : α) (b : β) (store : Store α β) : Store α β :=
   fun x => if x = a then b else (store x)
 
-/-- A store that stores a single value `b`. This is a constant function -/
-def Store.const (b : β) : Store α β := fun _ => b
-
-@[simp]
-theorem Store.read_const [DecidableEq α] (b : β) (a : α) : read_store a (Store.const b) = b := rfl
-
 -- Let's have these theorems added to simp, but local only to this file.
 @[local simp]
 theorem store_read_over_write_same [DecidableEq α] (a : α) (b : β) (store : Store α β) :
@@ -121,35 +115,18 @@ structure PState where
   v : BitVec 1
 deriving DecidableEq, Repr
 
-def PState.default : PState where
-  n := 0#1
-  z := 0#1
-  c := 0#1
-  v := 0#1
-
-instance : Inhabited PState where
-  default := PState.default
-
-/--
-Note that we mark all fields except `program` as private, since we expect users
-to interact with these via a uniform API provided by `r` and `w`,
-or the higher level `{read|write}_<field_name>` functions that are sugar over `r` and `w`.
-
-This allows us to prove theorems about (non)interference once in terms of `r` and `w`,
-and reuse these for automation.
--/
 @[ext]
 structure ArmState where
   -- General-purpose registers: register 31 is the stack pointer.
-  private gpr        : Store (BitVec 5) (BitVec 64)
+  gpr        : Store (BitVec 5) (BitVec 64)
   -- SIMD/floating-point registers
-  private sfp        : Store (BitVec 5) (BitVec 128)
+  sfp        : Store (BitVec 5) (BitVec 128)
   -- Program Counter
-  private pc         : BitVec 64
+  pc         : BitVec 64
   -- PState
-  private pstate     : PState
+  pstate     : PState
   -- Memory: maps 64-bit addresses to bytes
-  private mem        : Store (BitVec 64) (BitVec 8)
+  mem        : Store (BitVec 64) (BitVec 8)
   -- Program: maps 64-bit addresses to 32-bit instructions.
   -- Note that we have the following assumption baked into our machine model:
   -- the program is always disjoint from the rest of the memory.
@@ -159,20 +136,8 @@ structure ArmState where
   -- non-None value when some irrecoverable error is encountered
   -- (e.g., an unimplemented instruction is hit). Any reasoning or
   -- execution based off an erroneous state is invalid.
-  private error      : StateError
+  error      : StateError
 deriving Repr
-
-def ArmState.default : ArmState where
-  gpr := .const 0
-  sfp := .const 0
-  pc := 0#64
-  pstate := .default
-  mem := .const 0
-  error := .None
-  program := []
-
-instance : Inhabited ArmState where
-  default := .default
 
 ---- Basic State Accessors and Updaters (except memory) ----
 
