@@ -5,9 +5,12 @@ Author(s): Shilpi Goel, Siddharth Bhat
 
 The goal is to prove that this program implements max correctly.
 -/
-import Arm 
+import Arm
+import Arm.BitVec
 
-def max_program : Program :=
+namespace Max
+
+def program : Program :=
   def_program [
   (0x894#64, 0xd10083ff#32),  --         sub  sp, sp, #0x20
   (0x898#64, 0xb9000fe0#32),  --         str  w0, [sp, #12]
@@ -26,16 +29,16 @@ def max_program : Program :=
   (0x8cc#64, 0xd65f03c0#32)   --         ret
 ]
 
-def maxSpec (x y : BitVec 32) : BitVec 32 :=
-  if BitVec.slt y x then
-    x
-  else
-    y
+def spec (x y : BitVec 32) : BitVec 32 :=
+  if BitVec.slt y x then x else y
 
+theorem correct
+  {s0 sf : ArmState}
+  (h_s0_pc : read_pc s0 = 0x4005d0#64)
+  (h_s0_program : s0.program = int_abs_program)
+  (h_s0_err : read_err s0 = StateError.None)
+  (h_run : sf = run program.length s0) :
+  read_gpr 32 0 sf = spec (read_gpr 32 0 s0) (read_gpr 32 1 s0) ∧
+  read_err sf = StateError.None := by sorry
 
-def state : ArmState := 
-  { 
-    ArmState.default with 
-    program := max_program, pc := 0x894#64
-  }
-
+end Max
