@@ -8,3 +8,4 @@ import «Specs».AESCommon
 import «Specs».AESArm
 import «Specs».GCM
 import «Specs».GCMV8
+import «Specs».AESV8
