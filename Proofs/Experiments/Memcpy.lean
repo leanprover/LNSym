@@ -56,7 +56,7 @@ dest address is in x2.
 theorem correct_separate
   {s0 sf : ArmState}
   (h_s0_pc : read_pc s0 = 0x4005d0#64)
-  (h_s0_program : s0.program = int_abs_program)
+  (h_s0_program : s0.program = program)
   (h_s0_err : read_err s0 = StateError.None)
   (h_run : sf = run program.length s0)
   (hx₀ : x₀ = read_gpr 64 0 s0)
