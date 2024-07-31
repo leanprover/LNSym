@@ -1,5 +1,5 @@
 /-
-Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Siddharth Bhat
 
@@ -14,7 +14,6 @@ def ArmState.x (n : Nat) : ArmState → BitVec 64
 def ArmState.x0 := ArmState.x 0
 def ArmState.x1 := ArmState.x 1
 def ArmState.x2 := ArmState.x 2
-
 
 namespace Memcpy
 def program : Program :=

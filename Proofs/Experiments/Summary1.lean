@@ -1,5 +1,5 @@
 /-
-Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Siddharth Bhat
 
@@ -81,4 +81,4 @@ theorem resolve_state_equations_reg_shadow (s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 sf : A
   done
 
 /-- info: 'resolve_state_equations_reg_shadow' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms resolve_state_equations_reg_shadow 
+#guard_msgs in #print axioms resolve_state_equations_reg_shadow
