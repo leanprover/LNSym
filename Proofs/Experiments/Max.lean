@@ -35,10 +35,13 @@ def spec (x y : BitVec 32) : BitVec 32 :=
 theorem correct
   {s0 sf : ArmState}
   (h_s0_pc : read_pc s0 = 0x4005d0#64)
-  (h_s0_program : s0.program = int_abs_program)
+  (h_s0_program : s0.program = program)
   (h_s0_err : read_err s0 = StateError.None)
   (h_run : sf = run program.length s0) :
   read_gpr 32 0 sf = spec (read_gpr 32 0 s0) (read_gpr 32 1 s0) ∧
   read_err sf = StateError.None := by sorry
+
+/-- info: 'Max.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms correct
 
 end Max

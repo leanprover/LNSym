@@ -7,6 +7,7 @@ The goal is to prove that this program implements memcpy correctly.
 -/
 import Arm
 
+/-- Helper projections for registers `xn` -/
 def ArmState.x (n : Nat) : ArmState → BitVec 64
 | s => read_gpr 64 n s
 
@@ -31,9 +32,7 @@ def program : Program :=
      (0x8f8#64, 0xd65f03c0#32)   /- ret                      -/
     ]
 
-def spec (x y : BitVec 32) : BitVec 32 :=
-  if BitVec.slt y x then x else y
-
+def spec (x y : BitVec 32) : BitVec 32 := if BitVec.slt y x then x else y
 
 structure Correct (s0 sf : ArmState) : Prop where
   /-- The destination in the final state is a copy of the source in the initial state. -/
@@ -45,24 +44,24 @@ structure Correct (s0 sf : ArmState) : Prop where
       read_mem_bytes n addr sf = read_mem_bytes n addr s0
   herr : read_err sf  = .None
 
-/-
+/--
 Note that the theorem also holds when src = dest, but does *not* hold
 when src and dest overlap.
-
-num bytes to be copied is x0.
-src address is in x1.
-dest address is in x2.
+- num bytes to be copied is x0.
+- src address is in x1.
+- dest address is in x2.
 -/
-theorem correct_separate
+theorem correct
   {s0 sf : ArmState}
   (h_s0_pc : read_pc s0 = 0x4005d0#64)
   (h_s0_program : s0.program = program)
   (h_s0_err : read_err s0 = StateError.None)
   (h_run : sf = run program.length s0)
-  (hx₀ : x₀ = read_gpr 64 0 s0)
-  (hx₁ : x₁ = read_gpr 64 1 s0)
-  (hx₂ : x₂ = read_gpr 64 2 s0)
-  (h_s0_mem : mem_separate  x₁ (x₀ + x₁ - 1) x₂ (x₂ + x₀ - 1)) : -- TODO: These are closed intervals.
+  -- The intervals are closed, which leads to `(l + len - 1)` in the hypotheses.
+  (h_s0_mem : mem_separate s0.x1 (s0.x0 + s0.x1 - 1) s0.x2 (s0.x2 + s0.x0 - 1)) :
   Correct s0 sf := sorry
+
+/-- info: 'Memcpy.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms correct
 
 end Memcpy
