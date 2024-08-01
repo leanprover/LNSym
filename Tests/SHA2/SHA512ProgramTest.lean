@@ -593,7 +593,7 @@ def init_sha512_test : ArmState :=
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc  := 0x1264c0#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ : BitVec 64) => 0#8),
              program := sha512_program_map,
              error := StateError.None }

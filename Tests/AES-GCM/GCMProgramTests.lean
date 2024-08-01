@@ -120,7 +120,7 @@ def init_gcm_init_test : ArmState :=
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc := 0x7aa1c0#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := GCMInitV8Program.gcm_init_v8_program,
              error := StateError.None
@@ -157,7 +157,7 @@ def gcm_gmult_final_state : ArmState :=
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc  := 0x7aa420#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ : BitVec 64) => 0#8),
              program := GCMGmultV8Program.gcm_gmult_v8_program,
              error := StateError.None
@@ -194,7 +194,7 @@ def gcm_ghash_test (n : Nat) (len : BitVec 64) (buf : BitVec 896)
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc := 0x7aa490#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := GCMGhashV8Program.gcm_ghash_v8_program,
              error := StateError.None

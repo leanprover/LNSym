@@ -115,6 +115,9 @@ structure PState where
   v : BitVec 1
 deriving DecidableEq, Repr
 
+def PState.zero : PState :=
+  { n := 0#1, z := 0#1, c := 0#1, v := 0#1 }
+
 @[ext]
 structure ArmState where
   /-- General-purpose registers: register 31 is the stack pointer. -/
@@ -141,6 +144,16 @@ structure ArmState where
   -/
   private error      : StateError
 deriving Repr
+
+def ArmState.default : ArmState := { 
+    gpr := fun _ => 0#64,
+    sfp := fun _ => 0#128,
+    pc := 0#64,
+    pstate := PState.zero,
+    mem := fun _ => 0#8,
+    program := [],
+    error := StateError.None
+  }
 
 ---- Basic State Accessors and Updaters (except memory) ----
 
@@ -448,9 +461,6 @@ def write_pstate (pstate : PState) (s : ArmState) : ArmState :=
 @[state_simp_rules]
 def make_pstate (n z c v : BitVec 1) : PState :=
   { n, z, c, v }
-
-def zero_pstate : PState :=
-  { n := 0#1, z := 0#1, c := 0#1, v := 0#1 }
 
 @[state_simp_rules]
 def read_err (s : ArmState) : StateError :=

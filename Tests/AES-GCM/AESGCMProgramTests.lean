@@ -86,7 +86,7 @@ def aes_gcm_enc_kernel_test (n : Nat) (plain_blocks : BitVec 4096)
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc := 0x7a0cf0#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := AESGCMEncKernelProgram.aes_gcm_enc_kernel_program,
              error := StateError.None
@@ -124,7 +124,7 @@ def aes_gcm_dec_kernel_test (n : Nat) (cipher_blocks : BitVec 4096)
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc := 0x7a1880#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := AESGCMDecKernelProgram.aes_gcm_dec_kernel_program,
              error := StateError.None
