@@ -142,14 +142,15 @@ structure ArmState where
   error      : StateError
 deriving Repr
 
-def ArmState.default : ArmState :=
-  { gpr := (fun (_ : BitVec 5) => 0#64),
-    sfp := (fun (_ : BitVec 5) => 0#128),
+def ArmState.default : ArmState := { 
+    gpr := fun _ => 0#64,
+    sfp := fun _ => 0#128),
     pc := 0#64,
     pstate := PState.zero,
-    mem := (fun (_ : BitVec 64) => 0#8),
+    mem := fun _ => 0#8,
     program := [],
-    error := StateError.None}
+    error := StateError.None
+  }
 
 ---- Basic State Accessors and Updaters (except memory) ----
 
