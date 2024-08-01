@@ -1,5 +1,5 @@
 # LNSym: Native Code Symbolic Simulator in Lean
-[![Makefile CI](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml/badge.svg)](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml)
+[![Makefile CI](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml/badge.svg)](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml) [Docs](https://leanprover.github.io/LNSym/)
 
 LNSym is a symbolic simulator for Armv8 machine-code programs.
 
