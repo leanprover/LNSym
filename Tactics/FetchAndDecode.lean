@@ -108,6 +108,7 @@ def introFetchDecodeLemmas (goal : MVarId) (hStep : Expr) (hProgram : Expr)
   let (ctx, simprocs) ←
     LNSymSimpContext (config := {decide := true})
                      (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules])
+                     -- Is it necessary to have CheckSPAlignment here?
                      (decls_to_unfold := #[])
                      (thms := #[])
                      (decls := matching_decls)
@@ -145,6 +146,12 @@ def introFetchDecodeLemmas (goal : MVarId) (hStep : Expr) (hProgram : Expr)
           (mkAppN (Expr.const ``r []) #[(mkConst ``StateField.PC), st_var]),
           pc_val])
       ctx simprocs
+  -- Introduce a hypothesis (and attempt to prove) that the stack
+  -- pointer (SP) in the new state is aligned.
+  let (goal', maybe_sp_aligned_goal) ←
+    introLNSymHyp goal' st_var (gen_hyp_name st_var_str "sp_aligned")
+      (mkAppN (Expr.const ``CheckSPAlignment []) #[st_var])
+      ctx simprocs
   -- Introduce a hypothesis (and attempt to prove) that the program in
   -- the new state is the same as it was earlier in `hProgram`.
   let (goal', maybe_prog_goal) ←
@@ -155,7 +162,7 @@ def introFetchDecodeLemmas (goal : MVarId) (hStep : Expr) (hProgram : Expr)
           program])
       ctx simprocs
 
-  let other_unsolved_goals := optionListtoList [maybe_err_goal, maybe_pc_goal, maybe_prog_goal]
+  let other_unsolved_goals := optionListtoList [maybe_err_goal, maybe_pc_goal, maybe_sp_aligned_goal, maybe_prog_goal]
   replaceMainGoal (goal' :: other_unsolved_goals)
   return true
 

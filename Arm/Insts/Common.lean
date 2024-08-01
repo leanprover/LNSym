@@ -54,15 +54,29 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   else
     result
 
+/-- `Aligned x a` witnesses that the bitvector `x` is `a`-bit aligned. -/
+def Aligned (x : BitVec n) (a : Nat) : Prop :=
+  match a with
+  | 0 => True
+  | a' + 1 => extractLsb a' 0 x = BitVec.zero _
+
+
+/-- We need to prove why the Aligned predicate is Decidable. -/
+instance : Decidable (Aligned x a) := by
+  cases a <;> simp [Aligned] <;> infer_instance
+
 /-- Check correct stack pointer (SP) alignment for AArch64 state; returns
 true when sp is aligned. -/
-def CheckSPAlignment (s : ArmState) : Bool :=
+def CheckSPAlignment (s : ArmState) : Prop :=
   -- (FIXME) Incomplete specification: should also check PSTATE.EL
   -- after we model that.
   let sp := read_gpr 64 31#5 s
   -- If the low 4 bits of SP are 0, then it is divisible by 16 and
   -- 16-aligned.
-  ((extractLsb 3 0 sp) &&& 0xF#4) = 0#4
+  (Aligned sp 4)
+
+/-- We need to prove why the CheckSPAlignment predicate is Decidable. -/
+instance : Decidable (CheckSPAlignment s) := by unfold CheckSPAlignment; infer_instance
 
 @[state_simp_rules]
 theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
@@ -71,7 +85,7 @@ theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
 
 @[state_simp_rules]
 theorem CheckSPAligment_of_w_sp :
-  CheckSPAlignment (w (StateField.GPR 31#5) v s) = ((extractLsb 3 0 v) &&& 0xF#4 = 0#4) := by
+  CheckSPAlignment (w (StateField.GPR 31#5) v s) = (Aligned v 4) := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
 @[state_simp_rules]

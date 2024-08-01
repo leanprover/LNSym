@@ -35,7 +35,7 @@ def reg_imm_operation (inst_str : String) (op : BitVec 1)
   (Rt : BitVec 5) (offset : BitVec 64) (s : ArmState)
   (H : 8 ∣ datasize) : ArmState :=
   let address := read_gpr 64 Rn s
-  if Rn = 31#5 ∧ not (CheckSPAlignment s) then
+  if Rn = 31#5 ∧ ¬(CheckSPAlignment s) then
       write_err (StateError.Fault s!"[Inst: {inst_str}] SP {address} is not aligned!") s
       -- Note: we do not need to model the ASL function
       -- "CreateAccDescGPR" here, given the simplicity of our memory

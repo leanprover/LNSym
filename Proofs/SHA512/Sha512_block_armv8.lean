@@ -31,7 +31,7 @@ def sha512_program_test_1 : Program :=
 -- set_option pp.deepTerms true in
 theorem sha512_program_test_1_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x126538#64)
-  (h_s0_sp_aligned : CheckSPAlignment s0 = true)
+  (h_s0_sp_aligned : CheckSPAlignment s0)
   (h_s0_program : s0.program = sha512_program_test_1)
   (h_s0_err : read_err s0 = StateError.None)
   (h_run : s_final = run 4 s0) :
@@ -65,6 +65,7 @@ theorem sha512_program_test_2_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x126538#64)
   (h_s0_program : s0.program = sha512_program_test_2)
   (h_s0_err : read_err s0 = StateError.None)
+  (h_s0_sp_aligned : CheckSPAlignment s0)
   (h_run : s_final = run 6 s0) :
   read_err s_final = StateError.None := by
   -- Prelude
@@ -80,6 +81,20 @@ theorem sha512_program_test_2_sym (s0 s_final : ArmState)
 
 -- Test 3:
 
+theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
+  (x_aligned : Aligned x 4)
+  (y_aligned : Aligned y 4)
+  :
+  Aligned (x + y) 4 := by
+  simp_all [Aligned]
+  bv_decide
+
+@[state_simp_rules]
+theorem CheckSPAlignment_BitVecAdd_64_4 {st : ArmState} {y : BitVec 64}
+  (x_aligned : CheckSPAlignment st)
+  (y_aligned : Aligned y 4)
+  :
+  Aligned ((r (StateField.GPR 31#5) st) + y) 4 := Aligned_BitVecAdd_64_4 x_aligned y_aligned
 def sha512_program_test_3 : Program :=
   def_program
    [(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
@@ -93,7 +108,7 @@ def sha512_program_test_3 : Program :=
 -- set_option pp.deepTerms.threshold 10 in
 theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   (h_s0_err : read_err s0 = StateError.None)
-  (h_s0_sp_aligned : CheckSPAlignment s0 = true)
+  (h_s0_sp_aligned : CheckSPAlignment s0)
   (h_s0_pc : read_pc s0 = 0x1264c0#64)
   (h_s0_program : s0.program = sha512_program_test_3)
   (h_run : s_final = run 4 s0) :
@@ -102,6 +117,7 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
   sym_n 4
+  case h_s1_sp_aligned => apply Aligned_BitVecAdd_64_4 h_s0_sp_aligned (by decide)
   -- Final steps
   unfold run at h_run
   subst s_final

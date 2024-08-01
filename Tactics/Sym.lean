@@ -47,6 +47,7 @@ def sym_one (curr_state_number : Nat) : Lean.Elab.Tactic.TacticM Unit :=
     let h_st_program := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_program"))
     let h_st_pc := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_pc"))
     let h_st_err := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_err"))
+    let h_st_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_sp_aligned"))
     -- st': name of the next state
     let st' := Lean.mkIdent (mk_name ("s" ++ n'_str))
     -- h_run: name of the hypothesis with the `run` function
@@ -61,7 +62,7 @@ def sym_one (curr_state_number : Nat) : Lean.Elab.Tactic.TacticM Unit :=
           -- (try clear $h_step_n:ident)
           exec_inst $h_step_n':ident $h_st_prefix:str
           intro_fetch_decode_lemmas $h_step_n':ident $h_st_program:ident $h_st_prefix:str
-          (try clear $h_st_pc:ident $h_st_program:ident $h_st_err:ident)
+          (try clear $h_st_pc:ident $h_st_program:ident $h_st_err:ident $h_st_sp_aligned:ident)
           -- intro_change_hyps $h_step_n':ident $h_st_prefix:str
           -- (try clear $h_step_n':ident)
       )))
