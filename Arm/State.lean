@@ -510,25 +510,26 @@ example :
 
 end State
 
+/-! # Memory operations on State. -/
 section Memory
-----------------------------------------------------------------------
 
--- We export read_mem_bytes, not read_mem.
+/-- We export read_mem_bytes, not read_mem. -/
 private def read_mem (addr : BitVec 64) (s : ArmState) : BitVec 8 :=
   read_store addr s.mem
 
--- We don't add the simp attribute to read/write_mem_bytes. Instead,
--- we prove and export properties about their (non)interference.
+/--
+We don't add the simp attribute to read/write_mem_bytes. Instead,
+we prove and export properties about their (non)interference.
+-/
 def read_mem_bytes (n : Nat) (addr : BitVec 64) (s : ArmState) : BitVec (n * 8) :=
   match n with
   | 0 => 0#0
   | n' + 1 =>
     let byte := read_mem addr s
     let rest := read_mem_bytes n' (addr + 1#64) s
-    have h: n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
-    BitVec.cast h (rest ++ byte)
+    (rest ++ byte).cast (by omega)
 
--- We export write_mem_bytes, not write_mem.
+/-- We export write_mem_bytes, not write_mem. -/
 private def write_mem (addr : BitVec 64) (val : BitVec 8) (s : ArmState) : ArmState :=
   let new_mem := write_store addr val s.mem
   { s with mem := new_mem }
@@ -542,11 +543,10 @@ def write_mem_bytes (n : Nat) (addr : BitVec 64) (val : BitVec (n * 8)) (s : Arm
     let val_rest := BitVec.zeroExtend (n' * 8) (val >>> 8)
     write_mem_bytes n' (addr + 1#64) val_rest s
 
-----------------------------------------------------------------------
 
----- Memory accessors and updaters ----
+/-! # Memory accessors and updaters -/
 
----- RoW/WoW lemmas about memory and other fields ----
+/-! ### RoW/WoW lemmas about memory and other fields -/
 
 theorem r_of_write_mem : r fld (write_mem addr val s) = r fld s := by
   unfold r
@@ -611,7 +611,7 @@ theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n 
     rw [h_n]
     simp only [write_mem]
 
----- Memory RoW/WoW lemmas ----
+/-! ### Memory RoW/WoW lemmas -/
 
 theorem read_mem_of_write_mem_same :
   read_mem addr (write_mem addr v s) = v := by
@@ -631,5 +631,3 @@ theorem write_mem_irrelevant :
   simp [read_mem, write_mem, store_write_irrelevant]
 
 end Memory
-
-----------------------------------------------------------------------
