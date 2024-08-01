@@ -7,6 +7,7 @@ The goal is to eliminate the sorry, and to simplify the proof to a tactic invoca
 -/
 import Arm
 -- TODO(@bollu): make this visible from 'Arm'.
+import Arm.State
 import Arm.MemoryProofs
 
 theorem mem_automation_test

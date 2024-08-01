@@ -513,14 +513,12 @@ end State
 section Memory
 ----------------------------------------------------------------------
 
--- (FIXME) Make read_mem private.
 -- We export read_mem_bytes, not read_mem.
 private def read_mem (addr : BitVec 64) (s : ArmState) : BitVec 8 :=
   read_store addr s.mem
 
 -- We don't add the simp attribute to read/write_mem_bytes. Instead,
 -- we prove and export properties about their (non)interference.
-
 def read_mem_bytes (n : Nat) (addr : BitVec 64) (s : ArmState) : BitVec (n * 8) :=
   match n with
   | 0 => 0#0
@@ -530,7 +528,6 @@ def read_mem_bytes (n : Nat) (addr : BitVec 64) (s : ArmState) : BitVec (n * 8) 
     have h: n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
     BitVec.cast h (rest ++ byte)
 
--- (FIXME) Make write_mem private.
 -- We export write_mem_bytes, not write_mem.
 private def write_mem (addr : BitVec 64) (val : BitVec 8) (s : ArmState) : ArmState :=
   let new_mem := write_store addr val s.mem
@@ -544,6 +541,7 @@ def write_mem_bytes (n : Nat) (addr : BitVec 64) (val : BitVec (n * 8)) (s : Arm
     let s := write_mem addr byte s
     let val_rest := BitVec.zeroExtend (n' * 8) (val >>> 8)
     write_mem_bytes n' (addr + 1#64) val_rest s
+
 ----------------------------------------------------------------------
 
 ---- Memory accessors and updaters ----

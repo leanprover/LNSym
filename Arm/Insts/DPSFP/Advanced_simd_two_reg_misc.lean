@@ -6,7 +6,7 @@ Author(s): Shilpi Goel
 -- REV64
 
 import Arm.Decode
-import Arm.Memory
+import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
 
