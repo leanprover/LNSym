@@ -38,7 +38,7 @@ def ldr_gpr_unsigned_offset_state : ArmState :=
 def ldr_gpr_unsigned_offset_final_state : ArmState := run 1 ldr_gpr_unsigned_offset_state
 
 example : (read_gpr 64 0#5 ldr_gpr_unsigned_offset_final_state) = 20#64 := by native_decide
-example : ldr_gpr_unsigned_offset_final_state.pc = 4#64 := by native_decide
+example : read_pc ldr_gpr_unsigned_offset_final_state = 4#64 := by native_decide
 
 ----------------------------------------------------------------------
 -- test str, 64-bit gpr, post-index
@@ -56,7 +56,7 @@ def str_gpr_post_index_final_state : ArmState := run 1 str_gpr_post_index_state
 
 example : (read_gpr 64 1#5 str_gpr_post_index_final_state) = 3#64 := by native_decide
 example : (read_mem_bytes 8 0#64 str_gpr_post_index_final_state) = 20#64 := by native_decide
-example : str_gpr_post_index_final_state.pc = 4#64 := by native_decide
+example : read_pc str_gpr_post_index_final_state = 4#64 := by native_decide
 
 ----------------------------------------------------------------------
 -- test ldr, 64-bit sfp, post-index
@@ -94,7 +94,7 @@ def ldrb_unsigned_offset : Program :=
 def ldrb_unsigned_offset_state: ArmState :=
   let s := set_init_state ldrb_unsigned_offset
   write_mem_bytes 1 4#64 20#8 s
-  
+
 def ldrb_unsigned_offset_final_state : ArmState := run 1 ldrb_unsigned_offset_state
 
 example : (read_gpr 64 0#5 ldrb_unsigned_offset_final_state) = 20#64 := by native_decide

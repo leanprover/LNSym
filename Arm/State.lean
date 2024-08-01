@@ -514,10 +514,18 @@ example :
 end State
 
 /-! # Memory operations on State. -/
+
 section Memory
 
-/-- We export read_mem_bytes, not read_mem. -/
-private def read_mem (addr : BitVec 64) (s : ArmState) : BitVec 8 :=
+/-!
+Ideally, `read_mem` and `write_mem` ought to be private, and we ought to only
+expose `read_mem_bytes` and `write_mem_bytes` to the outside world.
+However, due to layering violations with `Arm/MemoryProofs.lean`, we currently keep them public.
+-/
+
+
+/-- We export read_mem_bytes, not read_mem. FIXME: make private. -/
+def read_mem (addr : BitVec 64) (s : ArmState) : BitVec 8 :=
   read_store addr s.mem
 
 /--
@@ -532,8 +540,8 @@ def read_mem_bytes (n : Nat) (addr : BitVec 64) (s : ArmState) : BitVec (n * 8) 
     let rest := read_mem_bytes n' (addr + 1#64) s
     (rest ++ byte).cast (by omega)
 
-/-- We export write_mem_bytes, not write_mem. -/
-private def write_mem (addr : BitVec 64) (val : BitVec 8) (s : ArmState) : ArmState :=
+/-- We export write_mem_bytes, not write_mem. FIXME: make private. -/
+def write_mem (addr : BitVec 64) (val : BitVec 8) (s : ArmState) : ArmState :=
   let new_mem := write_store addr val s.mem
   { s with mem := new_mem }
 
