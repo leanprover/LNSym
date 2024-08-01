@@ -47,18 +47,18 @@ def in_blocks : List (BitVec 8) := List.replicate 512 0x2a#8
 def ivec : List (BitVec 8) := List.replicate 16 0x00#8
 
 def Htable : List (BitVec 64) :=
-  [ 0x1099f4b39468565c#64, 0xcdd297a9df145877#64,
+  [ 0xcdd297a9df145877#64, 0x1099f4b39468565c#64,
     0xdd4b631a4b7c0e2b#64, 0x62d81a7fe5da3296#64,
-    0xea0b3a488cb9209b#64, 0x88d320376963120d#64,
-    0x35c1a04f8bfb2395#64, 0x8695e702c322faf9#64,
+    0x88d320376963120d#64, 0xea0b3a488cb9209b#64,
+    0x8695e702c322faf9#64, 0x35c1a04f8bfb2395#64,
     0xb354474d48d9d96c#64, 0xb2261b4d0cb1e020#64,
-    0xe4adc23e440c7165#64, 0x568bd97348bd9145#64,
-    0x7d845b630bb0a55d#64, 0xf9151b1f632d10b4#64,
+    0x568bd97348bd9145#64, 0xe4adc23e440c7165#64,
+    0xf9151b1f632d10b4#64, 0x7d845b630bb0a55d#64,
     0x8491407c689db5e9#64, 0xa674eba8f9d7f250#64,
-    0x4af32418184aee1e#64, 0xec87cfb0e19d1c4e#64,
-    0xf109e6e0b31d1eee#64, 0x7d1998bcfc545474#64,
+    0xec87cfb0e19d1c4e#64, 0x4af32418184aee1e#64,
+    0x7d1998bcfc545474#64, 0xf109e6e0b31d1eee#64,
     0x8c107e5c4f494a9a#64, 0x7498729da40cd280#64,
-    0xa47c653dfbeac924#64, 0xd0e417a05fe61ba4#64,
+    0xd0e417a05fe61ba4#64, 0xa47c653dfbeac924#64,
     0x0#64, 0x0#64,
     0x0#64, 0x0#64,
     0x0#64, 0x0#64,
@@ -85,7 +85,7 @@ def aes_gcm_enc_kernel_test (n : Nat) (plain_blocks : BitVec 4096)
         | _ => 0#64
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
-             pc := 0x7a0cf0#64,
+             pc := 0x7cf610#64,
              pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := AESGCMEncKernelProgram.aes_gcm_enc_kernel_program,
@@ -123,7 +123,7 @@ def aes_gcm_dec_kernel_test (n : Nat) (cipher_blocks : BitVec 4096)
         | _ => 0#64
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
-             pc := 0x7a1880#64,
+             pc := 0x7d0150#64,
              pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := AESGCMDecKernelProgram.aes_gcm_dec_kernel_program,
@@ -209,7 +209,7 @@ def final_state : ArmState :=
   have h : 8 * in_blocks.length = 4096 := by
     unfold in_blocks
     simp only [List.length_replicate]
-  aes_gcm_enc_kernel_test 1514 (BitVec.cast h $ revflat in_blocks) (revflat Xi) (revflat Htable)
+  aes_gcm_enc_kernel_test 1495 (BitVec.cast h $ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
@@ -227,7 +227,7 @@ namespace dec
 
 -- AES_128_GCM decrypt test
 def final_state : ArmState :=
-  aes_gcm_dec_kernel_test 1519 (revflat ciphertext) (revflat Xi) (revflat Htable)
+  aes_gcm_dec_kernel_test 1495 (revflat ciphertext) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
@@ -310,7 +310,7 @@ def final_state : ArmState :=
   have h : 8 * in_blocks.length = 4096 := by
     unfold in_blocks
     simp only [List.length_replicate]
-  aes_gcm_enc_kernel_test 1650 (BitVec.cast h $ revflat in_blocks) (revflat Xi) (revflat Htable)
+  aes_gcm_enc_kernel_test 1631 (BitVec.cast h $ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
@@ -328,7 +328,7 @@ namespace dec
 
 -- AES_192_GCM decrypt test
 def final_state : ArmState :=
-  aes_gcm_dec_kernel_test 1655 (revflat ciphertext) (revflat Xi) (revflat Htable)
+  aes_gcm_dec_kernel_test 1631 (revflat ciphertext) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
@@ -414,7 +414,7 @@ def final_state : ArmState :=
   have h : 8 * in_blocks.length = 4096 := by
     unfold in_blocks
     simp only [List.length_replicate]
-  aes_gcm_enc_kernel_test 1778 (BitVec.cast h $ revflat in_blocks) (revflat Xi) (revflat Htable)
+  aes_gcm_enc_kernel_test 1759 (BitVec.cast h $ revflat in_blocks) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
@@ -432,7 +432,7 @@ namespace dec
 
 -- AES_256_GCM decrypt test
 def final_state : ArmState :=
-  aes_gcm_dec_kernel_test 1783 (revflat ciphertext) (revflat Xi) (revflat Htable)
+  aes_gcm_dec_kernel_test 1759 (revflat ciphertext) (revflat Xi) (revflat Htable)
     rounds (revflat key) (revflat ivec)
 
 def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state

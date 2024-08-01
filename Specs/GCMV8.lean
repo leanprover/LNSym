@@ -156,39 +156,49 @@ private def gcm_polyval (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
 /-- GCMInitV8 specification:
     H : [128] -- initial H input
     output : [12][128] -- precomputed Htable values
+    See for Hx_rev values: https://github.com/aws/aws-lc/pull/1403
 -/
 def GCMInitV8 (H : BitVec 128) : (List (BitVec 128)) :=
   let H0 := GCMV8.gcm_init_H H
+  let H0_rev := (lo H0) ++ (hi H0)
   let H2 := GCMV8.gcm_polyval H0 H0
+  let H2_rev := (lo H2) ++ (hi H2)
   let H1 := ((hi H2) ^^^ (lo H2)) ++ ((hi H0) ^^^ (lo H0))
   let H3 := GCMV8.gcm_polyval H0 H2
+  let H3_rev := (lo H3) ++ (hi H3)
   let H5 := GCMV8.gcm_polyval H0 H3
+  let H5_rev := (lo H5) ++ (hi H5)
   let H4 := ((hi H5) ^^^ (lo H5)) ++ ((hi H3) ^^^ (lo H3))
   let H6 := GCMV8.gcm_polyval H0 H5
+  let H6_rev := (lo H6) ++ (hi H6)
   let H8 := GCMV8.gcm_polyval H0 H6
+  let H8_rev := (lo H8) ++ (hi H8)
   let H7 := ((hi H8) ^^^ (lo H8)) ++ ((hi H6) ^^^ (lo H6))
   let H9 := GCMV8.gcm_polyval H0 H8
+  let H9_rev := (lo H9) ++ (hi H9)
   let H11 := GCMV8.gcm_polyval H0 H9
+  let H11_rev := (lo H11) ++ (hi H11)
   let H10 := ((hi H11) ^^^ (lo H11)) ++ ((hi H9) ^^^ (lo H9))
-  [H0, H1, H2, H3, H4, H5, H6, H7, H8, H9, H10, H11]
+  [H0_rev, H1, H2_rev, H3_rev, H4, H5_rev, H6_rev,
+   H7, H8_rev, H9_rev, H10, H11_rev]
 
--- TODO: This test could not be proved using rfl nor decide
--- set_option maxRecDepth 1000000 in
--- set_option maxHeartbeats 1000000 in
--- unseal pmod.pmodTR degree.degreeTR pmult.pmultTR reverse.reverseTR in
-example :  GCMInitV8 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128 =
-  [ 0xcdd297a9df1458771099f4b39468565c#128,
+-- set_option profiler true in
+-- set_option maxRecDepth 20000 in
+-- set_option maxHeartbeats 2000000 in
+-- unseal pmod.pmodTR degree.degreeTR reverse.reverseTR pmult.pmultTR Nat.bitwise in
+example :  GCMInitV8 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128 ==
+  [ 0x1099f4b39468565ccdd297a9df145877#128,
     0x62d81a7fe5da3296dd4b631a4b7c0e2b#128,
-    0x88d320376963120dea0b3a488cb9209b#128,
-    0x8695e702c322faf935c1a04f8bfb2395#128,
+    0xea0b3a488cb9209b88d320376963120d#128,
+    0x35c1a04f8bfb23958695e702c322faf9#128,
     0xb2261b4d0cb1e020b354474d48d9d96c#128,
-    0x568bd97348bd9145e4adc23e440c7165#128,
-    0xf9151b1f632d10b47d845b630bb0a55d#128,
+    0xe4adc23e440c7165568bd97348bd9145#128,
+    0x7d845b630bb0a55df9151b1f632d10b4#128,
     0xa674eba8f9d7f2508491407c689db5e9#128,
-    0xec87cfb0e19d1c4e4af32418184aee1e#128,
-    0x7d1998bcfc545474f109e6e0b31d1eee#128,
+    0x4af32418184aee1eec87cfb0e19d1c4e#128,
+    0xf109e6e0b31d1eee7d1998bcfc545474#128,
     0x7498729da40cd2808c107e5c4f494a9a#128,
-    0xd0e417a05fe61ba4a47c653dfbeac924#128 ] := by native_decide
+    0xa47c653dfbeac924d0e417a05fe61ba4#128 ] := by native_decide
 
 /-- GCMGmultV8 specification:
     H  : [128] -- the first element in Htable, not the initial H input to GCMInitV8
@@ -197,9 +207,10 @@ example :  GCMInitV8 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128 =
 -/
 def GCMGmultV8 (H : BitVec 128) (Xi : List (BitVec 8)) (h : 8 * Xi.length = 128)
   : (List (BitVec 8)):=
+  let H := (lo H) ++ (hi H)
   split (GCMV8.gcm_polyval H (BitVec.cast h (BitVec.flatten Xi))) 8 (by omega)
 
-example : GCMGmultV8 0xcdd297a9df1458771099f4b39468565c#128
+example : GCMGmultV8 0x1099f4b39468565ccdd297a9df145877#128
   [ 0x10#8, 0x54#8, 0x43#8, 0xb0#8, 0x2c#8, 0x4b#8, 0x1f#8, 0x24#8,
     0x3b#8, 0xcd#8, 0xd4#8, 0x87#8, 0x16#8, 0x65#8, 0xb3#8, 0x2b#8 ] (by decide) =
   [ 0xa2#8, 0xc9#8, 0x9c#8, 0x56#8, 0xeb#8, 0xa7#8, 0x91#8, 0xf6#8,
@@ -208,6 +219,7 @@ example : GCMGmultV8 0xcdd297a9df1458771099f4b39468565c#128
 
 private def gcm_ghash_block (H : BitVec 128) (Xi : BitVec 128)
   (inp : BitVec 128) : BitVec 128 :=
+  let H := (lo H) ++ (hi H)
   GCMV8.gcm_polyval H (Xi ^^^ inp)
 
 /-- GCMGhashV8 specification:
@@ -235,7 +247,7 @@ def GCMGhashV8 (H : BitVec 128) (Xi : List (BitVec 8))
   let flat_inp := BitVec.flatten inp
   split (GCMGhashV8TR H flat_Xi flat_inp 0 h3) 8 (by omega)
 
-example : GCMGhashV8 0xcdd297a9df1458771099f4b39468565c#128
+example : GCMGhashV8 0x1099f4b39468565ccdd297a9df145877#128
   [ 0xa2#8, 0xc9#8, 0x9c#8, 0x56#8, 0xeb#8, 0xa7#8, 0x91#8, 0xf6#8,
     0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ]
   (List.replicate 16 0x2a#8) (by simp) (by simp only [List.length_replicate]; omega) =

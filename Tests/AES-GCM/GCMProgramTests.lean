@@ -59,18 +59,18 @@ def H : List (BitVec 64) :=
 def Htable_before_init : List (BitVec 64) := List.replicate 32 0x0#64
 
 def Htable : List (BitVec 64) :=
-  [ 0x1099f4b39468565c#64, 0xcdd297a9df145877#64,
+  [ 0xcdd297a9df145877#64, 0x1099f4b39468565c#64,
     0xdd4b631a4b7c0e2b#64, 0x62d81a7fe5da3296#64,
-    0xea0b3a488cb9209b#64, 0x88d320376963120d#64,
-    0x35c1a04f8bfb2395#64, 0x8695e702c322faf9#64,
+    0x88d320376963120d#64, 0xea0b3a488cb9209b#64,
+    0x8695e702c322faf9#64, 0x35c1a04f8bfb2395#64,
     0xb354474d48d9d96c#64, 0xb2261b4d0cb1e020#64,
-    0xe4adc23e440c7165#64, 0x568bd97348bd9145#64,
-    0x7d845b630bb0a55d#64, 0xf9151b1f632d10b4#64,
+    0x568bd97348bd9145#64, 0xe4adc23e440c7165#64,
+    0xf9151b1f632d10b4#64, 0x7d845b630bb0a55d#64,
     0x8491407c689db5e9#64, 0xa674eba8f9d7f250#64,
-    0x4af32418184aee1e#64, 0xec87cfb0e19d1c4e#64,
-    0xf109e6e0b31d1eee#64, 0x7d1998bcfc545474#64,
+    0xec87cfb0e19d1c4e#64, 0x4af32418184aee1e#64,
+    0x7d1998bcfc545474#64, 0xf109e6e0b31d1eee#64,
     0x8c107e5c4f494a9a#64, 0x7498729da40cd280#64,
-    0xa47c653dfbeac924#64, 0xd0e417a05fe61ba4#64,
+    0xd0e417a05fe61ba4#64, 0xa47c653dfbeac924#64,
     0x0#64, 0x0#64,
     0x0#64, 0x0#64,
     0x0#64, 0x0#64,
@@ -119,7 +119,7 @@ def init_gpr : Store (BitVec 5) (BitVec 64) :=
 def init_gcm_init_test : ArmState :=
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
-             pc := 0x7aa1c0#64,
+             pc := 0x7d85a0#64,
              pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := GCMInitV8Program.gcm_init_v8_program,
@@ -156,7 +156,7 @@ def gcm_gmult_final_state : ArmState :=
         | _ => 0#64
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
-             pc  := 0x7aa420#64,
+             pc  := 0x7d8800#64,
              pstate := PState.zero,
              mem := (fun (_ : BitVec 64) => 0#8),
              program := GCMGmultV8Program.gcm_gmult_v8_program,
@@ -193,7 +193,7 @@ def gcm_ghash_test (n : Nat) (len : BitVec 64) (buf : BitVec 896)
         | _ => 0#64
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
-             pc := 0x7aa490#64,
+             pc := 0x7d8870#64,
              pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := GCMGhashV8Program.gcm_ghash_v8_program,
@@ -214,9 +214,8 @@ def X_before : List (BitVec 8) := List.get! X 2
 def X_after : List (BitVec 8) := List.get! X 3
 
 def final_state : ArmState :=
-  gcm_ghash_test 68 len (revflat buf) (revflat X_before)
+  gcm_ghash_test 70 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
-
 example : final_hash = revflat X_after := by native_decide
 example : final_state.error = StateError.None := by native_decide
 
@@ -230,7 +229,7 @@ def X_before : List (BitVec 8) := List.get! X 4
 def X_after : List (BitVec 8) := List.get! X 5
 
 def final_state : ArmState :=
-  gcm_ghash_test 63 len (revflat buf) (revflat X_before)
+  gcm_ghash_test 67 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
 example : final_hash = revflat X_after := by native_decide
@@ -246,7 +245,7 @@ def X_before : List (BitVec 8) := List.get! X 5
 def X_after : List (BitVec 8) := List.get! X 6
 
 def final_state : ArmState :=
-  gcm_ghash_test 86 len (revflat buf) (revflat X_before)
+  gcm_ghash_test 90 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
 example : final_hash = revflat X_after := by native_decide
@@ -262,7 +261,7 @@ def X_before : List (BitVec 8) := List.get! X 6
 def X_after : List (BitVec 8) := List.get! X 7
 
 def final_state : ArmState :=
-  gcm_ghash_test 97 len (revflat buf) (revflat X_before)
+  gcm_ghash_test 101 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
 example : final_hash = revflat X_after := by native_decide
@@ -278,7 +277,7 @@ def X_before : List (BitVec 8) := List.get! X 7
 def X_after : List (BitVec 8) := List.get! X 8
 
 def final_state : ArmState :=
-  gcm_ghash_test 106 len (revflat buf) (revflat X_before)
+  gcm_ghash_test 110 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
 example : final_hash = revflat X_after := by native_decide
