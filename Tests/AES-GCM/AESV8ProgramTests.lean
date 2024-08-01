@@ -78,7 +78,7 @@ def aes_hw_set_encrypt_key_test (n : Nat) (key_bits : BitVec 64) : ArmState :=
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc := 0x79f380#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := AESHWSetEncryptKeyProgram.aes_hw_set_encrypt_key_program,
              error := StateError.None
@@ -201,7 +201,7 @@ def aes_hw_encrypt_test (n : Nat) (in_block : BitVec 128)
     let s := { gpr := init_gpr,
                sfp := (fun (_ : BitVec 5) => 0#128),
                pc := 0x79f5a0#64,
-               pstate := zero_pstate,
+               pstate := PState.zero,
                mem := (fun (_ :BitVec 64) => 0#8),
                program := AESHWEncryptProgram.aes_hw_encrypt_program,
                error := StateError.None
@@ -309,7 +309,7 @@ def aes_hw_ctr32_encrypt_blocks_test (n : Nat)
     let s := { gpr := init_gpr,
                sfp := (fun (_ : BitVec 5) => 0#128),
                pc := 0x79f8a0#64,
-               pstate := zero_pstate,
+               pstate := PState.zero,
                mem := (fun (_ :BitVec 64) => 0#8),
                program := AESHWCtr32EncryptBlocksProgram.aes_hw_ctr32_encrypt_blocks_program,
                error := StateError.None

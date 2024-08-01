@@ -18,7 +18,7 @@ def set_init_state (program : Program) : ArmState :=
   let s := { gpr := (fun (_ : BitVec 5) => 0#64),
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc := 0#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ : BitVec 64) => 0#8),
              program := program,
              error := StateError.None}

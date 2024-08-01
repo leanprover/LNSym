@@ -7,6 +7,8 @@ package «lnsym» where
 lean_lib «Arm» where
   -- add library configuration options here
 
+lean_lib «Correctness» where
+
 lean_lib «Specs» where
   -- add library configuration options here
 
