@@ -117,25 +117,28 @@ deriving DecidableEq, Repr
 
 @[ext]
 structure ArmState where
-  -- General-purpose registers: register 31 is the stack pointer.
+  /-- General-purpose registers: register 31 is the stack pointer. -/
   private gpr        : Store (BitVec 5) (BitVec 64)
-  -- SIMD/floating-point registers
+  /-- SIMD/floating-point registers -/
   private sfp        : Store (BitVec 5) (BitVec 128)
-  -- Program Counter
+  /-- Program Counter -/
   private pc         : BitVec 64
-  -- PState
+  /-- PState -/
   private pstate     : PState
-  -- Memory: maps 64-bit addresses to bytes
+  /-- Memory: maps 64-bit addresses to bytes -/
   private mem        : Store (BitVec 64) (BitVec 8)
-  -- Program: maps 64-bit addresses to 32-bit instructions.
-  -- Note that we have the following assumption baked into our machine model:
-  -- the program is always disjoint from the rest of the memory.
-  program    : Program
-
-  -- The error field is an artifact of this model; it is set to a
-  -- non-None value when some irrecoverable error is encountered
-  -- (e.g., an unimplemented instruction is hit). Any reasoning or
-  -- execution based off an erroneous state is invalid.
+  /--
+  Program: maps 64-bit addresses to 32-bit instructions.
+  Note that we have the following assumption baked into our machine model:
+  the program is always disjoint from the rest of the memory.
+  -/
+  program            : Program
+  /--
+  The error field is an artifact of this model; it is set to a
+  non-None value when some irrecoverable error is encountered
+  (e.g., an unimplemented instruction is hit). Any reasoning or
+  execution based off an erroneous state is invalid.
+  -/
   private error      : StateError
 deriving Repr
 
