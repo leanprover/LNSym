@@ -14,7 +14,7 @@ def init_cosim_state : ArmState :=
   { gpr := (fun (_ : BitVec 5) => 0#64),
     sfp := (fun (_ : BitVec 5) => 0#128),
     pc  := 0#64,
-    pstate := zero_pstate,
+    pstate := PState.zero,
     mem := (fun (_ : BitVec 64) => 0#8),
     program := Map.empty,
     error := StateError.None }
