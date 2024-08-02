@@ -29,12 +29,13 @@ jobs:
         run: |
           ./docgen.sh
 
+# Disable documentation uploading until we are happy with our docs.
 # stolen from mathlib: https://github.com/leanprover-community/mathlib4_docs/blob/1f4ea7657bc377b4298fd400e567471d3a248b2d/.github/workflows/docs.yaml#L79-L86
-      - name: Upload artifact 📁
-        uses: actions/upload-pages-artifact@v1
-        with:
-          path: '.lake/build/doc'
-
-      - name: Deploy to GitHub Pages 🚀
-        id: deployment
-        uses: actions/deploy-pages@v1
+#       - name: Upload artifact 📁
+#         uses: actions/upload-pages-artifact@v1
+#         with:
+#           path: '.lake/build/doc'
+#
+#       - name: Deploy to GitHub Pages 🚀
+#         id: deployment
+#         uses: actions/deploy-pages@v1
