@@ -31,17 +31,17 @@ open BitVec
 /-
   How to get the number of steps to run for a program?
 
-  When a program finishes, ArmState.pc would be set to 0x0#64 read_err and ArmState
+  When a program finishes, ArmState.pc would be set to 0x0#64 and `read_err ArmState`
   will be `StateError.None`. If a program hasn't reached the last instruction,
   its ArmState.pc will be some number other than 0x0#64. This is based on an
   assumption that programs don't typically start at pc 0x0#64.
-  If a program runs past the last instruction, (read_err ArmState) will be:
+  If a program runs past the last instruction, `(read_err ArmState)` will be:
 
     StateError.NotFound "No instruction found at PC 0x0000000000000000#64!"
 
   Based on above information, we could do a binary search for the number of steps
-  to run a program and the stopping criterion is that ArmState.pc = 0x0#64 and read_err
-  ArmState = StateError.None. This sounds awfully programmable, but for
+  to run a program and the stopping criterion is that ArmState.pc = 0x0#64 and
+  `read_err ArmState = StateError.None`. This sounds awfully programmable, but for
   now we reply on this comment.
 
 -/
