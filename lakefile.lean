@@ -21,7 +21,7 @@ lean_lib «Proofs» where
 lean_lib «Tactics» where
   -- add library configuration options here
 
-lean_lib «Lib» where
+lean_lib «Doc» where
   -- add library configuration options here
 
 @[default_target]

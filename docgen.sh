@@ -1,3 +1,3 @@
 set -o xtrace
 set -e
-lake build Lib:docs
+lake build Doc:docs
