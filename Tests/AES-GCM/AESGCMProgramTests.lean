@@ -86,7 +86,7 @@ def aes_gcm_enc_kernel_test (n : Nat) (plain_blocks : BitVec 4096)
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc := 0x7a0cf0#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := AESGCMEncKernelProgram.aes_gcm_enc_kernel_program,
              error := StateError.None
@@ -124,7 +124,7 @@ def aes_gcm_dec_kernel_test (n : Nat) (cipher_blocks : BitVec 4096)
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc := 0x7a1880#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ :BitVec 64) => 0#8),
              program := AESGCMDecKernelProgram.aes_gcm_dec_kernel_program,
              error := StateError.None
@@ -216,7 +216,7 @@ def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
 def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
-example : final_state.error = StateError.None := by native_decide
+example : read_err final_state = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
 example : final_ciphertext = revflat ciphertext := by native_decide
 example : final_ivec = revflat ivec_res := by native_decide
@@ -234,7 +234,7 @@ def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
 def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
-example : final_state.error = StateError.None := by native_decide
+example : read_err final_state = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
 set_option maxRecDepth 2100 in
 example : final_ciphertext = revflat in_blocks := by native_decide
@@ -317,7 +317,7 @@ def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
 def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
-example : final_state.error = StateError.None := by native_decide
+example : read_err final_state = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
 example : final_ciphertext = (revflat ciphertext) := by native_decide
 example : final_ivec = (revflat ivec_res) := by native_decide
@@ -335,7 +335,7 @@ def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
 def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
-example : final_state.error = StateError.None := by native_decide
+example : read_err final_state = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
 set_option maxRecDepth 2100 in
 example : final_ciphertext = revflat in_blocks := by native_decide
@@ -421,7 +421,7 @@ def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
 def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
-example : final_state.error = StateError.None := by native_decide
+example : read_err final_state = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
 example : final_ciphertext = revflat ciphertext := by native_decide
 example : final_ivec = (revflat ivec_res) := by native_decide
@@ -439,7 +439,7 @@ def final_ciphertext : BitVec 4096 := read_mem_bytes 512 out_address final_state
 def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
-example : final_state.error = StateError.None := by native_decide
+example : read_err final_state = StateError.None := by native_decide
 example : final_hash = revflat Xi_res := by native_decide
 set_option maxRecDepth 2100 in
 example : final_ciphertext = revflat in_blocks := by native_decide

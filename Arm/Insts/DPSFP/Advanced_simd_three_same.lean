@@ -6,7 +6,7 @@ Author(s): Shilpi Goel, Yan Peng
 -- ADD, ORR, AND, BIC, ORR, ORN, EOR, BSL, BIT, BIF (vector)
 
 import Arm.Decode
-import Arm.Memory
+import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
 

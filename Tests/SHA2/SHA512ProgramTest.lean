@@ -593,7 +593,7 @@ def init_sha512_test : ArmState :=
   let s := { gpr := init_gpr,
              sfp := (fun (_ : BitVec 5) => 0#128),
              pc  := 0x1264c0#64,
-             pstate := zero_pstate,
+             pstate := PState.zero,
              mem := (fun (_ : BitVec 64) => 0#8),
              program := sha512_program_map,
              error := StateError.None }
@@ -609,7 +609,7 @@ def init_sha512_test : ArmState :=
 -- #eval (log_run "Tests/SHA512_PC.log" pc_trace 503 init_sha512_test)
 
 def final_sha512_state : ArmState := run 503 init_sha512_test
-def final_sha512_pc : BitVec 64 := final_sha512_state.pc
+def final_sha512_pc : BitVec 64 := read_pc final_sha512_state
 
 -- read_mem_bytes below with (512/8) as the first arg. causes a
 -- "maximum recursion depth has been reached" error, but that worked

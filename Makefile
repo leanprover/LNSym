@@ -10,10 +10,14 @@ NUM_TESTS?=20
 VERBOSE?=--verbose
 
 .PHONY: all 
-all: specs proofs tests cosim
+all: specs correctness proofs tests cosim
 
 .PHONY: specs
 	time -p $(LAKE) build Specs
+
+.PHONY: correctness
+correctness:
+	time -p $(LAKE) build Correctness
 
 .PHONY: proofs
 proofs:

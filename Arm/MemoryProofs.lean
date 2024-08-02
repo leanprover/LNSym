@@ -3,8 +3,10 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
-import Arm.SeparateProofs
 import Arm.FromMathlib
+import Arm.State
+import Arm.Separate
+import Arm.SeparateProofs
 
 -- In this file, we have memory (non-)interference proofs.
 
@@ -690,7 +692,7 @@ theorem read_mem_of_write_mem_bytes_subset
           -- disable simproc for 2^64.
           simp only [mod_lt_conc,
                      read_mem_of_write_mem_bytes_subset_helper_5]
-          have h_tmp : (2 ^ 64 - 1 + a) = (a + 2 ^ 64 - 1) := by 
+          have h_tmp : (2 ^ 64 - 1 + a) = (a + 2 ^ 64 - 1) := by
             apply Nat.add_comm
           simp only [h_tmp]
           apply read_mem_of_write_mem_bytes_subset_helper_4 v a n' h_v_size h_a_base h_a_size

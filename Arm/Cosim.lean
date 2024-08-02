@@ -14,7 +14,7 @@ def init_cosim_state : ArmState :=
   { gpr := (fun (_ : BitVec 5) => 0#64),
     sfp := (fun (_ : BitVec 5) => 0#128),
     pc  := 0#64,
-    pstate := zero_pstate,
+    pstate := PState.zero,
     mem := (fun (_ : BitVec 64) => 0#8),
     program := Map.empty,
     error := StateError.None }
@@ -73,7 +73,7 @@ def init_flags (flags : BitVec 4) (s : ArmState) : ArmState := Id.run do
 /-- Initialize an ArmState for cosimulation from a given regState. -/
 def regState_to_armState (r : regState) : ArmState :=
   let s := init_gprs r.gpr (init_flags r.nzcv (init_sfps r.sfp init_cosim_state))
-  let s := { s with program := def_program [(0x0#64, r.inst)] }
+  let s := set_program s (def_program [(0x0#64, r.inst)])
   s
 
 def bitvec_to_hex (x : BitVec n) : String :=
@@ -128,7 +128,7 @@ bitvector values.-/
 def gpr_list (s : ArmState) : List (BitVec 64) := Id.run do
   let mut acc := []
   for i in [0:31] do
-    acc :=  acc ++ [(s.gpr (BitVec.ofNat 5 i))]
+    acc :=  acc ++ [read_gpr 64 (BitVec.ofNat 5 i) s]
   pure acc
 
 /-- Get the SIMD/FP registers in an ArmState as a list of bitvector
@@ -136,7 +136,7 @@ values.-/
 def sfp_list (s : ArmState) : List (BitVec 64) := Id.run do
   let mut acc := []
   for i in [0:32] do
-    let reg := s.sfp (BitVec.ofNat 5 i)
+    let reg := read_sfp 64 (BitVec.ofNat 5 i) s
     acc := acc ++ [(extractLsb 63 0 reg), (extractLsb 127 64 reg)]
   pure acc
 
