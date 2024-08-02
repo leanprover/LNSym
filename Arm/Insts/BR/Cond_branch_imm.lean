@@ -7,7 +7,7 @@ Author(s): Yan Peng
 -- B.cond
 
 import Arm.Decode
-import Arm.Memory
+import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
 

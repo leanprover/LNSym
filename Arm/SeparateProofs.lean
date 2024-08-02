@@ -3,7 +3,8 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
-import Arm.Memory
+import Arm.State
+import Arm.Separate
 import LeanSAT
 
 ----------------------------------------------------------------------
