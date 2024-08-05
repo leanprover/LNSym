@@ -29,9 +29,9 @@ jobs:
         use-mathlib-cache: false
         use-github-cache: true
 
-      - name: Generate docs 
-        run: |
-          ./docgen.sh || true # allow documentation generation to fail, as a test.
+    - name: Generate docs
+      run: |
+        ./docgen.sh || true # allow documentation generation to fail, as a test.
 
 # Disable documentation uploading until we are happy with our docs.
 # stolen from mathlib: https://github.com/leanprover-community/mathlib4_docs/blob/1f4ea7657bc377b4298fd400e567471d3a248b2d/.github/workflows/docs.yaml#L79-L86
