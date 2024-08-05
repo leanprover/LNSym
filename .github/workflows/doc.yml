@@ -23,6 +23,10 @@ jobs:
           use-mathlib-cache: false
           use-github-cache: true
 
+      - uses: Install cadical
+      - run: |
+          sudo apt-get install -y cadical
+
       - name: Generate docs 
         run: |
           ./docgen.sh
