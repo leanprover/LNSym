@@ -7,7 +7,7 @@ Author(s): Yan Peng
 -- Polynomial arithmetic over {0,1}: https://tiny.amazon.com/5h01fjm6/devearmdocuddi0cApplApplPoly
 
 import Arm.Decode
-import Arm.Memory
+import Arm.State
 import Arm.Insts.Common
 
 ----------------------------------------------------------------------

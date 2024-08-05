@@ -6,7 +6,7 @@ Author(s): Shilpi Goel
 -- SHA512H, SHA512H2, SHA512SU1
 
 import Arm.Decode
-import Arm.Memory
+import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
 import Specs.SHA512Common

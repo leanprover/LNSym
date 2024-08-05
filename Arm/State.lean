@@ -120,26 +120,29 @@ def PState.zero : PState :=
 
 @[ext]
 structure ArmState where
-  -- General-purpose registers: register 31 is the stack pointer.
-  gpr        : Store (BitVec 5) (BitVec 64)
-  -- SIMD/floating-point registers
-  sfp        : Store (BitVec 5) (BitVec 128)
-  -- Program Counter
-  pc         : BitVec 64
-  -- PState
-  pstate     : PState
-  -- Memory: maps 64-bit addresses to bytes
-  mem        : Store (BitVec 64) (BitVec 8)
-  -- Program: maps 64-bit addresses to 32-bit instructions.
-  -- Note that we have the following assumption baked into our machine model:
-  -- the program is always disjoint from the rest of the memory.
-  program    : Program
-
-  -- The error field is an artifact of this model; it is set to a
-  -- non-None value when some irrecoverable error is encountered
-  -- (e.g., an unimplemented instruction is hit). Any reasoning or
-  -- execution based off an erroneous state is invalid.
-  error      : StateError
+  /-- General-purpose registers: register 31 is the stack pointer. -/
+  private gpr        : Store (BitVec 5) (BitVec 64)
+  /-- SIMD/floating-point registers -/
+  private sfp        : Store (BitVec 5) (BitVec 128)
+  /-- Program Counter -/
+  private pc         : BitVec 64
+  /-- PState -/
+  private pstate     : PState
+  /-- Memory: maps 64-bit addresses to bytes -/
+  private mem        : Store (BitVec 64) (BitVec 8)
+  /--
+  Program: maps 64-bit addresses to 32-bit instructions.
+  Note that we have the following assumption baked into our machine model:
+  the program is always disjoint from the rest of the memory.
+  -/
+  program            : Program
+  /--
+  The error field is an artifact of this model; it is set to a
+  non-None value when some irrecoverable error is encountered
+  (e.g., an unimplemented instruction is hit). Any reasoning or
+  execution based off an erroneous state is invalid.
+  -/
+  private error      : StateError
 deriving Repr
 
 def ArmState.default : ArmState := { 
@@ -216,6 +219,9 @@ def write_base_flag (flag : PFlag) (val : BitVec 1) (s : ArmState) : ArmState :=
   { s with pstate := new_pstate }
 
 -- Program --
+
+def set_program (s : ArmState) (program : Program) : ArmState :=
+  { s with program := program }
 
 -- Fetch the instruction at address addr.
 @[irreducible]
@@ -517,4 +523,132 @@ example :
 
 end State
 
-----------------------------------------------------------------------
+/-! # Memory operations on State. -/
+
+section Memory
+
+/-!
+Ideally, `read_mem` and `write_mem` ought to be private, and we ought to only
+expose `read_mem_bytes` and `write_mem_bytes` to the outside world.
+However, due to layering violations with `Arm/MemoryProofs.lean`, we currently keep them public.
+-/
+
+
+/-- We export read_mem_bytes, not read_mem. FIXME: make private. -/
+def read_mem (addr : BitVec 64) (s : ArmState) : BitVec 8 :=
+  read_store addr s.mem
+
+/--
+We don't add the simp attribute to read/write_mem_bytes. Instead,
+we prove and export properties about their (non)interference.
+-/
+def read_mem_bytes (n : Nat) (addr : BitVec 64) (s : ArmState) : BitVec (n * 8) :=
+  match n with
+  | 0 => 0#0
+  | n' + 1 =>
+    let byte := read_mem addr s
+    let rest := read_mem_bytes n' (addr + 1#64) s
+    (rest ++ byte).cast (by omega)
+
+/-- We export write_mem_bytes, not write_mem. FIXME: make private. -/
+def write_mem (addr : BitVec 64) (val : BitVec 8) (s : ArmState) : ArmState :=
+  let new_mem := write_store addr val s.mem
+  { s with mem := new_mem }
+
+def write_mem_bytes (n : Nat) (addr : BitVec 64) (val : BitVec (n * 8)) (s : ArmState) : ArmState :=
+  match n with
+  | 0 => s
+  | n' + 1 =>
+    let byte := BitVec.extractLsb 7 0 val
+    let s := write_mem addr byte s
+    let val_rest := BitVec.zeroExtend (n' * 8) (val >>> 8)
+    write_mem_bytes n' (addr + 1#64) val_rest s
+
+
+/-! # Memory accessors and updaters -/
+
+/-! ### RoW/WoW lemmas about memory and other fields -/
+
+theorem r_of_write_mem : r fld (write_mem addr val s) = r fld s := by
+  unfold r
+  unfold read_base_gpr read_base_sfp read_base_pc
+  unfold read_base_flag read_base_error
+  unfold write_mem
+  split <;> simp
+
+@[state_simp_rules]
+theorem r_of_write_mem_bytes :
+  r fld (write_mem_bytes n addr val s) = r fld s := by
+  induction n generalizing addr s
+  case succ =>
+    rename_i n n_ih
+    unfold write_mem_bytes; simp only
+    rw [n_ih, r_of_write_mem]
+  case zero => rfl
+  done
+
+theorem fetch_inst_of_write_mem :
+  fetch_inst addr1 (write_mem addr2 val s) = fetch_inst addr1 s := by
+  unfold fetch_inst write_mem
+  simp
+
+@[state_simp_rules]
+theorem fetch_inst_of_write_mem_bytes :
+  fetch_inst addr1 (write_mem_bytes n addr2 val s) = fetch_inst addr1 s := by
+  induction n generalizing addr2 s
+  case zero => rfl
+  case succ =>
+    rename_i n n_ih
+    unfold write_mem_bytes; simp only
+    rw [n_ih, fetch_inst_of_write_mem]
+  done
+
+theorem read_mem_of_w :
+  read_mem addr (w fld v s) = read_mem addr s := by
+  unfold read_mem
+  unfold w write_base_gpr write_base_sfp
+  unfold write_base_pc write_base_flag write_base_error
+  split <;> simp
+
+@[state_simp_rules]
+theorem read_mem_bytes_of_w :
+  read_mem_bytes n addr (w fld v s) = read_mem_bytes n addr s := by
+  induction n generalizing addr s
+  case zero => rfl
+  case succ =>
+    rename_i n n_ih
+    unfold read_mem_bytes; simp only [read_mem_of_w]
+    rw [n_ih]
+  done
+
+@[state_simp_rules]
+theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n * 8)):
+    (write_mem_bytes n addr bytes s).program = s.program := by
+  intros
+  induction n generalizing addr s
+  · simp [write_mem_bytes]
+  · rename_i n h_n
+    simp only [write_mem_bytes]
+    rw [h_n]
+    simp only [write_mem]
+
+/-! ### Memory RoW/WoW lemmas -/
+
+theorem read_mem_of_write_mem_same :
+  read_mem addr (write_mem addr v s) = v := by
+  unfold read_mem write_mem; simp [store_read_over_write_same]
+
+theorem read_mem_of_write_mem_different (h : addr1 ≠ addr2) :
+  read_mem addr1 (write_mem addr2 v s) = read_mem addr1 s := by
+  unfold read_mem write_mem; simp
+  rw [store_read_over_write_different]; trivial
+
+theorem write_mem_of_write_mem_shadow :
+  write_mem addr val2 (write_mem addr val1 s) = write_mem addr val2 s := by
+  simp [write_mem]; unfold write_store; simp_all; done
+
+theorem write_mem_irrelevant :
+  write_mem addr (read_mem addr s) s = s := by
+  simp [read_mem, write_mem, store_write_irrelevant]
+
+end Memory
