@@ -17,20 +17,22 @@ permissions:
 
 jobs:
   build:
-    name: build and deploy documentation.
+    name: Documentation
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout 
-        uses: actions/checkout@v4
 
-      - uses: leanprover/lean-action@v1.0.0
-        with:
-          use-mathlib-cache: false
-          use-github-cache: true
+    - uses: DeterminateSystems/nix-installer-action@main
 
-      - uses: Install cadical
-      - run: |
-          sudo apt-get install -y cadical
+    - name: Install cadical
+      run: nix profile install nixpkgs#cadical
+
+    - uses: actions/checkout@v4
+
+    - uses: leanprover/lean-action@v1.0.0
+      with:
+        use-mathlib-cache: false
+        use-github-cache: true
 
       - name: Generate docs 
         run: |
