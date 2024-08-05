@@ -1,9 +1,12 @@
 name: docs
+
 on:
-  push:
-    branches:
-      - "main"
-  # Run on pull request activity
+  # Run using manual triggers from GitHub UI:
+  # https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
+  workflow_dispatch: {}
+  # Run on every push:
+  push: {}
+  # Run on pull request activity:
   pull_request: {}
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
