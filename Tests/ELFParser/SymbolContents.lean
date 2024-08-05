@@ -8,6 +8,7 @@ def getELFFile (elfFile : System.FilePath) : IO RawELFFile := do
   | .error warn => throw (IO.userError warn)
   | .ok elffile => return elffile
 
+open RawELFFile (symbolNameByLinkAndOffset) in
 /- Get the name and symbol table entry of the `symidx`-th symbol, given the
 symbol table's section header `shte` and section `sec`. -/
 def getSymbolTableEntryInSection
