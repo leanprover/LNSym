@@ -21,6 +21,9 @@ lean_lib «Proofs» where
 lean_lib «Tactics» where
   -- add library configuration options here
 
+lean_lib «Doc» where
+  -- add library configuration options here
+
 @[default_target]
 lean_exe «lnsym» where
   root := `Main
@@ -31,3 +34,4 @@ lean_exe «lnsym» where
 
 require LeanSAT from git "https://github.com/leanprover/leansat" @ "main"
 require ELFSage from git "https://github.com/draperlaboratory/ELFSage.git" @ "main"
+require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "main"
