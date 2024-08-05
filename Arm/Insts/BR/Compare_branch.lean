@@ -7,7 +7,7 @@ Author(s): Shilpi Goel
 -- CBZ, CBNZ -- 32 and 64-bit variants
 
 import Arm.Decode
-import Arm.Memory
+import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
 

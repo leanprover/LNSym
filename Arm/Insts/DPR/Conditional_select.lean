@@ -6,7 +6,7 @@ Author(s): Shilpi Goel
 -- CSEL, CSINC, CSINV, CSNEG: 32- and 64-bit versions
 
 import Arm.Decode
-import Arm.Memory
+import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
 

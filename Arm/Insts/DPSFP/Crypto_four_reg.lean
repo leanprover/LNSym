@@ -6,7 +6,7 @@ Author(s): Shilpi Goel, Nevine Ebeid
 -- EOR3
 
 import Arm.Decode
-import Arm.Memory
+import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
 

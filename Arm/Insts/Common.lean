@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Yan Peng
 -/
 import Arm.BitVec
-import Arm.Memory
+import Arm.State
 
 section Common
 
