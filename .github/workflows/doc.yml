@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - "main"
+  # Run on pull request activity
+  pull_request: {}
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
