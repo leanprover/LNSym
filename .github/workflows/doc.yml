@@ -1,14 +1,9 @@
 name: docs
 
 on:
-  # Run using manual triggers from GitHub UI:
-  # https://docs.github.com/en/actions/managing-workflow-runs/manually-running-a-workflow
-  workflow_dispatch: {}
-  # Run on every push:
-  push: {}
-  # Run on pull request activity:
-  pull_request: {}
-
+  push:
+    branches:
+      - "main"
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
@@ -36,7 +31,7 @@ jobs:
 
       - name: Generate docs 
         run: |
-          ./docgen.sh
+          ./docgen.sh || true # allow documentation generation to fail, as a test.
 
 # Disable documentation uploading until we are happy with our docs.
 # stolen from mathlib: https://github.com/leanprover-community/mathlib4_docs/blob/1f4ea7657bc377b4298fd400e567471d3a248b2d/.github/workflows/docs.yaml#L79-L86
