@@ -25,7 +25,7 @@ def exec_ldstur
     let memop := if getLsb inst.opc 0 then MemOp.MemOp_LOAD else MemOp.MemOp_STORE
     let datasize := 8 <<< scale
     let address := read_gpr 64 inst.Rn s
-    if inst.Rn = 31#5 ∧ not (CheckSPAlignment s) then
+    if inst.Rn = 31#5 ∧ ¬(CheckSPAlignment s) then
       write_err (StateError.Fault s!"[Inst: {inst}] SP {address} is not aligned!") s
     else
       let address := address + offset

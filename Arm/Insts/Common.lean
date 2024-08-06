@@ -1,8 +1,10 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Shilpi Goel, Yan Peng
+Author(s): Shilpi Goel, Yan Peng, Nathan Wetzler
 -/
+
+import LeanSAT
 import Arm.BitVec
 import Arm.State
 
@@ -54,15 +56,43 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   else
     result
 
+/-- `Aligned x a` witnesses that the bitvector `x` is `a`-bit aligned. -/
+def Aligned (x : BitVec n) (a : Nat) : Prop :=
+  match a with
+  | 0 => True
+  | a' + 1 => extractLsb a' 0 x = BitVec.zero _
+
+/-- We need to prove why the Aligned predicate is Decidable. -/
+instance : Decidable (Aligned x a) := by
+  cases a <;> simp [Aligned] <;> infer_instance
+
+theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
+  (x_aligned : Aligned x 4)
+  (y_aligned : Aligned y 4)
+  : Aligned (x + y) 4 := by
+  simp_all [Aligned]
+  bv_decide
+
+theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : BitVec 1)
+  (x_aligned : Aligned x 4)
+  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
+  : Aligned (AddWithCarry x y carry_in).fst 4 := by
+  unfold AddWithCarry Aligned at *
+  simp_all
+  bv_decide
+
 /-- Check correct stack pointer (SP) alignment for AArch64 state; returns
 true when sp is aligned. -/
-def CheckSPAlignment (s : ArmState) : Bool :=
+def CheckSPAlignment (s : ArmState) : Prop :=
   -- (FIXME) Incomplete specification: should also check PSTATE.EL
   -- after we model that.
   let sp := read_gpr 64 31#5 s
   -- If the low 4 bits of SP are 0, then it is divisible by 16 and
   -- 16-aligned.
-  ((extractLsb 3 0 sp) &&& 0xF#4) = 0#4
+  (Aligned sp 4)
+
+/-- We need to prove why the CheckSPAlignment predicate is Decidable. -/
+instance : Decidable (CheckSPAlignment s) := by unfold CheckSPAlignment; infer_instance
 
 @[state_simp_rules]
 theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
@@ -71,7 +101,7 @@ theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
 
 @[state_simp_rules]
 theorem CheckSPAligment_of_w_sp :
-  CheckSPAlignment (w (StateField.GPR 31#5) v s) = ((extractLsb 3 0 v) &&& 0xF#4 = 0#4) := by
+  CheckSPAlignment (w (StateField.GPR 31#5) v s) = (Aligned v 4) := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
 @[state_simp_rules]

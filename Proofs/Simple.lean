@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Shilpi Goel
+Author(s): Shilpi Goel, Nathan Wetzler
 -/
 import Arm.Exec
 import Arm.Util
@@ -15,17 +15,11 @@ def eor_program : Program :=
   def_program
   [(0x4005a8#64 , 0xca000000#32)]      --  eor	x0, x0, x0
 
-@[bitvec_rules]
-theorem shift_left_zero_eq (n : Nat) (x : BitVec n) : x <<< 0 = x := by
-    refine eq_of_toNat_eq ?_
-    apply Nat.eq_of_testBit_eq
-    intro i
-    simp only [toNat_shiftLeft, Nat.shiftLeft_zero, toNat_mod_cancel]
-
 theorem small_asm_snippet_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x4005a8#64)
   (h_s0_program : s0.program = eor_program)
   (h_s0_err : read_err s0 = StateError.None)
+  (h_s0_sp_aligned : CheckSPAlignment s0)
   (h_run : s_final = run 1 s0) :
   read_gpr 64 0#5 s_final = 0x0#64 ∧
   read_err s_final = StateError.None := by
