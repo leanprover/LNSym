@@ -308,7 +308,7 @@ def aes_hw_ctr32_encrypt_blocks_test (n : Nat)
         | _ => 0#64
     let s := { gpr := init_gpr,
                sfp := (fun (_ : BitVec 5) => 0#128),
-               pc := 0x79f8a0#64,
+               pc := 0x7d2680#64,
                pstate := PState.zero,
                mem := (fun (_ :BitVec 64) => 0#8),
                program := AESHWCtr32EncryptBlocksProgram.aes_hw_ctr32_encrypt_blocks_program,
@@ -332,8 +332,6 @@ def in_block : List (BitVec 8) := List.replicate 80 0x00#8
 def ivec : BitVec 128 := 0x0#128
 
 -- len = 0, 1, 2, 3, 4, 5
--- Note: aes_hw_ctr32_encrypt_blocks will encrypt two blocks when len = 0, why?
--- Suspicion is that this function is never called with len = 0
 namespace AES128Ctr32
 
 def rounds : BitVec 64 := 10
@@ -353,42 +351,42 @@ def buf_res_128 : List (BitVec 8) :=
 
 -- len = 0
 def final_state0 : ArmState :=
-  aes_hw_ctr32_encrypt_blocks_test 83 0 in_block rounds key_schedule ivec
+  aes_hw_ctr32_encrypt_blocks_test 30 0 in_block rounds key_schedule ivec
 def final_buf0 : BitVec 640 := read_mem_bytes 80 out_address final_state0
 example : read_err final_state0 = StateError.None := by native_decide
-example: final_buf0 = (BitVec.zero 384) ++ (extractLsb 255 0 (revflat buf_res_128)) := by native_decide
+example: final_buf0 = BitVec.zero 640 := by native_decide
 
 -- len = 1
 def final_state1 : ArmState :=
-  aes_hw_ctr32_encrypt_blocks_test 82 1 in_block rounds key_schedule ivec
+  aes_hw_ctr32_encrypt_blocks_test 88 1 in_block rounds key_schedule ivec
 def final_buf1 : BitVec 640 := read_mem_bytes 80 out_address final_state1
 example : read_err final_state1 = StateError.None := by native_decide
 example: final_buf1 = (BitVec.zero 512) ++ (extractLsb 127 0 (revflat buf_res_128)) := by native_decide
 
 -- -- len = 2
 def final_state2 : ArmState :=
-  aes_hw_ctr32_encrypt_blocks_test 82 2 in_block rounds key_schedule ivec
+  aes_hw_ctr32_encrypt_blocks_test 89 2 in_block rounds key_schedule ivec
 def final_buf2 : BitVec 640 := read_mem_bytes 80 out_address final_state2
 example : read_err final_state2 = StateError.None := by native_decide
 example: final_buf2 = (BitVec.zero 384) ++ (extractLsb 255 0 (revflat buf_res_128)) := by native_decide
 
 -- len = 3
 def final_state3 : ArmState :=
-  aes_hw_ctr32_encrypt_blocks_test 129 3 in_block rounds key_schedule ivec
+  aes_hw_ctr32_encrypt_blocks_test 128 3 in_block rounds key_schedule ivec
 def final_buf3 : BitVec 640 := read_mem_bytes 80 out_address final_state3
 example : read_err final_state3 = StateError.None := by native_decide
 example: final_buf3 = (BitVec.zero 256) ++ (extractLsb 383 0 (revflat buf_res_128)) := by native_decide
 
 -- len = 4
 def final_state4 : ArmState :=
-  aes_hw_ctr32_encrypt_blocks_test 187 4 in_block rounds key_schedule ivec
+  aes_hw_ctr32_encrypt_blocks_test 190 4 in_block rounds key_schedule ivec
 def final_buf4 : BitVec 640 := read_mem_bytes 80 out_address final_state4
 example : read_err final_state4 = StateError.None := by native_decide
 example: final_buf4 = (BitVec.zero 127) ++ (extractLsb 512 0 (revflat buf_res_128)) := by native_decide
 
 -- len = 5
 def final_state5 : ArmState :=
-  aes_hw_ctr32_encrypt_blocks_test 188 5 in_block rounds key_schedule ivec
+  aes_hw_ctr32_encrypt_blocks_test 191 5 in_block rounds key_schedule ivec
 def final_buf5 : BitVec 640 := read_mem_bytes 80 out_address final_state5
 example : read_err final_state5 = StateError.None := by native_decide
 example: final_buf5 = revflat buf_res_128 := by native_decide
@@ -414,7 +412,7 @@ def buf_res_192 : List (BitVec 8) :=
 
 -- len = 5
 def final_state : ArmState :=
-  aes_hw_ctr32_encrypt_blocks_test 216 5 in_block rounds key_schedule ivec
+  aes_hw_ctr32_encrypt_blocks_test 223 5 in_block rounds key_schedule ivec
 def final_buf : BitVec 640 := read_mem_bytes 80 out_address final_state
 example : read_err final_state = StateError.None := by native_decide
 example: final_buf = revflat buf_res_192 := by native_decide
@@ -440,7 +438,7 @@ def buf_res_256 : List (BitVec 8) :=
 
 -- len = 5
 def final_state : ArmState :=
-  aes_hw_ctr32_encrypt_blocks_test 244 5 in_block rounds key_schedule ivec
+  aes_hw_ctr32_encrypt_blocks_test 255 5 in_block rounds key_schedule ivec
 def final_buf : BitVec 640 := read_mem_bytes 80 out_address final_state
 example : read_err final_state = StateError.None := by native_decide
 example: final_buf = revflat buf_res_256 := by native_decide
