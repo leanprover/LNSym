@@ -173,5 +173,8 @@ Where $PC and $STEPS are concrete constants.
 Note that the tactic will search for assumption of *exactly* these names,
 it won't search by def-eq -/
 elab "sym1_i_n" i:num n:num program:ident : tactic => do
+  Lean.Elab.Tactic.evalTactic (← `(tactic|
+    simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
+  ))
   for j in List.range n.getNat do
     sym1 (i.getNat + j) program
