@@ -136,7 +136,7 @@ values.-/
 def sfp_list (s : ArmState) : List (BitVec 64) := Id.run do
   let mut acc := []
   for i in [0:32] do
-    let reg := read_sfp 64 (BitVec.ofNat 5 i) s
+    let reg := read_sfp 128 (BitVec.ofNat 5 i) s
     acc := acc ++ [(extractLsb 63 0 reg), (extractLsb 127 64 reg)]
   pure acc
 
