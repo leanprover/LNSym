@@ -81,20 +81,6 @@ theorem sha512_program_test_2_sym (s0 s_final : ArmState)
 
 -- Test 3:
 
-theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
-  (x_aligned : Aligned x 4)
-  (y_aligned : Aligned y 4)
-  :
-  Aligned (x + y) 4 := by
-  simp_all [Aligned]
-  bv_decide
-
-@[state_simp_rules]
-theorem CheckSPAlignment_BitVecAdd_64_4 {st : ArmState} {y : BitVec 64}
-  (x_aligned : CheckSPAlignment st)
-  (y_aligned : Aligned y 4)
-  :
-  Aligned ((r (StateField.GPR 31#5) st) + y) 4 := Aligned_BitVecAdd_64_4 x_aligned y_aligned
 def sha512_program_test_3 : Program :=
   def_program
    [(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!

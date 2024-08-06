@@ -1,8 +1,10 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Shilpi Goel, Yan Peng
+Author(s): Shilpi Goel, Yan Peng, Nathan Wetzler
 -/
+
+import LeanSAT
 import Arm.BitVec
 import Arm.State
 
@@ -60,10 +62,24 @@ def Aligned (x : BitVec n) (a : Nat) : Prop :=
   | 0 => True
   | a' + 1 => extractLsb a' 0 x = BitVec.zero _
 
-
 /-- We need to prove why the Aligned predicate is Decidable. -/
 instance : Decidable (Aligned x a) := by
   cases a <;> simp [Aligned] <;> infer_instance
+
+theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
+  (x_aligned : Aligned x 4)
+  (y_aligned : Aligned y 4)
+  : Aligned (x + y) 4 := by
+  simp_all [Aligned]
+  bv_decide
+
+theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : BitVec 1)
+  (x_aligned : Aligned x 4)
+  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
+  : Aligned (AddWithCarry x y carry_in).fst 4 := by
+  unfold AddWithCarry Aligned at *
+  simp_all
+  bv_decide
 
 /-- Check correct stack pointer (SP) alignment for AArch64 state; returns
 true when sp is aligned. -/
