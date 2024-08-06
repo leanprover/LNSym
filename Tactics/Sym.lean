@@ -12,9 +12,12 @@ import Tactics.ChangeHyps
 import Lean.Elab
 import Lean.Expr
 
+initialize
+  Lean.registerTraceClass `Sym
+
 open BitVec
 
-/- `init_next_step h_run` splits the hypothesis
+/-- `init_next_step h_run` splits the hypothesis
 
 `h_run: s_final = run n s`
 
@@ -137,7 +140,7 @@ def sym1 (curr_state_number : Nat) (_hProgram : Lean.Ident) : Lean.Elab.Tactic.T
     let h_run := Lean.mkIdent (mk_name "h_run")
     -- h_step_n': name of the hypothesis with the `stepi` function
     let h_step_n' := Lean.mkIdent (mk_name ("h_step_" ++ n'_str))
-    Lean.Elab.Tactic.evalTactic (←
+    let stx ←
       `(tactic|
          (init_next_step $h_run:ident $h_step_n':ident $st':ident
           -- Simulate one instruction
@@ -152,10 +155,23 @@ def sym1 (curr_state_number : Nat) (_hProgram : Lean.Ident) : Lean.Elab.Tactic.T
           -- (try clear $h_st_pc:ident $h_st_err:ident) --$h_st_program:ident
           -- (intro_change_hyps $h_step_n':ident $program:term $h_st_prefix:str)
           -- (try clear $h_step_n':ident)
-      )))
+      ))
+    trace[Sym] "Running tactic:\n{stx}"
+    Lean.Elab.Tactic.evalTactic stx
 
--- sym_n tactic symbolically simulates n instructions from
--- state number i.
+/-- `sym1_i_n i n h_program` will symbolically evaluate a program for `n` steps,
+starting from state `i`, where `h_program` is an assumption of the form:
+`s{i}.program = someConcreteProgam`.
+
+The context is assumed to contain hypotheses
+```
+h_s{i}_err : r StateField.ERR s{i} = .None
+h_s{i}_pc  : r StateField.PC  s{i} = $PC
+h_run      : sf = run $STEPS s0
+```
+Where $PC and $STEPS are concrete constants.
+Note that the tactic will search for assumption of *exactly* these names,
+it won't search by def-eq -/
 elab "sym1_i_n" i:num n:num program:ident : tactic => do
   for j in List.range n.getNat do
     sym1 (i.getNat + j) program
