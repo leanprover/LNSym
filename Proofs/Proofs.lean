@@ -9,5 +9,6 @@ import «Proofs».«SHA512».Sha512
 /- Experiments we use to test proof strategies and automation ideas. -/
 import Proofs.Experiments.Summary1
 import Proofs.Experiments.MemoryAliasing
+import Proofs.Experiments.SHA512MemoryAliasing
 import Proofs.Experiments.Max
 import Proofs.Experiments.Abs
