@@ -270,6 +270,7 @@ protected def rand (n : Nat) (lo := 0) (hi := 2^n - 1) : IO (BitVec n) := do
 def unsigned_compare (a b : BitVec n) : Ordering :=
   if BitVec.ult a b then .lt else if a = b then .eq else .gt
 
+@[bitvec_rules]
 abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
   rotateRight x r
 
@@ -277,7 +278,9 @@ abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
     the `n`-bit bitvector `x`. -/
 @[bitvec_rules]
 abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
-  BitVec.ofBool (getLsb x i)
+  -- BitVec.ofBool (getLsb x i)
+  have h : (i - i + 1) = 1 := by omega
+  h ▸ BitVec.extractLsb i i x
 
 abbrev partInstall (hi lo : Nat) (val : BitVec (hi - lo + 1)) (x : BitVec n): BitVec n :=
   let mask := allOnes (hi - lo + 1)
