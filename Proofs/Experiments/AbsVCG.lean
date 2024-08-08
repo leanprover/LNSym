@@ -85,7 +85,7 @@ def abs_cut (a : Abs) : Prop :=
 
 /-- Function that attaches assertions at the cutpoints of this program. -/
 def abs_assert (a : Abs) : Prop :=
-  if (read_pc a.state = 0x4005d0#64) then
+  if read_pc a.state = 0x4005d0#64 then
     abs_pre a
   else if (read_pc a.state = 0x4005e0#64) then
     abs_post a
