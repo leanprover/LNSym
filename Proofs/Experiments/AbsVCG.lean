@@ -338,8 +338,7 @@ theorem program_effects_lemma (h_pre : abs_pre a)
 
 theorem partial_correctness :
   PartialCorrectness Abs := by
-  refine Correctness.partial_correctness_from_verification_conditions
-    ?v1 ?v2 ?v3 ?v4
+  apply Correctness.partial_correctness_from_verification_conditions
   case v1 =>
     intro a
     simp only [Spec'.assert, abs_assert, Spec.pre, abs_pre]
