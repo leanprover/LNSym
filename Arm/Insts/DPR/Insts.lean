@@ -9,6 +9,7 @@ import Arm.Insts.DPR.Conditional_select
 import Arm.Insts.DPR.Data_processing_one_source
 import Arm.Insts.DPR.Data_processing_two_source
 import Arm.Insts.DPR.Logical_shifted_reg
+import Arm.Insts.DPR.Data_processing_three_source
 
 /-- List of functions to generate random instructions of the
 DPR class. -/
@@ -18,4 +19,5 @@ def DPR.rand : List (IO (Option (BitVec 32))) :=
    DPR.Conditional_select_cls.rand,
    DPR.Data_processing_one_source_cls.rand,
    DPR.Logical_shifted_reg_cls.rand] ++
-  DPR.Data_processing_two_source_cls.rand
+  DPR.Data_processing_two_source_cls.rand ++
+  DPR.Data_processing_three_source_cls.rand
