@@ -115,6 +115,23 @@ instance : ToString Logical_shifted_reg_cls where toString a := toString (repr a
 def Logical_shifted_reg_cls.toBitVec32 (x : Logical_shifted_reg_cls) : BitVec 32 :=
   x.sf ++ x.opc ++ x._fixed ++ x.shift ++ x.N ++ x.Rm ++ x.imm6 ++ x.Rn ++ x.Rd
 
+structure Data_processing_three_source_cls where
+  sf     : BitVec 1                 -- [31:31]
+  op54   : BitVec 2                 -- [30:29]
+  _fixed : BitVec 5 := 0b11011#5    -- [28:24]
+  op31   : BitVec 3                 -- [23:21]
+  Rm     : BitVec 5                 -- [20:16]
+  o0     : BitVec 1                 -- [15:15]
+  Ra     : BitVec 5                 -- [14:10]
+  Rn     : BitVec 5                 --   [9:5]
+  Rd     : BitVec 5                 --   [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Data_processing_three_source_cls where toString a := toString (repr a)
+
+def Data_processing_three_source_cls.toBitVec32 (x : Data_processing_three_source_cls) : BitVec 32 :=
+  x.sf ++ x.op54 ++ x._fixed ++ x.op31 ++ x.Rm ++ x.o0 ++ x.Ra ++ x.Rn ++ x.Rd
+
 inductive DataProcRegInst where
   | Add_sub_carry :
     Add_sub_carry_cls → DataProcRegInst
@@ -128,6 +145,8 @@ inductive DataProcRegInst where
     Data_processing_two_source_cls → DataProcRegInst
   | Logical_shifted_reg :
     Logical_shifted_reg_cls → DataProcRegInst
+  | Data_processing_three_source :
+    Data_processing_three_source_cls → DataProcRegInst
 deriving DecidableEq, Repr
 
 instance : ToString DataProcRegInst where toString a := toString (repr a)
