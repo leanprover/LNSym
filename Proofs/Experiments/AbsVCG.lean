@@ -24,13 +24,15 @@ def program : Program :=
     (0x4005dc#64, 0x4a000020#32), --  eor w0, w1, w0
     (0x4005e0#64, 0xd65f03c0#32)] --  ret
 
-/-- `Abs` structure: Field `w0` refers to the 32-bit input to the program that
-  is expected to be in register `w0` in the initial state, and `state` refers
-  to the Arm machine state.
+/--
+`Abs` structure: Field `w0` refers to the 32-bit input to the program that
+is expected to be in register `w0` in the initial state, and `state` refers
+to the Arm machine state.
 
-  We club the input and the state together so that we can express the
-  post-condition of the program only in terms of this structure `Abs`; see
-  `abs_post`. -/
+We club the input and the state together so that we can express the
+post-condition of the program only in terms of this structure `Abs`; see
+`abs_post`.
+-/
 structure Abs where
   w0      : BitVec 32
   state   : ArmState
