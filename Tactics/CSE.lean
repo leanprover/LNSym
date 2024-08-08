@@ -207,11 +207,13 @@ def CSEM.gensym : CSEM Nat :=
 /--
 Plan to perform a CSE for this expression, by building a 'GeneralizeArg'.
 -/
-def CSEM.planCSE (e : Expr): CSEM GeneralizeArg := do
+partial def CSEM.planCSE (e : Expr): CSEM GeneralizeArg := do
   let ix ← gensym
   let xname := Name.mkSimple s!"x{ix}"
   let hname := Name.mkSimple s!"hx{ix}"
-  return { expr := e, hName? := hname, xName? := xname}
+  if ((← getLCtx).findFromUserName? xname).isSome || ((← getLCtx).findFromUserName? hname).isSome
+  then planCSE e
+  else return { expr := e, hName? := hname, xName? := xname}
 
 /--
 Try to recursively perform a CSE of the expression.
@@ -242,8 +244,23 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
   -- implementation modeled after `Lean.Elab.Tactic.evalGeneralize`.
   trace[Tactic.cse.generalize] "{tryEmoji} Generalizing {hname} : {e} = {xname}"
   try
-    -- Implementation modeled after `Lean.MVarId.generalizeHyp`.
-    let (_, newVars, mvarId) ← mvarId.generalizeHyp #[arg] ((← getLCtx).getFVarIds)
+      -- Implementation modeled after `Lean.MVarId.generalizeHyp`.
+    let e ← instantiateMVars e
+    let hyps := ((← getLCtx).getFVarIds)
+    let transparency := TransparencyMode.instances
+    let hyps ← hyps.filterM fun h => do
+      let type ← instantiateMVars (← h.getType)
+      return (← withTransparency transparency <| kabstract type arg.expr).hasLooseBVars
+    let (reverted, mvarId) ← mvarId.revert hyps true
+    let (newVars, mvarId) ← mvarId.generalize #[arg] transparency
+    let (reintros, mvarId) ← mvarId.introNP reverted.size
+    let fvarSubst := Id.run do
+      let mut subst : FVarSubst := {}
+      for h in reverted, reintro in reintros do
+        subst := subst.insert h (mkFVar reintro)
+      pure subst
+  -- return (fvarSubst, newVars, mvarId)
+    -- let (_, newVars, mvarId) ← mvarId.generalizeHyp #[arg] ((← getLCtx).getFVarIds)
     mvarId.withContext do
         -- | it's stupid if I need the thing below, so I'm going to ignore it for now.
         -- for v in newVars, id in xIdents ++ hIdents do
@@ -266,7 +283,18 @@ def CSEM.cseImpl : CSEM Unit := do
     trace[Tactic.cse.summary] m!"CSE collected expressions: {(← getState)}"
 
     let mut madeProgress := false
-    for e in (← getState).insertionTime2Expr do
+    /-
+    When generalizing, generalize in reverse order. So we generalize parents first,
+    and then children. This will ensure that the parents are now part of the hypothesis,
+    which will then be correctly generalized by Lean's tactic.
+
+    Note that this implementation is O(n^2), since the calls to `kabstract` will traverse
+    the body of the parent repeatedly.
+
+    However, it's not clear that this can be avoided due to type dependency. I'll need
+    to think of a better implementation once this succeeds.
+    -/
+    for e in (← getState).insertionTime2Expr.reverse do
       if let .some data := (← getState).canon2data.find? e then
         if !(← data.isProfitable?) then
           trace[Tactic.cse.generalize] "⏭️ Skipping {e}: Unprofitable {repr data} ."
@@ -335,5 +363,4 @@ set_option trace.Tactic.cse.summary true in
 set_option trace.Tactic.cse.generalize true in
 theorem test (x y z : Nat) : (x + x) + ((y + y) + (y + y)) = (((y + y) + (y + y)) + ((y + y) + (y + y))) + (((y + y) + (y + y))) := by
   cse (config := {minRefsToCSE := 3})
-  cse
   sorry
