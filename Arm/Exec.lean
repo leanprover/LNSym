@@ -44,6 +44,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     DPR.exec_data_processing_two_source i s
   | DPR (DataProcRegInst.Logical_shifted_reg i) =>
     DPR.exec_logical_shifted_reg i s
+  | DPR (DataProcRegInst.Data_processing_three_source i) =>
+    DPR.exec_data_processing_three_source i s
 
   | DPSFP (DataProcSFPInst.Advanced_simd_copy i) =>
     DPSFP.exec_advanced_simd_copy i s

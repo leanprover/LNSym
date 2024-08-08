@@ -85,6 +85,8 @@ def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=
     DPR (Data_processing_two_source {sf, S, Rm, opcode, Rn, Rd})
   | [sf:1, opc:2, 01010, shift:2, N:1, Rm:5, imm6:6, Rn:5, Rd:5] =>
     DPR (Logical_shifted_reg {sf, opc, shift, N, Rm, imm6, Rn, Rd})
+  | [sf:1, op54:2, 11011, op31:3, Rm:5, o0:1, Ra:5, Rn:5, Rd:5] =>
+    DPR (Data_processing_three_source {sf, op54, op31, Rm, o0, Ra, Rn, Rd})
   | _ => none
 
 def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
