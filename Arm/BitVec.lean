@@ -278,9 +278,7 @@ abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
     the `n`-bit bitvector `x`. -/
 @[bitvec_rules]
 abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
-  -- BitVec.ofBool (getLsb x i)
-  have h : (i - i + 1) = 1 := by omega
-  h ▸ BitVec.extractLsb i i x
+  (BitVec.extractLsb i i x).cast (by omega)
 
 abbrev partInstall (hi lo : Nat) (val : BitVec (hi - lo + 1)) (x : BitVec n): BitVec n :=
   let mask := allOnes (hi - lo + 1)
