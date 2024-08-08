@@ -37,8 +37,10 @@ structure Abs where
   w0      : BitVec 32
   state   : ArmState
 
-/-- State Machine for the `Abs` program: the `next` function only steps the
-  `state` and leaves `w0` unmodified. -/
+/--
+State Machine for the `Abs` program: the `next` function only steps the
+`state` and leaves `w0` unmodified.
+-/
 instance : Sys Abs where
   some := { w0 := 0#32, state := ArmState.default }
   next := fun abs => { w0 := abs.w0,
