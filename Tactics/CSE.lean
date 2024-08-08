@@ -238,7 +238,6 @@ def CSEM.cseImpl : CSEM Unit := do
     if (← getConfig).processHyps = .allHyps then
       for hyp in (← getLocalHyps) do
         let _ ← tryAddExpr (← inferType hyp)
-        continue
     trace[Tactic.cse.summary] m!"CSE collected expressions: {(← getState)}"
 
     let mut madeProgress := false
@@ -299,8 +298,25 @@ set_option trace.Tactic.cse.collection true in
 set_option trace.Tactic.cse.summary true in
 set_option trace.Tactic.cse.generalize true in
 theorem testNat : 1 + 2 = 4 := by
-  cse
+  try cse
   sorry
+
+set_option trace.Tactic.cse.collection true in
+set_option trace.Tactic.cse.summary true in
+set_option trace.Tactic.cse.generalize true in
+theorem testHypFail (h : 42 + 42 = 2) (h₂ : (42 + 42) + (42 + 42) = 2) : 1 + 2 = 4 := by
+  generalize k : 42 + 42 = x -- weird, it doesn't pick it up in h!
+  sorry
+
+set_option trace.Tactic.cse.collection true in
+set_option trace.Tactic.cse.summary true in
+set_option trace.Tactic.cse.generalize true in
+theorem testHypCSE (h : 42 + 42 = 2) (h₂ : (42 + 42) + (42 + 42) = 2) : 1 + 2 = 4 := by
+  revert h h₂ -- reverting then generalizing seems to succeed.
+  generalize k : 42 + 42 = x -- weird, it doesn't pick it up in h!
+  intros h₁ h₂ -- we now have goals in terms of `h`.
+  sorry
+
 
 -- set_option trace.Tactic.cse.collection true in
 set_option trace.Tactic.cse.summary true in
