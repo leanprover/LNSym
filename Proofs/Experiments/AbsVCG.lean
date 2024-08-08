@@ -182,7 +182,8 @@ theorem abs_stepi_0x4005dc_axiomatic (s sn : ArmState)
   done
 
 /-- (FIXME) This was tedious: we need to prove helper lemmas/build automation to
-    generate these effects theorems. Our main workhorse here is symbolic
+      generate these effects theorems, but the good news is that we see a
+      pattern here to exploit. Our main workhorse here is symbolic
     simulation, but the interesting part is that we are symbolically simulating
     as well as determining the number of steps to simulate in tandem. -/
 theorem program_effects_lemma (h_pre : abs_pre a)
@@ -211,89 +212,87 @@ theorem program_effects_lemma (h_pre : abs_pre a)
             BitVec.truncate 64 1#32)) ∧
     r StateField.ERR af.state = StateError.None := by
 
+  simp only [←run_succ] at h_run
+  simp only [abs_pre, state_simp_rules] at h_pre
   have ⟨h_s0_x0, h_s0_pc, h_s0_program, h_s0_err⟩ := h_pre; clear h_pre
-  simp_all only [state_simp_rules]
 
-  rw [Correctness.csteps_eq]
-  generalize h_step_1a : Sys.next a = a1
+  rw [Correctness.csteps_eq] at h_run
+  generalize h_step_1a : Sys.next a = a1 at h_run
+  have h_a1 : a1 = Sys.run a 1 := by
+    simp only [Sys.run, ←h_step_1a]
   simp only [Sys.next] at h_step_1a
   have h_a1_state : a1.state = stepi a.state := by simp only [← h_step_1a]
   have h_a1_w0 : a1.w0 = a.w0 := by simp only [← h_step_1a]
   have h1 := abs_stepi_0x4005d0_axiomatic
-              a.state a1.state h_s0_program h_s0_pc h_s0_err
-  simp only [← h_step_1a, minimal_theory] at h1
+              a.state a1.state h_s0_program h_s0_pc h_s0_err h_a1_state
   simp only
-    [Spec'.cut, abs_cut, state_simp_rules, ←h_step_1a, h1,
-     minimal_theory, bitvec_rules]
-  simp only [h_step_1a]
+    [Spec'.cut, abs_cut, h1,
+     state_simp_rules, minimal_theory, bitvec_rules] at h_run
   have h_s1_program : a1.state.program = program := by
-    simp only [h1, h_a1_state]
+    simp only [h1]
   have h_s1_err : r StateField.ERR a1.state = StateError.None := by
-    simp  (config := {decide := true}) only [h1, h_a1_state, h_s0_err]
+    simp  (config := {decide := true}) only [h1, h_s0_err]
   have h_s1_pc : r StateField.PC a1.state = 0x4005d4#64 := by
-    simp only [h1, h_a1_state]
+    simp only [h1]
 
-  rw [Correctness.csteps_eq]
-  generalize h_step_2a : Sys.next a1 = a2
+  rw [Correctness.csteps_eq] at h_run
+  generalize h_step_2a : Sys.next a1 = a2 at h_run
+  have h_a2 : a2 = Sys.run a 2 := by
+    simp only [Sys.run, ←h_step_2a, h_a1]
   simp only [Sys.next] at h_step_2a
   have h_a2_state : a2.state = stepi a1.state := by simp only [← h_step_2a]
   have h_a2_w0 : a2.w0 = a.w0 := by simp only [← h_step_2a, h_a1_w0]
   have h2 := abs_stepi_0x4005d4_axiomatic
-              a1.state a2.state h_s1_program h_s1_pc h_s1_err
-  simp only [←h_step_2a, minimal_theory] at h2
+              a1.state a2.state h_s1_program h_s1_pc h_s1_err h_a2_state
   simp only
-    [Spec'.cut, abs_cut, state_simp_rules, ←h_step_2a, h2,
-     minimal_theory, bitvec_rules]
-  simp only [h_step_2a]
+    [Spec'.cut, abs_cut, h2,
+     state_simp_rules, minimal_theory, bitvec_rules] at h_run
   have h_s2_program : a2.state.program = program := by
-    simp only [h2, h_a2_state]
+    simp only [h2]
   have h_s2_err : r StateField.ERR a2.state = StateError.None := by
-    simp (config := {decide := true}) only [h2, h_a2_state, h_s1_err]
+    simp (config := {decide := true}) only [h2, h_s1_err]
   have h_s2_pc : r StateField.PC a2.state = 0x4005d8#64 := by
-    simp only [h2, h_a2_state]
+    simp only [h2]
 
-  rw [Correctness.csteps_eq]
-  generalize h_step_3a : Sys.next a2 = a3
+  rw [Correctness.csteps_eq] at h_run
+  generalize h_step_3a : Sys.next a2 = a3 at h_run
+  have h_a3 : a3 = Sys.run a 3 := by
+    simp only [Sys.run, ←h_step_3a, h_a2]
   simp only [Sys.next] at h_step_3a
   have h_a3_state : a3.state = stepi a2.state := by simp only [← h_step_3a]
   have h_a3_w0 : a3.w0 = a.w0 := by simp only [← h_step_3a, h_a2_w0]
   have h3 := abs_stepi_0x4005d8_axiomatic
-              a2.state a3.state h_s2_program h_s2_pc h_s2_err
-  simp only [←h_step_3a, minimal_theory] at h3
+              a2.state a3.state h_s2_program h_s2_pc h_s2_err h_a3_state
   simp only
-    [Spec'.cut, abs_cut, state_simp_rules, ←h_step_3a, h3,
-     minimal_theory, bitvec_rules]
-  simp only [h_step_3a]
+    [Spec'.cut, abs_cut, h3,
+     state_simp_rules, minimal_theory, bitvec_rules] at h_run
   have h_s3_program : a3.state.program = program := by
-    simp only [h3, h_a3_state]
+    simp only [h3]
   have h_s3_err : r StateField.ERR a3.state = StateError.None := by
-    simp (config := {decide := true}) only [h3, h_a3_state, h_s2_err]
+    simp (config := {decide := true}) only [h3, h_s2_err]
   have h_s3_pc : r StateField.PC a3.state = 0x4005dc#64 := by
-    simp only [h3, h_a3_state]
+    simp only [h3]
 
-  rw [Correctness.csteps_eq]
-  generalize h_step_4a : Sys.next a3 = a4
+  rw [Correctness.csteps_eq] at h_run
+  generalize h_step_4a : Sys.next a3 = a4 at h_run
+  have h_a4 : a4 = Sys.run a 4 := by
+    simp only [Sys.run, ←h_step_4a, h_a3]
   simp only [Sys.next] at h_step_4a
   have h_a4_state : a4.state = stepi a3.state := by simp only [← h_step_4a]
   have h_a4_w0 : a4.w0 = a.w0 := by simp only [← h_step_4a, h_a3_w0]
   have h4 := abs_stepi_0x4005dc_axiomatic
-              a3.state a4.state h_s3_program h_s3_pc h_s3_err
-  simp only [←h_step_4a, minimal_theory] at h4
+              a3.state a4.state h_s3_program h_s3_pc h_s3_err h_a4_state
   simp only
-    [Spec'.cut, abs_cut, state_simp_rules, ←h_step_4a, h4,
-     minimal_theory, bitvec_rules]
-  -- simp only [h_step_4a]
+    [Spec'.cut, abs_cut, h4,
+     state_simp_rules, minimal_theory, bitvec_rules] at h_run
   have _h_s4_program : a4.state.program = program := by
-    simp only [h4, h_a4_state]
+    simp only [h4]
   have h_s4_err : r StateField.ERR a4.state = StateError.None := by
-    simp (config := {decide := true}) only [h4, h_a4_state, h_s3_err]
+    simp (config := {decide := true}) only [h4, h_s3_err]
   have h_s4_pc : r StateField.PC a4.state = 0x4005e0#64 := by
-    simp only [h4, h_a4_state]
+    simp only [h4]
 
-  have h_run_final : (Sys.run a1 3).state = a4.state := by
-    simp only [Sys.run, Sys.next, h_step_2a, h_step_3a, h_step_4a]
-  have h_w0_final : (Sys.run a1 3).w0 = a.w0 := by
-    simp only [Sys.run, Sys.next, h_step_2a, h_step_3a, h_step_4a, h_a4_w0]
+  have h_af_a4 : af = a4 := by simp only [h_a4, h_run]
 
   have h_s4_gpr0 :
     r (StateField.GPR 0#5) a4.state =
@@ -326,7 +325,9 @@ theorem program_effects_lemma (h_pre : abs_pre a)
     simp only [h_s0_x0]
     done
 
-  simp only [h_run_final, h_w0_final, h_s4_pc, h_s4_err, h_s4_gpr0, minimal_theory, bitvec_rules]
+  simp only [h_s4_pc, h_s4_err, h_s4_gpr0,
+             h_af_a4, h_a4_w0,
+             minimal_theory, bitvec_rules]
   done
 
 -------------------------------------------------------------------------------
