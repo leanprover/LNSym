@@ -230,6 +230,31 @@ def CSEM.planCSERec (e : Expr) (data : ExprData) (args : Array GeneralizeArg) : 
   else
     return args
 
+/--
+Plan to perform a CSE for this expression, by building a 'GeneralizeArg'.
+-/
+def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
+  let hname := arg.hName?.getD .anonymous
+  let xname := arg.xName?.getD .anonymous
+  let e := arg.expr
+
+  let mvarId ← getMainGoal
+  -- implementation modeled after `Lean.Elab.Tactic.evalGeneralize`.
+  trace[Tactic.cse.generalize] "{tryEmoji} Generalizing {hname} : {e} = {xname}"
+  try
+    -- Implementation modeled after `Lean.MVarId.generalizeHyp`.
+    let (_, newVars, mvarId) ← mvarId.generalizeHyp #[arg] ((← getLCtx).getFVarIds)
+    mvarId.withContext do
+        -- | it's stupid if I need the thing below, so I'm going to ignore it for now.
+        -- for v in newVars, id in xIdents ++ hIdents do
+        --   Term.addLocalVarInfo id (.fvar v)
+        replaceMainGoal [mvarId]
+        trace[Tactic.cse.generalize] "{checkEmoji} succeeded in generalizing {hname}"
+    return true
+  catch e =>
+    trace[Tactic.cse.generalize] "{bombEmoji} failed to generalize {hname}"
+    return false
+
 def CSEM.cseImpl : CSEM Unit := do
   withMainContext do
     trace[Tactic.cse.info] m!"running CSE"
@@ -246,21 +271,8 @@ def CSEM.cseImpl : CSEM Unit := do
         if !(← data.isProfitable?) then
           trace[Tactic.cse.generalize] "⏭️ Skipping {e}: Unprofitable {repr data} ."
         else
-          let generalizes ← planCSE e
-          let mvarId ← getMainGoal
-          -- implementation stolen from 'Lean.Elab.Tactic.evalGeneralize : Tactic'
-          trace[Tactic.cse.generalize] "{tryEmoji} Generalizing {generalizes.hName?.getD Name.anonymous} : {e} = {generalizes.xName?.getD Name.anonymous}"
-          try
-            let (_, newVars, mvarId) ← mvarId.generalizeHyp #[generalizes] ((← getLCtx).getFVarIds)
-            mvarId.withContext do
-                -- | it's stupid if I need the thing below, so I'm going to ignore it for now.
-                -- for v in newVars, id in xIdents ++ hIdents do
-                --   Term.addLocalVarInfo id (.fvar v)
-                replaceMainGoal [mvarId]
-                trace[Tactic.cse.generalize] "{checkEmoji} succeeded in generalizing: {generalizes.hName?.getD Name.anonymous}"
-            madeProgress := true
-          catch e =>
-            trace[Tactic.cse.generalize] "{bombEmoji} failed to generalize: {generalizes.hName?.getD Name.anonymous}"
+          let generalizeArg ← planCSE e
+          madeProgress := madeProgress || (← generalize generalizeArg)
     if !madeProgress
     then throwError "found no subterms to successfully CSE."
     return ()
