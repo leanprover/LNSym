@@ -5,6 +5,7 @@ Author(s): Shilpi Goel, Siddharth Bhat
 -/
 import «Proofs».MultiInsts
 import «Proofs».«SHA512».Sha512
+import Proofs.«AES-GCM».GCM
 
 /- Experiments we use to test proof strategies and automation ideas. -/
 import Proofs.Experiments.Summary1
