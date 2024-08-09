@@ -56,11 +56,6 @@ structure State where
   -/
   canon2data : HashMap Expr ExprData := {}
   /--
-  an array of expressions, whose order tells us the time they were inserted into the CSE map.
-  Since we insert expressions from child to parent, parents will always appear after children.
-  -/
-  insertionTime2Expr : Array Expr := #[]
-  /--
   a counter to generate new names
   -/
   gensymCount : Nat := 1
@@ -158,7 +153,6 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
     setState {
       s with
       canon2data := s.canon2data.insert e data,
-      insertionTime2Expr := s.insertionTime2Expr.push e
     }
     trace[Tactic.cse.collection] m!"added new '{e}' with info '{repr data}'" -- TODO: make this a trace node child.
     return .some data
