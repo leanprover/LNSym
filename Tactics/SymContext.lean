@@ -73,16 +73,47 @@ def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
       state_prefix := state ++ "_",
       curr_state_number := 0 }
 
+/-- Given a ground term `e` of type `Nat`, fully reduce it,
+and attempt to reflect it into a meta-level `Nat`  -/
+private def reflectNatLiteral (e : Expr) : MetaM Nat := do
+  if e.hasFVar then
+    throwError "Expected a ground term, but {e} has free variables"
 
+  let e ← instantiateMVars e
+  let some x := e.nat? | throwError "Expected a numeric literal, found:\n\t{e}"
+  return x
+
+/-- For a concrete width `w`,
+reduce an expression `e` (of type `BitVec w`) to be of the form `?n#w`,
+and then reflect `?n` to build the meta-level bitvector -/
 private def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
+  if e.hasFVar then
+    throwError "Expected a ground term, but {e} has free variables"
+
   let x ← mkFreshExprMVar (Expr.const ``Nat [])
   let e' ← mkAppM ``BitVec.ofNat #[toExpr w, x]
-  if !(←isDefEq e e') then
-    throwError "Not def-eq:\n\t{e}\nand\n\t{e'}" -- TODO: error message
+  if (←isDefEq e e') then
+    return BitVec.ofNat w (← reflectNatLiteral x)
   else
-    let x ← instantiateMVars x
-    let some x := x.nat? | throwError "Not a nat:\n\t{x}" -- TODO: error message
-    return BitVec.ofNat w x
+    throwError "Failed to unify, expected:\n\t{e'}\nbut found:\n\t{e'}"
+
+/-- Attempt to look-up a `name` in the local context,
+so that we can build an expression with its fvarid, to return a message with nice highlighting.
+If lookup fails, we return a message with the plain name, wihout highlighting -/
+private def userNameToMessageData (name : Name) : MetaM MessageData := do
+  return match (← getLCtx).findFromUserName? name with
+    | some decl => m!"{Expr.fvar decl.fvarId}"
+    | none      => m!"{name}"
+
+/-- Annotate any errors thrown by `k` with a local variable (and it's type) for context -/
+private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) : MetaM α :=
+  try k catch e =>
+    let h ← userNameToMessageData name
+    let type := match type? with
+      | some type => m!" : {type}"
+      | none      => m!""
+    throwErrorAt e.getRef "{e.toMessageData}\n\nIn {h}{type}"
+
 
 def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let lctx ← getLCtx
@@ -103,8 +134,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let h_run ← findLocalDeclUsernameOfTypeOrError h_run_type
 
   -- Unwrap and reflect `runSteps`
-  let some runSteps := (← instantiateMVars runSteps).nat?
-    | throwError "Expected a numeric literal, found:\n\t{runSteps}\nIn\n\t {h_run} : {h_run_type}"
+  let runSteps ← withErrorContext h_run h_run_type <| reflectNatLiteral runSteps
   -- TODO: we should allow all ground terms here, not just literals.
   -- For example, we sometimes use `sf = run someProgram.length s0`
 
@@ -113,7 +143,8 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let stateExpr ← instantiateMVars stateExpr
   let state ← state?.getDM <| do
     let .fvar state := stateExpr
-      | throwError
+      | let h_run ← userNameToMessageData h_run
+        throwError
   "Expected a free variable, found:
     {stateExpr}
   We inferred this as the initial state because we found:
@@ -135,7 +166,8 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   -- Assert that `program` is a(n application of a) constant, and find its name
   let program := (← instantiateMVars program).getAppFn
   let .const program _ := program
-    | throwError "Expected a constant, found:\n\t{program}\nIn: {h_program} : {h_program_type}"
+    | withErrorContext h_run h_run_type <|
+        throwError "Expected a constant, found:\n\t{program}"
   /-
     TODO: assert that the expected `stepi` theorems have been generated for `program`
   -/
@@ -147,11 +179,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
 
   -- Unwrap and reflect `pc`
   let pc ← instantiateMVars pc
-  let pc ←
-    try
-      reflectBitVecLiteral 64 pc
-    catch e =>
-      throwError "{e.toMessageData}\nIn\n\t{h_pc} : {h_pc_type}"
+  let pc ← withErrorContext h_pc h_pc_type <| reflectBitVecLiteral 64 pc
 
   return inferStatePrefixAndNumber {
     state, h_run, runSteps, program, h_program, pc, h_pc,
