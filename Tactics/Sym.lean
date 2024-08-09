@@ -179,9 +179,10 @@ If `s` is not passed, the initial state is inferred from the local context
 The context is searched (up-to def-eq!) for hypotheses
 ```
 h_program : s.program = ?concreteProgram
-    h_err : r StateField.ERR s = .None
      h_pc : r StateField.PC  s = ?PC
     h_run : sf = run ?STEPS s
+    h_err : r StateField.ERR s = .None
+     h_sp : CheckSPAlignment s
 ```
 Where ?PC and ?STEPS must reduce to a concrete literal,
 and concreteProgram must be a constant (i.e., a global definition refered to by name). -/
