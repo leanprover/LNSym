@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.Exec
-import Arm.MemoryProofs
+import Arm.Memory.MemoryProofs
 import Tactics.FetchAndDecode
 import Tactics.ExecInst
 import Tactics.ChangeHyps
