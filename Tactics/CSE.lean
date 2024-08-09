@@ -59,13 +59,13 @@ structure CSEConfig where
 
 structure ExprData where
   /-- Number of references to this expression -/
-  refs : Nat
+  occs : Nat
   /-- Size of the expression, disregarding implicits. -/
   size : Nat
 deriving Repr
 
 def ExprData.incrRef (data : ExprData) : ExprData :=
-  { data with refs := data.refs + 1 }
+  { data with occs := data.occs + 1 }
 
 
 structure State where
@@ -129,13 +129,13 @@ partial def CSEM.exprSize (e : Expr) : CSEM Nat := do
     else return 1
 
 def ExprData.new (e : Expr) : CSEM ExprData := do return {
-  refs := 1,
+  occs := 1,
   size := (← CSEM.exprSize e)
 }
 
 /-- decides if performing CSE for this expression is profitable. -/
 def ExprData.isProfitable? (data : ExprData) : CSEM Bool :=
-  return data.size > 1 && data.refs >= (← getConfig).minRefsToCSE
+  return data.size > 1 && data.occs >= (← getConfig).minRefsToCSE
 
 /--
 The function is partial because of the call to `tryAddExpr` that
@@ -198,7 +198,7 @@ partial def CSEM.planCSE (e : Expr): CSEM GeneralizeArg := do
   let hname := Name.mkSimple s!"hx{ix}"
   if ((← getLCtx).findFromUserName? xname).isSome || ((← getLCtx).findFromUserName? hname).isSome
   then planCSE e
-  else return { expr := e, hName? := hname, xName? := xname}
+  else return { expr := e, hName? := hname, xName? := xname }
 
 /--
 Plan to perform a CSE for this expression, by building a 'GeneralizeArg'.
