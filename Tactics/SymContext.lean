@@ -173,12 +173,12 @@ where
 def default (curr_state_number : Nat) : SymContext :=
   let s := s!"s{curr_state_number}"
   {
-    state     := mkName s
-    h_run     := mkName s!"h_run"
-    h_program := mkName s!"h_{s}_program"
-    h_pc      := mkName s!"h_{s}_pc"
-    h_err     := mkName s!"h_{s}_err"
-    h_sp      := mkName s!"h_{s}_sp"
+    state     := .mkSimple s
+    h_run     := .mkSimple s!"h_run"
+    h_program := .mkSimple s!"h_{s}_program"
+    h_pc      := .mkSimple s!"h_{s}_pc"
+    h_err     := .mkSimple s!"h_{s}_err"
+    h_sp      := .mkSimple s!"h_{s}_sp"
     /-
       `runSteps`, `pc` and `program` actually require inspection of the context to determine.
       However, these values are not actually used yet,
