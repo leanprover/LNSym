@@ -843,13 +843,11 @@ theorem toNat_sub_eq_toNat_sub_toNat_of_le {x y : BitVec w} (h : y ≤ x) :
       Nat.mod_self, Nat.zero_add, Nat.mod_mod, Nat.mod_eq_of_lt (by omega)]
 
 theorem neq_of_lt {x y : BitVec w₁} (h : x < y) : x ≠ y := by
-  intros h'
-  subst h'
+  rintro rfl
   simp [BitVec.lt_def] at h
 
 theorem neq_of_gt {x y : BitVec w₁} (h : x > y) : x ≠ y := by
-  intros h'
-  subst h'
+  rintro rfl
   simp [BitVec.lt_def] at h
 
 

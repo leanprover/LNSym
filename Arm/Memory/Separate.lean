@@ -5,6 +5,7 @@ Author(s): Shilpi Goel, Siddharth Bhat
 -/
 import Arm.State
 import Arm.BitVec
+
 section Separate
 
 open BitVec
@@ -125,8 +126,7 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
     (ha : mem_legal a1 a2) (hb : mem_legal b1 b2) :
     a2 < b1 ∨ a1 > b2 := by
   unfold mem_separate mem_overlap at h
-  simp at h
-  obtain ⟨⟨⟨h₁, h₂⟩, h₃⟩, h₄⟩ := h
+  obtain ⟨⟨⟨h₁, h₂⟩, h₃⟩, h₄⟩ := by simpa? using h
   simp [mem_legal] at ha hb
   rw [BitVec.le_def] at ha hb
   rw [BitVec.le_def] at h₁ h₂ h₃ h₄
