@@ -163,6 +163,8 @@ where
     let some h_run ← findLocalDeclWithType? expectedType
       | return none
     let decl := (← getLCtx).get! h_run
+    -- ^^ `findLocalDeclWithType?` only returns `FVarId`s which are present in the local context,
+    --    so we can safely pass it to `get!`
     return decl.userName
   findLocalDeclUsernameOfTypeOrError (expectedType : Expr) : MetaM Name := do
     let some name ← findLocalDeclUsernameOfType? expectedType
