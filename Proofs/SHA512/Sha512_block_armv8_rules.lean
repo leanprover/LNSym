@@ -108,7 +108,7 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   unfold sha512h compression_update_t1 sigma_big_1 ch allOnes ror
   simp only [Nat.reduceAdd, Nat.reduceSub, Nat.sub_zero, Nat.reducePow, reduceZeroExtend,
     reduceHShiftLeft, reduceNot, reduceAnd, BitVec.zero_or, shiftLeft_zero_eq]
-  -- cse (config := { minRefsToCSE := 2})
+  -- cse (config := { minOccsToCSE := 2})
   generalize extractLsb 63   0 a = a_lo
   generalize extractLsb 127 64 a = a_hi
   generalize extractLsb 63   0 b = b_lo

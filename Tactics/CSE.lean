@@ -16,32 +16,16 @@ def tryEmoji : String := "⌛"
 
 /-! ### Common Subexpression Eliminiation Tactic
 
-#### TODO
-
-- don't generalize over implicits.
-- don't generalize over stuff that's hidden by notation?
-
 #### Algorithm:
 
-- step 1: collect statistics on (sub) expression occurrence in the target expression.
+- step 1: collect all terms bottom up, hashing them for structural equality and counting number of occurrences.
 - step 2: once again, working top down, call `generalize` for each of these, generating appropriate generalize names.
-- step 3: done?
+
 -/
 
 section HashMapUtils
 
-def Lean.HashMap.insertOrUpdate [BEq α] [Hashable α] (h : HashMap α β) (k : α) (v : β) (f : β → β) : (β × HashMap α β) :=
-  match h.find? k with
-  | .none => (v, h.insert k v)
-  | .some v => let v' := (f v); (v', h.insert k v')
-
-end HashMapUtils
-
 namespace Tactic.CSE
-
-inductive ShouldGeneralizeTypes
-| generalizeTypes
-| generalizeOnlyTerms
 
 inductive ShouldProcessHyps
 | ignoreHyps
@@ -51,10 +35,8 @@ deriving DecidableEq
 structure CSEConfig where
   /-- Whether we should process the hypotheses of the current goal state. -/
   processHyps : ShouldProcessHyps := .ignoreHyps
-  /-- Whether we should also be performing CSE on types, or only terms. -/
-  types : ShouldGeneralizeTypes := .generalizeOnlyTerms
-   /-- The minimum number of references necessary to perform CSE on a term. -/
-  minRefsToCSE : Nat := 2
+   /-- The minimum number of occurrences necessary to perform CSE on a term. -/
+  minOccsToCSE : Nat := 2
 
 
 structure ExprData where
@@ -69,16 +51,16 @@ def ExprData.incrRef (data : ExprData) : ExprData :=
 
 
 structure State where
-  /-
+  /--
   A mapping from expression to its canonical index.
   -/
   canon2data : HashMap Expr ExprData := {}
-  /-
+  /--
   an array of expressions, whose order tells us the time they were inserted into the CSE map.
   Since we insert expressions from child to parent, parents will always appear after children.
   -/
   insertionTime2Expr : Array Expr := #[]
-  /-
+  /--
   a counter to generate new names
   -/
   gensymCount : Nat := 1
@@ -135,7 +117,7 @@ def ExprData.new (e : Expr) : CSEM ExprData := do return {
 
 /-- decides if performing CSE for this expression is profitable. -/
 def ExprData.isProfitable? (data : ExprData) : CSEM Bool :=
-  return data.size > 1 && data.occs >= (← getConfig).minRefsToCSE
+  return data.size > 1 && data.occs >= (← getConfig).minOccsToCSE
 
 /--
 The function is partial because of the call to `tryAddExpr` that
@@ -247,18 +229,60 @@ def CSEM.cseImpl : CSEM Unit := do
 
     let mut madeProgress := false
     /-
-    When generalizing, generalize in reverse order. So we generalize parents first,
-    and then children. This will ensure that the parents are now part of the hypothesis,
-    which will then be correctly generalized by Lean's tactic.
+    Suppose our goal state is `⊢ (large small small) + (large small small)`.
+    If a term `small` is a subterm of `large`, then `size small < size large`.
+    Let's consider what happens if we generalize `small` first, then `large`.
 
-    Note that this implementation is O(n^2), since the calls to `kabstract` will traverse
-    the body of the parent repeatedly.
+    ### We start with the proof state:
 
-    However, it's not clear that this can be avoided due to type dependency. I'll need
-    to think of a better implementation once this succeeds.
+    ```
+    ⊢ (large small small) + (large small small)
+    ```
+
+    ### We now generalize `small`, giving:
+
+    ```
+    hx : x = small
+    x : _
+    ⊢ (large x x) + (large x x)
+    ```
+
+    If we now try to generalize the term `large small small`, we will find no ocurrences!
+    This is because the `small` has been replaced by `x` everywhere.
+    For a correct algorithm, we should generalize `large x x`.
+    For this correct algorithm,we need some way to track such substitutions within `Expr`s.
+    [@bollu: it maybe possible to use `FVarSubst` to achieve this effect.]
+
+    Instead, we use the naive algorithm, and go top-down instead.
+
+    ### We start with the proof state:
+
+    ```
+    ⊢ (large small) + (large small)
+    ```
+
+    ### We now generalize `(large small)`, giving:
+
+    ```
+    hx : x = (large small small)
+    large : _
+    ⊢ x + x
+    ```
+
+    ### We now generalize `small`, giving
+
+    ```
+    hy : y = small
+    small : _
+    hx : x = (large y y)
+    large : _
+    ⊢ x + x
+    ```
+    Thus, the size metric ensures that at the end,
+    we will get a hypothesis that has been maximally CSEd.
     -/
-    for e in (← getState).insertionTime2Expr.reverse do
-      if let .some data := (← getState).canon2data.find? e then
+    for (e, data) in (← getState).canon2data.toArray.qsort (fun kv kv' => kv.2.size > kv'.2.size) do
+      -- if let .some data := (← getState).canon2data.find? e then
         if !(← data.isProfitable?) then
           trace[Tactic.cse.generalize] "⏭️ Skipping {e}: Unprofitable {repr data} ."
         else
@@ -322,7 +346,7 @@ theorem testHypCSE (h : 42 + 42 = 2) (h₂ : (42 + 42) + (42 + 42) = 2) : 1 + 2 
 set_option trace.Tactic.cse.summary true in
 set_option trace.Tactic.cse.generalize true in
 theorem test (x y z : Nat) : (x + x) + ((y + y) + (y + y)) = (((y + y) + (y + y)) + ((y + y) + (y + y))) + (((y + y) + (y + y))) := by
-  cse (config := {minRefsToCSE := 3})
+  cse (config := {minOccsToCSE := 3})
   sorry
 
 open BitVec in
