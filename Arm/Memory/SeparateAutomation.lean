@@ -520,9 +520,9 @@ declare_config_elab elabSimpMemConfig SeparateAutomation.SimpMemConfig
 /--
 Implement the simp_mem tactic frontend.
 -/
-syntax (name := cse) "simp_mem" (Lean.Parser.Tactic.config)? : tactic
+syntax (name := simp_mem) "simp_mem" (Lean.Parser.Tactic.config)? : tactic
 
-@[tactic cse]
+@[tactic simp_mem]
 def evalSimpMem : Tactic := fun
   | `(tactic| simp_mem $[$cfg]?) => do
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
