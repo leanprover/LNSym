@@ -169,10 +169,6 @@ where
       | throwError "Failed to find a local hypothesis of type {expectedType}"
     return name
 
-/-- `mkName` is a simple helper for turning a string into an unqualified name,
-as used for local variables and hypotheses -/
-private def mkName : String → Name :=
-  Lean.Name.mkStr Lean.Name.anonymous
 
 def default (curr_state_number : Nat) : SymContext :=
   let s := s!"s{curr_state_number}"
