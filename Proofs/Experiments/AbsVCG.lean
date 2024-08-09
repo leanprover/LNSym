@@ -46,6 +46,12 @@ instance : Sys Abs where
   next := fun abs => { w0 := abs.w0,
                        state := stepi abs.state }
 
+theorem run_does_not_modify_w0 (a : Abs) :
+  (Sys.run a n).w0 = a.w0 := by
+  induction n generalizing a
+  case zero => simp only [Sys.run]
+  case succ => simp_all only [Sys.run, Sys.next]
+
 /-- Precondition for the correctness of the `Abs` program. -/
 def abs_pre (a : Abs) : Prop :=
   read_gpr 32 0#5 a.state = a.w0 ∧
@@ -185,11 +191,13 @@ theorem abs_stepi_0x4005dc_axiomatic (s sn : ArmState)
   simp_all only [minimal_theory]
   done
 
-/-- (FIXME) This was tedious: we need to prove helper lemmas/build automation to
-      generate these effects theorems, but the good news is that we see a
-      pattern here to exploit. Our main workhorse here is symbolic
-    simulation, but the interesting part is that we are symbolically simulating
-    as well as determining the number of steps to simulate in tandem. -/
+/--
+(FIXME) This was tedious: we need to prove helper lemmas/build automation to
+generate these effects theorems, but the good news is that we see a
+pattern here to exploit. Our main workhorse here is symbolic
+simulation, but the interesting part is that we are symbolically simulating
+as well as determining the number of steps to simulate in tandem.
+-/
 theorem program_effects_lemma (h_pre : abs_pre a)
   (h_run : af = Sys.run (Sys.next a)
                         (Correctness.csteps (Sys.next a) 0)) :
@@ -225,10 +233,9 @@ theorem program_effects_lemma (h_pre : abs_pre a)
   have h_a1 : a1 = Sys.run a 1 := by
     simp only [Sys.run, ←h_step_1a]
   simp only [Sys.next] at h_step_1a
-  have h_a1_state : a1.state = stepi a.state := by simp only [← h_step_1a]
-  have h_a1_w0 : a1.w0 = a.w0 := by simp only [← h_step_1a]
   have h1 := abs_stepi_0x4005d0_axiomatic
-              a.state a1.state h_s0_program h_s0_pc h_s0_err h_a1_state
+              a.state a1.state h_s0_program h_s0_pc h_s0_err
+              (by simp only [←h_step_1a])
   simp only
     [Spec'.cut, abs_cut, h1,
      state_simp_rules, minimal_theory, bitvec_rules] at h_run
@@ -244,10 +251,9 @@ theorem program_effects_lemma (h_pre : abs_pre a)
   have h_a2 : a2 = Sys.run a 2 := by
     simp only [Sys.run, ←h_step_2a, h_a1]
   simp only [Sys.next] at h_step_2a
-  have h_a2_state : a2.state = stepi a1.state := by simp only [← h_step_2a]
-  have h_a2_w0 : a2.w0 = a.w0 := by simp only [← h_step_2a, h_a1_w0]
   have h2 := abs_stepi_0x4005d4_axiomatic
-              a1.state a2.state h_s1_program h_s1_pc h_s1_err h_a2_state
+              a1.state a2.state h_s1_program h_s1_pc h_s1_err
+              (by simp only [←h_step_2a])
   simp only
     [Spec'.cut, abs_cut, h2,
      state_simp_rules, minimal_theory, bitvec_rules] at h_run
@@ -263,10 +269,9 @@ theorem program_effects_lemma (h_pre : abs_pre a)
   have h_a3 : a3 = Sys.run a 3 := by
     simp only [Sys.run, ←h_step_3a, h_a2]
   simp only [Sys.next] at h_step_3a
-  have h_a3_state : a3.state = stepi a2.state := by simp only [← h_step_3a]
-  have h_a3_w0 : a3.w0 = a.w0 := by simp only [← h_step_3a, h_a2_w0]
   have h3 := abs_stepi_0x4005d8_axiomatic
-              a2.state a3.state h_s2_program h_s2_pc h_s2_err h_a3_state
+              a2.state a3.state h_s2_program h_s2_pc h_s2_err
+              (by simp only [← h_step_3a])
   simp only
     [Spec'.cut, abs_cut, h3,
      state_simp_rules, minimal_theory, bitvec_rules] at h_run
@@ -282,10 +287,9 @@ theorem program_effects_lemma (h_pre : abs_pre a)
   have h_a4 : a4 = Sys.run a 4 := by
     simp only [Sys.run, ←h_step_4a, h_a3]
   simp only [Sys.next] at h_step_4a
-  have h_a4_state : a4.state = stepi a3.state := by simp only [← h_step_4a]
-  have h_a4_w0 : a4.w0 = a.w0 := by simp only [← h_step_4a, h_a3_w0]
   have h4 := abs_stepi_0x4005dc_axiomatic
-              a3.state a4.state h_s3_program h_s3_pc h_s3_err h_a4_state
+              a3.state a4.state h_s3_program h_s3_pc h_s3_err
+              (by simp only [← h_step_4a])
   simp only
     [Spec'.cut, abs_cut, h4,
      state_simp_rules, minimal_theory, bitvec_rules] at h_run
@@ -318,20 +322,13 @@ theorem program_effects_lemma (h_pre : abs_pre a)
           (BitVec.truncate 64 0#32 &&& BitVec.truncate 64 0#32 |||
               BitVec.truncate 64 (a.w0.rotateRight 31) &&& BitVec.truncate 64 4294967295#32) &&&
             BitVec.truncate 64 1#32)) := by
-    simp only [← h_a4_state] at h4
-    simp (config := {decide := true}) only [h4]
-    simp only [← h_a3_state] at h3
-    simp (config := {decide := true}) only [h3]
-    simp only [← h_a2_state] at h2
-    simp (config := {decide := true}) only [h2]
-    simp only [← h_a1_state] at h1
-    simp (config := {decide := true}) only [h1]
-    simp only [h_s0_x0]
+    simp (config := {decide := true}) only [h4, h3, h2, h1, h_s0_x0]
     done
 
-  simp only [h_s4_pc, h_s4_err, h_s4_gpr0,
-             h_af_a4, h_a4_w0,
+  simp only [h_af_a4,
+             h_s4_pc, h_s4_err, h_s4_gpr0,
              minimal_theory, bitvec_rules]
+  simp only [h_a4, run_does_not_modify_w0]
   done
 
 -------------------------------------------------------------------------------
