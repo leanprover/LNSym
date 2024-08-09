@@ -1,12 +1,7 @@
 import Lean
 
 open Lean
-
 initialize
-  registerTraceClass `Tactic.cse -- high level info.
-
-initialize
-  registerTraceClass `Tactic.cse.info -- low level debugging info.
-  registerTraceClass `Tactic.cse.collection -- low level debugging info.
-  registerTraceClass `Tactic.cse.summary -- low level debugging info.
-  registerTraceClass `Tactic.cse.generalize -- low level debugging info.
+  registerTraceClass `Tactic.cse.collection -- CSE phase that collects expressions.
+  registerTraceClass `Tactic.cse.summary -- CSE phase that summaries information after collection.
+  registerTraceClass `Tactic.cse.generalize -- CSE phase that attempts reperated generalization.

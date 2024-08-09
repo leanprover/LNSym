@@ -251,7 +251,6 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
 
 def CSEM.cseImpl : CSEM Unit := do
   withMainContext do
-    trace[Tactic.cse.info] m!"running CSE"
     let _ ← tryAddExpr (← getMainTarget)
     /- If we should perform CSE on hypotheses as well. -/
     if (← getConfig).processHyps = .allHyps then
