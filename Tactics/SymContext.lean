@@ -20,6 +20,9 @@ open BitVec
 structure SymContext where
   /-- `state` and `finalState` are local variable of type `ArmState` -/
   state : Name
+  -- TODO: Should we eventually track the final state as well?
+  --       We could use it to avoid introducing the last intermediate state,
+  --       when we detect that `runSteps = 0`
   /-- `runSteps` is the number of steps that we can *maximally* simulate,
   because of the way it occurs in `h_run`.
   Note that `runSteps` is a meta-level natural number, reflecting the fact that we expect the number
@@ -102,6 +105,8 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   -- Unwrap and reflect `runSteps`
   let some runSteps := (← instantiateMVars runSteps).nat?
     | throwError "Expected a numeric literal, found:\n\t{runSteps}\nIn\n\t {h_run} : {h_run_type}"
+  -- TODO: we should allow all ground terms here, not just literals.
+  -- For example, we sometimes use `sf = run someProgram.length s0`
 
   -- At this point, `stateExpr` should have been assigned (if it was an mvar),
   -- so we can unwrap it to get the underlying name
