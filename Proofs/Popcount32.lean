@@ -12,7 +12,7 @@ section popcount32
 
 open BitVec
 
-/-
+/-! 
 Source: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 
 int popcount_32 (unsigned int v) {
@@ -21,6 +21,7 @@ int popcount_32 (unsigned int v) {
   v = ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
   return(v);
 }
+
 -/
 
 def popcount32_spec_rec (i : Nat) (x : BitVec 32) : (BitVec 32) :=
@@ -33,7 +34,6 @@ def popcount32_spec_rec (i : Nat) (x : BitVec 32) : (BitVec 32) :=
 def popcount32_spec (x : BitVec 32) : BitVec 32 :=
   popcount32_spec_rec 32 x
 
--- #eval popcount32_spec 15#32
 
 def popcount32_program : Program :=
   def_program
