@@ -12,6 +12,7 @@ namespace DPI
 
 open BitVec
 
+@[state_simp_rules]
 def decode_op (opc : BitVec 2) : LogicalImmType :=
   match opc with
   | 00#2 => LogicalImmType.AND
@@ -26,6 +27,7 @@ def update_logical_imm_pstate (bv : BitVec n) : PState :=
   let V := 0#1
   (make_pstate N Z C V)
 
+@[state_simp_rules]
 def exec_logical_imm_op (op : LogicalImmType) (op1 : BitVec n) (op2 : BitVec n)
   : (BitVec n × Option PState) :=
   match op with

@@ -22,6 +22,7 @@ theorem small_asm_snippet_sym_experiment_1 (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x12650c#64)
   (h_s0_program : s0.program = test_program)
   (h_s0_err : read_err s0 = StateError.None)
+  (h_s0_sp_aligned : CheckSPAlignment s0)
   (h_run : s_final = run 4 s0) :
   read_sfp 128 26#5 s_final = read_sfp 128 0#5 s0 ∧
   read_err s_final = StateError.None := by

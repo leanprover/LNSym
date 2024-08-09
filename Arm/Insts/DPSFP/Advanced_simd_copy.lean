@@ -25,6 +25,7 @@ def dup_aux (e : Nat) (elements : Nat) (esize : Nat)
     dup_aux (e + 1) elements esize element result H
   termination_by (elements - e)
 
+@[state_simp_rules]
 def exec_dup_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :=
   let size := lowest_set_bit inst.imm5
   if size > 3 ∨ (size = 3 ∧ inst.Q = 0) then
@@ -44,6 +45,7 @@ def exec_dup_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     let s := write_sfp datasize inst.Rd result s
     s
 
+@[state_simp_rules]
 def exec_dup_general (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :=
   let size := lowest_set_bit inst.imm5
   if size > 3 ∨ (size = 3 ∧ inst.Q = 0) then
@@ -60,6 +62,7 @@ def exec_dup_general (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     let s := write_sfp datasize inst.Rd result s
     s
 
+@[state_simp_rules]
 def exec_ins_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :=
   let size := lowest_set_bit inst.imm5
   if size > 3 then
@@ -79,6 +82,7 @@ def exec_ins_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     let s := write_sfp 128 inst.Rd result s
     s
 
+@[state_simp_rules]
 def exec_ins_general (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :=
   let size := lowest_set_bit inst.imm5
   if size > 3 then
@@ -95,6 +99,7 @@ def exec_ins_general (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :
     let s := write_sfp 128 inst.Rd result s
     s
 
+@[state_simp_rules]
 def exec_smov_umov (inst : Advanced_simd_copy_cls) (s : ArmState) (signed : Bool): ArmState :=
   let size := lowest_set_bit inst.imm5
   let esize := 8 <<< size

@@ -45,7 +45,7 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
   -- "CreateAccDescGPR" here, given the simplicity of our memory
   -- model
   let address := read_gpr 64 inst.Rn s
-  if inst.Rn = 31#5 ∧ not (CheckSPAlignment s) then
+  if inst.Rn = 31#5 ∧ ¬(CheckSPAlignment s) then
     write_err (StateError.Fault s!"[Inst: {inst_str}] SP {address} is not aligned!") s
   else
     let address := if inst.postindex then address else address + offset

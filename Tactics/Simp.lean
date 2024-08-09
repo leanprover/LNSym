@@ -23,10 +23,17 @@ def LNSymSimpContext
   (simprocs : Array Name := #[])
   : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
   let mut ext_simpTheorems := #[]
+  let default_simprocs ← Simp.getSimprocs
+  let mut all_simprocs := (#[default_simprocs] : Simp.SimprocsArray)
+
   for a in simp_attrs do
     let some ext ← (getSimpExtension? a) |
                    throwError m!"[LNSymSimpContext] Error: {a} simp attribute not found!"
     ext_simpTheorems := #[(← ext.getTheorems)] ++ ext_simpTheorems
+
+    if let some ext ← (Simp.getSimprocExtension? a) then
+      let s ← ext.getSimprocs
+      all_simprocs := all_simprocs.push s
   let mut const_simpTheorems := ({} : SimpTheorems)
   for d in decls_to_unfold do
     const_simpTheorems ← const_simpTheorems.addDeclToUnfold d
@@ -40,8 +47,6 @@ def LNSymSimpContext
   let (ctx : Simp.Context) := { config := config,
                                 simpTheorems := all_simpTheorems,
                                 congrTheorems := (← Meta.getSimpCongrTheorems) }
-  let default_simprocs ← Simp.getSimprocs
-  let mut all_simprocs := (#[default_simprocs] : Simp.SimprocsArray)
   for s in simprocs do
     all_simprocs ← Simp.SimprocsArray.add all_simprocs s false
   return (ctx, all_simprocs)

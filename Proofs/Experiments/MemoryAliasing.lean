@@ -6,7 +6,7 @@ Author(s): Shilpi Goel, Siddharth Bhat
 The goal is to eliminate the sorry, and to simplify the proof to a tactic invocation.
 -/
 import Arm
-import Arm.MemoryProofs
+import Arm.Memory.MemoryProofs
 
 theorem mem_automation_test
   (h_n0 : n0 ≠ 0)

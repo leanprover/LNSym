@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.Exec
-import Arm.MemoryProofs
+import Arm.Memory.MemoryProofs
 import Tactics.FetchAndDecode
 import Tactics.ExecInst
 import Tactics.ChangeHyps
@@ -12,9 +12,12 @@ import Tactics.ChangeHyps
 import Lean.Elab
 import Lean.Expr
 
+initialize
+  Lean.registerTraceClass `Sym
+
 open BitVec
 
-/- `init_next_step h_run` splits the hypothesis
+/-- `init_next_step h_run` splits the hypothesis
 
 `h_run: s_final = run n s`
 
@@ -47,6 +50,7 @@ def sym_one (curr_state_number : Nat) : Lean.Elab.Tactic.TacticM Unit :=
     let h_st_program := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_program"))
     let h_st_pc := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_pc"))
     let h_st_err := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_err"))
+    let h_st_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_sp_aligned"))
     -- st': name of the next state
     let st' := Lean.mkIdent (mk_name ("s" ++ n'_str))
     -- h_run: name of the hypothesis with the `run` function
@@ -61,7 +65,7 @@ def sym_one (curr_state_number : Nat) : Lean.Elab.Tactic.TacticM Unit :=
           -- (try clear $h_step_n:ident)
           exec_inst $h_step_n':ident $h_st_prefix:str
           intro_fetch_decode_lemmas $h_step_n':ident $h_st_program:ident $h_st_prefix:str
-          (try clear $h_st_pc:ident $h_st_program:ident $h_st_err:ident)
+          (try clear $h_st_pc:ident $h_st_program:ident $h_st_err:ident $h_st_sp_aligned:ident)
           -- intro_change_hyps $h_step_n':ident $h_st_prefix:str
           -- (try clear $h_step_n':ident)
       )))
@@ -136,7 +140,7 @@ def sym1 (curr_state_number : Nat) (_hProgram : Lean.Ident) : Lean.Elab.Tactic.T
     let h_run := Lean.mkIdent (mk_name "h_run")
     -- h_step_n': name of the hypothesis with the `stepi` function
     let h_step_n' := Lean.mkIdent (mk_name ("h_step_" ++ n'_str))
-    Lean.Elab.Tactic.evalTactic (←
+    let stx ←
       `(tactic|
          (init_next_step $h_run:ident $h_step_n':ident $st':ident
           -- Simulate one instruction
@@ -151,10 +155,26 @@ def sym1 (curr_state_number : Nat) (_hProgram : Lean.Ident) : Lean.Elab.Tactic.T
           -- (try clear $h_st_pc:ident $h_st_err:ident) --$h_st_program:ident
           -- (intro_change_hyps $h_step_n':ident $program:term $h_st_prefix:str)
           -- (try clear $h_step_n':ident)
-      )))
+      ))
+    trace[Sym] "Running tactic:\n{stx}"
+    Lean.Elab.Tactic.evalTactic stx
 
--- sym_n tactic symbolically simulates n instructions from
--- state number i.
+/-- `sym1_i_n i n h_program` will symbolically evaluate a program for `n` steps,
+starting from state `i`, where `h_program` is an assumption of the form:
+`s{i}.program = someConcreteProgam`.
+
+The context is assumed to contain hypotheses
+```
+h_s{i}_err : r StateField.ERR s{i} = .None
+h_s{i}_pc  : r StateField.PC  s{i} = $PC
+h_run      : sf = run $STEPS s0
+```
+Where $PC and $STEPS are concrete constants.
+Note that the tactic will search for assumption of *exactly* these names,
+it won't search by def-eq -/
 elab "sym1_i_n" i:num n:num program:ident : tactic => do
+  Lean.Elab.Tactic.evalTactic (← `(tactic|
+    simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
+  ))
   for j in List.range n.getNat do
     sym1 (i.getNat + j) program
