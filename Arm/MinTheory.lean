@@ -27,6 +27,7 @@ attribute [minimal_theory] iff_true
 attribute [minimal_theory] true_iff
 attribute [minimal_theory] iff_false
 attribute [minimal_theory] false_iff
+attribute [minimal_theory] eq_iff_iff
 attribute [minimal_theory] false_implies
 attribute [minimal_theory] implies_true
 attribute [minimal_theory] true_implies
