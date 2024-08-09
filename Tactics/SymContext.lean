@@ -202,12 +202,12 @@ def nextState (c : SymContext) (nextPc? : Option (BitVec 64) := none) : SymConte
   let curr_state_number := c.curr_state_number + 1
   let s := s!"{c.state_prefix}{curr_state_number}"
   {
-    state     := mkName s
+    state     := .mkSimple s
     h_run     := c.h_run
     h_program := mkName s!"h_{s}_program"
-    h_pc      := mkName s!"h_{s}_pc"
-    h_err     := mkName s!"h_{s}_err"
-    h_sp      := mkName s!"h_{s}_sp"
+    h_pc      := .mkSimple s!"h_{s}_pc"
+    h_err     := .mkSimple s!"h_{s}_err"
+    h_sp      := .mkSimple s!"h_{s}_sp"
     runSteps  := c.runSteps - 1
     program   := c.program
     pc        := nextPc?.getD (c.pc + 4#64)
