@@ -79,8 +79,9 @@ private def reflectNatLiteral (e : Expr) : MetaM Nat := do
   if e.hasFVar then
     throwError "Expected a ground term, but {e} has free variables"
 
-  let e ← instantiateMVars e
-  let some x := e.nat? | throwError "Expected a numeric literal, found:\n\t{e}"
+  let e' ← reduce (← instantiateMVars e)
+  let some x := e'.rawNatLit? | throwError "Expected a numeric literal, found:\n\t{e'}\nwhich was obtained by reducing:\n\t{e}"
+  -- ^^ The previous reduction will have reduced a canonical-form nat literal into a raw literal
   return x
 
 /-- For a concrete width `w`,
