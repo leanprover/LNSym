@@ -24,7 +24,6 @@ import Lean.Elab.Tactic.Conv.Basic
 -/
 open Lean Meta Elab Tactic
 
-
 section Theorems
 abbrev Memory := Store (BitVec 64) (BitVec 8)
 
@@ -46,7 +45,6 @@ def read_mem_bytes' (n : Nat) (addr : BitVec 64) (s : Memory) : BitVec (n * 8) :
     have h: n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
     BitVec.cast h (rest ++ byte)
 
-
 @[simp]
 theorem read_mem_bytes_eq_read_mem_bytes' (s : ArmState) :
     read_mem_bytes n addr s = read_mem_bytes' n addr s.mem := by
@@ -59,13 +57,9 @@ theorem read_mem_bytes_eq_read_mem_bytes' (s : ArmState) :
 @[simp]
 theorem read_mem_bytes'_zero_eq : read_mem_bytes' 0 addr s = 0#0 := rfl
 
--- @[simp]
 theorem read_mem_bytes'_succ_eq :
   read_mem_bytes' (n' + 1) addr s = ((read_mem_bytes' n' (addr + 1) s) ++ read_mem' addr s).cast (by omega) := rfl
 
-/-!
-### TODO: figure out where precisely we need the mem_legal for this to be legal.
--/
 theorem getLsb_read_mem_bytes' {n i : Nat} {addr : BitVec 64} {s : Memory} (hn : n ≤ 2^64) :
     (read_mem_bytes' n addr s).getLsb i =
     (decide (i < n * 8) && (s (addr + BitVec.ofNat 64 (i / 8))).getLsb (i % 8)) := by
@@ -163,19 +157,6 @@ theorem write_mem_bytes'_succ :
     let val_rest := BitVec.zeroExtend (n * 8) (val >>> 8) -- TODO: rewrite this as 'truncate'.
     write_mem_bytes' n (addr + 1#64) val_rest s := rfl
 
--- theorem write_mem_bytes'_eq_of_lt {ix base : BitVec 64} (hix : ix.toNat < base.toNat) (hnowrap : base.toNat + n < 2^64) :
---     write_mem_bytes' n base data mem ix = mem ix := by
---   induction n generalizing base mem ix
---   case zero => simp [write_mem_bytes']
---   case succ n ih =>
---     simp [write_mem_bytes']
---     rw [ih]
---     · apply write_mem'_of_neq (BitVec.neq_of_lt hix)
---     · rw [BitVec.toNat_add_eq_toNat_add_toNat (by simp; omega)]
---       omega
---     · rw [BitVec.toNat_add_eq_toNat_add_toNat (by simp; omega)]
---       simp; omega
-
 theorem write_mem_bytes'_eq_of_le {ix base : BitVec 64}
     (hix : ix.toNat < base.toNat) (hnowrap : base.toNat + n ≤ 2^64) :
     write_mem_bytes' n base data mem ix = mem ix := by
@@ -212,7 +193,6 @@ theorem write_mem_bytes'_eq_of_ge {ix base : BitVec 64}
     · rw [BitVec.toNat_add_eq_toNat_add_toNat (by simp; omega)]
       simp; omega
 
-/-- Jesus, this proof needs a serious golf. -/
 theorem extractLsB_zeroExtend_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i > 0):
     (BitVec.zeroExtend (n * 8) (data >>> 8)).extractLsB (i - 1) = data.extractLsB i := by
   rcases i with rfl | i
@@ -296,7 +276,6 @@ theorem write_mem_bytes'_eq_extractLsB {ix base : BitVec 64}
 /-- info: 'write_mem_bytes'_eq_extractLsB' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms write_mem_bytes'_eq_extractLsB
 
-/-- Theorem that needs to be thought through. -/
 theorem write_mem_bytes'_eq (hoverflow : base.toNat + n ≤ 2 ^ 64) :
   ((write_mem_bytes' n base data mem) ix) =
     if ix < base
@@ -341,7 +320,6 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   simp only [Nat.reduceMul, write_mem_bytes_eq_write_mem_bytes', read_mem_bytes_eq_read_mem_bytes',
   Nat.reduceAdd, BitVec.ofNat_eq_ofNat, read_mem_bytes'_zero_eq,
   BitVec.cast_eq]
-  -- simp at h_no_wrap_dest_region h_no_wrap_src_region
   apply BitVec.eq_of_getLsb_eq
   intros i
   obtain ⟨hsrc, hdest, hsplit⟩ := hsep
@@ -379,12 +357,10 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   · have := hsrc.size_le_two_pow
     omega
 
--- /- value of read_mem_bytes when separate. -/
--- theorem read_mem_bytes_write_mem_bytes_eq_of_mem_subset_of_mem_legal_of_mem_legal : True := by trivial
-
-/- value of read_mem_bytes when subset. -/
+/- value of `read_mem_bytes'` when subset. -/
+/-
 theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
-  (hsep : mem_subset' x xn y yn) -- separation
+  (hsep : mem_subset' x xn y yn) -- subset relation.
   (val : BitVec (yn * 8)) :
     read_mem_bytes' xn x (write_mem_bytes' yn y val state) =
       val.extractLsBs (y.toNat - x.toNat) xn := by
@@ -412,13 +388,14 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
       intros h
       apply BitVec.getLsb_ge
       omega
+-/
+
 end Theorems
 
 
 namespace SeparateAutomation
 
 structure SimpMemConfig where
-
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
 structure Context where
@@ -439,7 +416,7 @@ def Hypothesis.expr : Hypothesis → Expr
 instance : ToMessageData Hypothesis where
   toMessageData
   | .subset h => toMessageData h
-  | .separate h a na b nb => toMessageData h
+  | .separate h _a _na _b _nb => toMessageData h
 
 /-- The internal state for the `SimpMemM` monad, recording previously encountered atoms. -/
 structure State where
@@ -447,40 +424,17 @@ structure State where
 
 def State.init : State := {}
 
-/-- An intermediate layer in the `SimpMemM` monad. -/
--- abbrev SimpMemM := StateRefT State (ReaderT Context CanonM)
 abbrev SimpMemM := StateRefT State (ReaderT Context TacticM)
 
 def SimpMemM.run (m : SimpMemM α) (cfg : SimpMemConfig) : TacticM α :=
   m.run' State.init |>.run (Context.init cfg)
 
-
 /-- Add a `Hypothesis` to our hypothesis cache. -/
 def SimpMemM.addHypothesis (h : Hypothesis) : SimpMemM Unit :=
   modify fun s => { s with hypotheses := s.hypotheses.push h }
 
--- class MonadTraceMsg (m : Type → Type) extends Monad m, MonadOptions m, MonadLiftT IO m, MonadTrace m, MonadRef m, AddMessageContext m
-
--- class MonadTraceMsg [Monad m] [MonadOptions m] [MonadLiftT IO m] [MonadTrace m] [MonadRef m]
---     [AddMessageContext m] (m : Type → Type) where
-
--- instance [Monad m]
---     [MonadOptions m]
---     [MonadLiftT IO m]
---     [MonadTrace m]
---     [MonadRef m]
---     [AddMessageContext m] : MonadTraceMsg m where
-
-
--- def foo [MonadTraceMsg m] : m Unit := do
---   trace[simp_mem] "foo"
-
 def processingEmoji : String := "⚙️"
--- mem_separate' _uniq.78
---    (OfNat.ofNat.{0} Nat 16 (instOfNatNat 16))
---    _uniq.79
---    (OfNat.ofNat.{0} Nat 16 (instOfNatNat 16))
-/- @bollu: TODO: check what the correct monad is if I just want to trace. -/
+
 /-- Match an expression `h` to see if it's a useful hypothesis. -/
 def processHypothesis (h : Expr) : MetaM (Option Hypothesis) := do
   -- trace[simp_mem] "processing hyp '{(← inferType h)}'"
@@ -533,18 +487,6 @@ def SimpMemM.analyzeLoop : SimpMemM Unit := do
           trace[simp_mem.info] "{crossEmoji} Rejecting '{h}'"
       SimpMemM.rewrite (← getMainGoal)
 
--- /--
--- Cache of expressions that have been visited, and their reflection as a linear combination.
--- -/
--- def Cache : Type := HashMap Expr (LinearCombo × SimpMemM' Expr)
-
--- /--
--- The `OmegaM` monad maintains two pieces of state:
--- * the linear atoms discovered while processing hypotheses
--- * a cache mapping subexpressions of one side of a linear inequality to `LinearCombo`s
---   (and a proof that the `LinearCombo` evaluates at the atoms to the original expression). -/
--- abbrev OmegaM := StateRefT Cache OmegaM'
-
 /--
 Given a collection of facts, try prove `False` using the omega algorithm,
 and close the goal using that.
@@ -554,17 +496,10 @@ def simpMem (cfg : SimpMemConfig := {}) : TacticM Unit :=
 
 
 /-- The `simp_mem` tactic, for simplifying away statements about memory. -/
-def simpMemTactic (cfg : SimpMemConfig) : TacticM Unit := simpMem
-  -- liftMetaFinishingTactic fun g => do
-  --   g.withContext do
-  --     let hyps := (← getLocalHyps)
-  --     trace[simp_mem] "analyzing {hyps.size} hypotheses:\n{← hyps.mapM inferType}"
-  --     simpMem hyps g cfg
-  --     throwError m!"Unable to find memory rewriting at the goal state."
-
--- def omegaDefault : TacticM Unit := simpMemTactic {}
+def simpMemTactic (cfg : SimpMemConfig) : TacticM Unit := simpMem cfg
 
 end SeparateAutomation
+
 /--
 Allow elaboration of `SimpMemConfig` arguments to tactics.
 -/
