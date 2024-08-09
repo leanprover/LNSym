@@ -33,5 +33,5 @@ lean_exe «lnsym» where
   -- supportInterpreter := true
 
 require LeanSAT from git "https://github.com/leanprover/leansat" @ "main"
-require ELFSage from git "https://github.com/draperlaboratory/ELFSage.git" @ "main"
+require ELFSage from git "https://github.com/bollu/ELFSage.git" @ "use-less-call-stack-findSymbolTableEntryInSection"
 require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "main"
