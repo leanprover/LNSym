@@ -16,9 +16,6 @@ def tryEmoji : String := "⌛"
 
 /-! ### Common Subexpression Eliminiation Tactic
 
-cse ⊢
-cse ⊢ h h' -- will use all expressions to compute thresholds.
-
 #### TODO
 
 - don't generalize over implicits.
@@ -27,7 +24,7 @@ cse ⊢ h h' -- will use all expressions to compute thresholds.
 #### Algorithm:
 
 - step 1: collect statistics on (sub) expression occurrence in the target expression.
-- step 2: once again, working bottom up, call `generalize` for each of these, generating appropriate generalize names.
+- step 2: once again, working top down, call `generalize` for each of these, generating appropriate generalize names.
 - step 3: done?
 -/
 
@@ -59,16 +56,11 @@ structure CSEConfig where
    /-- The minimum number of references necessary to perform CSE on a term. -/
   minRefsToCSE : Nat := 2
 
-inductive ExprRef
-| const (e : Expr) (he : e.isConst)
-| app (f : Nat) (x : Nat) -- references.
-| fvar (e : Expr) (he : e.isFVar)
 
-/-- TODO: index the key by the expression. -/
 structure ExprData where
   /-- Number of references to this expression -/
   refs : Nat
-  /-- Size of the expression, disregarding implicits? -/
+  /-- Size of the expression, disregarding implicits. -/
   size : Nat
 deriving Repr
 
@@ -83,7 +75,7 @@ structure State where
   canon2data : HashMap Expr ExprData := {}
   /-
   an array of expressions, whose order tells us the time they were inserted into the CSE map.
-  Since we insert expressions from child to parent, expressions that come later must be parents of expressions that come earlier.
+  Since we insert expressions from child to parent, parents will always appear after children.
   -/
   insertionTime2Expr : Array Expr := #[]
   /-
@@ -173,12 +165,8 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
       if shouldCount then
         if let .some argData ← tryAddExpr arg then
           size := size + 1
-  -- the current argument itself was irrelelvannt, so don't bother adding it.
+  -- the current argument itself was irrelevant, so don't bother adding it.
   if !relevant? then return .none
-    -- else
-    -- TODO: check if we still need the OfNat.ofNat workaround.
-    -- match_expr e with
-    -- | OfNat.ofNat _α x _inst  => size := 1
   let s ← getState
   match s.canon2data.find? e with
   | .some data => do
@@ -196,7 +184,7 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
     trace[Tactic.cse.collection] m!"added new '{e}' with info '{repr data}'" -- TODO: make this a trace node child.
     return .some data
 
-/-- Execute `x` using the main goal local context and instances -/
+/-- Execute `x` using the main goal local context. -/
 def CSEM.withMainContext (x : CSEM α) : CSEM α := do
   (← getMainGoal).withContext x
 
@@ -220,17 +208,6 @@ Try to recursively perform a CSE of the expression.
 It looks up information that has been computed, and uses
 it to decide profitability.
 -/
-def CSEM.planCSERec (e : Expr) (data : ExprData) (args : Array GeneralizeArg) : CSEM (Array GeneralizeArg) := do
-  if  ← data.isProfitable? then
-    match e with
-    | .app f x => do
-      let args := args.push (← planCSE f)
-      let args := args.push (← planCSE x)
-      let args := args.push (← planCSE e)
-      return args
-    | _ => return args.push (← planCSE e)
-  else
-    return args
 
 /--
 Plan to perform a CSE for this expression, by building a 'GeneralizeArg'.
@@ -259,12 +236,7 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
       for h in reverted, reintro in reintros do
         subst := subst.insert h (mkFVar reintro)
       pure subst
-  -- return (fvarSubst, newVars, mvarId)
-    -- let (_, newVars, mvarId) ← mvarId.generalizeHyp #[arg] ((← getLCtx).getFVarIds)
     mvarId.withContext do
-        -- | it's stupid if I need the thing below, so I'm going to ignore it for now.
-        -- for v in newVars, id in xIdents ++ hIdents do
-        --   Term.addLocalVarInfo id (.fvar v)
         replaceMainGoal [mvarId]
         trace[Tactic.cse.generalize] "{checkEmoji} succeeded in generalizing {hname}"
     return true
@@ -310,9 +282,6 @@ open Lean Elab Tactic Parser.Tactic
 /-- The `cse` tactic, for performing common subexpression elimination of goal states. -/
 def cseTactic (cfg : CSEConfig) : TacticM Unit := CSEM.cseImpl |>.run cfg
 
-/-- The `omega` tactic, for resolving integer and natural linear arithmetic problems. This
-`TacticM Unit` frontend with default configuration can be used as an Aesop rule, for example via
-the tactic call `aesop (add 50% tactic Lean.Omega.omegaDefault)`. -/
 def cseTacticDefault : TacticM Unit := CSEM.cseImpl |>.run {}
 
 end Tactic.CSE
