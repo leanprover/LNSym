@@ -145,7 +145,7 @@ structure ArmState where
   private error      : StateError
 deriving Repr
 
-def ArmState.default : ArmState := { 
+def ArmState.default : ArmState := {
     gpr := fun _ => 0#64,
     sfp := fun _ => 0#128,
     pc := 0#64,
