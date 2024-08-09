@@ -169,6 +169,22 @@ elab "sym1_i_n" i:num n:num _program:(ident)? : tactic => do
   for _ in List.range n.getNat do
     c ← sym1 c
 
+/--
+`sym1_n n` will symbolically evaluate a program for `n` steps.
+Alternatively,
+  `sym1_n n at s` does the same, with `s` as initial state
+
+If `s` is not passed, the initial state is inferred from the local context
+
+The context is searched (up-to def-eq!) for hypotheses
+```
+h_program : s.program = ?concreteProgram
+    h_err : r StateField.ERR s = .None
+     h_pc : r StateField.PC  s = ?PC
+    h_run : sf = run ?STEPS s
+```
+Where ?PC and ?STEPS must reduce to a concrete literal,
+and concreteProgram must be a constant (i.e., a global definition refered to by name). -/
 syntax sym_at := "at" ident
 elab "sym1_n" n:num s:(sym_at)? : tactic =>
   Lean.Elab.Tactic.withMainContext <| do
