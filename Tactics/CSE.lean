@@ -150,27 +150,6 @@ def CSEM.run (val : CSEM α) (config : CSEConfig) : TacticM α :=
 -- @bollu: Surely we must have an implementation of this.
 private def Array.replicate (n : Nat) (v : α) : Array α := List.replicate n v |>.toArray
 
-/--
-The size of an expression, according to the CSE heuristic.
-The function is `partial` because the lean termination checker does not understand `match_expr`.
-We use the `CSEM` to have access to `Environment`, such that we can ignore implicit arguments.
--/
-partial def CSEM.exprSize (e : Expr) : CSEM Nat := do
-  match_expr e with
-  | OfNat.ofNat _α x _inst  => if x.isRawNatLit then return 1 else exprSize x -- @OfNat.ofNat Nat 1 (instOfNatNat 1)
-  | _ =>
-    if e.isApp then
-      let (fn, args) := (e.getAppFn, e.getAppArgs)
-      let paramInfos := (← getFunInfo fn).paramInfo
-      let mut size := 1
-      for i in [0 : args.size] do
-        let arg := args[i]!
-        let shouldCount := paramInfos[i]!.isExplicit
-        if shouldCount then
-          size := size + (← exprSize arg)
-      return size
-    else return 1
-
 /-- decides if performing CSE for this expression is profitable. -/
 def ExprData.isProfitable? (data : ExprData) : CSEM Bool :=
   return data.size > 1 && data.occs >= (← getConfig).minOccsToCSE
