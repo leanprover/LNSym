@@ -14,12 +14,77 @@ open Lean Elab Tactic Expr Meta
 /-- An emoji for when we are processing or trying. -/
 def tryEmoji : String := "⌛"
 
-/-! ### Common Subexpression Eliminiation Tactic
+/-! # Common Subexpression Eliminiation Tactic
 
-#### Algorithm:
+## Algorithm:
+
+### TL;DR
 
 - step 1: collect all terms bottom up, hashing them for structural equality and counting number of occurrences.
 - step 2: once again, working top down, call `generalize` for each of these, generating appropriate generalize names.
+
+Suppose our goal state is `⊢ (large small small) + (large small small)`.
+If a term `small` is a subterm of `large`, then `size small < size large`.
+Let's consider what happens if we generalize `small` first, then `large`.
+
+### We start with the proof state:
+
+```
+⊢ (large small small) + (large small small)
+```
+
+### We gather subterms to be CSEd, which are:
+
+- (small)
+- (large small small)
+
+### We now generalize `small`, giving:
+
+```
+hx : x = small
+x : _
+⊢ (large x x) + (large x x)
+```
+
+If we now try to generalize the term `large small small`, we will find no ocurrences!
+This is because the `small` has been replaced by `x` everywhere.
+For a correct algorithm, we should generalize `large x x`.
+For this correct algorithm,we need some way to track such substitutions within `Expr`s.
+[@bollu: it maybe possible to use `FVarSubst` to achieve this effect.]
+
+Instead, we use the naive algorithm, and go top-down instead.
+
+### We start with the proof state:
+
+```
+⊢ (large small) + (large small)
+```
+
+### We gather subterms to be CSEd, which are:
+
+- (small)
+- (large small small)
+
+### We now generalize `(large small)`, giving:
+
+```
+hx : x = (large small small)
+large : _
+⊢ x + x
+```
+
+### We now generalize `small`, giving
+
+```
+hy : y = small
+small : _
+hx : x = (large y y)
+large : _
+⊢ x + x
+```
+
+Thus, the size metric ensures that at the end,
+we will get a hypothesis that has been maximally CSEd.
 
 -/
 
@@ -35,9 +100,10 @@ deriving DecidableEq
 structure CSEConfig where
   /-- Whether we should process the hypotheses of the current goal state. -/
   processHyps : ShouldProcessHyps := .ignoreHyps
-   /-- The minimum number of occurrences necessary to perform CSE on a term. -/
+  /-- The minimum number of occurrences necessary to perform CSE on a term. -/
   minOccsToCSE : Nat := 2
-
+  /-- Whether the tactic should throw an error if no CSEable subterms were found. -/
+  failIfUnchanged : Bool := true
 
 structure ExprData where
   /-- Number of references to this expression -/
@@ -56,7 +122,7 @@ structure State where
   -/
   canon2data : HashMap Expr ExprData := {}
   /--
-  a counter to generate new names
+  a counter to generate new names.
   -/
   gensymCount : Nat := 1
 
@@ -105,11 +171,6 @@ partial def CSEM.exprSize (e : Expr) : CSEM Nat := do
       return size
     else return 1
 
-def ExprData.new (e : Expr) : CSEM ExprData := do return {
-  occs := 1,
-  size := (← CSEM.exprSize e)
-}
-
 /-- decides if performing CSE for this expression is profitable. -/
 def ExprData.isProfitable? (data : ExprData) : CSEM Bool :=
   return data.size > 1 && data.occs >= (← getConfig).minOccsToCSE
@@ -123,11 +184,9 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
   -- for now, we ignore function terms.
   let relevant? := !t.isArrow && !t.isSort && !t.isForall
   trace[Tactic.cse.collection] m!"{if relevant? then checkEmoji else crossEmoji} ({e}):({t})"
-
   /-
   If we have an application, then only add its children
   that are explicit.
-
   -/
   let mut size := 1
   if e.isApp then
@@ -137,8 +196,8 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
       let arg := args[i]!
       let shouldCount := paramInfos[i]!.isExplicit
       if shouldCount then
-        if let .some _ ← tryAddExpr arg then
-          size := size + 1
+        if let .some data ← tryAddExpr arg then
+          size := size + data.size
   -- the current argument itself was irrelevant, so don't bother adding it.
   if !relevant? then return .none
   let s ← getState
@@ -149,7 +208,7 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
     setState { s with canon2data := s.canon2data.insert e data }
     return .some data
   | .none =>
-    let data ← ExprData.new e
+    let data := { occs := 1, size : ExprData }
     setState {
       s with
       canon2data := s.canon2data.insert e data,
@@ -197,9 +256,9 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
         let type ← instantiateMVars (← h.getType)
         return (← withTransparency transparency <| kabstract type arg.expr).hasLooseBVars
       let (reverted, mvarId) ← mvarId.revert hyps true
-      let (newVars, mvarId) ← mvarId.generalize #[arg] transparency
+      let (_newVars, mvarId) ← mvarId.generalize #[arg] transparency
       let (reintros, mvarId) ← mvarId.introNP reverted.size
-      let fvarSubst := Id.run do
+      let _fvarSubst := Id.run do
         let mut subst : FVarSubst := {}
         for h in reverted, reintro in reintros do
           subst := subst.insert h (mkFVar reintro)
@@ -222,67 +281,13 @@ def CSEM.cseImpl : CSEM Unit := do
     trace[Tactic.cse.summary] m!"CSE collected expressions: {(← getState)}"
 
     let mut madeProgress := false
-    /-
-    Suppose our goal state is `⊢ (large small small) + (large small small)`.
-    If a term `small` is a subterm of `large`, then `size small < size large`.
-    Let's consider what happens if we generalize `small` first, then `large`.
-
-    ### We start with the proof state:
-
-    ```
-    ⊢ (large small small) + (large small small)
-    ```
-
-    ### We now generalize `small`, giving:
-
-    ```
-    hx : x = small
-    x : _
-    ⊢ (large x x) + (large x x)
-    ```
-
-    If we now try to generalize the term `large small small`, we will find no ocurrences!
-    This is because the `small` has been replaced by `x` everywhere.
-    For a correct algorithm, we should generalize `large x x`.
-    For this correct algorithm,we need some way to track such substitutions within `Expr`s.
-    [@bollu: it maybe possible to use `FVarSubst` to achieve this effect.]
-
-    Instead, we use the naive algorithm, and go top-down instead.
-
-    ### We start with the proof state:
-
-    ```
-    ⊢ (large small) + (large small)
-    ```
-
-    ### We now generalize `(large small)`, giving:
-
-    ```
-    hx : x = (large small small)
-    large : _
-    ⊢ x + x
-    ```
-
-    ### We now generalize `small`, giving
-
-    ```
-    hy : y = small
-    small : _
-    hx : x = (large y y)
-    large : _
-    ⊢ x + x
-    ```
-    Thus, the size metric ensures that at the end,
-    we will get a hypothesis that has been maximally CSEd.
-    -/
     for (e, data) in (← getState).canon2data.toArray.qsort (fun kv kv' => kv.2.size > kv'.2.size) do
-      -- if let .some data := (← getState).canon2data.find? e then
         if !(← data.isProfitable?) then
           trace[Tactic.cse.generalize] "⏭️ Skipping {e}: Unprofitable {repr data} ."
         else
           let generalizeArg ← planCSE e
           madeProgress := madeProgress || (← generalize generalizeArg)
-    if !madeProgress
+    if !madeProgress && !(← getConfig).failIfUnchanged
     then throwError "found no subterms to successfully CSE."
     return ()
 
@@ -291,6 +296,7 @@ open Lean Elab Tactic Parser.Tactic
 /-- The `cse` tactic, for performing common subexpression elimination of goal states. -/
 def cseTactic (cfg : CSEConfig) : TacticM Unit := CSEM.cseImpl |>.run cfg
 
+/-- The `cse` tactic with the default configuration. -/
 def cseTacticDefault : TacticM Unit := CSEM.cseImpl |>.run {}
 
 end Tactic.CSE
