@@ -8,7 +8,7 @@ Author(s): Shilpi Goel
 
 ----------------------------------------------------------------------
 
-import Arm.Attr
+import Data.Attr
 
 namespace BitVec
 
@@ -260,6 +260,11 @@ protected def flatten {n : Nat} (xs : List (BitVec n)) : BitVec (n * xs.length) 
       simp [List.length_cons, Nat.mul_one, Nat.mul_add, Nat.succ_eq_one_add]
       omega
     BitVec.cast h (x ++ (BitVec.flatten rest))
+
+/-- Reverse `x` and then flatten it. -/
+def revflat (x : List (BitVec n)) : BitVec (n * x.length) := 
+  have h : n * x.reverse.length = n * x.length := by simp only [List.length_reverse]
+  BitVec.cast h $ BitVec.flatten (List.reverse x)
 
 /-- Generate a random bitvector of width n. The range of the values
 can also be specified using lo and hi arguments, which default to 0

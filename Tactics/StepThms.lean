@@ -1,5 +1,5 @@
 import Lean
-import Arm.Map
+import Data.Map
 import Arm.Decode
 import Tactics.Common
 import Tactics.Simp

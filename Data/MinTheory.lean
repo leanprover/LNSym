@@ -1,6 +1,14 @@
-import Arm.Attr
+/-
+Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author(s): Shilpi Goel
+-/
 
--- These lemmas are from lean/Init/SimpLemmas.lean.
+-- A minimal theory, safe for all LNSym proofs
+
+import Data.Attr
+
+-- Source: lean/Init/SimpLemmas.lean.
 attribute [minimal_theory] eq_self
 attribute [minimal_theory] ne_eq
 attribute [minimal_theory] ite_true

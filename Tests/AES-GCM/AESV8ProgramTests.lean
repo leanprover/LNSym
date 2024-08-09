@@ -3,10 +3,8 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Yan Peng
 -/
-import Arm.BitVec
 import Arm.Exec
 import Arm.Cfg.Cfg
-import Tests.Common
 import Tests.«AES-GCM».AESHWSetEncryptKeyProgram
 import Tests.«AES-GCM».AESHWEncryptProgram
 import Tests.«AES-GCM».AESHWCtr32EncryptBlocksProgram

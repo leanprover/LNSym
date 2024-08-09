@@ -5,7 +5,6 @@ Author(s): Yan Peng
 -/
 
 import Specs.AESArm
-import Arm.BitVec
 
 -- Reference : https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf Section B
 

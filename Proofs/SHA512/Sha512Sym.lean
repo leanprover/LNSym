@@ -4,7 +4,6 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.Exec
-import Arm.Util
 import Tactics.Sym
 import Proofs.SHA512.Sha512StepLemmas
 import Lean

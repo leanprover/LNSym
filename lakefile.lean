@@ -4,6 +4,9 @@ open Lake DSL
 package «lnsym» where
   -- add package configuration options here
 
+lean_lib «Data» where
+  -- add library configuration options here
+
 lean_lib «Arm» where
   -- add library configuration options here
 

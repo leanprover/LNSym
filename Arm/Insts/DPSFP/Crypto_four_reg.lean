@@ -8,7 +8,6 @@ Author(s): Shilpi Goel, Nevine Ebeid
 import Arm.Decode
 import Arm.State
 import Arm.Insts.Common
-import Arm.BitVec
 
 ----------------------------------------------------------------------
 

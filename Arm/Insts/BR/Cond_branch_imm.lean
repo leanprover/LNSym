@@ -9,7 +9,6 @@ Author(s): Yan Peng
 import Arm.Decode
 import Arm.State
 import Arm.Insts.Common
-import Arm.BitVec
 
 namespace BR
 

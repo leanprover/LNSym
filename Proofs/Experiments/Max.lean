@@ -6,7 +6,6 @@ Author(s): Shilpi Goel, Siddharth Bhat
 The goal is to prove that this program implements max correctly.
 -/
 import Arm
-import Arm.BitVec
 
 namespace Max
 

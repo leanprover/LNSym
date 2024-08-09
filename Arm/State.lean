@@ -4,10 +4,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Lean.Data.Format
-import Arm.BitVec
-import Arm.Map
-import Arm.Attr
-import Arm.MinTheory
+import Data.BitVec
+import Data.Map
+import Data.MinTheory
+import Data.Attr
 
 ------------------------------------------------------------------------------
 ------------------------------------------------------------------------------
@@ -145,7 +145,7 @@ structure ArmState where
   private error      : StateError
 deriving Repr
 
-def ArmState.default : ArmState := { 
+def ArmState.default : ArmState := {
     gpr := fun _ => 0#64,
     sfp := fun _ => 0#128,
     pc := 0#64,

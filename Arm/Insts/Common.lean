@@ -5,7 +5,6 @@ Author(s): Shilpi Goel, Yan Peng, Nathan Wetzler
 -/
 
 import LeanSAT
-import Arm.BitVec
 import Arm.State
 
 section Common
