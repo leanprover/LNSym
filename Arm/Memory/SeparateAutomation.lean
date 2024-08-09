@@ -25,6 +25,18 @@ import Lean.Elab.Tactic.Conv.Basic
 open Lean Meta Elab Tactic
 
 section Theorems
+/-
+# New definitions for the memory model
+
+For freedom in experimenting with definitions, we define our own version of `read_mem` and `write_mem` called `read_mem'`
+and `write_mem`'. We prove their equivalence to the existing definitions (`read_mem_eq_read_mem'`, `write_mem_eq_write_mem'`).
+
+Furthermore, we define `getLsb` theorems on these in order to allow `omega` based reasoning about bit-level values
+of memory. 
+
+We then build lemmas that allow simplification of the proof state given the new `mem_subset'` and `mem_separate'` assumptions.
+In total, this gives us automation to simplify theorems about memory (non)-interference.
+-/
 abbrev Memory := Store (BitVec 64) (BitVec 8)
 
 def read_mem' (addr : BitVec 64) (s : Memory) : BitVec 8 :=
@@ -453,7 +465,7 @@ info: read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate' {x : Bit
 
 partial def SimpMemM.rewrite (g : MVarId) : SimpMemM Unit := do
   trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
-  let some (_, lhs, rhs) ← matchEq? (← g.getType) | throwError "invalid goal, expected 'lhs = rhs'."
+  let some (_, _lhs, _rhs) ← matchEq? (← g.getType) | throwError "invalid goal, expected 'lhs = rhs'."
   -- TODO: do this till fixpoint.
   for h in (← get).hypotheses do
     let x ← mkFreshExprMVar .none
@@ -505,15 +517,14 @@ Allow elaboration of `SimpMemConfig` arguments to tactics.
 -/
 declare_config_elab elabSimpMemConfig SeparateAutomation.SimpMemConfig
 
-
 /--
 Implement the simp_mem tactic frontend.
 -/
-elab "simp_mem" : tactic => do
-  SeparateAutomation.simpMemTactic {}
+syntax (name := cse) "simp_mem" (Lean.Parser.Tactic.config)? : tactic
 
--- def evalSimpMem : Tactic := fun
---   | `(tactic| simp_mem $[$cfg]?) => do
---     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
---     SeparateAutomation.simpMemTactic cfg
---   | _ => throwUnsupportedSyntax
+@[tactic cse]
+def evalSimpMem : Tactic := fun
+  | `(tactic| simp_mem $[$cfg]?) => do
+    let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
+    SeparateAutomation.simpMemTactic cfg
+  | _ => throwUnsupportedSyntax
