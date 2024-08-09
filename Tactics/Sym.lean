@@ -169,10 +169,15 @@ elab "sym1_i_n" i:num n:num _program:(ident)? : tactic => do
   for _ in List.range n.getNat do
     c ← sym1 c
 
-elab "sym1_n" n:num s:(ident)? : tactic => do
-  Lean.Elab.Tactic.evalTactic (← `(tactic|
-    simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
-  ))
-  let mut c ← SymContext.fromLocalContext (Lean.TSyntax.getId <$> s)
-  for _ in List.range n.getNat do
-    c ← sym1 c
+syntax sym_at := "at" ident
+elab "sym1_n" n:num s:(sym_at)? : tactic =>
+  Lean.Elab.Tactic.withMainContext <| do
+    Lean.Elab.Tactic.evalTactic (← `(tactic|
+      simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
+    ))
+    let s := s.map fun
+      | `(sym_at|at $s:ident) => s.getId
+      | _ => panic! "Unexpected syntax: {s}"
+    let mut c ← SymContext.fromLocalContext s
+    for _ in List.range n.getNat do
+      c ← sym1 c

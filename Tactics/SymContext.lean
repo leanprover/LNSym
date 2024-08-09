@@ -115,7 +115,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     {h_run} : {← instantiateMVars h_run_type}
   in the local context.
 
-  If this is wrong, please explicitly provide the right initial state
+  If this is wrong, please explicitly provide the right initial state, as `sym {runSteps} at ?s0`
   "
     let some state := lctx.find? state
       /- I don't expect this error to be possible in a well-formed state, but you never know -/
