@@ -179,8 +179,8 @@ def default (curr_state_number : Nat) : SymContext :=
     h_run     := .mkSimple s!"h_run"
     h_program := .mkSimple s!"h_{s}_program"
     h_pc      := .mkSimple s!"h_{s}_pc"
-    h_err     := .mkSimple s!"h_{s}_err"
-    h_sp      := .mkSimple s!"h_{s}_sp"
+    h_err     := some <| .mkSimple s!"h_{s}_err"
+    h_sp      := some <| .mkSimple s!"h_{s}_sp"
     /-
       `runSteps`, `pc` and `program` actually require inspection of the context to determine.
       However, these values are not actually used yet,
@@ -206,10 +206,10 @@ def nextState (c : SymContext) (nextPc? : Option (BitVec 64) := none) : SymConte
   {
     state     := .mkSimple s
     h_run     := c.h_run
-    h_program := mkName s!"h_{s}_program"
+    h_program := .mkSimple s!"h_{s}_program"
     h_pc      := .mkSimple s!"h_{s}_pc"
-    h_err     := .mkSimple s!"h_{s}_err"
-    h_sp      := .mkSimple s!"h_{s}_sp"
+    h_err     := some <| .mkSimple s!"h_{s}_err"
+    h_sp      := some <| .mkSimple s!"h_{s}_sp"
     runSteps  := c.runSteps - 1
     program   := c.program
     pc        := nextPc?.getD (c.pc + 4#64)
