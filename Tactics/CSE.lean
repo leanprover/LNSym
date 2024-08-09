@@ -204,12 +204,6 @@ partial def CSEM.planCSE (e : Expr): CSEM GeneralizeArg := do
   else return { expr := e, hName? := hname, xName? := xname}
 
 /--
-Try to recursively perform a CSE of the expression.
-It looks up information that has been computed, and uses
-it to decide profitability.
--/
-
-/--
 Plan to perform a CSE for this expression, by building a 'GeneralizeArg'.
 -/
 def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
@@ -218,31 +212,31 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
   let e := arg.expr
 
   let mvarId ← getMainGoal
-  -- implementation modeled after `Lean.Elab.Tactic.evalGeneralize`.
-  trace[Tactic.cse.generalize] "{tryEmoji} Generalizing {hname} : {e} = {xname}"
-  try
+  mvarId.withContext do
+    -- implementation modeled after `Lean.Elab.Tactic.evalGeneralize`.
+    trace[Tactic.cse.generalize] "{tryEmoji} Generalizing {hname} : {e} = {xname}"
+    try
       -- Implementation modeled after `Lean.MVarId.generalizeHyp`.
-    let e ← instantiateMVars e
-    let hyps := ((← getLCtx).getFVarIds)
-    let transparency := TransparencyMode.instances
-    let hyps ← hyps.filterM fun h => do
-      let type ← instantiateMVars (← h.getType)
-      return (← withTransparency transparency <| kabstract type arg.expr).hasLooseBVars
-    let (reverted, mvarId) ← mvarId.revert hyps true
-    let (newVars, mvarId) ← mvarId.generalize #[arg] transparency
-    let (reintros, mvarId) ← mvarId.introNP reverted.size
-    let fvarSubst := Id.run do
-      let mut subst : FVarSubst := {}
-      for h in reverted, reintro in reintros do
-        subst := subst.insert h (mkFVar reintro)
-      pure subst
-    mvarId.withContext do
-        replaceMainGoal [mvarId]
-        trace[Tactic.cse.generalize] "{checkEmoji} succeeded in generalizing {hname}"
-    return true
-  catch e =>
-    trace[Tactic.cse.generalize] "{bombEmoji} failed to generalize {hname}"
-    return false
+      let e ← instantiateMVars e
+      let hyps := ((← getLCtx).getFVarIds)
+      let transparency := TransparencyMode.reducible
+      let hyps ← hyps.filterM fun h => do
+        let type ← instantiateMVars (← h.getType)
+        return (← withTransparency transparency <| kabstract type arg.expr).hasLooseBVars
+      let (reverted, mvarId) ← mvarId.revert hyps true
+      let (newVars, mvarId) ← mvarId.generalize #[arg] transparency
+      let (reintros, mvarId) ← mvarId.introNP reverted.size
+      let fvarSubst := Id.run do
+        let mut subst : FVarSubst := {}
+        for h in reverted, reintro in reintros do
+          subst := subst.insert h (mkFVar reintro)
+        pure subst
+      replaceMainGoal [mvarId]
+      trace[Tactic.cse.generalize] "{checkEmoji} succeeded in generalizing {hname}. ({← getMainGoal})"
+      return true
+    catch e =>
+      trace[Tactic.cse.generalize] "{bombEmoji} failed to generalize {hname}"
+      return false
 
 def CSEM.cseImpl : CSEM Unit := do
   withMainContext do
@@ -332,4 +326,18 @@ set_option trace.Tactic.cse.summary true in
 set_option trace.Tactic.cse.generalize true in
 theorem test (x y z : Nat) : (x + x) + ((y + y) + (y + y)) = (((y + y) + (y + y)) + ((y + y) + (y + y))) + (((y + y) + (y + y))) := by
   cse (config := {minRefsToCSE := 3})
+  sorry
+
+open BitVec in
+set_option trace.Tactic.cse.generalize true in
+theorem example3 (a b c d : BitVec 64) : (zeroExtend 128
+              (extractLsb 63 0
+                  (
+                    zeroExtend 128 (extractLsb 127 64 c) <<< 64)) |||
+          zeroExtend 128
+              (extractLsb 127 64
+                  (zeroExtend 128 (extractLsb 127 64 c) <<< 64))) = sorry := by
+  -- generalize hy : ((zeroExtend 128 (extractLsb 127 64 c) <<< 64)) = y
+  -- generalize hx : (extractLsb 127 64 c) = x
+  cse
   sorry
