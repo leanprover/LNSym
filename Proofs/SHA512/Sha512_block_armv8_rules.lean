@@ -6,6 +6,7 @@ Author(s): Shilpi Goel
 import Arm.Insts.DPSFP.Insts
 import Specs.SHA512
 import LeanSAT
+import Tactics.CSE
 
 set_option sat.timeout 60
 
@@ -80,6 +81,9 @@ private theorem extractLsb_high_64_from_zeroExtend_128_or (x y : BitVec 64) :
 -- Proving things like this by bit-blasting + CDCL is hard (in general circuit
 -- equivalence can be hard for CDCL solvers), but a normalization procedure
 -- would prove it in no time."
+-- set_option trace.Tactic.cse.collection true in
+-- set_option trace.Tactic.cse.summary true in
+-- set_option trace.Tactic.cse.generalize true in
 theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let elements := 2
   let esize := 64
@@ -104,6 +108,7 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   unfold sha512h compression_update_t1 sigma_big_1 ch allOnes ror
   simp only [Nat.reduceAdd, Nat.reduceSub, Nat.sub_zero, Nat.reducePow, reduceZeroExtend,
     reduceHShiftLeft, reduceNot, reduceAnd, BitVec.zero_or, shiftLeft_zero_eq]
+  -- cse (config := { minRefsToCSE := 2})
   generalize extractLsb 63   0 a = a_lo
   generalize extractLsb 127 64 a = a_hi
   generalize extractLsb 63   0 b = b_lo
