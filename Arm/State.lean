@@ -121,15 +121,15 @@ def PState.zero : PState :=
 @[ext]
 structure ArmState where
   /-- General-purpose registers: register 31 is the stack pointer. -/
-  private gpr        : Store (BitVec 5) (BitVec 64)
+  gpr        : Store (BitVec 5) (BitVec 64)
   /-- SIMD/floating-point registers -/
-  private sfp        : Store (BitVec 5) (BitVec 128)
+  sfp        : Store (BitVec 5) (BitVec 128)
   /-- Program Counter -/
-  private pc         : BitVec 64
+  pc         : BitVec 64
   /-- PState -/
-  private pstate     : PState
+  pstate     : PState
   /-- Memory: maps 64-bit addresses to bytes -/
-  private mem        : Store (BitVec 64) (BitVec 8)
+  mem        : Store (BitVec 64) (BitVec 8)
   /--
   Program: maps 64-bit addresses to 32-bit instructions.
   Note that we have the following assumption baked into our machine model:
@@ -142,10 +142,10 @@ structure ArmState where
   (e.g., an unimplemented instruction is hit). Any reasoning or
   execution based off an erroneous state is invalid.
   -/
-  private error      : StateError
+  error      : StateError
 deriving Repr
 
-def ArmState.default : ArmState := { 
+def ArmState.default : ArmState := {
     gpr := fun _ => 0#64,
     sfp := fun _ => 0#128,
     pc := 0#64,
