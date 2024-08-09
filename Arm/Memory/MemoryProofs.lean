@@ -5,8 +5,8 @@ Author(s): Shilpi Goel
 -/
 import Arm.FromMathlib
 import Arm.State
-import Arm.Separate
-import Arm.SeparateProofs
+import Arm.Memory.Separate
+import Arm.Memory.SeparateProofs
 
 -- In this file, we have memory (non-)interference proofs.
 
