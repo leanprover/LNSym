@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 -/
 import Arm.Exec
-import Arm.MemoryProofs
+import Arm.Memory.MemoryProofs
 import Specs.SHA512
 -- import Tactics.Sym
 -- import Proofs.SHA512.Sha512StepLemmas
