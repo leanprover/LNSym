@@ -41,7 +41,7 @@ namespace Tactic.CSE
 
 inductive ShouldGeneralizeTypes
 | generalizeTypes
-| generalizeOnlyTerm
+| generalizeOnlyTerms
 
 inductive ShouldProcessHyps
 | ignoreHyps
@@ -52,7 +52,7 @@ structure CSEConfig where
   /-- Whether we should process the hypotheses of the current goal state. -/
   processHyps : ShouldProcessHyps := .ignoreHyps
   /-- Whether we should also be performing CSE on types, or only terms. -/
-  types : ShouldGeneralizeTypes := .generalizeOnlyTerm
+  types : ShouldGeneralizeTypes := .generalizeOnlyTerms
    /-- The minimum number of references necessary to perform CSE on a term. -/
   minRefsToCSE : Nat := 2
 
@@ -133,17 +133,14 @@ def ExprData.new (e : Expr) : CSEM ExprData := do return {
   size := (← CSEM.exprSize e)
 }
 
-
-
 /-- decides if performing CSE for this expression is profitable. -/
 def ExprData.isProfitable? (data : ExprData) : CSEM Bool :=
   return data.size > 1 && data.refs >= (← getConfig).minRefsToCSE
 
--- x : Nat
--- Nat : Type
--- Eq _ _ : Prop
--- We probably want to give types whose terms should be CSE'd.
--- The function is partial because of the region via e.getAppArgs |>.forM tryAddExpr
+/--
+The function is partial because of the call to `tryAddExpr` that
+Lean does not infer is smaller in `e`.
+-/
 partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
   let t ← inferType e
   -- for now, we ignore function terms.
@@ -163,7 +160,7 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
       let arg := args[i]!
       let shouldCount := paramInfos[i]!.isExplicit
       if shouldCount then
-        if let .some argData ← tryAddExpr arg then
+        if let .some _ ← tryAddExpr arg then
           size := size + 1
   -- the current argument itself was irrelevant, so don't bother adding it.
   if !relevant? then return .none
