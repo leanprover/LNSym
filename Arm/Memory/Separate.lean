@@ -144,6 +144,27 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le h₆'] at h₂
       omega
 
+@[simp]
+theorem BitVec.neg_neg (x : BitVec w₁) : - (- x) = x := by 
+  apply BitVec.eq_of_toNat_eq 
+  simp
+  by_cases h : x.toNat = 0 
+  · simp [h]
+  · rw [Nat.mod_eq_of_lt (a := 2^w₁ - x.toNat) (by omega)]
+    rw [Nat.sub_sub_eq_min]
+    rw [Nat.min_def]
+    simp [show ¬ 2^w₁ ≤ x.toNat by omega]
+
+@[simp]
+theorem BitVec.neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by 
+  apply BitVec.eq_of_toNat_eq
+  simp
+
+theorem toNat_sub_eq_two_pow_sub_add_of_lt
+    {a b : BitVec w₁} (hab : a.toNat < b.toNat) : (a - b).toNat = 2^w₁ - b.toNat + a.toNat := by 
+  simp only [toNat_sub]
+  rw [Nat.mod_eq_of_lt (by omega)]
+
 /--
 Given two legal memory regions `[a1, a2]` and `[b1, b2]`,
 such that either the first one ends before the second one starts (`a2 < b1`),
@@ -158,25 +179,30 @@ theorem mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal (h : a2 < b1 ∨ a1 >
   unfold mem_legal at ha hb
   simp [mem_legal] at ha hb
   rw [BitVec.le_def] at ha hb
-  rw [BitVec.le_def]
+  simp only[BitVec.le_def]
   rw [BitVec.lt_def, BitVec.gt_def] at h
   rcases h with h | h
-  · sorry
-  · sorry
-  /-
-   by_cases h₅ : a2.toNat < b1.toNat
-   · simp [h₅]
-   · by_cases h₆ : a1.toNat > b2.toNat
-     · simp [h₆]
-     · exfalso
-       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le ha] at h₁ h₂
-       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le hb] at h₃ h₄
-       have h₅' : b1.toNat ≤ a2.toNat := by omega
-       have h₆' : a1.toNat ≤ b2.toNat := by omega
-       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le h₅'] at h₄
-       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le h₆'] at h₂
-       omega
-  -/
+  · rw [toNat_sub_eq_toNat_sub_toNat_of_le ha]
+    have ha1b1 : a1.toNat ≤ b1.toNat := by omega 
+    rw [toNat_sub_eq_toNat_sub_toNat_of_le ha1b1]
+    have ha1b2 : a1.toNat ≤ b2.toNat := by omega 
+    rw [toNat_sub_eq_toNat_sub_toNat_of_le ha1b2]
+    rw [toNat_sub_eq_toNat_sub_toNat_of_le hb]
+    have ha1b1' : a1.toNat < b1.toNat := by omega
+    rw [toNat_sub_eq_two_pow_sub_add_of_lt ha1b1']
+    rw [toNat_sub_eq_two_pow_sub_add_of_lt h]
+    omega
+  · rw [toNat_sub_eq_toNat_sub_toNat_of_le ha]
+    rw [toNat_sub_eq_toNat_sub_toNat_of_le hb]
+    have ha2b1 : b1.toNat ≤ a2.toNat := by omega
+    rw [toNat_sub_eq_toNat_sub_toNat_of_le ha2b1]
+    have ha1b1 : b1.toNat ≤ a1.toNat := by omega
+    rw [toNat_sub_eq_toNat_sub_toNat_of_le ha1b1]
+    have hb1a1 : b1.toNat < a1.toNat := by omega
+    rw [toNat_sub_eq_two_pow_sub_add_of_lt hb1a1]
+    have hb2a1 : b2.toNat < a1.toNat := by omega
+    rw [toNat_sub_eq_two_pow_sub_add_of_lt hb2a1]
+    omega
 
 /--
 If we express a memory region as `[a..(a+n)]` for `(n : Nat)`,
