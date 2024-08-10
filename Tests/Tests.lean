@@ -18,3 +18,4 @@ import «Tests».«AES-GCM».AESV8SpecTests
 import «Tests».«AES-GCM».AESGCMProgramTests
 import «Tests».«ELFParser».AWSLCCrypto
 import «Tests».«ELFParser».MiscTests
+import «Tests».Tactics.CSE
