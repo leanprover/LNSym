@@ -46,7 +46,7 @@ x : _
 ⊢ (large x x) + (large x x)
 ```
 
-If we now try to generalize the term `large small small`, we will find no ocurrences!
+If we now try to generalize the term `large small small`, we will find no occurrences!
 This is because the `small` has been replaced by `x` everywhere.
 For a correct algorithm, we should generalize `large x x`.
 For this correct algorithm,we need some way to track such substitutions within `Expr`s.
@@ -65,7 +65,7 @@ Instead, we use the naive algorithm, and go top-down instead.
 - (small)
 - (large small small)
 
-### We now generalize `(large small)`, giving:
+### We now generalize `(large small small)`, giving:
 
 ```
 hx : x = (large small small)
