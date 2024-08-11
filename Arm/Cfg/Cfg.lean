@@ -287,8 +287,8 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
   termination_by (max_address - address).toNat
 
 protected def create (program : Program) : IO Cfg :=
-  let maybe_start_address := program.min
-  let maybe_max_address := program.max
+  let maybe_start_address := program.min?
+  let maybe_max_address := program.max?
   match maybe_start_address, maybe_max_address with
   | some start_address, some max_address =>
     Cfg.create' start_address max_address program { start_address }

@@ -51,7 +51,7 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
     write_err (StateError.Illegal s!"Illegal instruction {inst_str} encountered!") s
   else
     let address := read_gpr 64 inst.Rn s
-    if inst.Rn = 31#5 ∧ not (CheckSPAlignment s) then
+    if inst.Rn = 31#5 ∧ ¬(CheckSPAlignment s) then
       write_err (StateError.Fault s!"[Inst: {inst_str}] SP {address} is not aligned!") s
     else
       have h : datasize / 8 * 8 = datasize := by
