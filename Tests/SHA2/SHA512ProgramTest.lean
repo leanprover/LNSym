@@ -624,7 +624,7 @@ def final_sha512_hash : BitVec 512 := read_mem_bytes 64 ctx_address final_sha512
 example : final_sha512_pc =
           -- Get the address (first element of the pair) from the
           -- max. element of sha512_program_map.
-          sha512_program_map.max.get!.1 := by
+          sha512_program_map.max!.1 := by
         native_decide
 
 -- The final hash computed by the program is this bitvector below.
