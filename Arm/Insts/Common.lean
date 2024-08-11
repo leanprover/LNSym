@@ -109,6 +109,14 @@ theorem CheckSPAligment_of_write_mem_bytes :
   CheckSPAlignment (write_mem_bytes n addr v s) = CheckSPAlignment s := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
+@[state_simp_rules]
+theorem CheckSPAlignment_AddWithCarry_64_4 (st : ArmState) (y : BitVec 64) (carry_in : BitVec 1)
+  (x_aligned : CheckSPAlignment st)
+  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
+  : Aligned (AddWithCarry (r (StateField.GPR 31#5) st) y carry_in).fst 4 := by
+  simp_all only [CheckSPAlignment, read_gpr, zeroExtend_eq, Nat.sub_zero, add_eq,
+    Aligned_AddWithCarry_64_4]
+
 ----------------------------------------------------------------------
 
 inductive ShiftType where
