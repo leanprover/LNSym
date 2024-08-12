@@ -84,8 +84,8 @@ def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
       curr_state_number }
   else
     { ctxt with
-      state_prefix := state ++ "_",
-      curr_state_number := 0 }
+      state_prefix := "s",
+      curr_state_number := 1 }
 
 /-- Given a ground term `e` of type `Nat`, fully reduce it,
 and attempt to reflect it into a meta-level `Nat`  -/
