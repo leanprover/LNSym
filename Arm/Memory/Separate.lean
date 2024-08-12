@@ -117,7 +117,7 @@ def mem_legal (a1 a2 : BitVec 64) : Bool :=
   a1 <= a2
 
 /-
-Given two legal memory regions `[a1, a2]` and `[b1, b2]` that are separated, 
+Given two legal memory regions `[a1, a2]` and `[b1, b2]` that are separated,
 it must be the case either:
   - the first one ends before the second one starts (`a2 < b1`),
   - or, the first one starts after the second one ends `(a1 > b2)`,
@@ -145,10 +145,10 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
       omega
 
 @[simp]
-theorem BitVec.neg_neg (x : BitVec w₁) : - (- x) = x := by 
-  apply BitVec.eq_of_toNat_eq 
+theorem BitVec.neg_neg (x : BitVec w₁) : - (- x) = x := by
+  apply BitVec.eq_of_toNat_eq
   simp
-  by_cases h : x.toNat = 0 
+  by_cases h : x.toNat = 0
   · simp [h]
   · rw [Nat.mod_eq_of_lt (a := 2^w₁ - x.toNat) (by omega)]
     rw [Nat.sub_sub_eq_min]
@@ -156,12 +156,12 @@ theorem BitVec.neg_neg (x : BitVec w₁) : - (- x) = x := by
     simp [show ¬ 2^w₁ ≤ x.toNat by omega]
 
 @[simp]
-theorem BitVec.neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by 
+theorem BitVec.neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by
   apply BitVec.eq_of_toNat_eq
   simp
 
 theorem toNat_sub_eq_two_pow_sub_add_of_lt
-    {a b : BitVec w₁} (hab : a.toNat < b.toNat) : (a - b).toNat = 2^w₁ - b.toNat + a.toNat := by 
+    {a b : BitVec w₁} (hab : a.toNat < b.toNat) : (a - b).toNat = 2^w₁ - b.toNat + a.toNat := by
   simp only [toNat_sub]
   rw [Nat.mod_eq_of_lt (by omega)]
 
@@ -183,9 +183,9 @@ theorem mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal (h : a2 < b1 ∨ a1 >
   rw [BitVec.lt_def, BitVec.gt_def] at h
   rcases h with h | h
   · rw [toNat_sub_eq_toNat_sub_toNat_of_le ha]
-    have ha1b1 : a1.toNat ≤ b1.toNat := by omega 
+    have ha1b1 : a1.toNat ≤ b1.toNat := by omega
     rw [toNat_sub_eq_toNat_sub_toNat_of_le ha1b1]
-    have ha1b2 : a1.toNat ≤ b2.toNat := by omega 
+    have ha1b2 : a1.toNat ≤ b2.toNat := by omega
     rw [toNat_sub_eq_toNat_sub_toNat_of_le ha1b2]
     rw [toNat_sub_eq_toNat_sub_toNat_of_le hb]
     have ha1b1' : a1.toNat < b1.toNat := by omega
@@ -241,7 +241,7 @@ theorem toNat_add_distrib_of_mem_legal_of_lt
 end Separate
 
 
-/-# 
+/-#
 
 ### New Memory Model
 
@@ -322,7 +322,7 @@ theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
   rw [BitVec.le_def, BitVec.lt_def]
   omega
 
-/-# 
+/-#
 This is a theorem we ought to prove, which establishes the equivalence
 between the old and new defintions of 'mem_separate'.
 However, the proof is finicky, and so we leave it commented for now.
@@ -356,5 +356,53 @@ theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
   hb := h
   hstart := by simp [BitVec.le_def]
   hend := by simp [BitVec.le_def]
+
+-- theorem Nat.sub_mod_eq (x y : Nat) : (x - y) % t =
+
+private theorem Nat.sub_mod_eq_of_lt_of_le {x y : Nat} (hx : x < n) (hy : y ≤ x) :
+    (x - y) % n = (x % n) - (y % n) := by
+  rw [Nat.mod_eq_of_lt (by omega)]
+  rw [Nat.mod_eq_of_lt (by omega)]
+  rw [Nat.mod_eq_of_lt (by omega)]
+
+theorem lemma7 (w : Nat) (hw : w > 0) (t : Nat) (h : t < 2 ^ w) : (2 ^ w - 1 - t + 1) % 2 = 1 ↔ t % 2 = 1 := by
+  rcases w with rfl | w
+  · simp at hw
+  · omega
+
+
+-- mem_subset' is a safe over-approximation of mem_subset.
+theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hbn : bn > 0) :
+  mem_subset a (a + BitVec.ofNat 64 (an - 1)) b (b + BitVec.ofNat 64 (bn - 1)):= by
+  unfold mem_subset
+  obtain ⟨ha, hb, hstart, hend⟩ := h
+  unfold mem_legal' at ha hb
+  simp only [Nat.reducePow, Nat.add_one_sub_one, Bool.or_eq_true, decide_eq_true_eq,
+    Bool.and_eq_true]
+  by_cases hb : bn = 2^64
+  · left
+    apply BitVec.eq_of_toNat_eq
+    rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le ]
+    · rw [BitVec.toNat_add_eq_toNat_add_toNat]
+      · simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]
+        rw [Nat.mod_eq_of_lt (by omega)]
+        omega
+      · simp only [BitVec.toNat_ofNat, Nat.reducePow]
+        rw [Nat.mod_eq_of_lt (by omega)]
+        omega
+    · simp only [BitVec.le_def, BitVec.toNat_add, BitVec.toNat_ofNat, Nat.reducePow,
+      Nat.add_mod_mod]
+      rw [Nat.mod_eq_of_lt (by omega)]
+      omega
+  · right
+    constructor
+    · simp [BitVec.le_def]
+      sorry
+    · by_cases hab : a = b
+      · simp [hab, BitVec.sub_self, BitVec.le_def]
+      · have hab' : b.toNat < a.toNat := by sorry
+        simp [BitVec.le_def]
+        sorry
+
 
 ----------------------------------------------------------------------
