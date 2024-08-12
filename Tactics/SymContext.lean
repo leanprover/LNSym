@@ -7,22 +7,26 @@ import Lean
 import Arm.Exec
 
 /-!
-This files defines the `SymContext` structure, which collects the names of various
+This files defines the `SymContext` structure,
+which collects the names of various
 variables/hypotheses in the local context required for symbolic evaluation.
 
-The canonical way to construct a `SymContext` is through `SymContext.fromLocalContext`,
-which searches the local context (up to def-eq) for variables and hypothese of the expected types.
+The canonical way to construct a `SymContext` is through `fromLocalContext`,
+which searches the local context (up to def-eq) for variables and hypotheses of
+the expected types.
 
-Alternatively, there is `SymContext.default`, which returns a context using hard-coded names,
-simply assuming those hypotheses to be present without looking at the local context.
-This function exists for backwards compatibility, and is likely to be deprecated and removed in
-the near future. -/
+Alternatively, there is `SymContext.default`,
+which returns a context using hard-coded names,
+simply assuming those hypotheses to be present
+without looking at the local context.
+This function exists for backwards compatibility,
+and is likely to be deprecated and removed in the near future. -/
 
 open Lean Meta
 open BitVec
 
-/-- A `SymContext` collects the names of various variables/hypotheses in the local context required
-for symbolic evaluation -/
+/-- A `SymContext` collects the names of various variables/hypotheses in
+the local context required for symbolic evaluation -/
 structure SymContext where
   /-- `state` is a local variable of type `ArmState` -/
   state : Name
@@ -31,10 +35,12 @@ structure SymContext where
   --       when we detect that `runSteps = 0`
   /-- `runSteps` is the number of steps that we can *maximally* simulate,
   because of the way it occurs in `h_run`.
-  Note that `runSteps` is a meta-level natural number, reflecting the fact that we expect the number
-  of steps in `h_run` to be expressed as a concrete literal -/
+  Note that `runSteps` is a meta-level natural number, reflecting the fact that
+  we expect the number of steps in `h_run` to be expressed as a concrete literal
+  -/
   runSteps : Nat
-  /-- `h_run` is a local hypothesis of the form `finalState = run {runSteps} state` -/
+  /-- `h_run` is a local hypothesis of the form
+  `finalState = run {runSteps} state` -/
   h_run : Name
   /-- `program` is a *constant* which represents the program being evaluated -/
   program : Name
@@ -42,17 +48,21 @@ structure SymContext where
   h_program : Name
   /-- `pc` is the *concrete* value of the program counter
 
-  Note that for now we only support symbolic evaluation of programs at statically known addresses.
-  At some point in the near future, we will want to support addresses of the type `base +/- offset`
-  as well, where `base` is an arbitrary variable and `offset` is statically known.
+  Note that for now we only support symbolic evaluation of programs
+  at statically known addresses.
+  At some point in the near future,
+  we will want to support addresses of the type `base +/- offset` as well,
+  where `base` is an arbitrary variable and `offset` is statically known.
   We could do so by refactoring `pc` to be of type `Bool × BitVec 64`,
-  so long as we assume the instruction addresses in a single program will either be all
-  statically known, or all offset against the same `base` address,
-  and we assume that no overflow happens (i.e., `base - x` can never be equal to `base + y`) -/
+  so long as we assume the instruction addresses in a single program will
+  either be all statically known, or all offset against the same `base` address,
+  and we assume that no overflow happens
+  (i.e., `base - x` can never be equal to `base + y`) -/
   pc : BitVec 64
   /-- `h_pc` is a local hypothesis of the form `r StateField.PC state = pc` -/
   h_pc  : Name
-  /-- `h_err` is a local hypothesis of the form `r StateField.ERR state = .None` -/
+  /-- `h_err` is a local hypothesis of the form
+  `r StateField.ERR state = .None` -/
   h_err : Option Name
   /-- `h_sp` is a local hypothesis of the form `CheckSPAlignment state` -/
   h_sp  : Option Name
@@ -70,8 +80,8 @@ namespace SymContext
 
 /-! ## Creating initial contexts -/
 
-/-- Infer `state_prefix` and `curr_state_number` from the `state` name as follows:
-if `state` is `s{i}` for some number `i` and a single character `s`,
+/-- Infer `state_prefix` and `curr_state_number` from the `state` name
+as follows: if `state` is `s{i}` for some number `i` and a single character `s`,
 then `s` is the prefix and `i` the number,
 otherwise ignore `state`, and start counting from `s1` -/
 def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
@@ -97,8 +107,8 @@ private def reflectNatLiteral (e : Expr) : MetaM Nat := do
   let some x := e'.rawNatLit?
     | throwError "Expected a numeric literal, found:\n\t{e'}
 which was obtained by reducing:\n\t{e}"
-  -- ^^ The previous reduction will have reduced a canonical-form nat literal into a raw literal,
-  --    hence, we use `rawNatLit?` rather than `nat?`
+  -- ^^ The previous reduction will have reduced a canonical-form nat literal
+  --    into a raw literal, hence, we use `rawNatLit?` rather than `nat?`
   return x
 
 /-- For a concrete width `w`,
@@ -116,15 +126,17 @@ private def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
     throwError "Failed to unify, expected:\n\t{e'}\nbut found:\n\t{e'}"
 
 /-- Attempt to look-up a `name` in the local context,
-so that we can build an expression with its fvarid, to return a message with nice highlighting.
+so that we can build an expression with its fvarid,
+to return a message with nice highlighting.
 If lookup fails, we return a message with the plain name, wihout highlighting -/
 private def userNameToMessageData (name : Name) : MetaM MessageData := do
   return match (← getLCtx).findFromUserName? name with
     | some decl => m!"{Expr.fvar decl.fvarId}"
     | none      => m!"{name}"
 
-/-- Annotate any errors thrown by `k` with a local variable (and it's type) for context -/
-private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) : MetaM α :=
+/-- Annotate any errors thrown by `k` with a local variable (and its type) -/
+private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
+    MetaM α :=
   try k catch e =>
     let h ← userNameToMessageData name
     let type := match type? with
@@ -169,10 +181,12 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     {h_run} : {← instantiateMVars h_run_type}
   in the local context.
 
-  If this is wrong, please explicitly provide the right initial state, as `sym {runSteps} at ?s0`
+  If this is wrong, please explicitly provide the right initial state,
+  as in `sym {runSteps} at ?s0`
   "
     let some state := lctx.find? state
-      /- I don't expect this error to be possible in a well-formed state, but you never know -/
+      /- I don't expect this error to be possible in a well-formed state,
+      but you never know -/
       | throwError "Failed to find local variable for state {stateExpr}"
     pure state.userName
 
@@ -187,12 +201,14 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     | withErrorContext h_run h_run_type <|
         throwError "Expected a constant, found:\n\t{program}"
   /-
-    TODO: assert that the expected `stepi` theorems have been generated for `program`
+    TODO: assert that the expected `stepi` theorems have been generated
   -/
 
   -- Then, try to find `h_pc`
   let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
-  let h_pc_type ← mkEq (← mkAppM ``r #[(.const ``StateField.PC []), stateExpr]) pc
+  let h_pc_type ←
+    let lhs ← mkAppM ``r #[(.const ``StateField.PC []), stateExpr]
+    mkEq lhs pc
   let h_pc ← findLocalDeclUsernameOfTypeOrError h_pc_type
 
   -- Unwrap and reflect `pc`
@@ -209,8 +225,8 @@ where
     let some fvarId ← findLocalDeclWithType? expectedType
       | return none
     let decl := (← getLCtx).get! fvarId
-    -- ^^ `findLocalDeclWithType?` only returns `FVarId`s which are present in the local context,
-    --    so we can safely pass it to `get!`
+    -- ^^ `findLocalDeclWithType?` only returns `FVarId`s which are present in
+    --    the local context, so we can safely pass it to `get!`
     return decl.userName
   findLocalDeclUsernameOfTypeOrError (expectedType : Expr) : MetaM Name := do
     let some name ← findLocalDeclUsernameOfType? expectedType
@@ -228,7 +244,7 @@ def default (curr_state_number : Nat) : SymContext :=
     h_err     := some <| .mkSimple s!"h_{s}_err"
     h_sp      := some <| .mkSimple s!"h_{s}_sp"
     /-
-      `runSteps`, `pc` and `program` actually require inspection of the context to determine.
+      `runSteps`, `pc` and `program` actually require inspection of the context.
       However, these values are not actually used yet,
       they are merely kept because they will be useful in the future.
       We can safely put in bogus values for now.
@@ -241,12 +257,13 @@ def default (curr_state_number : Nat) : SymContext :=
 
 /-! ## Incrementing the context to the next state -/
 
-/-- `c.nextState` generates names for the next intermediate state in symbolic evaluation.
+/-- `c.nextState` generates names for the next intermediate state in
+symbolic evaluation.
 
 `nextPc?`, if given, will be the pc of the next context.
-If `nextPC?` is `none`, then the previous pc is incremented by 4
- -/
-def nextState (c : SymContext) (nextPc? : Option (BitVec 64) := none) : SymContext :=
+If `nextPC?` is `none`, then the previous pc is incremented by 4 -/
+def nextState (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
+    SymContext :=
   let curr_state_number := c.curr_state_number + 1
   let s := s!"{c.state_prefix}{curr_state_number}"
   {
