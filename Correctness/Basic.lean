@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Leonardo de Moura
+Author(s): Leonardo de Moura, Shilpi Goel
 -/
 
 /--
@@ -44,7 +44,7 @@ A program's specification can be characterized by the following three predicates
 -/
 class Spec (σ : Type) where
   pre  : σ → Prop
-  post : σ → Prop
+  post : σ → σ → Prop
   exit : σ → Prop
 
 /--
@@ -52,8 +52,8 @@ In assertional methods, we specify interesting "cutpoints" of a program using
 `cut` and assertions that must hold at those cutpoints using `assert`.
 -/
 class Spec' (σ : Type) extends Spec σ where
-  cut    : σ → Prop
-  assert : σ → Prop
+  cut    : σ → Bool
+  assert : σ → σ → Prop
 
 /--
 Partial correctness: involves showing that for any state `s` satisfying `pre`,
@@ -62,7 +62,7 @@ such state exists).
 -/
 def PartialCorrectness (σ : Type) [Sys σ] [Spec σ] : Prop :=
   open Spec in
-  ∀ (s : σ) n, pre s → exit (run s n) → ∃ m, m ≤ n ∧ exit (run s m) ∧ post (run s m)
+  ∀ (s : σ) n, pre s → exit (run s n) → ∃ m, m ≤ n ∧ exit (run s m) ∧ post s (run s m)
 
 /--
 Termination: the machine starting from a state `s` satisfying `pre` eventually
