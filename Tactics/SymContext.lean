@@ -73,7 +73,7 @@ namespace SymContext
 /-- Infer `state_prefix` and `curr_state_number` from the `state` name as follows:
 if `state` is `s{i}` for some number `i` and a single character `s`,
 then `s` is the prefix and `i` the number,
-otherwise simple take `{state}_` as the prefix and start counting from zero -/
+otherwise ignore `state`, and start counting from `s1` -/
 def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
   let state := ctxt.state.toString
   let tail := state.toSubstring.drop 1
