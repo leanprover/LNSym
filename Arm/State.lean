@@ -667,15 +667,17 @@ section NewMemory
 /-!
 # New definitions for the memory model
 
-For freedom in experimenting with definitions, we define our own version of `read_mem` and `write_mem` called `read_mem'`
-and `write_mem`'. These operate directly on the memory, rather than the `ArmState`.
-We prove their equivalence to the existing definitions (`read_mem_eq_read_mem'`, `write_mem_eq_write_mem'`).
+For freedom in experimenting with definitions,
+we define our own version of `read_mem` and `write_mem`,
+called `read_mem'` and `write_mem`'.
+These operate directly on the memory, rather than the `ArmState`.
+We prove their equivalence to the existing definitions
+(`read_mem_eq_read_mem'`, `write_mem_eq_write_mem'`).
 
-Furthermore, we define equivalences to `BitVec.extractLsByte` to ease reasoning about byte-level manipulation.
-As an easy corollary, we get `getLsb` theorems on these in order to allow `omega` based reasoning about bit-level values of memory.
-
-We then build lemmas that allow simplification of the proof state given the new `mem_subset'` and `mem_separate'` assumptions.
-In total, this gives us automation to simplify theorems about memory (non)-interference.
+Furthermore, we define equivalences to `BitVec.extractLsByte`
+to ease reasoning about byte-level manipulation.
+As an easy corollary, we get `getLsb` theorems on these to allow
+`omega` based reasoning about bit-level values of memory.
 -/
 
 abbrev Memory := Store (BitVec 64) (BitVec 8)
