@@ -203,9 +203,9 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
-    let some h_run ← findLocalDeclWithType? expectedType
+    let some fvarId ← findLocalDeclWithType? expectedType
       | return none
-    let decl := (← getLCtx).get! h_run
+    let decl := (← getLCtx).get! fvarId
     -- ^^ `findLocalDeclWithType?` only returns `FVarId`s which are present in the local context,
     --    so we can safely pass it to `get!`
     return decl.userName
