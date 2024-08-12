@@ -206,7 +206,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
 
   -- Then, try to find `h_pc`
   let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
-  let h_pc_type ←
+  let h_pc_type ← do
     let lhs ← mkAppM ``r #[(.const ``StateField.PC []), stateExpr]
     mkEq lhs pc
   let h_pc ← findLocalDeclUsernameOfTypeOrError h_pc_type
