@@ -7,18 +7,24 @@ import Lean
 import Arm.Exec
 
 /-!
-This files defines the `SymContext` structure,
-which is collects
--/
+This files defines the `SymContext` structure, which collects the names of various
+variables/hypotheses in the local context required for symbolic evaluation.
+
+The canonical way to construct a `SymContext` is through `SymContext.fromLocalContext`,
+which searches the local context (up to def-eq) for variables and hypothese of the expected types.
+
+Alternatively, there is `SymContext.default`, which returns a context using hard-coded names,
+simply assuming those hypotheses to be present without looking at the local context.
+This function exists for backwards compatibility, and is likely to be deprecated and removed in
+the near future. -/
 
 open Lean Meta
 open BitVec
 
-/--
-
--/
+/-- A `SymContext` collects the names of various variables/hypotheses in the local context required
+for symbolic evaluation -/
 structure SymContext where
-  /-- `state` and `finalState` are local variable of type `ArmState` -/
+  /-- `state` is a local variable of type `ArmState` -/
   state : Name
   -- TODO: Should we eventually track the final state as well?
   --       We could use it to avoid introducing the last intermediate state,
@@ -34,7 +40,15 @@ structure SymContext where
   program : Name
   /-- `h_program` is a local hypothesis of the form `state.program = program` -/
   h_program : Name
-  /-- `pc` is the *concrete* value of the program counter -/
+  /-- `pc` is the *concrete* value of the program counter
+
+  Note that for now we only support symbolic evaluation of programs at statically known addresses.
+  At some point in the near future, we will want to support addresses of the type `base +/- offset`
+  as well, where `base` is an arbitrary variable and `offset` is statically known.
+  We could do so by refactoring `pc` to be of type `Bool × BitVec 64`,
+  so long as we assume the instruction addresses in a single program will either be all
+  statically known, or all offset against the same `base` address,
+  and we assume that no overflow happens (i.e., `base - x` can never be equal to `base + y`) -/
   pc : BitVec 64
   /-- `h_pc` is a local hypothesis of the form `r StateField.PC state = pc` -/
   h_pc  : Name
