@@ -689,7 +689,8 @@ def read_mem' (addr : BitVec 64) (m : Memory) : BitVec 8 :=
 theorem read_mem_eq_read_mem' : read_mem addr s = read_mem' addr s.mem := rfl
 
 @[simp]
-theorem getLsb_read_mem' : (read_mem' addr s).getLsb i = (s addr).getLsb i := rfl
+theorem getLsb_read_mem' : (read_mem' addr s).getLsb i = (s addr).getLsb i := 
+  rfl
 
 def read_mem_bytes' (n : Nat) (addr : BitVec 64) (s : Memory) : BitVec (n * 8) :=
   match n with
