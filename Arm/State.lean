@@ -664,7 +664,7 @@ theorem write_mem_irrelevant :
 end Memory
 
 section NewMemory
-/-
+/!-
 # New definitions for the memory model
 
 For freedom in experimenting with definitions, we define our own version of `read_mem` and `write_mem` called `read_mem'`
