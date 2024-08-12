@@ -697,7 +697,7 @@ def read_mem_bytes' (n : Nat) (addr : BitVec 64) (s : Memory) : BitVec (n * 8) :
   | n' + 1 =>
     let byte := read_mem' addr s
     let rest := read_mem_bytes' n' (addr + 1#64) s
-    have h: n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
+    have h : n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
     BitVec.cast h (rest ++ byte)
 
 theorem read_mem_bytes_eq_read_mem_bytes' (s : ArmState) :
