@@ -365,12 +365,6 @@ private theorem Nat.sub_mod_eq_of_lt_of_le {x y : Nat} (hx : x < n) (hy : y ≤ 
   rw [Nat.mod_eq_of_lt (by omega)]
   rw [Nat.mod_eq_of_lt (by omega)]
 
-theorem lemma7 (w : Nat) (hw : w > 0) (t : Nat) (h : t < 2 ^ w) : (2 ^ w - 1 - t + 1) % 2 = 1 ↔ t % 2 = 1 := by
-  rcases w with rfl | w
-  · simp at hw
-  · omega
-
-
 -- mem_subset' is a safe over-approximation of mem_subset.
 theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hbn : bn > 0) :
   mem_subset a (a + BitVec.ofNat 64 (an - 1)) b (b + BitVec.ofNat 64 (bn - 1)):= by
