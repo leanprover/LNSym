@@ -709,7 +709,8 @@ theorem read_mem_bytes_eq_read_mem_bytes' (s : ArmState) :
     simp [read_mem_bytes, read_mem_bytes', read_mem_eq_read_mem', ih]
 
 @[simp]
-theorem read_mem_bytes'_zero_eq : read_mem_bytes' 0 addr s = 0#0 := rfl
+theorem read_mem_bytes'_zero_eq : read_mem_bytes' 0 addr s = 0#0 := 
+  rfl
 
 theorem read_mem_bytes'_succ_eq :
   read_mem_bytes' (n' + 1) addr s = ((read_mem_bytes' n' (addr + 1) s) ++ read_mem' addr s).cast (by omega) := rfl
