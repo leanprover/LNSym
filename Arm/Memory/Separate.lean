@@ -538,24 +538,19 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
       have h₁' : (BitVec.ofNat 64 (i / 8)).toNat = (i / 8) := by
         apply BitVec.toNat_ofNat_lt
         omega
-
-      -- TODO: change defn of mem_legal' to use `xn * 8`.
+      have hadd : (x + BitVec.ofNat 64 (↑i / 8)).toNat = x.toNat + (i / 8) := by
+        rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+        rw [BitVec.toNat_ofNat_lt (by omega)]
       simp only [BitVec.lt_def]
-      by_cases h₂ : (x + BitVec.ofNat 64 (↑i / 8)).toNat < y.toNat
+      simp only [hadd]
+      -- TODO: change defn of mem_legal' to use `xn * 8`.
+      by_cases h₂ : (x.toNat + i/ 8) < y.toNat
       · -- contradiction
         exfalso
         rw [BitVec.le_def] at hstart
-        rw [BitVec.toNat_add] at h₂
-        rw [h₁'] at h₂
-        rw [Nat.mod_eq_of_lt (by omega)] at h₂
         omega
-      · obtain h₂' : ((x + BitVec.ofNat 64 (i / 8)).toNat < y.toNat) = false := by
-         simp only [eq_iff_iff, iff_false, h₂]
-        obtain h₂'' : ((x + BitVec.ofNat 64 (i / 8)).toNat ≥ y.toNat + yn) = true := by
-         simp only [eq_iff_iff, iff_true]
-         apply Nat.ge_of_not_lt
-         sorry
-        simp only [h₂']
+      · simp only [h₂, if_false]
+        -- here: we need to take the else branc of the condition.
         sorry
     · simp [h₁]
       intros h
