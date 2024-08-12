@@ -8,6 +8,7 @@ import Arm.Memory.MemoryProofs
 import Tactics.FetchAndDecode
 import Tactics.ExecInst
 import Tactics.ChangeHyps
+import Tactics.SymContext
 
 import Lean.Elab
 import Lean.Expr
@@ -16,6 +17,7 @@ initialize
   Lean.registerTraceClass `Sym
 
 open BitVec
+open Lean (FVarId)
 
 /-- `init_next_step h_run` splits the hypothesis
 
@@ -122,43 +124,27 @@ elab "stepi_tac" h_step:ident hyp_prefix:str : tactic =>
 
 end stepiTac
 
-def sym1 (curr_state_number : Nat) (_hProgram : Lean.Ident) : Lean.Elab.Tactic.TacticM Unit :=
-  Lean.Elab.Tactic.withMainContext do
-    let n_str := toString curr_state_number
-    let n'_str := toString (curr_state_number + 1)
-    let mk_name (s : String) : Lean.Name :=
-      Lean.Name.mkStr Lean.Name.anonymous s
+open Lean.Elab.Tactic (TacticM withMainContext evalTactic) in
+def sym1 (c : SymContext) : TacticM SymContext :=
+  withMainContext do
+    let c' := c.nextState
     -- h_st: prefix of user names of hypotheses about state st
-    let h_st_prefix := Lean.Syntax.mkStrLit ("h_s" ++ n_str)
-    -- h_st_program: name of the hypothesis about the program at state st
-    let h_st_program := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_program"))
-    let _h_st_pc := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_pc"))
-    let _h_st_err := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_err"))
-    -- st': name of the next state
-    let st' := Lean.mkIdent (mk_name ("s" ++ n'_str))
-    -- h_run: name of the hypothesis with the `run` function
-    let h_run := Lean.mkIdent (mk_name "h_run")
+    let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
     -- h_step_n': name of the hypothesis with the `stepi` function
-    let h_step_n' := Lean.mkIdent (mk_name ("h_step_" ++ n'_str))
+    let h_step_n' := Lean.mkIdent (.str .anonymous s!"h_step_{c'.curr_state_number}")
     let stx ←
       `(tactic|
-         (init_next_step $h_run:ident $h_step_n':ident $st':ident
+         (init_next_step $c.h_run_ident:ident $h_step_n':ident $c'.state_ident:ident
           -- Simulate one instruction
           stepi_tac $h_step_n':ident $h_st_prefix:str
-          -- intro_change_hyps $h_step_n':ident $hProgram "h_s0"
-          -- clear $h_step_n':ident
-          -- simp only [stepi, $h_st_program:ident, $h_st_pc:ident, $h_st_err:ident,
-          --            state_simp_rules, bitvec_rules, minimal_theory] at $h_step_n':ident
-          -- (try clear $h_step_n:ident)
-          -- exec_inst $h_step_n':ident $h_st_prefix:str
-          intro_fetch_decode_lemmas $h_step_n':ident $h_st_program:ident $h_st_prefix:str
-          -- (try clear $h_st_pc:ident $h_st_err:ident) --$h_st_program:ident
-          -- (intro_change_hyps $h_step_n':ident $program:term $h_st_prefix:str)
-          -- (try clear $h_step_n':ident)
+          intro_fetch_decode_lemmas $h_step_n':ident $c.h_program_ident:ident $h_st_prefix:str
       ))
     trace[Sym] "Running tactic:\n{stx}"
-    Lean.Elab.Tactic.evalTactic stx
+    evalTactic stx
+    return c'
 
+
+open Lean (Name) in
 /-- `sym1_i_n i n h_program` will symbolically evaluate a program for `n` steps,
 starting from state `i`, where `h_program` is an assumption of the form:
 `s{i}.program = someConcreteProgam`.
@@ -172,9 +158,43 @@ h_run      : sf = run $STEPS s0
 Where $PC and $STEPS are concrete constants.
 Note that the tactic will search for assumption of *exactly* these names,
 it won't search by def-eq -/
-elab "sym1_i_n" i:num n:num program:ident : tactic => do
+elab "sym1_i_n" i:num n:num _program:(ident)? : tactic => do
   Lean.Elab.Tactic.evalTactic (← `(tactic|
     simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
   ))
-  for j in List.range n.getNat do
-    sym1 (i.getNat + j) program
+  let mut c := SymContext.default i.getNat
+  for _ in List.range n.getNat do
+    c ← sym1 c
+
+/- used in `sym1_n` tactic -/
+syntax sym_at := "at" ident
+
+/--
+`sym1_n n` will symbolically evaluate a program for `n` steps.
+Alternatively,
+  `sym1_n n at s` does the same, with `s` as initial state
+
+If `s` is not passed, the initial state is inferred from the local context
+
+The context is searched (up-to def-eq!) for hypotheses
+```
+h_program : s.program = ?concreteProgram
+     h_pc : r StateField.PC  s = ?PC
+    h_run : sf = run ?STEPS s
+    h_err : r StateField.ERR s = .None
+     h_sp : CheckSPAlignment s
+```
+Where ?PC and ?STEPS must reduce to a concrete literal,
+and ?concreteProgram must be a constant
+(i.e., a global definition refered to by name). -/
+elab "sym1_n" n:num s:(sym_at)? : tactic =>
+  Lean.Elab.Tactic.withMainContext <| do
+    Lean.Elab.Tactic.evalTactic (← `(tactic|
+      simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
+    ))
+    let s := s.map fun
+      | `(sym_at|at $s:ident) => s.getId
+      | _ => panic! "Unexpected syntax: {s}"
+    let mut c ← SymContext.fromLocalContext s
+    for _ in List.range n.getNat do
+      c ← sym1 c
