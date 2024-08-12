@@ -759,7 +759,7 @@ theorem getLsb_read_mem_bytes' {n i : Nat} {addr : BitVec 64} {s : Memory} (hn :
       · omega
 
 /--
-A variant of `write_mem` that directly talks about writes to memory, instead of over the entire `ArmState`,
+A variant of `write_mem` that directly talks about writes to memory, instead of over the entire `ArmState`
 -/
 def write_mem' (addr : BitVec 64) (val : BitVec 8) (m : Memory) : Memory :=
   write_store addr val m
