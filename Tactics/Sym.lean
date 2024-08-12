@@ -185,7 +185,8 @@ h_program : s.program = ?concreteProgram
      h_sp : CheckSPAlignment s
 ```
 Where ?PC and ?STEPS must reduce to a concrete literal,
-and concreteProgram must be a constant (i.e., a global definition refered to by name). -/
+and concreteProgram must be a constant
+(i.e., a global definition refered to by name). -/
 syntax sym_at := "at" ident
 elab "sym1_n" n:num s:(sym_at)? : tactic =>
   Lean.Elab.Tactic.withMainContext <| do
