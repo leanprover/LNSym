@@ -72,7 +72,7 @@ structure SymContext where
   state_prefix      : String := "s"
   /-- `curr_state_number` is incremented each simulation step,
   and used together with `curr_state_number`
-  to determine the name of the next state variable that is added by `sym`  -/
+  to determine the name of the next state variable that is added by `sym` -/
   curr_state_number : Nat := 0
 
 
@@ -98,7 +98,7 @@ def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
       curr_state_number := 1 }
 
 /-- Given a ground term `e` of type `Nat`, fully reduce it,
-and attempt to reflect it into a meta-level `Nat`  -/
+and attempt to reflect it into a meta-level `Nat` -/
 private def reflectNatLiteral (e : Expr) : MetaM Nat := do
   if e.hasFVar then
     throwError "Expected a ground term, but {e} has free variables"

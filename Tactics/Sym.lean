@@ -145,9 +145,6 @@ def sym1 (c : SymContext) : TacticM SymContext :=
 
 
 open Lean (Name) in
-
-
-
 /-- `sym1_i_n i n h_program` will symbolically evaluate a program for `n` steps,
 starting from state `i`, where `h_program` is an assumption of the form:
 `s{i}.program = someConcreteProgam`.
@@ -169,6 +166,9 @@ elab "sym1_i_n" i:num n:num _program:(ident)? : tactic => do
   for _ in List.range n.getNat do
     c ← sym1 c
 
+/- used in `sym1_n` tactic -/
+syntax sym_at := "at" ident
+
 /--
 `sym1_n n` will symbolically evaluate a program for `n` steps.
 Alternatively,
@@ -185,9 +185,8 @@ h_program : s.program = ?concreteProgram
      h_sp : CheckSPAlignment s
 ```
 Where ?PC and ?STEPS must reduce to a concrete literal,
-and concreteProgram must be a constant
+and ?concreteProgram must be a constant
 (i.e., a global definition refered to by name). -/
-syntax sym_at := "at" ident
 elab "sym1_n" n:num s:(sym_at)? : tactic =>
   Lean.Elab.Tactic.withMainContext <| do
     Lean.Elab.Tactic.evalTactic (← `(tactic|
