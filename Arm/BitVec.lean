@@ -278,6 +278,10 @@ abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
     the `n`-bit bitvector `x`. -/
 @[bitvec_rules]
 abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
+  -- TODO: We could use
+  --   BitVec.extractLsb' i 1 x
+  -- and avoid the cast here, but unfortunately, extractLsb' isn't supported
+  -- by LeanSAT.
   (BitVec.extractLsb i i x).cast (by omega)
 
 abbrev partInstall (hi lo : Nat) (val : BitVec (hi - lo + 1)) (x : BitVec n): BitVec n :=
