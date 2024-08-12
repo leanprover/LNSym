@@ -877,7 +877,7 @@ theorem getLsb_extractLsByte (val : BitVec w₁) :
 
 /-! ### Least Significant Byte range -/
 
-/-- grab 'n' least significant bytes, starting from index 'base'.
+/-- Get `n` least significant bytes of `val`, starting from index `base`.
 @bollu: it's not clear if the definition for n=0 is desirable.
 -/
 def extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
