@@ -498,20 +498,29 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   · have := hsrc.size_le_two_pow
     omega
 
+theorem BitVec.toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
+    (BitVec.ofNat w₁ n).toNat = n := by
+  simp only [toNat_ofNat, Nat.mod_eq_of_lt hn]
+
+theorem BitVec.ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by sorry
+
 /- value of `read_mem_bytes'` when subset. -/
-/-
 theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
-  (hsep : mem_subset' x xn y yn) -- subset relation.
+  (hsep : mem_subset' x (xn*8) y (yn*8)) -- subset relation.
   (val : BitVec (yn * 8)) :
     read_mem_bytes' xn x (write_mem_bytes' yn y val state) =
-      val.extractLsBs (y.toNat - x.toNat) xn := by
+      val.extractLsBytes (y.toNat - x.toNat) xn := by
   apply BitVec.eq_of_getLsb_eq
   intros i
   obtain ⟨hx, hy, hstart, hend⟩ := hsep
-  rw [getLsb_read_mem_bytes' hx.size_le_two_pow]
-  rw [getLsb_write_mem_bytes' hy]
-  rw [BitVec.getLsb_extractLsB]
-  rw [BitVec.getLsb_extractLsBs]
+
+  obtain hx' := hx.size_le_two_pow
+  obtain hy' := mem_legal'_def hy
+
+  rw [getLsb_read_mem_bytes' (by omega)]
+  rw [getLsb_write_mem_bytes' (by omega)]
+  rw [BitVec.getLsb_extractLsByte]
+  rw [BitVec.getLsb_extractLsBytes]
   by_cases hxn : xn = 0
   · subst hxn
     exfalso
@@ -523,13 +532,35 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
     · simp only [h₁]
       simp only [show (i ≤ xn * 8 - 1) by omega]
       simp only [decide_True, Bool.true_and]
+      obtain ⟨i, hi⟩ := i
+      simp only at h₁
+      simp only []
+      have h₁' : (BitVec.ofNat 64 (i / 8)).toNat = (i / 8) := by
+        apply BitVec.toNat_ofNat_lt
+        omega
+
       -- TODO: change defn of mem_legal' to use `xn * 8`.
-      sorry
+      simp only [BitVec.lt_def]
+      by_cases h₂ : (x + BitVec.ofNat 64 (↑i / 8)).toNat < y.toNat
+      · -- contradiction
+        exfalso
+        rw [BitVec.le_def] at hstart
+        rw [BitVec.toNat_add] at h₂
+        rw [h₁'] at h₂
+        rw [Nat.mod_eq_of_lt (by omega)] at h₂
+        omega
+      · obtain h₂' : ((x + BitVec.ofNat 64 (i / 8)).toNat < y.toNat) = false := by
+         simp only [eq_iff_iff, iff_false, h₂]
+        obtain h₂'' : ((x + BitVec.ofNat 64 (i / 8)).toNat ≥ y.toNat + yn) = true := by
+         simp only [eq_iff_iff, iff_true]
+         apply Nat.ge_of_not_lt
+         sorry
+        simp only [h₂']
+        sorry
     · simp [h₁]
       intros h
       apply BitVec.getLsb_ge
       omega
--/
 
 
 
