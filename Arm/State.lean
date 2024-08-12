@@ -664,24 +664,26 @@ theorem write_mem_irrelevant :
 end Memory
 
 section NewMemory
-/-
+/-!
 # New definitions for the memory model
 
-For freedom in experimenting with definitions, we define our own version of `read_mem` and `write_mem` called `read_mem'`
-and `write_mem`'. These operate directly on the memory, rather than the `ArmState`.
-We prove their equivalence to the existing definitions (`read_mem_eq_read_mem'`, `write_mem_eq_write_mem'`).
+For freedom in experimenting with definitions,
+we define our own version of `read_mem` and `write_mem`,
+called `read_mem'` and `write_mem`'.
+These operate directly on the memory, rather than the `ArmState`.
+We prove their equivalence to the existing definitions
+(`read_mem_eq_read_mem'`, `write_mem_eq_write_mem'`).
 
-Furthermore, we define equivalences to `BitVec.extractLsByte` to ease reasoning about byte-level manipulation.
-As an easy corollary, we get `getLsb` theorems on these in order to allow `omega` based reasoning about bit-level values of memory.
-
-We then build lemmas that allow simplification of the proof state given the new `mem_subset'` and `mem_separate'` assumptions.
-In total, this gives us automation to simplify theorems about memory (non)-interference.
+Furthermore, we define equivalences to `BitVec.extractLsByte`
+to ease reasoning about byte-level manipulation.
+As an easy corollary, we get `getLsb` theorems on these to allow
+`omega` based reasoning about bit-level values of memory.
 -/
 
 abbrev Memory := Store (BitVec 64) (BitVec 8)
 
 /--
-A variant of `read_mem` that directly talks about writes to memory, instead of over the entire `ArmState`,
+A variant of `read_mem` that directly talks about writes to memory, instead of over the entire `ArmState`
 -/
 def read_mem' (addr : BitVec 64) (m : Memory) : BitVec 8 :=
   read_store addr m
@@ -689,7 +691,8 @@ def read_mem' (addr : BitVec 64) (m : Memory) : BitVec 8 :=
 theorem read_mem_eq_read_mem' : read_mem addr s = read_mem' addr s.mem := rfl
 
 @[simp]
-theorem getLsb_read_mem' : (read_mem' addr s).getLsb i = (s addr).getLsb i := rfl
+theorem getLsb_read_mem' : (read_mem' addr s).getLsb i = (s addr).getLsb i :=
+  rfl
 
 def read_mem_bytes' (n : Nat) (addr : BitVec 64) (s : Memory) : BitVec (n * 8) :=
   match n with
@@ -697,7 +700,7 @@ def read_mem_bytes' (n : Nat) (addr : BitVec 64) (s : Memory) : BitVec (n * 8) :
   | n' + 1 =>
     let byte := read_mem' addr s
     let rest := read_mem_bytes' n' (addr + 1#64) s
-    have h: n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
+    have h : n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
     BitVec.cast h (rest ++ byte)
 
 theorem read_mem_bytes_eq_read_mem_bytes' (s : ArmState) :
@@ -708,7 +711,8 @@ theorem read_mem_bytes_eq_read_mem_bytes' (s : ArmState) :
     simp [read_mem_bytes, read_mem_bytes', read_mem_eq_read_mem', ih]
 
 @[simp]
-theorem read_mem_bytes'_zero_eq : read_mem_bytes' 0 addr s = 0#0 := rfl
+theorem read_mem_bytes'_zero_eq : read_mem_bytes' 0 addr s = 0#0 :=
+  rfl
 
 theorem read_mem_bytes'_succ_eq :
   read_mem_bytes' (n' + 1) addr s = ((read_mem_bytes' n' (addr + 1) s) ++ read_mem' addr s).cast (by omega) := rfl
@@ -759,16 +763,26 @@ theorem getLsb_read_mem_bytes' {n i : Nat} {addr : BitVec 64} {s : Memory} (hn :
       · omega
 
 /--
-A variant of `write_mem` that directly talks about writes to memory, instead of over the entire `ArmState`,
+A variant of `write_mem` that directly talks about writes to memory, instead of over the entire `ArmState`
 -/
 def write_mem' (addr : BitVec 64) (val : BitVec 8) (m : Memory) : Memory :=
   write_store addr val m
 
+/--
+This is a low level theorem.
+Prefer using theorems from `Arm.Memory.Separate` that provide higher level theorems
+in terms of memory (non)-interference.
+-/
 theorem write_mem'_of_eq (hix : ix = addr) : write_mem' addr val s ix = val := by
   simp only [write_mem']
   subst ix
   apply store_read_over_write_same
 
+/--
+This is a low level theorem.
+Prefer using theorems from `Arm.Memory.Separate` that provide higher level theorems
+in terms of memory (non)-interference.
+-/
 theorem write_mem'_of_neq (hix : ix ≠ addr) : write_mem' addr val s ix = s ix := by
   simp only [write_mem']
   apply store_read_over_write_different
@@ -918,7 +932,11 @@ theorem write_mem_bytes'_eq_extractLsByte {ix base : BitVec 64}
         simp; omega
       · rw [BitVec.toNat_add_eq_toNat_add_toNat (by simp; omega)]
         simp; omega
-
+/--
+This is a low level theorem.
+Prefer using theorems from `Arm.Memory.Separate` that provide higher level theorems
+in terms of memory (non)-interference.
+-/
 theorem write_mem_bytes'_eq (hoverflow : base.toNat + n ≤ 2 ^ 64) :
   ((write_mem_bytes' n base data mem) ix) =
     if ix < base
@@ -939,7 +957,11 @@ theorem write_mem_bytes'_eq (hoverflow : base.toNat + n ≤ 2 ^ 64) :
         omega
       · omega
       · omega
-
+/--
+This is a low level theorem.
+Prefer using theorems from `Arm.Memory.Separate` that provide higher level theorems
+in terms of memory (non)-interference.
+-/
 theorem getLsb_write_mem_bytes' (hoverflow : base.toNat + n ≤ 2 ^ 64) :
   ((write_mem_bytes' n base data mem) ix).getLsb i =
   if ix < base
