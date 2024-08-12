@@ -681,7 +681,7 @@ In total, this gives us automation to simplify theorems about memory (non)-inter
 abbrev Memory := Store (BitVec 64) (BitVec 8)
 
 /--
-A variant of `read_mem` that directly talks about writes to memory, instead of over the entire `ArmState`,
+A variant of `read_mem` that directly talks about writes to memory, instead of over the entire `ArmState`
 -/
 def read_mem' (addr : BitVec 64) (m : Memory) : BitVec 8 :=
   read_store addr m
