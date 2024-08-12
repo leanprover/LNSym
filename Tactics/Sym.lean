@@ -186,15 +186,24 @@ h_program : s.program = ?concreteProgram
 ```
 Where ?PC and ?STEPS must reduce to a concrete literal,
 and ?concreteProgram must be a constant
-(i.e., a global definition refered to by name). -/
+(i.e., a global definition refered to by name).
+
+Hypotheses `h_err` and `h_sp` may be missing,
+in which case a new goal of the appropriate type will be added.
+The other hypotheses *must* be present,
+since we infer required information from their types. -/
 elab "sym1_n" n:num s:(sym_at)? : tactic =>
+  let s := s.map fun
+    | `(sym_at|at $s:ident) => s.getId
+    | _ => panic! "Unexpected syntax: {s}"
+
   Lean.Elab.Tactic.withMainContext <| do
     Lean.Elab.Tactic.evalTactic (← `(tactic|
       simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
     ))
-    let s := s.map fun
-      | `(sym_at|at $s:ident) => s.getId
-      | _ => panic! "Unexpected syntax: {s}"
+
     let mut c ← SymContext.fromLocalContext s
+    c ← c.addGoalsForMissingHypotheses
+
     for _ in List.range n.getNat do
       c ← sym1 c
