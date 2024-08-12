@@ -859,38 +859,41 @@ theorem toNat_add_eq_toNat_add_toNat {x y : BitVec w} (h : x.toNat + y.toNat < 2
 /-! ### Least Significant Byte -/
 
 /-- Definition to extract the `n`th least significant *Byte* from a bitvector. -/
-def extractLsB (val : BitVec w₁) (base : Nat) : BitVec 8 :=
-  val.extractLsb ((base + 1)*8 - 1) (base * 8) |>.cast (by omega)
+def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
+  val.extractLsb ((n + 1) * 8 - 1) (n * 8) |> .cast (by omega)
 
-theorem extractLsB_def (val : BitVec w₁) (n : Nat) :
-    val.extractLsB n = (val.extractLsb ((n + 1)*8 - 1) (n * 8) |>.cast (by omega)) := rfl
+theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
+    val.extractLsByte n = (val.extractLsb ((n + 1)*8 - 1) (n * 8) |>.cast (by omega)) := rfl
 
 @[simp]
-theorem getLsb_extractLsB (val : BitVec w₁) :
-    ((BitVec.extractLsB val n).getLsb i) =
+theorem getLsb_extractLsByte (val : BitVec w₁) :
+    ((BitVec.extractLsByte val n).getLsb i) =
     (decide (i ≤ 7) && val.getLsb (n * 8 + i)) := by
-  simp [extractLsB]
+  simp only [extractLsByte, getLsb_cast, getLsb_extract]
   rw [Nat.succ_mul]
-  simp only [Nat.add_one_sub_one]
-  simp [Nat.add_sub_cancel_left]
+  simp only [Nat.add_one_sub_one,
+    Nat.add_sub_cancel_left]
 
 
 /-! ### Least Significant Byte range -/
 
-/-- grab 'n' least significant bytes, starting from index 'base'.
+/-- Get `n` least significant bytes of `val`, starting from index `base`.
 @bollu: it's not clear if the definition for n=0 is desirable.
 -/
-def extractLsBs (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
+def extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
   match h : n with
   | 0 => 0#0
   | x + 1 => val.extractLsb (base * 8 + n * 8 - 1) (base * 8) |>.cast (by omega)
 
 @[simp]
-theorem getLsb_extractLsBs (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
-    (BitVec.extractLsBs val base n).getLsb i =
-      (decide (0 < n) && (decide (i ≤ base * 8 + (n) * 8 - 1 - base * 8) && val.getLsb (base * 8 + i))) := by
+theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
+    (BitVec.extractLsBytes val base n).getLsb i =
+      (decide (0 < n) && (decide (i ≤ base * 8 + (n) * 8 - 1 - base * 8) &&
+      val.getLsb (base * 8 + i))) := by
   rcases n with rfl | n
-  · simp
-  · simp [extractLsBs]
+  · simp only [Nat.reduceMul, Nat.zero_le, getLsb_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
+    Nat.add_zero, Bool.false_and]
+  · simp only [extractLsBytes, getLsb_cast, getLsb_extract, Nat.zero_lt_succ, decide_True,
+    Bool.true_and]
 
 end BitVec

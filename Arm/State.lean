@@ -121,15 +121,15 @@ def PState.zero : PState :=
 @[ext]
 structure ArmState where
   /-- General-purpose registers: register 31 is the stack pointer. -/
-  gpr        : Store (BitVec 5) (BitVec 64)
+  private gpr        : Store (BitVec 5) (BitVec 64)
   /-- SIMD/floating-point registers -/
-  sfp        : Store (BitVec 5) (BitVec 128)
+  private sfp        : Store (BitVec 5) (BitVec 128)
   /-- Program Counter -/
-  pc         : BitVec 64
+  private pc         : BitVec 64
   /-- PState -/
-  pstate     : PState
+  private pstate     : PState
   /-- Memory: maps 64-bit addresses to bytes -/
-  mem        : Store (BitVec 64) (BitVec 8)
+  private mem        : Store (BitVec 64) (BitVec 8)
   /--
   Program: maps 64-bit addresses to 32-bit instructions.
   Note that we have the following assumption baked into our machine model:
@@ -142,7 +142,7 @@ structure ArmState where
   (e.g., an unimplemented instruction is hit). Any reasoning or
   execution based off an erroneous state is invalid.
   -/
-  error      : StateError
+  private error      : StateError
 deriving Repr
 
 def ArmState.default : ArmState := {
@@ -671,12 +671,13 @@ For freedom in experimenting with definitions, we define our own version of `rea
 and `write_mem`'. These operate directly on the memory, rather than the `ArmState`.
 We prove their equivalence to the existing definitions (`read_mem_eq_read_mem'`, `write_mem_eq_write_mem'`).
 
-Furthermore, we define `getLsb` theorems on these in order to allow `omega` based reasoning about bit-level values
-of memory.
+Furthermore, we define equivalences to `BitVec.extractLsByte` to ease reasoning about byte-level manipulation.
+As an easy corollary, we get `getLsb` theorems on these in order to allow `omega` based reasoning about bit-level values of memory.
 
 We then build lemmas that allow simplification of the proof state given the new `mem_subset'` and `mem_separate'` assumptions.
 In total, this gives us automation to simplify theorems about memory (non)-interference.
 -/
+
 abbrev Memory := Store (BitVec 64) (BitVec 8)
 
 /--
@@ -736,7 +737,7 @@ theorem getLsb_read_mem_bytes' {n i : Nat} {addr : BitVec 64} {s : Memory} (hn :
         have hi' : ∃ i', i = i' + 8 := by
           apply Classical.byContradiction
           intros h
-          simp at h
+          simp only [not_exists] at h
           specialize h (i - 8)
           omega
         obtain ⟨i', hi'⟩ := hi'
@@ -747,7 +748,7 @@ theorem getLsb_read_mem_bytes' {n i : Nat} {addr : BitVec 64} {s : Memory} (hn :
         congr
         rw [BitVec.add_def]
         congr 1
-        simp
+        simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]
         rw [Nat.mod_eq_of_lt]
         · omega
         · omega
@@ -831,7 +832,7 @@ theorem write_mem_bytes'_eq_of_ge {ix base : BitVec 64}
   induction n generalizing base mem ix
   case zero => simp [write_mem_bytes']
   case succ n ih =>
-    simp [write_mem_bytes']
+    simp only [write_mem_bytes']
     rw [ih]
     · have hix : ix.toNat > base.toNat := by omega
       obtain hix : ix.toNat ≠ base.toNat := by omega
@@ -841,13 +842,13 @@ theorem write_mem_bytes'_eq_of_ge {ix base : BitVec 64}
     · rw [BitVec.toNat_add_eq_toNat_add_toNat (by simp; omega)]
       simp; omega
 
-theorem extractLsB_zeroExtend_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i > 0):
-    (BitVec.zeroExtend (n * 8) (data >>> 8)).extractLsB (i - 1) = data.extractLsB i := by
+theorem extractLsByte_zeroExtend_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i > 0):
+    (BitVec.zeroExtend (n * 8) (data >>> 8)).extractLsByte (i - 1) = data.extractLsByte i := by
   rcases i with rfl | i
   · simp at hi
   · apply BitVec.eq_of_getLsb_eq
     intros j
-    simp only [Nat.add_one_sub_one, BitVec.getLsb_extractLsB, BitVec.getLsb_zeroExtend,
+    simp only [Nat.add_one_sub_one, BitVec.getLsb_extractLsByte, BitVec.getLsb_zeroExtend,
       BitVec.getLsb_ushiftRight]
     by_cases hj : (j : Nat) ≤ 7
     · simp only [hj, decide_True, Bool.true_and]
@@ -870,10 +871,10 @@ theorem extractLsB_zeroExtend_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i > 
 /--
 The byte at location `ix` in memory, such that `base ≤ ix ≤ base + ix` will be the `ix - base` byte of data.
 -/
-theorem write_mem_bytes'_eq_extractLsB {ix base : BitVec 64}
+theorem write_mem_bytes'_eq_extractLsByte {ix base : BitVec 64}
   (lo : ix.toNat ≥ base.toNat)
   (hi : ix.toNat < base.toNat + n) (hnowrap : base.toNat + n ≤ 2^64) :
-    write_mem_bytes' n base data mem ix = data.extractLsB (ix - base).toNat := by
+    write_mem_bytes' n base data mem ix = data.extractLsByte (ix - base).toNat := by
   induction n generalizing base mem ix
   case zero => omega
   case succ n ih =>
@@ -882,13 +883,13 @@ theorem write_mem_bytes'_eq_extractLsB {ix base : BitVec 64}
     · obtain hix : ix = base := by
         apply BitVec.eq_of_toNat_eq hix
       subst hix
-      simp
+      simp only [BitVec.sub_self, BitVec.toNat_ofNat, Nat.reducePow, Nat.zero_mod]
       rcases n with rfl | n
       · simp only [Nat.reduceAdd, Nat.reduceMul, write_mem_bytes'_zero]
         rw [write_mem'_of_eq rfl]
         rfl
       · rw [write_mem_bytes'_eq_of_le]
-        · simp only [write_mem'_of_eq rfl, BitVec.extractLsB_def, Nat.reduceAdd, Nat.reduceMul,
+        · simp only [write_mem'_of_eq rfl, BitVec.extractLsByte_def, Nat.reduceAdd, Nat.reduceMul,
             Nat.add_one_sub_one, Nat.sub_zero, BitVec.cast_eq]
         · rw [BitVec.toNat_add_eq_toNat_add_toNat]
           · simp
@@ -909,7 +910,7 @@ theorem write_mem_bytes'_eq_extractLsB {ix base : BitVec 64}
           omega
         rw [h_ix_sub_base_plus_1, h_base_plus_1, h_ix_sub_base, Nat.sub_add_eq,
           show ix.toNat - base.toNat - 1 = (ix.toNat - base.toNat) - 1 by omega]
-        apply extractLsB_zeroExtend_shiftLeft
+        apply extractLsByte_zeroExtend_shiftLeft
         omega
       · rw [BitVec.toNat_add_eq_toNat_add_toNat (by simp; omega)]
         simp; omega
@@ -918,24 +919,21 @@ theorem write_mem_bytes'_eq_extractLsB {ix base : BitVec 64}
       · rw [BitVec.toNat_add_eq_toNat_add_toNat (by simp; omega)]
         simp; omega
 
-/-- info: 'write_mem_bytes'_eq_extractLsB' depends on axioms: [propext, Quot.sound] -/
-#guard_msgs in #print axioms write_mem_bytes'_eq_extractLsB
-
 theorem write_mem_bytes'_eq (hoverflow : base.toNat + n ≤ 2 ^ 64) :
   ((write_mem_bytes' n base data mem) ix) =
     if ix < base
     then mem ix
     else if ix.toNat ≥ base.toNat + n then mem ix
-    else data.extractLsB (ix - base).toNat := by
+    else data.extractLsByte (ix - base).toNat := by
   by_cases h : ix < base
   · simp only [h, ↓reduceIte]
     apply write_mem_bytes'_eq_of_le h hoverflow
   · simp only [h, ↓reduceIte]
     by_cases h₂ : ix.toNat ≥ base.toNat + n
-    · simp [h₂]
+    · simp only [ge_iff_le, h₂, ↓reduceIte]
       apply write_mem_bytes'_eq_of_ge h₂ hoverflow
     · simp only [ge_iff_le, h₂, ↓reduceIte]
-      apply write_mem_bytes'_eq_extractLsB
+      apply write_mem_bytes'_eq_extractLsByte
       · simp only [BitVec.not_lt] at h
         rw [BitVec.le_def] at h
         omega
@@ -947,11 +945,11 @@ theorem getLsb_write_mem_bytes' (hoverflow : base.toNat + n ≤ 2 ^ 64) :
   if ix < base
   then (mem ix).getLsb i
   else if ix.toNat ≥ base.toNat + n then (mem ix).getLsb i
-  else (data.extractLsB (ix - base).toNat).getLsb i := by
+  else (data.extractLsByte (ix - base).toNat).getLsb i := by
 rw [write_mem_bytes'_eq hoverflow]
 by_cases h : ix < base
 · simp [h]
-· simp only [h, ↓reduceIte, ge_iff_le, BitVec.toNat_sub, Nat.reducePow, BitVec.getLsb_extractLsB]
+· simp only [h, ↓reduceIte, ge_iff_le, BitVec.toNat_sub, Nat.reducePow, BitVec.getLsb_extractLsByte]
   by_cases h₂ : base.toNat + n ≤ ix.toNat
   · simp [h₂]
   · simp [h₂]
