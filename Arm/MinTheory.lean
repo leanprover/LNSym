@@ -22,6 +22,10 @@ attribute [minimal_theory] or_true
 attribute [minimal_theory] true_or
 attribute [minimal_theory] or_false
 attribute [minimal_theory] false_or
+attribute [minimal_theory] if_true_left
+attribute [minimal_theory] if_true_right
+attribute [minimal_theory] if_false_left
+attribute [minimal_theory] if_false_right
 attribute [minimal_theory] iff_self
 attribute [minimal_theory] iff_true
 attribute [minimal_theory] true_iff
