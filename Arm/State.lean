@@ -689,7 +689,7 @@ def read_mem' (addr : BitVec 64) (m : Memory) : BitVec 8 :=
 theorem read_mem_eq_read_mem' : read_mem addr s = read_mem' addr s.mem := rfl
 
 @[simp]
-theorem getLsb_read_mem' : (read_mem' addr s).getLsb i = (s addr).getLsb i := 
+theorem getLsb_read_mem' : (read_mem' addr s).getLsb i = (s addr).getLsb i :=
   rfl
 
 def read_mem_bytes' (n : Nat) (addr : BitVec 64) (s : Memory) : BitVec (n * 8) :=
@@ -709,7 +709,7 @@ theorem read_mem_bytes_eq_read_mem_bytes' (s : ArmState) :
     simp [read_mem_bytes, read_mem_bytes', read_mem_eq_read_mem', ih]
 
 @[simp]
-theorem read_mem_bytes'_zero_eq : read_mem_bytes' 0 addr s = 0#0 := 
+theorem read_mem_bytes'_zero_eq : read_mem_bytes' 0 addr s = 0#0 :=
   rfl
 
 theorem read_mem_bytes'_succ_eq :
@@ -766,11 +766,21 @@ A variant of `write_mem` that directly talks about writes to memory, instead of 
 def write_mem' (addr : BitVec 64) (val : BitVec 8) (m : Memory) : Memory :=
   write_store addr val m
 
+/--
+This is a low level theorem.
+Prefer using theorems from `Arm.Memory.Separate` that provide higher level theorems
+in terms of memory (non)-interference.
+-/
 theorem write_mem'_of_eq (hix : ix = addr) : write_mem' addr val s ix = val := by
   simp only [write_mem']
   subst ix
   apply store_read_over_write_same
 
+/--
+This is a low level theorem.
+Prefer using theorems from `Arm.Memory.Separate` that provide higher level theorems
+in terms of memory (non)-interference.
+-/
 theorem write_mem'_of_neq (hix : ix ≠ addr) : write_mem' addr val s ix = s ix := by
   simp only [write_mem']
   apply store_read_over_write_different
@@ -920,7 +930,11 @@ theorem write_mem_bytes'_eq_extractLsByte {ix base : BitVec 64}
         simp; omega
       · rw [BitVec.toNat_add_eq_toNat_add_toNat (by simp; omega)]
         simp; omega
-
+/--
+This is a low level theorem.
+Prefer using theorems from `Arm.Memory.Separate` that provide higher level theorems
+in terms of memory (non)-interference.
+-/
 theorem write_mem_bytes'_eq (hoverflow : base.toNat + n ≤ 2 ^ 64) :
   ((write_mem_bytes' n base data mem) ix) =
     if ix < base
@@ -941,7 +955,11 @@ theorem write_mem_bytes'_eq (hoverflow : base.toNat + n ≤ 2 ^ 64) :
         omega
       · omega
       · omega
-
+/--
+This is a low level theorem.
+Prefer using theorems from `Arm.Memory.Separate` that provide higher level theorems
+in terms of memory (non)-interference.
+-/
 theorem getLsb_write_mem_bytes' (hoverflow : base.toNat + n ≤ 2 ^ 64) :
   ((write_mem_bytes' n base data mem) ix).getLsb i =
   if ix < base
