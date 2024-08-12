@@ -357,6 +357,41 @@ theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
   hstart := by simp [BitVec.le_def]
   hend := by simp [BitVec.le_def]
 
+/--
+If `[a'..a'+an')` begins at least where `[a..an)` begins,
+and ends before `[a..an)` ends, and if `[a..an)` is a subset of `[b..bn)`,
+then `[a'..a'+an')` is a subset of `[b..bn)`.
+-/
+theorem mem_subset'_of_le_of_le {a' : BitVec 64} (h : mem_subset' a an b bn)
+  (ha' : a.toNat ≤ a'.toNat) (han' : a'.toNat + an' ≤ a.toNat + an) :
+  mem_subset' a' an' b bn where
+  ha := by
+    obtain ⟨ha, hb, hstart, hend⟩ := h
+    simp only [mem_legal', Nat.reducePow] at ha hb ⊢
+    simp_all only [BitVec.le_def]
+    omega
+  hb := h.hb
+  hstart := by
+    obtain ⟨ha, hb, hstart, hend⟩ := h
+    simp only [mem_legal', Nat.reducePow] at ha hb
+    simp_all only [BitVec.le_def]
+    omega
+  hend := by
+    obtain ⟨ha, hb, hstart, hend⟩ := h
+    simp only [mem_legal', Nat.reducePow] at ha hb
+    simp_all only [BitVec.le_def]
+    omega
+
+/--
+If `[a..an)` is a subset of `[b..bn)`,
+then `[a..an')` is a subset of `[b..bn)` if `an' ≤ an`.
+-/
+theorem mem_subset'_of_length_le (h : mem_subset' a an b bn)
+  (han' : an' ≤ an) : mem_subset' a an' b bn := by
+  apply mem_subset'_of_le_of_le h
+  · simp [BitVec.le_def]
+  · omega
+
 -- theorem Nat.sub_mod_eq (x y : Nat) : (x - y) % t =
 
 private theorem Nat.sub_mod_eq_of_lt_of_le {x y : Nat} (hx : x < n) (hy : y ≤ x) :
