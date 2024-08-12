@@ -479,8 +479,8 @@ section Load_program_and_fetch_inst
 def def_program (p : Program) : Program :=
   p
 
-/-- Get the smallest address in a program `p`. -/
-def Program.min (p : Program) : Option (BitVec 64) :=
+/-- Get the smallest address in a program `p`. Returns `none` if the program is empty. -/
+def Program.min? (p : Program) : Option (BitVec 64) :=
   loop p none
 where
   loop (p : Program) (min? : Option (BitVec 64)) : Option (BitVec 64) :=
@@ -489,8 +489,8 @@ where
     | (addr, _) :: p, none => loop p (some addr)
     | (addr, _) :: p, some min => if addr < min then loop p (some addr) else loop p (some min)
 
-/-- Get the largest address in a program `p`. -/
-def Program.max (p : Program) : Option (BitVec 64) :=
+/-- Get the largest address in a program `p`. Returns `none` if the program is empty. -/
+def Program.max? (p : Program) : Option (BitVec 64) :=
   loop p none
 where
   loop (p : Program) (max? : Option (BitVec 64)) : Option (BitVec 64) :=
@@ -498,6 +498,16 @@ where
     | [], _ => max?
     | (addr, _) :: p, none => loop p (some addr)
     | (addr, _) :: p, some max => if addr > max then loop p (some addr) else loop p (some max)
+
+/-- Get the smallest address in a program `p`, given a proof that such an address exists. -/
+def Program.min (p : Program) (h : p.min?.isSome := by decide) : BitVec 64 := p.min?.get h
+/-- Get the smallest address in a program `p`. Panics if the program is empty -/
+def Program.min! (p : Program) : BitVec 64 := p.min?.get!
+
+/-- Get the largest address in a program `p`, given a proof that such an address exists. -/
+def Program.max (p : Program) (h : p.max?.isSome := by decide) : BitVec 64 := p.max?.get h
+/-- Get the largest address in a program `p`. Panics if the program is empty -/
+def Program.max! (p : Program) : BitVec 64 := p.max?.get!
 
 theorem fetch_inst_from_program
   {address: BitVec 64} :
