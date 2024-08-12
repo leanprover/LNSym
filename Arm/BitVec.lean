@@ -888,7 +888,8 @@ def extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
 @[simp]
 theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
     (BitVec.extractLsBytes val base n).getLsb i =
-      (decide (0 < n) && (decide (i ≤ base * 8 + (n) * 8 - 1 - base * 8) && val.getLsb (base * 8 + i))) := by
+      (decide (0 < n) && (decide (i ≤ base * 8 + (n) * 8 - 1 - base * 8) &&
+      val.getLsb (base * 8 + i))) := by
   rcases n with rfl | n
   · simp only [Nat.reduceMul, Nat.zero_le, getLsb_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
     Nat.add_zero, Bool.false_and]
