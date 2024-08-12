@@ -869,10 +869,10 @@ theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
 theorem getLsb_extractLsByte (val : BitVec w₁) :
     ((BitVec.extractLsByte val n).getLsb i) =
     (decide (i ≤ 7) && val.getLsb (n * 8 + i)) := by
-  simp [extractLsByte]
+  simp only [extractLsByte, getLsb_cast, getLsb_extract]
   rw [Nat.succ_mul]
-  simp only [Nat.add_one_sub_one]
-  simp [Nat.add_sub_cancel_left]
+  simp only [Nat.add_one_sub_one,
+    Nat.add_sub_cancel_left]
 
 
 /-! ### Least Significant Byte range -/
@@ -890,7 +890,9 @@ theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) 
     (BitVec.extractLsBytes val base n).getLsb i =
       (decide (0 < n) && (decide (i ≤ base * 8 + (n) * 8 - 1 - base * 8) && val.getLsb (base * 8 + i))) := by
   rcases n with rfl | n
-  · simp
-  · simp [extractLsBytes]
+  · simp only [Nat.reduceMul, Nat.zero_le, getLsb_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
+    Nat.add_zero, Bool.false_and]
+  · simp only [extractLsBytes, getLsb_cast, getLsb_extract, Nat.zero_lt_succ, decide_True,
+    Bool.true_and]
 
 end BitVec
