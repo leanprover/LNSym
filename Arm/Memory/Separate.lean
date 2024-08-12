@@ -400,6 +400,17 @@ private theorem Nat.sub_mod_eq_of_lt_of_le {x y : Nat} (hx : x < n) (hy : y ≤ 
   rw [Nat.mod_eq_of_lt (by omega)]
   rw [Nat.mod_eq_of_lt (by omega)]
 
+theorem BitVec.add_sub_cancel_left {a b : BitVec w₁}
+    (hab : a.toNat + b.toNat < 2^w₁) : (a + b) - a = b := by sorry
+
+theorem BitVec.le_add_iff_sub_le {a b c : BitVec w₁}
+  (hac : c ≤ a) (hbc : b.toNat + c.toNat < 2^w₁) :
+  (a ≤ b + c) ↔ (a - c ≤ b) := by sorry
+
+
+theorem BitVec.sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a) (hbc : c ≤ b) : (a - c ≤ b - c) ↔ a ≤ b := sorry
+
+
 -- mem_subset' is a safe over-approximation of mem_subset.
 theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hbn : bn > 0) :
   mem_subset a (a + BitVec.ofNat 64 (an - 1)) b (b + BitVec.ofNat 64 (bn - 1)):= by
@@ -423,16 +434,23 @@ theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hb
       Nat.add_mod_mod]
       rw [Nat.mod_eq_of_lt (by omega)]
       omega
-  · right
+  · have hbn : (BitVec.ofNat 64 (bn - 1)).toNat = (bn - 1) := by simp; omega
+    have han : (BitVec.ofNat 64 (an - 1)).toNat = (an - 1) := by simp; omega
+    rw [BitVec.le_def] at hstart
+    right
     constructor
-    · simp [BitVec.le_def]
-      sorry
-    · by_cases hab : a = b
-      · simp [hab, BitVec.sub_self, BitVec.le_def]
-      · have hab' : b.toNat < a.toNat := by sorry
-        simp [BitVec.le_def]
-        sorry
-
+    · rw [BitVec.add_sub_cancel_left]
+      · apply (BitVec.le_add_iff_sub_le _ _).mp
+        · rw [BitVec.le_def, BitVec.toNat_add, han, BitVec.toNat_add, hbn]; omega
+        . rw [BitVec.le_def, BitVec.toNat_add, han]; omega
+        · rw [hbn]; omega
+      · rw [hbn]; omega
+    · rw [BitVec.sub_le_sub_iff_right]
+      · rw [BitVec.le_def, BitVec.toNat_add, han]
+        omega
+      · assumption
+      · rw [BitVec.le_def, BitVec.toNat_add, han]
+        omega
 
 /- value of read_mem_bytes when separate. -/
 theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
