@@ -196,7 +196,6 @@ elab "sym1_n" n:num s:(sym_at)? : tactic =>
   let s := s.map fun
     | `(sym_at|at $s:ident) => s.getId
     | _ => panic! "Unexpected syntax: {s}"
-
   Lean.Elab.Tactic.withMainContext <| do
     Lean.Elab.Tactic.evalTactic (← `(tactic|
       simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
