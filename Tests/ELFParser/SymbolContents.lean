@@ -8,63 +8,11 @@ def getELFFile (elfFile : System.FilePath) : IO RawELFFile := do
   | .error warn => throw (IO.userError warn)
   | .ok elffile => return elffile
 
-open RawELFFile (symbolNameByLinkAndOffset) in
-/- Get the name and symbol table entry of the `symidx`-th symbol, given the
-symbol table's section header `shte` and section `sec`. -/
-def getSymbolTableEntryInSection
-  (elffile : RawELFFile)
-  (shte : RawSectionHeaderTableEntry)
-  (sec : InterpretedSection)
-  (symidx : Nat)
-  : Except String (String × RawSymbolTableEntry) :=
-    let offset := symidx * SectionHeaderTableEntry.sh_entsize shte
-    (mkRawSymbolTableEntry?
-      sec.section_body elffile.is64Bit elffile.isBigendian offset)
-    >>= fun ste =>
-          (symbolNameByLinkAndOffset
-            elffile (SectionHeaderTableEntry.sh_link shte)
-            (SymbolTableEntry.st_name ste))
-    >>= fun sym_name => .ok (sym_name, ste)
-
-/- Return the symbol table entry corresponding to a symbol `symname`, if it
-exists, between entries with index greater than or equal to `symidx` and less
-than `maxidx`. -/
-def findSymbolTableEntryInSection
-  (symidx maxidx : Nat)
-  (elffile : RawELFFile)
-  (shte : RawSectionHeaderTableEntry)
-  (sec : InterpretedSection)
-  (symname : String)
-  : Except String RawSymbolTableEntry := do
-  if symidx >= maxidx then
-    .error s!"Symbol {symname} not found!"
-  else
-    (getSymbolTableEntryInSection elffile shte sec symidx)
-    >>= fun (str, ste) =>
-        if str == symname then
-          return ste
-        else
-          findSymbolTableEntryInSection (symidx + 1) maxidx elffile shte sec symname
-  termination_by (maxidx - symidx)
-
-/- Get the `st_value` of the symbol `symbolname` and its contents
-(as a `ByteArray`). -/
-def getSymbolContents (symbolname : String) (elffile : RawELFFile) :
-  Except String (Nat × ByteArray) := do
-  (elffile.getSymbolTable?)
-  >>= fun (shte, sec) =>
-        let entry_size := SectionHeaderTableEntry.sh_entsize shte
-        let table_size := SectionHeaderTableEntry.sh_size shte
-        let total_entries := table_size / entry_size
-        (findSymbolTableEntryInSection 0 total_entries elffile shte sec symbolname)
-  >>= fun ste => SymbolTableEntry.toBody? ste elffile
-  >>= fun bytes =>
-         Except.ok (SymbolTableEntry.st_value ste, bytes)
-
+open RawELFFile (getSymbolContents) in
 /- Get the `st_value` of the symbol `symbolname` and its contents
 (as a `ByteArray`). -/
 def getSymbolContentsTop (symbolname : String) (elffile : RawELFFile) : IO (Nat × ByteArray) := do
-  match (getSymbolContents symbolname elffile) with
+  match (getSymbolContents elffile symbolname) with
   | .error warn => throw (IO.userError warn)
   | .ok (st_value, bytes) => return (st_value, bytes)
 
