@@ -859,8 +859,8 @@ theorem toNat_add_eq_toNat_add_toNat {x y : BitVec w} (h : x.toNat + y.toNat < 2
 /-! ### Least Significant Byte -/
 
 /-- Definition to extract the `n`th least significant *Byte* from a bitvector. -/
-def extractLsByte (val : BitVec w₁) (base : Nat) : BitVec 8 :=
-  val.extractLsb ((base + 1)*8 - 1) (base * 8) |>.cast (by omega)
+def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
+  val.extractLsb ((n + 1) * 8 - 1) (n * 8) |> .cast (by omega)
 
 theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
     val.extractLsByte n = (val.extractLsb ((n + 1)*8 - 1) (n * 8) |>.cast (by omega)) := rfl
