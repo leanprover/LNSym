@@ -68,14 +68,14 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   (h_s0_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s0 = BitVec.flatten SHA2.k_512)
   -- (FIXME) Add separateness invariants for the stack's memory region.
   (h_s0_ctx_input_separate :
-    mem_separate (ctx_addr s0)   (ctx_addr s0 + 63)
-                 (input_addr s0) (input_addr s0 + (num_blocks s0 * 128)))
+    mem_separate' (ctx_addr s0)   64
+                 (input_addr s0) ((num_blocks s0) * 128).toNat)
   (h_s0_ktbl_ctx_separate :
-    mem_separate (ctx_addr s0)   (ctx_addr s0 + 63)
-                  ktbl_addr      (ktbl_addr + (SHA2.k_512.length * 8 - 1)))
+    mem_separate' (ctx_addr s0) 64
+                  ktbl_addr  (SHA2.k_512.length * 8))
   (h_s0_ktbl_input_separate :
-    mem_separate (input_addr s0) (input_addr s0 + (num_blocks s0 * 128))
-                  ktbl_addr      (ktbl_addr + (SHA2.k_512.length * 8 - 1)))
+    mem_separate' (input_addr s0) (num_blocks s0 * 128).toNat
+                  ktbl_addr      (SHA2.k_512.length * 8))
   -- (h_run : sf = run 4 s0)
   :
   read_mem_bytes 16 (ctx_addr s0 + 48#64) s0 = xxxx := by
@@ -105,14 +105,14 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (h_s1_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s1 = BitVec.flatten SHA2.k_512)
   -- (FIXME) Add separateness invariants for the stack's memory region.
   (h_s1_ctx_input_separate :
-    mem_separate (ctx_addr s1)   (ctx_addr s1 + 63)
-                 (input_addr s1) (input_addr s1 + (num_blocks s1 * 128)))
+    mem_separate' (ctx_addr s1)   64
+                 (input_addr s1) (num_blocks s1 * 128).toNat)
   (h_s1_ktbl_ctx_separate :
-    mem_separate (ctx_addr s1)   (ctx_addr s1 + 63)
-                  ktbl_addr      (ktbl_addr + (SHA2.k_512.length * 8 - 1)))
+    mem_separate' (ctx_addr s1)   64
+                  ktbl_addr      ((SHA2.k_512.length * 8 )))
   (h_s1_ktbl_input_separate :
-    mem_separate (input_addr s1) (input_addr s1 + (num_blocks s1 * 128))
-                  ktbl_addr      (ktbl_addr + (SHA2.k_512.length * 8 - 1))) :
+    mem_separate' (input_addr s1) (num_blocks s1 * 128).toNat
+                  ktbl_addr      (SHA2.k_512.length * 8)) :
   read_mem_bytes 16 ktbl_addr s1 = xxxx := by
   sorry
 
