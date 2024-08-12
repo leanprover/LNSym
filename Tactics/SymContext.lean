@@ -51,7 +51,7 @@ structure SymContext where
   Note that for now we only support symbolic evaluation of programs
   at statically known addresses.
   At some point in the near future,
-  we will want to support addresses of the type `base +/- offset` as well,
+  we will want to support addresses of the type `base + / - offset` as well,
   where `base` is an arbitrary variable and `offset` is statically known.
   We could do so by refactoring `pc` to be of type `Bool × BitVec 64`,
   so long as we assume the instruction addresses in a single program will
