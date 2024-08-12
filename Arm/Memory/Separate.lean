@@ -405,4 +405,85 @@ theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hb
         sorry
 
 
+/- value of read_mem_bytes when separate. -/
+theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
+  (hsep : mem_separate' x xn y yn) -- separation
+  (val : BitVec (yn * 8)) :
+    read_mem_bytes xn x (write_mem_bytes yn y val state) =
+    read_mem_bytes xn x state := by
+  simp only [Nat.reduceMul, write_mem_bytes_eq_write_mem_bytes', read_mem_bytes_eq_read_mem_bytes',
+  Nat.reduceAdd, BitVec.ofNat_eq_ofNat, read_mem_bytes'_zero_eq,
+  BitVec.cast_eq]
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  obtain ⟨hsrc, hdest, hsplit⟩ := hsep
+  rw [getLsb_read_mem_bytes']
+  rw [getLsb_write_mem_bytes']
+  rw [getLsb_read_mem_bytes']
+  simp only [i.isLt]
+  simp only [decide_True, ite_eq_left_iff, Bool.true_and]
+  intros h₁
+  intros h₂
+  -- we need to make use of mem_separate to show that src_addr + i / 8 < dest_addr | src_addr + i/7 ≥ dest_addr + 16
+  exfalso
+  · rcases hsplit with this | this
+    · simp [BitVec.le_def] at h₁
+      omega
+    · have hcontra_h2 : x.toNat + 16 < y.toNat + 16 := by
+        simp at this
+        have hi : (i : Nat) / 8 < xn := by
+          apply Nat.div_lt_of_lt_mul
+          simp [Nat.mul_comm]
+        rw [BitVec.toNat_add_eq_toNat_add_toNat] at h₂
+        · omega
+        · have := mem_legal'_def hsrc
+          apply Nat.lt_of_lt_of_le _ this
+          apply Nat.add_lt_add_iff_left.mpr
+          simp
+          rw [Nat.mod_eq_of_lt]
+          omega
+          omega
+      omega
+  · have := hsrc.size_le_two_pow
+    omega
+  · have := mem_legal'_def hdest
+    omega
+  · have := hsrc.size_le_two_pow
+    omega
+
+/- value of `read_mem_bytes'` when subset. -/
+/-
+theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
+  (hsep : mem_subset' x xn y yn) -- subset relation.
+  (val : BitVec (yn * 8)) :
+    read_mem_bytes' xn x (write_mem_bytes' yn y val state) =
+      val.extractLsBs (y.toNat - x.toNat) xn := by
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  obtain ⟨hx, hy, hstart, hend⟩ := hsep
+  rw [getLsb_read_mem_bytes' hx.size_le_two_pow]
+  rw [getLsb_write_mem_bytes' hy]
+  rw [BitVec.getLsb_extractLsB]
+  rw [BitVec.getLsb_extractLsBs]
+  by_cases hxn : xn = 0
+  · subst hxn
+    exfalso
+    have h := i.isLt
+    simp at h
+  · simp only [show (0 < xn) by omega]
+    simp only [show ((y.toNat - x.toNat) * 8 + xn * 8 - 1 - (y.toNat - x.toNat) * 8) = xn * 8 - 1 by omega]
+    by_cases h₁ : ↑i < xn * 8
+    · simp only [h₁]
+      simp only [show (i ≤ xn * 8 - 1) by omega]
+      simp only [decide_True, Bool.true_and]
+      -- TODO: change defn of mem_legal' to use `xn * 8`.
+      sorry
+    · simp [h₁]
+      intros h
+      apply BitVec.getLsb_ge
+      omega
+-/
+
+
+
 ----------------------------------------------------------------------
