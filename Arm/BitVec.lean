@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Shilpi Goel
+Author(s): Shilpi Goel, Siddharth Bhat
 -/
 
 -- Kitchen sink file for bitvector theorems
@@ -812,5 +812,88 @@ macro_rules
 --   | _ => 0#4
 
 -- #print test2
+
+/-! ### Equation Lemmas -/
+
+theorem gt_def {x y : BitVec w} : (x > y) = (x.toNat > y.toNat) := rfl
+theorem ge_def {x y : BitVec w} : (x ≥ y) = (x.toNat ≥ y.toNat) := rfl
+
+theorem neq_of_toNat_neq {x y : BitVec w} (hx : x.toNat ≠ y.toNat) : x ≠ y := by
+  intros h
+  simp [h] at hx
+
+/-! ### (Non) Overflow Rewriting Lemmas
+
+@bollu: To be upstreamed.
+-/
+
+private theorem Nat.sub_add_eq_add_sub_of_le_of_le {a b c : Nat} (hab : b ≤ a) (hbc : b ≤ c) :
+    a - b + c = a + (c - b) := by
+  omega
+
+/- TODO: upstream. -/
+theorem toNat_sub_eq_toNat_sub_toNat_of_le {x y : BitVec w} (h : y ≤ x) :
+    (x - y).toNat = x.toNat - y.toNat := by
+  simp only [toNat_sub]
+  rw [BitVec.le_def] at h
+  by_cases h' : x.toNat = y.toNat
+  · rw [h', Nat.sub_self]
+    rw [Nat.sub_add_cancel (by omega), Nat.mod_self]
+  · rw [Nat.sub_add_eq_add_sub_of_le_of_le (by omega) (by omega), Nat.add_mod,
+      Nat.mod_self, Nat.zero_add, Nat.mod_mod, Nat.mod_eq_of_lt (by omega)]
+
+theorem neq_of_lt {x y : BitVec w₁} (h : x < y) : x ≠ y := by
+  rintro rfl
+  simp [BitVec.lt_def] at h
+
+theorem neq_of_gt {x y : BitVec w₁} (h : x > y) : x ≠ y := by
+  rintro rfl
+  simp [BitVec.lt_def] at h
+
+
+/-- adding bitvectors when there is no overflow. -/
+theorem toNat_add_eq_toNat_add_toNat {x y : BitVec w} (h : x.toNat + y.toNat < 2^w) :
+    (x + y).toNat = x.toNat + y.toNat := by
+  rw [BitVec.toNat_add, Nat.mod_eq_of_lt h]
+
+/-! ### Least Significant Byte -/
+
+/-- Definition to extract the `n`th least significant *Byte* from a bitvector. -/
+def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
+  val.extractLsb ((n + 1) * 8 - 1) (n * 8) |> .cast (by omega)
+
+theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
+    val.extractLsByte n = (val.extractLsb ((n + 1)*8 - 1) (n * 8) |>.cast (by omega)) := rfl
+
+@[simp]
+theorem getLsb_extractLsByte (val : BitVec w₁) :
+    ((BitVec.extractLsByte val n).getLsb i) =
+    (decide (i ≤ 7) && val.getLsb (n * 8 + i)) := by
+  simp only [extractLsByte, getLsb_cast, getLsb_extract]
+  rw [Nat.succ_mul]
+  simp only [Nat.add_one_sub_one,
+    Nat.add_sub_cancel_left]
+
+
+/-! ### Least Significant Byte range -/
+
+/-- Get `n` least significant bytes of `val`, starting from index `base`.
+@bollu: it's not clear if the definition for n=0 is desirable.
+-/
+def extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
+  match h : n with
+  | 0 => 0#0
+  | x + 1 => val.extractLsb (base * 8 + n * 8 - 1) (base * 8) |>.cast (by omega)
+
+@[simp]
+theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
+    (BitVec.extractLsBytes val base n).getLsb i =
+      (decide (0 < n) && (decide (i ≤ base * 8 + (n) * 8 - 1 - base * 8) &&
+      val.getLsb (base * 8 + i))) := by
+  rcases n with rfl | n
+  · simp only [Nat.reduceMul, Nat.zero_le, getLsb_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
+    Nat.add_zero, Bool.false_and]
+  · simp only [extractLsBytes, getLsb_cast, getLsb_extract, Nat.zero_lt_succ, decide_True,
+    Bool.true_and]
 
 end BitVec
