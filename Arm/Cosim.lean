@@ -110,7 +110,7 @@ def arm_cosim_test (input : regState) : IO String := do
   let flags'  := bitvec_to_hex input.nzcv
   let sfps'   := bitvec_to_hex_list input.sfp
   let args    := ([inst'] ++ gprs' ++ [flags'] ++ sfps').toArray
-  let sargs   := { cmd := "Arm/Insts/Cosim/armsimulate", args := args }
+  let sargs := { cmd := "Arm/Insts/Cosim/armsimulate", args }
   -- Copied from IO.Process.run:
   let out ← IO.Process.output sargs
   if out.exitCode != 0 then
