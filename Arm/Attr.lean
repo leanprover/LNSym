@@ -7,6 +7,8 @@ register_simp_attr minimal_theory
 register_simp_attr state_simp_rules
 -- Rules for bitvector lemmas
 register_simp_attr bitvec_rules
+-- Rules for memory lemmas
+register_simp_attr memory_simp_rules
 
 /-
 syntax "state_simp" : tactic
