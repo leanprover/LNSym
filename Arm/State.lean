@@ -883,7 +883,7 @@ theorem extractLsByte_zeroExtend_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i
     · simp [hj]
 
 /--
-The byte at location `ix` in memory, such that `base ≤ ix ≤ base + ix` will be the `ix - base` byte of data.
+The byte at location `ix` in memory, such that `base ≤ ix ≤ base + ix` will be the `ix - base` byte of `data`.
 -/
 theorem write_mem_bytes'_eq_extractLsByte {ix base : BitVec 64}
   (lo : ix.toNat ≥ base.toNat)
