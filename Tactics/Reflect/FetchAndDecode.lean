@@ -19,7 +19,7 @@ def reduceFetchInst? (addr : Expr) (s : Expr) :
 
   let addr ← reflectBitVecLiteral 64 addr
   let ⟨programHyp, program⟩ ← findProgramHyp s
-  let programInfo ← try ProgramInfo.generateFromConstName program catch err =>
+  let programInfo ← try ProgramInfo.lookupOrGenerate program catch err =>
     throwErrorAt
       err.getRef
       "Could not generate ProgramInfo for {program}:\n\n{err.toMessageData}"

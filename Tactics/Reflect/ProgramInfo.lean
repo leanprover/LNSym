@@ -79,14 +79,25 @@ initialize programInfoExt : PersistentEnvExtension (Name × ProgramInfo) (Name �
       ++ "number of local entries: " ++ format s.size
   }
 
-/-- look up the `ProgramInfo` for a given program in the environment -/
+/-- store a `PogramInfo` for the given `program` in the environment -/
+private def ProgramInfo.store [Monad m] [MonadEnv m]
+    (program : Name) (pi : ProgramInfo) : m Unit := do
+  modifyEnv (programInfoExt.addEntry · ⟨program, pi⟩)
+
+/-- look up the `ProgramInfo` for a given `program` in the environment,
+returns `None` if not found -/
 def ProgramInfo.lookup? [Monad m] [MonadEnv m] (program : Name) :
     m (Option ProgramInfo) := do
   let env ← getEnv
   let state := programInfoExt.getState env
   return state.find? program
 
-/-! ## `@[program]` attribute
-We define an attribute, such that annotating a defintion with `@[program]`
-will generate the relevant `ProgramInfo` and store it in the environment
--/
+/-- look up the `ProgramInfo` for a given `program` in the environment,
+or, if none was found, generate (and cache) new program info -/
+def ProgramInfo.lookupOrGenerate (program : Name) : MetaM ProgramInfo := do
+  if let some pi ← lookup? program then
+    return pi
+  else
+    let pi ← generateFromConstName program
+    store program pi
+    return pi
