@@ -675,7 +675,7 @@ end Memory
 
 For freedom in experimenting with definitions,
 we define our own version of `read_mem` and `write_mem`,
-called `read_mem'` and `write_mem'`.
+called `Memory.read` and `Memory.write`.
 These operate directly on the memory, rather than the `ArmState`.
 We prove their equivalence to the existing definitions
 (`read_mem_eq_read_mem'`, `write_mem_eq_write_mem'`).
