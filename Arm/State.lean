@@ -788,6 +788,9 @@ theorem write_of_eq {m : Memory} (hix : ix = addr) : m.write addr val ix = val :
   subst ix
   apply store_read_over_write_same
 
+@[memory_simp_rules]
+theorem write_of_eq' {m : Memory} : m.write ix val ix = val := write_of_eq rfl
+
 /--
 This is a low level theorem.
 Prefer using theorems from `Arm.Separate` that provide higher level theorems
