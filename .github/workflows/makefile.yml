@@ -44,11 +44,11 @@ jobs:
         key: ${{ runner.os }}-lake
 
     - name: Run LNSym Makefile (Ubuntu)
-      if : runner.os != 'macOS'
+      if : ${{ runner.os != 'macOS' }}
       run: |
           make all
 
     - name: Run LNSym Cosimulation (MacOS)
-      if : runner.os == 'macOS'
+      if : ${{ runner.os == 'macOS' }}
       run: |
           make cosim NUM_TESTS=100
