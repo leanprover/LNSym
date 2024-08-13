@@ -4,7 +4,7 @@ import Proofs.SHA512.Sha512Program
 
 -- set_option trace.gen_step.debug.heartBeats true in
 -- set_option trace.gen_step.print_names true in
-set_option maxHeartbeats 2000000 in
+set_option maxHeartbeats 1005000 in
 #genStepTheorems sha512_program thmType:="decodeExec"
 
 /--
