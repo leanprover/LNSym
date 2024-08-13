@@ -116,9 +116,8 @@ def arm_cosim_test (input : regState) : IO String := do
   if out.exitCode != 0 then
     throw
       <| IO.userError
-      <| "Process '" ++ sargs.cmd ++ "' exited with code "
-          ++ toString out.exitCode ++ "\nStdErr:\n" ++ out.stderr ++
-          (if out.stdout.isEmpty then "" else "\nStdOut:\n" ++ out.stdout)
+      <| s!"Process '{sargs.cmd}' exited with code {out.exitCode}\nStdErr: {out.stderr}" ++
+          (if out.stdout.isEmpty then "" else s!"\nStdOut:\n{out.stdout}")
   pure out.stdout
 
 /-- Call Arm/Insts/Cosim/disasm.sh to get the disassembly of the
