@@ -24,10 +24,19 @@ jobs:
 
     - uses: actions/checkout@v4
 
-    - uses: leanprover/lean-action@v1.0.0
+    - name: Install elan
+      run: |
+        set -o pipefail
+        curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- --default-toolchain none -y
+        ~/.elan/bin/lean --version
+        echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+    - name: Cache `.lake` folder
+      id: cache-lake
+      uses: actions/cache@v4
       with:
-        use-mathlib-cache: false
-        use-github-cache: true
+        path: .lake
+        key: ${{ runner.os }}-lake
 
     - name: Run LNSym Makefile
       run: |
