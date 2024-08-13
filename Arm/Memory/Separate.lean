@@ -504,12 +504,13 @@ theorem BitVec.toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
 
 theorem BitVec.ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by sorry
 
+
 /- value of `read_mem_bytes'` when subset. -/
 theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
   (hsep : mem_subset' x (xn*8) y (yn*8)) -- subset relation.
   (val : BitVec (yn * 8)) :
     read_mem_bytes' xn x (write_mem_bytes' yn y val mem) =
-      val.extractLsBytes (y.toNat - x.toNat) xn := by
+      val.extractLsBytes (x.toNat - y.toNat) xn := by
   apply BitVec.eq_of_getLsb_eq
   intros i
   obtain ⟨hx, hy, hstart, hend⟩ := hsep
@@ -527,7 +528,7 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
     have h := i.isLt
     simp at h
   · simp only [show (0 < xn) by omega]
-    simp only [show ((y.toNat - x.toNat) * 8 + xn * 8 - 1 - (y.toNat - x.toNat) * 8) = xn * 8 - 1 by omega]
+    simp only [show ((x.toNat - y.toNat) * 8 + xn * 8 - 1 - (x.toNat - y.toNat) * 8) = xn * 8 - 1 by omega]
     by_cases h₁ : ↑i < xn * 8
     · simp only [h₁]
       simp only [show (i ≤ xn * 8 - 1) by omega]
@@ -551,7 +552,12 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
         omega
       · simp only [h₂, if_false]
         by_cases h₃ : x.toNat + i / 8 ≥ y.toNat + yn
-        · sorry
+        · rw [BitVec.le_def] at hstart
+          have hcontra₁ : xn * 8 < yn * 8 := by omega
+          have hcontra₂ : xn < yn := by omega
+          -- | this is only true when acess is byte aligned?
+          have hcontra₃ : x.toNat + xn ≤ y.toNat + yn := by sorry
+          omega
         · simp only [h₃, if_false]
           simp only [show i % 8 ≤ 7 by omega]
           simp only [decide_True, Bool.true_and]
@@ -570,7 +576,8 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
           conv =>
             rhs
             rw [← himod]
-          sorry
+          rw [BitVec.le_def] at hstart
+          omega
     · simp [h₁]
       intros h
       apply BitVec.getLsb_ge
