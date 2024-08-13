@@ -13,7 +13,7 @@ on:
 jobs:
   build:
 
-    runs-on: macos-14 # aarch64 machine for cosim.
+    runs-on: [ubuntu-latest, macos-14] # aarch64 machine for cosim.
 
     steps:
 
@@ -38,6 +38,12 @@ jobs:
         path: .lake
         key: ${{ runner.os }}-lake
 
-    - name: Run LNSym Makefile
+    - name: Run LNSym Makefile (Ubuntu)
+      if : runner.os != 'macos-14' # not a cosim machine, so build all tests.
       run: |
           make all
+
+    - name: Run LNSym Cosimulation (MacOS)
+      if : runner.os == 'macos-14' # cosim machine, run cosim.
+      run: |
+          make cosim NUM_TESTS=100
