@@ -9,6 +9,9 @@ on:
   # Run on pull request activity:
   pull_request: {}
 
+runs-on:
+  macos-14 # enable M1 runner so we get cosim on amd64.
+
 jobs:
   build:
 
