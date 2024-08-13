@@ -11,12 +11,9 @@ on:
 
 
 jobs:
-  runs-on:
-    macos-14 # enable M1 runner so we get cosim on amd64.
-
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: macos-14
 
     steps:
 
