@@ -694,12 +694,12 @@ theorem read_mem_eq_read_mem' : read_mem addr s = read_mem' addr s.mem := rfl
 theorem getLsb_read_mem' : (read_mem' addr s).getLsb i = (s addr).getLsb i :=
   rfl
 
-def read_mem_bytes' (n : Nat) (addr : BitVec 64) (s : Memory) : BitVec (n * 8) :=
+def read_mem_bytes' (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) :=
   match n with
   | 0 => 0#0
   | n' + 1 =>
-    let byte := read_mem' addr s
-    let rest := read_mem_bytes' n' (addr + 1#64) s
+    let byte := read_mem' addr m
+    let rest := read_mem_bytes' n' (addr + 1#64) m
     have h : n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
     BitVec.cast h (rest ++ byte)
 
