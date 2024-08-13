@@ -77,8 +77,8 @@ def processHypothesis (h : Expr) : MetaM (Option Hypothesis) := do
 
 /--
 info: read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat}
-  {state : ArmState} (hsep : mem_separate' x xn y yn) (val : BitVec (yn * 8)) :
-  read_mem_bytes xn x (write_mem_bytes yn y val state) = read_mem_bytes xn x state
+  {mem : ArmState} (hsep : mem_separate' x xn y yn) (val : BitVec (yn * 8)) :
+  read_mem_bytes xn x (write_mem_bytes yn y val mem) = read_mem_bytes xn x mem
 -/
 #guard_msgs in #check read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
 
