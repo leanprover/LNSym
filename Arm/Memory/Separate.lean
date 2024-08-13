@@ -392,6 +392,19 @@ theorem mem_subset'_of_length_le (h : mem_subset' a an b bn)
   · simp [BitVec.le_def]
   · omega
 
+/-- if `[a..an) ≤ [b..bn)` and `[b..bn) ⟂ [c..cn)`, then `[a..an) ⟂ [c..cn)`. -/
+theorem mem_separate'_of_mem_separate'_of_mem_subset'
+    (hsep : mem_separate' b bn c cn)
+    (hsub : mem_subset' a an b bn) :
+    mem_separate' a an c cn := by
+  obtain ⟨_, hsep₂, hsep₃⟩ := hsep
+  obtain ⟨hsub₁, _, hsub₃, hsub₄⟩ := hsub
+  simp_all only [BitVec.le_def]
+  constructor <;>
+    solve
+    | omega
+    | assumption
+
 -- theorem Nat.sub_mod_eq (x y : Nat) : (x - y) % t =
 
 private theorem Nat.sub_mod_eq_of_lt_of_le {x y : Nat} (hx : x < n) (hy : y ≤ x) :
@@ -477,15 +490,13 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   (val : BitVec (yn * 8)) :
     read_mem_bytes xn x (write_mem_bytes yn y val mem) =
     read_mem_bytes xn x mem := by
-  simp only [Nat.reduceMul, write_mem_bytes_eq_write_mem_bytes', read_mem_bytes_eq_read_mem_bytes',
-  Nat.reduceAdd, BitVec.ofNat_eq_ofNat, read_mem_bytes'_zero_eq,
+  simp only [Nat.reduceMul, memory_simp_rules,
+  Nat.reduceAdd, BitVec.ofNat_eq_ofNat,
   BitVec.cast_eq]
   apply BitVec.eq_of_getLsb_eq
   intros i
   obtain ⟨hsrc, hdest, hsplit⟩ := hsep
-  rw [getLsb_read_mem_bytes']
-  rw [getLsb_write_mem_bytes']
-  rw [getLsb_read_mem_bytes']
+  rw [Memory.getLsb_read_bytes, Memory.getLsb_write_bytes, Memory.getLsb_read_bytes]
   simp only [i.isLt]
   simp only [decide_True, ite_eq_left_iff, Bool.true_and]
   intros h₁
@@ -529,7 +540,7 @@ theorem BitVec.ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by
 theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
   (hsep : mem_subset' x xn y yn) -- subset relation.
   (val : BitVec (yn * 8)) :
-    read_mem_bytes' xn x (write_mem_bytes' yn y val mem) =
+    Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
       val.extractLsBytes (x.toNat - y.toNat) xn := by
   apply BitVec.eq_of_getLsb_eq
   intros i
@@ -538,8 +549,8 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
   obtain hx' := hx.size_le_two_pow
   obtain hy' := mem_legal'_def hy
 
-  rw [getLsb_read_mem_bytes' (by omega)]
-  rw [getLsb_write_mem_bytes' (by omega)]
+  rw [Memory.getLsb_read_bytes (by omega)]
+  rw [Memory.getLsb_write_bytes (by omega)]
   rw [BitVec.getLsb_extractLsByte]
   rw [BitVec.getLsb_extractLsBytes]
   by_cases hxn : xn = 0
@@ -564,7 +575,6 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
         rw [BitVec.toNat_ofNat_lt (by omega)]
       simp only [BitVec.lt_def]
       simp only [hadd]
-      -- TODO: change defn of mem_legal' to use `xn * 8`.
       by_cases h₂ : (x.toNat + i/ 8) < y.toNat
       · -- contradiction
         exfalso
@@ -598,7 +608,6 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
       intros h
       apply BitVec.getLsb_ge
       omega
-
 
 /--
 info: 'read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset' depends on axioms: [propext, Classical.choice, Quot.sound]
