@@ -44,11 +44,11 @@ jobs:
         key: ${{ runner.os }}-lake
 
     - name: Run LNSym Makefile (Ubuntu)
-      if : ${{ matrix.os != 'macos-14' }}$ # not a cosim machine, so build all tests.
+      if : ${{ !startsWith(matrix.os, macos) }}$ # not a cosim machine, so build all tests.
       run: |
           make all
 
     - name: Run LNSym Cosimulation (MacOS)
-      if : ${{ matrix.os == 'macos-14' }}$ # cosim machine, run cosim.
+      if : ${{ startsWith(matrix.os, macos) }}$ # cosim machine, run cosim.
       run: |
           make cosim NUM_TESTS=100
