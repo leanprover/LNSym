@@ -12,8 +12,9 @@ on:
 
 jobs:
   build:
-
-    runs-on: [ubuntu-latest, macos-14] # aarch64 machine for cosim.
+    strategy:
+      matrix:
+        runs-on: [ubuntu-latest, macos-14] # aarch64 machine for cosim.
 
     steps:
 
