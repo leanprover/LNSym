@@ -4,6 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Alex Keizer
 -/
 import Lean
+import Lean.Meta
+
 import Arm.Exec
 
 /-!
@@ -22,7 +24,7 @@ without looking at the local context.
 This function exists for backwards compatibility,
 and is likely to be deprecated and removed in the near future. -/
 
-open Lean Meta
+open Lean Meta Elab.Tactic
 open BitVec
 
 /-- A `SymContext` collects the names of various variables/hypotheses in
@@ -75,6 +77,17 @@ structure SymContext where
   to determine the name of the next state variable that is added by `sym` -/
   curr_state_number : Nat := 0
 
+/-- `h_err_type state` returns an Expr representing `r state = .None`,
+the expected type of `h_err` -/
+private def h_err_type (state : Expr) : MetaM Expr :=
+  mkEq
+    (mkApp2 (.const ``r []) (.const ``StateField.ERR []) state)
+    (.const ``StateError.None [])
+
+/-- `h_sp_type state` returns an Expr representing `CheckSPAlignment state`,
+the expected type of `h_sp` -/
+private def h_sp_type (state : Expr) : Expr :=
+  mkApp (.const ``CheckSPAlignment []) state
 
 namespace SymContext
 
@@ -96,6 +109,50 @@ def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
     { ctxt with
       state_prefix := "s",
       curr_state_number := 1 }
+
+/-- If `h_sp` or `h_err` are missing from the `SymContext`,
+add new goals of the expected types,
+and use these to add `h_sp` and `h_err` to the main goal context -/
+def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
+  withMainContext do
+    let mut ctx := ctx
+    let mut goal ← getMainGoal
+    let mut newGoals := []
+    let lCtx ← getLCtx
+    let some stateExpr :=
+      (Expr.fvar ·.fvarId) <$> lCtx.findFromUserName? ctx.state
+      | throwError "Could not find '{ctx.state}' in the local context"
+
+    if ctx.h_err.isNone then
+      let h_err := Name.mkSimple s!"h_{ctx.state}_run"
+      let newGoal ← mkFreshMVarId
+
+      goal := ← do
+        let goalType ← h_err_type stateExpr
+        let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
+        let goal' ← goal.assert h_err goalType newGoalExpr
+        let ⟨_, goal'⟩ ← goal'.intro1P
+        return goal'
+
+      newGoals := newGoal :: newGoals
+      ctx := { ctx with h_err }
+
+    if ctx.h_sp.isNone then
+      let h_sp := Name.mkSimple s!"h_{ctx.state}_sp"
+      let newGoal ← mkFreshMVarId
+
+      goal := ← do
+        let h_sp_type := h_sp_type stateExpr
+        let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
+        let goal' ← goal.assert h_sp h_sp_type newGoalExpr
+        let ⟨_, goal'⟩ ← goal'.intro1P
+        return goal'
+
+      newGoals := newGoal :: newGoals
+      ctx := { ctx with h_sp }
+
+    replaceMainGoal (goal :: newGoals)
+    return ctx
 
 /-- Given a ground term `e` of type `Nat`, fully reduce it,
 and attempt to reflect it into a meta-level `Nat` -/
@@ -160,7 +217,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   -- Find `h_run` and infer `runSteps` from it
   let sf ← mkFreshExprMVar none
   let runSteps ← mkFreshExprMVar (Expr.const ``Nat [])
-  let h_run_type ← mkEq sf (←mkAppM ``run #[runSteps, stateExpr])
+  let h_run_type ← mkEq sf (←mkAppM ``_root_.run #[runSteps, stateExpr])
   let h_run ← findLocalDeclUsernameOfTypeOrError h_run_type
 
   -- Unwrap and reflect `runSteps`
@@ -215,10 +272,16 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let pc ← instantiateMVars pc
   let pc ← withErrorContext h_pc h_pc_type <| reflectBitVecLiteral 64 pc
 
+  -- Attempt to find `h_err` and `h_sp`
+  let h_err ← findLocalDeclUsernameOfType? (←h_err_type stateExpr)
+  if h_err.isNone then
+    trace[Sym] "Could not find local hypothesis of type {←h_err_type stateExpr}"
+  let h_sp  ← findLocalDeclUsernameOfType? (h_sp_type stateExpr)
+  if h_sp.isNone then
+    trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
+
   return inferStatePrefixAndNumber {
-    state, h_run, runSteps, program, h_program, pc, h_pc,
-    h_err := none,
-    h_sp := none,
+    state, h_run, runSteps, program, h_program, pc, h_pc, h_err, h_sp
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
