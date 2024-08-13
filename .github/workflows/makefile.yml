@@ -51,4 +51,4 @@ jobs:
     - name: Run LNSym Cosimulation (MacOS)
       if : ${{ runner.os == 'macOS' }}
       run: |
-          make cosim NUM_TESTS=100
+          make cosim NUM_TESTS=100 
