@@ -45,7 +45,7 @@ def genFetchTheorem (program_name : Name) (address_str : String)
   : MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genFetchTheorem] Start heartbeats: {startHB}"
-  let declName := Name.str program_name s!"fetch_0x{address_str}"
+  let declName := Name.str program_name ("fetch_0x" ++ address_str)
   let s_program_hyp_fn :=
       fun s => -- (s.program = <orig_map>)
          (mkAppN (mkConst ``Eq [1])
@@ -118,7 +118,7 @@ def genExecTheorem (program_name : Name) (address_str : String)
     (decoded_inst : Expr) : MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genExecTheorem] Start heartbeats: {startHB}"
-  let declName := Name.str program_name s!"exec_0x{address_str}"
+  let declName := Name.str program_name ("exec_0x" ++ address_str)
   withLocalDeclD `s (mkConst ``ArmState) fun s => do
     let exec_inst_expr := (mkAppN (mkConst ``exec_inst) #[decoded_inst, s])
     trace[gen_step.debug] "[Exec_inst Expression: {exec_inst_expr}]"
@@ -173,7 +173,7 @@ def genDecodeAndExecTheorems (program_name : Name) (address_str : String)
   MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genDecodeTheorem] Start heartbeats: {startHB}"
-  let declName := Name.str program_name s!"decode_0x{address_str}"
+  let declName := Name.str program_name ("decode_0x" ++ address_str)
   let lhs := (mkAppN (Expr.const ``decode_raw_inst []) #[raw_inst])
   -- reduce and whnfD do too much and expose the internal Fin structure of the
   -- BitVecs below. whnfR does not do enough and leaves the decode_raw_inst term
@@ -215,7 +215,7 @@ def genStepTheorem (program_name : Name) (address_str : String)
   (orig_map address_expr : Expr) (simpExt : Option Name) : MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genStepTheorem] Start heartbeats: {startHB}"
-  let declName := Name.str program_name s!"stepi_0x{address_str}"
+  let declName := Name.str program_name ("stepi_0x" ++ address_str)
   let s_program_hyp_fn :=
       fun s => -- (s.program = <orig_map>)
         (mkAppN (mkConst ``Eq [1])
@@ -322,7 +322,7 @@ partial def genStepTheorems (program map : Expr) (program_name : Name)
     genStepTheorems program tl program_name thm_type simpExt
   | List.nil _ => return
   | _ =>
-    throwError s!"Unexpected program map term! {map}"
+    throwError "Unexpected program map term! {map}"
 
 -- TODO:
 -- The arguments of this command are pretty clunky. For instance, they are sort
