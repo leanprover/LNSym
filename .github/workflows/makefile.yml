@@ -16,6 +16,8 @@ jobs:
       matrix:
         runs-on: [ubuntu-latest, macos-14] # aarch64 machine for cosim.
 
+    runs-on: ${{ matrix.os }}
+
     steps:
 
     - uses: DeterminateSystems/nix-installer-action@main
