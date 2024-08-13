@@ -6,7 +6,8 @@
 
 machine_check () {
     machine=$(uname -m)
-    if [[ $machine == *aarch64* ]]; then
+    -- Most Arm Linux machine use aarch64; some Arm Darwin machines use arm64.
+    if [[ $machine == *aarch64* || $machine == *arm64* ]]; then
 	return 0
     else
 	return 1
