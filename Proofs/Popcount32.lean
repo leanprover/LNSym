@@ -12,7 +12,7 @@ section popcount32
 
 open BitVec
 
-/-! 
+/-!
 Source: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
 
 int popcount_32 (unsigned int v) {
@@ -66,14 +66,14 @@ def popcount32_program : Program :=
    (0x40061c#64 , 0xd65f03c0#32)] -- ret
 
 
-#genStepTheorems popcount32_program namePrefix:="popcount32_" thmType:="fetch"
+#genStepTheorems popcount32_program thmType:="fetch"
 
 -- #guard_msgs in
 -- #check popcount32_fetch_0x4005b4
 
-#genStepTheorems popcount32_program namePrefix:="popcount32_" thmType:="decodeExec"
+#genStepTheorems popcount32_program thmType:="decodeExec"
 
-#genStepTheorems popcount32_program namePrefix:="popcount32_" thmType:="step" `state_simp_rules
+#genStepTheorems popcount32_program thmType:="step" `state_simp_rules
 
 theorem popcount32_sym_no_error (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x4005b4#64)
