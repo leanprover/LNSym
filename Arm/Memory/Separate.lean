@@ -456,8 +456,8 @@ theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hb
 theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   (hsep : mem_separate' x xn y yn) -- separation
   (val : BitVec (yn * 8)) :
-    read_mem_bytes xn x (write_mem_bytes yn y val state) =
-    read_mem_bytes xn x state := by
+    read_mem_bytes xn x (write_mem_bytes yn y val mem) =
+    read_mem_bytes xn x mem := by
   simp only [Nat.reduceMul, write_mem_bytes_eq_write_mem_bytes', read_mem_bytes_eq_read_mem_bytes',
   Nat.reduceAdd, BitVec.ofNat_eq_ofNat, read_mem_bytes'_zero_eq,
   BitVec.cast_eq]
@@ -508,7 +508,7 @@ theorem BitVec.ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by
 theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
   (hsep : mem_subset' x (xn*8) y (yn*8)) -- subset relation.
   (val : BitVec (yn * 8)) :
-    read_mem_bytes' xn x (write_mem_bytes' yn y val state) =
+    read_mem_bytes' xn x (write_mem_bytes' yn y val mem) =
       val.extractLsBytes (y.toNat - x.toNat) xn := by
   apply BitVec.eq_of_getLsb_eq
   intros i
@@ -550,8 +550,27 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
         rw [BitVec.le_def] at hstart
         omega
       · simp only [h₂, if_false]
-        -- here: we need to take the else branc of the condition.
-        sorry
+        by_cases h₃ : x.toNat + i / 8 ≥ y.toNat + yn
+        · sorry
+        · simp only [h₃, if_false]
+          simp only [show i % 8 ≤ 7 by omega]
+          simp only [decide_True, Bool.true_and]
+          -- ⊢ val.getLsb ((x + BitVec.ofNat 64 (i / 8) - y).toNat * 8 + i % 8) = val.getLsb ((y.toNat - x.toNat) * 8 + i)
+          /-
+          This is clearly true, it simplifes to (x.toNat - y.toNat) * 8 + (i/8)*8 + i % 8.
+          which equals (x.toNat - y.toNat + i)
+          -/
+          congr 1
+          rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+          rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+          rw [BitVec.toNat_ofNat_lt (by omega)]
+          have himod : (i / 8) * 8 + (i % 8) = i := by omega
+          rw [Nat.mul_sub_right_distrib, Nat.mul_sub_right_distrib,
+            Nat.add_mul]
+          conv =>
+            rhs
+            rw [← himod]
+          sorry
     · simp [h₁]
       intros h
       apply BitVec.getLsb_ge
