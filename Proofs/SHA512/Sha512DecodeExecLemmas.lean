@@ -4,11 +4,11 @@ import Proofs.SHA512.Sha512Program
 
 -- set_option trace.gen_step.debug.heartBeats true in
 -- set_option trace.gen_step.print_names true in
-set_option maxHeartbeats 1000000 in
-#genStepTheorems sha512_program namePrefix:="sha512_" thmType:="decodeExec"
+set_option maxHeartbeats 1002500 in
+#genStepTheorems sha512_program thmType:="decodeExec"
 
 /--
-info: sha512_decode_0x1264e8 :
+info: sha512_program.decode_0x1264e8 :
   decode_raw_inst 1310722675#32 =
     some
       (ArmInst.DPSFP
@@ -17,10 +17,10 @@ info: sha512_decode_0x1264e8 :
             _fixed4 := 2#2, Rn := 19#5, Rd := 19#5 }))
 -/
 #guard_msgs in
-#check sha512_decode_0x1264e8
+#check sha512_program.decode_0x1264e8
 
 /--
-info: sha512_exec_0x126c90 (s : ArmState) :
+info: sha512_program.exec_0x126c90 (s : ArmState) :
   exec_inst
       (ArmInst.BR (BranchInst.Compare_branch { sf := 1#1, _fixed := 26#5, op := 1#1, imm19 := 523804#19, Rt := 2#5 }))
       s =
@@ -31,4 +31,4 @@ info: sha512_exec_0x126c90 (s : ArmState) :
       s
 -/
 #guard_msgs in
-#check sha512_exec_0x126c90
+#check sha512_program.exec_0x126c90

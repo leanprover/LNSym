@@ -88,11 +88,11 @@ theorem Abs.csteps_eq (s : ArmState) (i : Nat) :
 -- Generating the program effects and non-effects
 
 -- set_option trace.gen_step.print_names true in
-#genStepTheorems program namePrefix:="abs_" thmType:="fetch"
+#genStepTheorems program thmType:="fetch"
 -- set_option trace.gen_step.print_names true in
-#genStepTheorems program namePrefix:="abs_" thmType:="decodeExec"
+#genStepTheorems program thmType:="decodeExec"
 -- set_option trace.gen_step.print_names true in
-#genStepTheorems program namePrefix:="abs_" thmType:="step" `state_simp_rules
+#genStepTheorems program thmType:="step" `state_simp_rules
 
 -- (FIXME) Obtain *_cut theorems for each instruction automatically.
 
@@ -101,7 +101,7 @@ theorem abs_stepi_0x4005d0_cut (s : ArmState)
   (h_pc : r StateField.PC s = 0x4005d0#64)
   (h_err : r StateField.ERR s = StateError.None) :
   abs_cut (stepi s) = false := by
-  have := abs_stepi_0x4005d0 s (stepi s) h_program h_pc h_err
+  have := program.stepi_0x4005d0 s (stepi s) h_program h_pc h_err
   simp only [minimal_theory] at this
   simp only [abs_cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -111,7 +111,7 @@ theorem abs_stepi_0x4005d4_cut (s : ArmState)
   (h_pc : r StateField.PC s = 0x4005d4#64)
   (h_err : r StateField.ERR s = StateError.None) :
   abs_cut (stepi s) = false := by
-  have := abs_stepi_0x4005d4 s (stepi s) h_program h_pc h_err
+  have := program.stepi_0x4005d4 s (stepi s) h_program h_pc h_err
   simp only [minimal_theory] at this
   simp only [abs_cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -121,7 +121,7 @@ theorem abs_stepi_0x4005d8_cut (s : ArmState)
   (h_pc : r StateField.PC s = 0x4005d8#64)
   (h_err : r StateField.ERR s = StateError.None) :
   abs_cut (stepi s) = false := by
-  have := abs_stepi_0x4005d8 s (stepi s) h_program h_pc h_err
+  have := program.stepi_0x4005d8 s (stepi s) h_program h_pc h_err
   simp only [minimal_theory] at this
   simp only [abs_cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -131,7 +131,7 @@ theorem abs_stepi_0x4005dc_cut (s : ArmState)
   (h_pc : r StateField.PC s = 0x4005dc#64)
   (h_err : r StateField.ERR s = StateError.None) :
   abs_cut (stepi s) = true := by
-  have := abs_stepi_0x4005dc s (stepi s) h_program h_pc h_err
+  have := program.stepi_0x4005dc s (stepi s) h_program h_pc h_err
   simp only [minimal_theory] at this
   simp only [abs_cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -181,7 +181,7 @@ theorem program_effects_lemma (h_pre : abs_pre s0)
   have h_s1 : s1 = run 1 s0 := by
     simp only [run, h_step_1]
   replace h_step_1 : s1 = stepi s0 := h_step_1.symm
-  rw [abs_stepi_0x4005d0 s0 s1 h_s0_program h_s0_pc h_s0_err] at h_step_1
+  rw [program.stepi_0x4005d0 s0 s1 h_s0_program h_s0_pc h_s0_err] at h_step_1
   have h_s1_program : s1.program = program := by
     simp only [h_step_1, h_s0_program,
                state_simp_rules, minimal_theory, bitvec_rules]
@@ -199,7 +199,7 @@ theorem program_effects_lemma (h_pre : abs_pre s0)
   have h_s2 : s2 = run 1 s1 := by
     simp only [run, h_step_2]
   replace h_step_2 : s2 = stepi s1 := h_step_2.symm
-  rw [abs_stepi_0x4005d4 s1 s2 h_s1_program h_s1_pc h_s1_err] at h_step_2
+  rw [program.stepi_0x4005d4 s1 s2 h_s1_program h_s1_pc h_s1_err] at h_step_2
   -- (FIXME) abs_stepi_0x4005d4 should have reduced `decode_bit_masks`.
   simp only [reduceDecodeBitMasks] at h_step_2
   have h_s2_program : s2.program = program := by
@@ -219,7 +219,7 @@ theorem program_effects_lemma (h_pre : abs_pre s0)
   have h_s3 : s3 = run 1 s2 := by
     simp only [run, h_step_3]
   replace h_step_3 : s3 = stepi s2 := h_step_3.symm
-  rw [abs_stepi_0x4005d8 s2 s3 h_s2_program h_s2_pc h_s2_err] at h_step_3
+  rw [program.stepi_0x4005d8 s2 s3 h_s2_program h_s2_pc h_s2_err] at h_step_3
   have h_s3_program : s3.program = program := by
     simp only [h_step_3, h_s2_program,
                state_simp_rules, minimal_theory, bitvec_rules]
@@ -237,7 +237,7 @@ theorem program_effects_lemma (h_pre : abs_pre s0)
   have h_s4 : s4 = run 1 s3 := by
     simp only [run, h_step_4]
   replace h_step_4 : s4 = stepi s3 := h_step_4.symm
-  rw [abs_stepi_0x4005dc s3 s4 h_s3_program h_s3_pc h_s3_err] at h_step_4
+  rw [program.stepi_0x4005dc s3 s4 h_s3_program h_s3_pc h_s3_err] at h_step_4
   have _h_s4_program : s4.program = program := by
     simp only [h_step_4, h_s3_program,
                state_simp_rules, minimal_theory, bitvec_rules]
