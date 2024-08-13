@@ -4,11 +4,15 @@
 
 cd Arm/Insts/Cosim
 
-cat template.S | sed -e "s/ICODE/$1/" > instance.S
-gcc -c instance.S
-gcc -o simulator simulator.c instance.o
+OUTFILE=$(mktemp)
+
+cat template.S | sed -e "s/ICODE/$1/" > ${OUTFILE}.S
+gcc ${OUTFILE}.S simulator.c -o ${OUTFILE}.out
+# gcc -o simulator simulator.c instance.o
 
 shift 1
-./simulator $*
+./{OUTFILE}.out $*
+
+rm ${OUTFILE}.out ${OUTFILE}.S 
 
 ####  rm *.o simulator
