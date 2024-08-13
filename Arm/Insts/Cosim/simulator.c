@@ -13,7 +13,11 @@
 // regs[32 + 2*i+1]: Qi.d[1]
 static uint64_t regs[32 + /*Q registers */2 * 32];
 
-extern uint64_t harness(uint64_t *regfile);
+// [Shilpi]: We explicitly specify the asm routine name to use (i.e.,
+// "harness" instead of "_harness") for predictable behavior across
+// systems.
+// See https://gcc.gnu.org/onlinedocs/gcc-4.4.0/gcc/Asm-Labels.html#Asm-Labels
+extern uint64_t harness(uint64_t *regfile) asm("harness");
 
 void print_regs()
 { uint64_t i;

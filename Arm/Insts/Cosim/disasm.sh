@@ -8,15 +8,15 @@ cd Arm/Insts/Cosim
 
 if [ -e instance.o ]; then
 
-    # Disassemble the .text section of instance.o
-    base_cmd="objdump -d -j .text instance.o"
+    # Disassemble instance.o.
+    base_cmd="objdump -d instance.o"
 
     # Get 1 line (i.e., 1 instruction) after a "modinst" match.  Given
     # the layout of instance.S, this will always be the instruction
     # under test.
     raw_inst="grep -A 1 \"modinst\" | tail -n 1"
 
-    # Do not print the address -- just the instruciton bytes and its
+    # Do not print the address -- just the instruction bytes and its
     # corresponding disassembly.
     snip_inst="awk '{\$1=\"\"; print}'"
 
