@@ -773,7 +773,7 @@ This is a low level theorem.
 Prefer using theorems from `Arm.Memory.Separate` that provide higher level theorems
 in terms of memory (non)-interference.
 -/
-theorem write_mem'_of_eq (hix : ix = addr) : write_mem' addr val s ix = val := by
+theorem write_mem'_of_eq (hix : ix = addr) : write_mem' addr val m ix = val := by
   simp only [write_mem']
   subst ix
   apply store_read_over_write_same
