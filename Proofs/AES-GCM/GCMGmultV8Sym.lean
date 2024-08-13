@@ -4,9 +4,9 @@ import Tactics.StepThms
 
 namespace GCMGmultV8Program
 
-#genStepTheorems gcm_gmult_v8_program namePrefix:="gcm_gmult_v8_" thmType:="fetch" `state_simp_rules
-#genStepTheorems gcm_gmult_v8_program namePrefix:="gcm_gmult_v8_" thmType:="decodeExec" `state_simp_rules
-#genStepTheorems gcm_gmult_v8_program namePrefix:="gcm_gmult_v8_" thmType:="step" `state_simp_rules
+#genStepTheorems gcm_gmult_v8_program thmType:="fetch" `state_simp_rules
+#genStepTheorems gcm_gmult_v8_program thmType:="decodeExec" `state_simp_rules
+#genStepTheorems gcm_gmult_v8_program thmType:="step" `state_simp_rules
 
 theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_gmult_v8_program)
