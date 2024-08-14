@@ -185,6 +185,21 @@ theorem mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal (h : a2 < b1 ∨ a1 >
     omega
 
 /--
+Given two legal memory regions `[a1, a2]` and `[b1, b2]`,
+being separate is *equivalent* to:
+- either the first one ends before the second one starts (`a2 < b1`),
+- or the first one starts after the second one ends `(a1 > b2)`,
+-/
+theorem mem_separate_iff_lt_or_gt_of_mem_legal_of_mem_legal
+    (ha : mem_legal a1 a2) (hb : mem_legal b1 b2) :
+   a2 < b1 ∨ a1 > b2 ↔ mem_separate a1 a2 b1 b2 := by
+  constructor
+  · intros h
+    apply mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal <;> assumption
+  · intros h
+    apply lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal <;> assumption
+
+/--
 If we express a memory region as `[a..(a+n)]` for `(n : Nat)`,
 and this memory region is legal, then we could not have had any wraparound.
 Thus, it must be the case that (a + n).toNat = a.toNat + n
@@ -286,6 +301,25 @@ def mem_legal'_of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n)
     mem_legal' a m := by
   simp only [mem_legal', Nat.reducePow] at h ⊢
   omega
+
+/--
+`mem_legal` is equivalent to `mem_legal'`.
+-/
+theorem mem_legal_iff_mem_legal' : mem_legal a b ↔
+    mem_legal' a ((b - a).toNat + 1) := by
+  constructor
+  · intros h
+    simp only [mem_legal, decide_eq_true_eq] at h
+    rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le h]
+    · simp only [mem_legal']
+      omega
+  · intros h
+    simp only [mem_legal'] at h
+    simp only [mem_legal, BitVec.le_def, decide_eq_true_eq]
+    apply Classical.byContradiction
+    intros h₂
+    rw [BitVec.toNat_sub_eq_two_pow_sub_add_of_lt (by omega)] at h
+    omega
 
 /--
 `mem_separate' a an b bn` asserts that two memory regions [a..an) and [b..bn) are separate.
