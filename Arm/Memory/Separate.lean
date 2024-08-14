@@ -126,7 +126,8 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
     (ha : mem_legal a1 a2) (hb : mem_legal b1 b2) :
     a2 < b1 ∨ a1 > b2 := by
   unfold mem_separate mem_overlap at h
-  obtain ⟨⟨⟨h₁, h₂⟩, h₃⟩, h₄⟩ := by simpa? using h
+  obtain ⟨⟨⟨h₁, h₂⟩, h₃⟩, h₄⟩ := by simpa only [Bool.not_or, Bool.and_eq_true,
+    Bool.not_eq_true', decide_eq_false_iff_not] using h
   simp [mem_legal] at ha hb
   rw [BitVec.le_def] at ha hb
   rw [BitVec.le_def] at h₁ h₂ h₃ h₄
@@ -147,7 +148,7 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
 @[simp]
 theorem BitVec.neg_neg (x : BitVec w₁) : - (- x) = x := by
   apply BitVec.eq_of_toNat_eq
-  simp
+  simp only [toNat_neg]
   by_cases h : x.toNat = 0
   · simp [h]
   · rw [Nat.mod_eq_of_lt (a := 2^w₁ - x.toNat) (by omega)]
@@ -158,7 +159,7 @@ theorem BitVec.neg_neg (x : BitVec w₁) : - (- x) = x := by
 @[simp]
 theorem BitVec.neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by
   apply BitVec.eq_of_toNat_eq
-  simp
+  simp only [toNat_neg, ofNat_eq_ofNat, toNat_sub, toNat_ofNat, Nat.zero_mod, Nat.add_zero]
 
 theorem toNat_sub_eq_two_pow_sub_add_of_lt
     {a b : BitVec w₁} (hab : a.toNat < b.toNat) : (a - b).toNat = 2^w₁ - b.toNat + a.toNat := by
@@ -175,9 +176,9 @@ theorem mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal (h : a2 < b1 ∨ a1 >
     (ha : mem_legal a1 a2) (hb : mem_legal b1 b2) :
     mem_separate a1 a2 b1 b2 := by
   unfold mem_separate mem_overlap
-  simp
+  simp only [Bool.not_or, Bool.and_eq_true, Bool.not_eq_true', decide_eq_false_iff_not]
   unfold mem_legal at ha hb
-  simp [mem_legal] at ha hb
+  simp only [decide_eq_true_eq] at ha hb
   rw [BitVec.le_def] at ha hb
   simp only[BitVec.le_def]
   rw [BitVec.lt_def, BitVec.gt_def] at h
@@ -212,8 +213,8 @@ Thus, it must be the case that (a + n).toNat = a.toNat + n
 theorem add_lt_of_mem_legal_of_lt
     (h : mem_legal a (a + n)) :
     a.toNat + n.toNat < 2^64 := by
-  simp [mem_legal] at h
-  simp [BitVec.le_def, BitVec.toNat_add] at h
+  simp only [mem_legal, decide_eq_true_eq,
+    le_def, toNat_add, Nat.reducePow] at h
   by_cases hadd : a.toNat + n.toNat < 2^64
   · assumption
   · exfalso
@@ -234,7 +235,7 @@ Thus, it must be the case that (a + n).toNat = a.toNat + n
 theorem toNat_add_distrib_of_mem_legal_of_lt
     (h : mem_legal a (a + n)) :
     (a + n).toNat = a.toNat + n.toNat := by
-  simp [BitVec.add_def]
+  simp only [add_def, toNat_ofNat, Nat.reducePow]
   rw [Nat.mod_eq_of_lt]
   apply add_lt_of_mem_legal_of_lt h
 
@@ -286,7 +287,7 @@ theorem mem_legal_of_mem_legal' (h : mem_legal' a n) :
     mem_legal a (a + (BitVec.ofNat 64 (n - 1))) := by
   simp only [mem_legal', mem_legal, BitVec.le_def] at h ⊢
   rw [BitVec.toNat_add_eq_toNat_add_toNat]
-  simp
+  simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.le_add_right, decide_True]
   rw [BitVec.toNat_ofNat]
   rw [Nat.mod_eq_of_lt (by omega)]
   omega
@@ -297,14 +298,14 @@ Legal in the new sense implies legal in the old sense.
 Note that the subtraction could also have been written as `(b - a).toNat + 1`
 -/
 theorem mem_legal'_of_mem_legal (h: mem_legal a b) : mem_legal' a (b.toNat - a.toNat + 1) := by
-  simp [mem_legal] at h
+  simp only [mem_legal, decide_eq_true_eq] at h
   rw [mem_legal']
   rw [BitVec.le_def] at h
   omega
 
 def mem_legal'.of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n) :
     mem_legal' a m := by
-  simp [mem_legal'] at h ⊢
+  simp only [mem_legal', Nat.reducePow] at h ⊢
   omega
 
 /--
