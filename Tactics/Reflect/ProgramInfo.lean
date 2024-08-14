@@ -20,12 +20,14 @@ open Lean Meta Elab.Term
 structure ProgramInfo where
   rawProgram : HashMap (BitVec 64) (BitVec 32)
 
-def ProgramInfo.getRawInstrAt? (pi : ProgramInfo) (addr : BitVec 64) :
+namespace ProgramInfo
+
+def getRawInstrAt? (pi : ProgramInfo) (addr : BitVec 64) :
     Option (BitVec 32) :=
   pi.rawProgram.find? addr
 
 /-- Given an `Expr` of type `Program`, generate the basic `ProgramInfo` -/
-partial def ProgramInfo.generateFromExpr (e : Expr) : MetaM ProgramInfo := do
+partial def generateFromExpr (e : Expr) : MetaM ProgramInfo := do
   let type ← inferType e
   if !(←isDefEq type (mkConst ``Program)) then
     throwError "type mismatch: {e} {← mkHasTypeButIsExpectedMsg type (mkConst ``Program)}"
@@ -52,7 +54,7 @@ partial def ProgramInfo.generateFromExpr (e : Expr) : MetaM ProgramInfo := do
 
 /-- Given the `Name` of a constant of type `Program`,
 generate the basic `ProgramInfo` -/
-def ProgramInfo.generateFromConstName (program : Name) : MetaM ProgramInfo := do
+def generateFromConstName (program : Name) : MetaM ProgramInfo := do
   let .defnInfo defnInfo ← getConstInfo program
     | throwError "expected a definition, but {program} is not"
   generateFromExpr defnInfo.value
@@ -74,13 +76,13 @@ initialize programInfoExt : PersistentEnvExtension (Name × ProgramInfo) (Name �
   }
 
 /-- store a `PogramInfo` for the given `program` in the environment -/
-private def ProgramInfo.store [Monad m] [MonadEnv m]
+private def store [Monad m] [MonadEnv m]
     (program : Name) (pi : ProgramInfo) : m Unit := do
   modifyEnv (programInfoExt.addEntry · ⟨program, pi⟩)
 
 /-- look up the `ProgramInfo` for a given `program` in the environment,
 returns `None` if not found -/
-def ProgramInfo.lookup? [Monad m] [MonadEnv m] (program : Name) :
+def lookup? [Monad m] [MonadEnv m] (program : Name) :
     m (Option ProgramInfo) := do
   let env ← getEnv
   let state := programInfoExt.getState env
@@ -88,7 +90,7 @@ def ProgramInfo.lookup? [Monad m] [MonadEnv m] (program : Name) :
 
 /-- look up the `ProgramInfo` for a given `program` in the environment,
 or, if none was found, generate (and cache) new program info -/
-def ProgramInfo.lookupOrGenerate (program : Name) : MetaM ProgramInfo := do
+def lookupOrGenerate (program : Name) : MetaM ProgramInfo := do
   if let some pi ← lookup? program then
     return pi
   else
