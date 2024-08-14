@@ -145,27 +145,6 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le h₆'] at h₂
       omega
 
-@[simp]
-theorem BitVec.neg_neg (x : BitVec w₁) : - (- x) = x := by
-  apply BitVec.eq_of_toNat_eq
-  simp only [toNat_neg]
-  by_cases h : x.toNat = 0
-  · simp [h]
-  · rw [Nat.mod_eq_of_lt (a := 2^w₁ - x.toNat) (by omega)]
-    rw [Nat.sub_sub_eq_min]
-    rw [Nat.min_def]
-    simp [show ¬ 2^w₁ ≤ x.toNat by omega]
-
-@[simp]
-theorem BitVec.neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by
-  apply BitVec.eq_of_toNat_eq
-  simp only [toNat_neg, ofNat_eq_ofNat, toNat_sub, toNat_ofNat, Nat.zero_mod, Nat.add_zero]
-
-theorem toNat_sub_eq_two_pow_sub_add_of_lt
-    {a b : BitVec w₁} (hab : a.toNat < b.toNat) : (a - b).toNat = 2^w₁ - b.toNat + a.toNat := by
-  simp only [toNat_sub]
-  rw [Nat.mod_eq_of_lt (by omega)]
-
 /--
 Given two legal memory regions `[a1, a2]` and `[b1, b2]`,
 such that either the first one ends before the second one starts (`a2 < b1`),
@@ -241,7 +220,6 @@ theorem toNat_add_distrib_of_mem_legal_of_lt
 
 end Separate
 
-
 /-#
 
 ### New Memory Model
@@ -302,6 +280,7 @@ theorem mem_legal'_of_mem_legal (h: mem_legal a b) : mem_legal' a (b.toNat - a.t
   rw [mem_legal']
   rw [BitVec.le_def] at h
   omega
+
 
 def mem_legal'_of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n) :
     mem_legal' a m := by

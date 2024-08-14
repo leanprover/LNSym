@@ -672,7 +672,26 @@ protected theorem shift_left_zero_eq (n : Nat) (x : BitVec n) : x <<< 0 = x := b
     intro i
     simp only [toNat_shiftLeft, Nat.shiftLeft_zero, toNat_mod_cancel]
 
+---------------------------- Negate Lemmas ---------------------------
+
+
+@[simp]
+theorem neg_neg (x : BitVec w₁) : - (- x) = x := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [toNat_neg]
+  by_cases h : x.toNat = 0
+  · simp [h]
+  · rw [Nat.mod_eq_of_lt (a := 2^w₁ - x.toNat) (by omega)]
+    rw [Nat.sub_sub_eq_min]
+    rw [Nat.min_def]
+    simp [show ¬ 2^w₁ ≤ x.toNat by omega]
+
+theorem neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [toNat_neg, ofNat_eq_ofNat, toNat_sub, toNat_ofNat, Nat.zero_mod, Nat.add_zero]
+
 ----------------------------------------------------------------------
+
 
 /- Bitvector pattern component syntax category, originally written by
 Leonardo de Moura. -/
@@ -847,6 +866,12 @@ theorem toNat_sub_eq_toNat_sub_toNat_of_le {x y : BitVec w} (h : y ≤ x) :
   · rw [Nat.sub_add_eq_add_sub_of_le_of_le (by omega) (by omega), Nat.add_mod,
       Nat.mod_self, Nat.zero_add, Nat.mod_mod, Nat.mod_eq_of_lt (by omega)]
 
+/- Subtracting bitvectors when there is overflow. -/
+theorem toNat_sub_eq_two_pow_sub_add_of_lt
+    {a b : BitVec w₁} (hab : a.toNat < b.toNat) : (a - b).toNat = 2^w₁ - b.toNat + a.toNat := by
+  simp only [toNat_sub]
+  rw [Nat.mod_eq_of_lt (by omega)]
+
 theorem neq_of_lt {x y : BitVec w₁} (h : x < y) : x ≠ y := by
   rintro rfl
   simp [BitVec.lt_def] at h
@@ -860,6 +885,7 @@ theorem neq_of_gt {x y : BitVec w₁} (h : x > y) : x ≠ y := by
 theorem toNat_add_eq_toNat_add_toNat {x y : BitVec w} (h : x.toNat + y.toNat < 2^w) :
     (x + y).toNat = x.toNat + y.toNat := by
   rw [BitVec.toNat_add, Nat.mod_eq_of_lt h]
+
 
 /-! ### Least Significant Byte -/
 
