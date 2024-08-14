@@ -17,7 +17,7 @@ initialize
   Lean.registerTraceClass `Sym
 
 open BitVec
-open Lean (FVarId TSyntax)
+open Lean (FVarId TSyntax logWarning)
 open Lean.Elab.Tactic (TacticM evalTactic withMainContext)
 
 /-- A wrapper around `evalTactic` that traces the passed tactic script and
@@ -207,5 +207,14 @@ elab "sym1_n" n:num s:(sym_at)? : tactic =>
     let mut c ← SymContext.fromLocalContext s
     c ← c.addGoalsForMissingHypotheses
 
-    for _ in List.range n.getNat do
+    let n ←
+      if n.getNat ≤ c.runSteps then
+        pure n.getNat
+      else
+        let h_run ← userNameToMessageData c.h_run
+        logWarning m!"Symbolic simulation using {h_run} is limited to at most {c.runSteps} steps"
+        pure c.runSteps
+
+    -- The main loop
+    for _ in List.range n do
       c ← sym1 c
