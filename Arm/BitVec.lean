@@ -914,8 +914,6 @@ theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
   rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
   omega
 
-
-
 /-! ### Least Significant Byte -/
 
 /-- Definition to extract the `n`th least significant *Byte* from a bitvector. -/
