@@ -160,6 +160,7 @@ h_run      : sf = run $STEPS s0
 Where $PC and $STEPS are concrete constants.
 Note that the tactic will search for assumption of *exactly* these names,
 it won't search by def-eq -/
+@[deprecated "Use `sym1_n` instead"]
 elab "sym1_i_n" i:num n:num _program:(ident)? : tactic => do
   Lean.Elab.Tactic.evalTactic (← `(tactic|
     simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
