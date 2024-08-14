@@ -2,21 +2,20 @@
 # Borrowed from the s2n-bignum project
 # https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/simulator.c
 # Author(s): John Harrison, Juneyoung Lee
-set -e
-set -o xtrace
 
-# cd Arm/Insts/Cosim
+cd Arm/Insts/Cosim
 
 OUTFILE=$(mktemp)
-echo "using tempfile ${OUTFILE}"
+
+echo "Writing asm to: '${OUTFILE}.S'. Executable to: '${OUTFILE}.out'." >&2
 
 cat template.S | sed -e "s/ICODE/$1/" > "${OUTFILE}.S"
-gcc -c "${OUTFILE}.S" 
+gcc -c "${OUTFILE}.S"  -o "${OUTFILE}.o"
 gcc -o "${OUTFILE}.out" simulator.c "${OUTFILE}.o"
 
 shift 1
-./"{OUTFILE}.out" "$@"
+"${OUTFILE}.out" "$@"
 
-# rm ${OUTFILE}.out ${OUTFILE}.S 
+#### rm "${OUTFILE}.out" "${OUTFILE}.S" "${OUTFILE}.o"
 
 ####  rm *.o simulator
