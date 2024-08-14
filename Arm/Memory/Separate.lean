@@ -290,6 +290,7 @@ def mem_legal'_of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n)
 /--
 `mem_separate' a an b bn` asserts that two memory regions [a..an) and [b..bn) are separate.
 Note that we use *half open* intervals.
+In prose, we may notate this as `[a..an) ⟂ [b..bn)`.
 See also: Why numbering should start at zero (https://www.cs.utexas.edu/~EWD/ewd08xx/EWD831.PDF)
 -/
 structure mem_separate' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Prop where
@@ -323,7 +324,9 @@ theorem mem_separate_of_mem_separate' (h : mem_separate' a an b bn)
   · sorry
 -/
 
-/-- `mem_subset' a an b bn` witnesses that `[a..a+an)` is a subset of `[b..b+bn)`-/
+/-- `mem_subset' a an b bn` witnesses that `[a..a+an)` is a subset of `[b..b+bn)`.
+In prose, we may notate this as `[a..an) ≤ [b..bn)`.
+-/
 structure mem_subset' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Prop where
   ha : mem_legal' a an
   hb : mem_legal' b bn
@@ -371,7 +374,10 @@ theorem mem_subset'_of_length_le (h : mem_subset' a an b bn)
   · simp [BitVec.le_def]
   · omega
 
-/-- if `[a..an) ≤ [b..bn)` and `[b..bn) ⟂ [c..cn)`, then `[a..an) ⟂ [c..cn)`. -/
+/-- if `[a..an) ≤ [b..bn)` and `[b..bn) ⟂ [c..cn)`,
+then `[a..an) ⟂ [c..cn)`.
+(Recall that `⟂` stands for `mem_separate'`.)
+-/
 theorem mem_separate'_of_mem_separate'_of_mem_subset'
     (hsep : mem_separate' b bn c cn)
     (hsub : mem_subset' a an b bn) :
