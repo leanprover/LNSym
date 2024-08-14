@@ -224,6 +224,7 @@ def mk_one_test_task (verbose : Bool) (fn : IO (Option (BitVec 32))) : IO (Optio
   | .none => return .none
   | .some inst => IO.asTask do
     let ret ← one_test inst
+    -- NOTE: this is broken, since it assumes that we know the file name that we are disassembling x(
     let disasm ← get_disasm
     if verbose then 
       IO.println s!"Instruction: {disasm}"
