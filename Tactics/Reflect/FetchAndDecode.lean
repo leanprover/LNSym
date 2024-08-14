@@ -14,6 +14,8 @@ open Elab.Tactic Elab.Term
 initialize
   Lean.registerTraceClass `Sym.reduceFetchDecode
 
+
+
 /-! ## `reduceFetchInst?` -/
 
 theorem fetch_inst_eq_of_prgram_eq_of_map_find
@@ -94,6 +96,8 @@ def reduceDecodeInst? (rawInst : Expr) : MetaM Expr := do
   let expr ← withTransparency .all <| reduce expr
   canonicalizeBitVec expr
 
+
+
 /-! ## Simprocs -/
 
 simproc reduceFetchInst (fetch_inst _ _) := fun e => do
@@ -107,8 +111,6 @@ simproc reduceFetchInst (fetch_inst _ _) := fun e => do
   catch err =>
     trace[Sym.reduceFetchDecode] "{Lean.crossEmoji} {err.toMessageData}"
     return .continue
-
-
 
 simproc reduceDecodeInst (decode_raw_inst _) := fun e => do
   trace[Sym.reduceFetchDecode] "⚙️ simplifying {e}"
