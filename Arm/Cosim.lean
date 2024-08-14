@@ -226,7 +226,7 @@ def run_n_tests (verbose : Bool) (logPrefix : String) (n : Nat) (fn : IO (Option
       let inst := maybe_inst.get!
       let ret ← one_test inst
       let disasm ← get_disasm
-      if verbose then IO.println s!"{logPrefix} Sample({i+1}/{n}): {disasm}"
+      if verbose then IO.println s!"{logPrefix} Sample ({i+1}/{n}): {disasm}"
       if ret == false then
         throw (IO.userError "Mismatch found!")
   pure true
