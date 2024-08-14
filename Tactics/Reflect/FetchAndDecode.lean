@@ -11,7 +11,7 @@ open Lean Meta
 open Elab.Tactic Elab.Term
 
 initialize
-  Lean.registerTraceClass `Sym.reduceFetchInst
+  Lean.registerTraceClass `Sym.reduceFetchDecode
 
 theorem fetch_inst_eq_of_prgram_eq_of_map_find
     {state : ArmState} {program : Program}
@@ -21,6 +21,10 @@ theorem fetch_inst_eq_of_prgram_eq_of_map_find
     fetch_inst addr state = inst? := by
   rw [fetch_inst, h_program, h_map]
 
+/-- Reduce an expression `fetch_inst $addr $s` to a concrete bitvector `x`,
+assuming we have some hypothesis `$s.program = ?concreteProgram` in the local
+context, while also returning a proof that `toExpr (some x)` is equal to
+the original expression -/
 def reduceFetchInst? (addr : Expr) (s : Expr) :
     MetaM (BitVec 32 × Expr) := do
   let addr ← reflectBitVecLiteral 64 addr
@@ -33,7 +37,7 @@ def reduceFetchInst? (addr : Expr) (s : Expr) :
   let some rawInst := programInfo.getRawInstrAt? addr
     | throwError "No instruction found at address {addr}"
 
-  trace[Sym.reduceFetchInst] "{Lean.checkEmoji} reduced to: {rawInst}"
+  trace[Sym.reduceFetchDecode] "{Lean.checkEmoji} reduced to: {rawInst}"
 
   -- Now, construct the proof
   let proof := mkAppN (mkConst ``fetch_inst_eq_of_prgram_eq_of_map_find) #[
@@ -47,11 +51,13 @@ def reduceFetchInst? (addr : Expr) (s : Expr) :
         mkApp (.const ``BitVec []) (toExpr 32))
       (toExpr (some rawInst))
   ]
-  trace[Sym.reduceFetchInst] "{Lean.checkEmoji} found a proof:\n\t{proof}"
+  trace[Sym.reduceFetchDecode] "{Lean.checkEmoji} found a proof:\n\t{proof}"
   return ⟨rawInst, proof⟩
 
+/-! ## Simprocs -/
+
 simproc reduceFetchInst (fetch_inst _ _) := fun e => do
-  trace[Sym.reduceFetchInst] "⚙️ simplifying {e}"
+  trace[Sym.reduceFetchDecode] "⚙️ simplifying {e}"
   let_expr fetch_inst addr s := e
     | return .continue
 
@@ -59,5 +65,5 @@ simproc reduceFetchInst (fetch_inst _ _) := fun e => do
     let ⟨x, proof?⟩ ← reduceFetchInst? addr s
     return .done {expr := toExpr (some x), proof?}
   catch err =>
-    trace[Sym.reduceFetchInst] "{Lean.crossEmoji} {err.toMessageData}"
+    trace[Sym.reduceFetchDecode] "{Lean.crossEmoji} {err.toMessageData}"
     return .continue
