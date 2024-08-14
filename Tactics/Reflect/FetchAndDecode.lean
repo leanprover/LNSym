@@ -14,8 +14,6 @@ open Elab.Tactic Elab.Term
 initialize
   Lean.registerTraceClass `Sym.reduceFetchDecode
 
-
-
 /-! ## `reduceFetchInst?` -/
 
 theorem fetch_inst_eq_of_prgram_eq_of_map_find
@@ -63,7 +61,7 @@ def reduceFetchInst? (addr : Expr) (s : Expr) :
 
 /-! ## `reduceDecodeInst?` -/
 
-/-- `canocalizeBitVec e` recursively walks over expression `e` to convert any
+/-- `canonicalizeBitVec e` recursively walks over expression `e` to convert any
 occerences of:
   `BitVec.ofFin w (Fin.mk x _)`
 to the canonical form:
@@ -79,7 +77,7 @@ partial def canonicalizeBitVec (e : Expr) : MetaM Expr := do
           if w.hasFVar || w.hasMVar then
             pure w
           else
-            withTransparency .all <| reduce w
+            withTransparency .all <| reduce w -- NOTE: potentially expensive reduction
         return mkApp2 (mkConst ``BitVec.ofNat) w x
     | _ => fallback
   where
@@ -95,8 +93,6 @@ def reduceDecodeInst? (rawInst : Expr) : MetaM Expr := do
   let expr := mkApp (mkConst ``decode_raw_inst) rawInst
   let expr ← withTransparency .all <| reduce expr
   canonicalizeBitVec expr
-
-
 
 /-! ## Simprocs -/
 
