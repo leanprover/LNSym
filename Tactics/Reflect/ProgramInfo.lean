@@ -28,8 +28,6 @@ def ProgramInfo.getRawInstrAt? (pi : ProgramInfo) (addr : BitVec 64) :
     Option (BitVec 32) :=
   pi.rawProgram.find? addr
 
-#check def_program
-
 /-- Given an `Expr` of type `Program`, generate the basic `ProgramInfo` -/
 partial def ProgramInfo.generateFromExpr (e : Expr) : MetaM ProgramInfo := do
   let type ← inferType e
