@@ -127,21 +127,20 @@ end stepiTac
 
 def sym1 (c : SymContext) : TacticM SymContext :=
   withMainContext do
-    let c' := c.next
-    -- h_st: prefix of user names of hypotheses about state st
+    trace[Sym] "(sym1): simulating step {c.curr_state_number}:\n{repr c}"
+    let h_step_n' := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
     let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
-    -- h_step_n': name of the hypothesis with the `stepi` function
-    let h_step_n' := Lean.mkIdent (.str .anonymous s!"h_step_{c'.curr_state_number}")
+
     let stx ←
       `(tactic|
-         (init_next_step $c.h_run_ident:ident $h_step_n':ident $c'.state_ident:ident
+         (init_next_step $c.h_run_ident:ident $h_step_n':ident $c.next_state_ident:ident
           -- Simulate one instruction
           stepi_tac $h_step_n':ident $h_st_prefix:str
           intro_fetch_decode_lemmas $h_step_n':ident $c.h_program_ident:ident $h_st_prefix:str
       ))
     trace[Sym] "Running tactic:\n{stx}"
     evalTactic stx
-    return c'
+    return c.next
 
 
 open Lean (Name) in
