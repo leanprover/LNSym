@@ -424,22 +424,19 @@ theorem mem_separate'_of_mem_separate'_of_mem_subset'
     | omega
     | assumption
 
--- theorem Nat.sub_mod_eq (x y : Nat) : (x - y) % t =
-
 private theorem Nat.sub_mod_eq_of_lt_of_le {x y : Nat} (hx : x < n) (hy : y ≤ x) :
     (x - y) % n = (x % n) - (y % n) := by
   rw [Nat.mod_eq_of_lt (by omega)]
   rw [Nat.mod_eq_of_lt (by omega)]
   rw [Nat.mod_eq_of_lt (by omega)]
 
--- mem_subset' is a safe over-approximation of mem_subset.
+-- `mem_subset'` implies mem_subset.
 theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hbn : bn > 0) :
   mem_subset a (a + BitVec.ofNat 64 (an - 1)) b (b + BitVec.ofNat 64 (bn - 1)):= by
   unfold mem_subset
   obtain ⟨ha, hb, hstart, hend⟩ := h
   unfold mem_legal' at ha hb
-  simp only [Nat.reducePow, Nat.add_one_sub_one, Bool.or_eq_true, decide_eq_true_eq,
-    Bool.and_eq_true]
+  simp only [bitvec_rules, minimal_theory]
   by_cases hb : bn = 2^64
   · left
     apply BitVec.eq_of_toNat_eq
@@ -479,9 +476,7 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   (val : BitVec (yn * 8)) :
     read_mem_bytes xn x (write_mem_bytes yn y val mem) =
     read_mem_bytes xn x mem := by
-  simp only [Nat.reduceMul, memory_rules,
-    Nat.reduceAdd, BitVec.ofNat_eq_ofNat,
-    BitVec.cast_eq]
+  simp only [bitvec_rules, minimal_theory, memory_rules]
   apply BitVec.eq_of_getLsb_eq
   intros i
   obtain ⟨hsrc, hdest, hsplit⟩ := hsep
@@ -493,8 +488,8 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   -- we need to make use of mem_separate to show that src_addr + i / 8 < dest_addr | src_addr + i/7 ≥ dest_addr + 16
   exfalso
   · rcases hsplit with this | this
-    · simp only [BitVec.not_lt, BitVec.le_def, BitVec.toNat_add,
-        BitVec.toNat_ofNat, Nat.reducePow, Nat.add_mod_mod] at h₁
+    · simp only [bitvec_rules, minimal_theory, BitVec.not_lt, BitVec.le_def, BitVec.toNat_add,
+        BitVec.toNat_ofNat] at h₁
       omega
     · have hcontra_h2 : x.toNat + 16 < y.toNat + 16 := by
         simp at this
@@ -586,10 +581,7 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
             rw [← himod]
           rw [BitVec.le_def] at hstart
           omega
-    · simp only [h₁, decide_False, BitVec.toNat_add, BitVec.toNat_ofNat,
-        Nat.reducePow, Nat.add_mod_mod, ge_iff_le, BitVec.toNat_sub,
-        Bool.false_and, decide_True, Bool.true_and,
-        Bool.false_eq, Bool.and_eq_false_imp, decide_eq_true_eq]
+    · simp only [h₁, bitvec_rules, minimal_theory]
       intros h
       apply BitVec.getLsb_ge
       omega
@@ -600,5 +592,4 @@ info: 'read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset' depends on a
 #guard_msgs in #print axioms read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
 
 
-
-----------------------------------------------------------------------
+end NewDefinitions

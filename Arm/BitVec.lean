@@ -239,9 +239,11 @@ attribute [bitvec_rules] Nat.reduceBneDiff
 attribute [bitvec_rules] Nat.reduceLTLE
 attribute [bitvec_rules] Nat.reduceLeDiff
 attribute [bitvec_rules] Nat.reduceSubDiff
+attribute [bitvec_rules] BitVec.toNat_ofNat
 
 -- Some Fin lemmas useful for bitvector reasoning:
 attribute [bitvec_rules] Fin.eta
+attribute [bitvec_rules] Fin.isLt
 attribute [bitvec_rules] Fin.isValue -- To normalize Fin literals
 
 -- Some lemmas useful for clean-up after the use of simp/ground
@@ -430,7 +432,7 @@ theorem nat_bitvec_sub (x y : BitVec n) :
   rw [this, Nat.add_comm]
 
 
-theorem BitVec.toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
+theorem toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
     (BitVec.ofNat w₁ n).toNat = n := by
   simp only [toNat_ofNat, Nat.mod_eq_of_lt hn]
 
