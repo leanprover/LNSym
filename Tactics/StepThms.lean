@@ -34,24 +34,26 @@ initialize registerTraceClass `gen_step.debug
 /- When true, prints the number of heartbeats taken per theorem. -/
 initialize registerTraceClass `gen_step.debug.heartBeats
 
+/-- Return the expression `state.program = program` -/
+def programHypType (state : Expr) (program : Name) : Expr :=
+  mkAppN (mkConst ``Eq [1]) #[
+    mkConst ``Program,
+    mkAppN (mkConst ``ArmState.program) #[state],
+    mkConst program
+  ]
+
 /- Generate and prove a fetch theorem of the following form:
 ```
 theorem (<thm_prefix> ++ "fetch_0x" ++ <address_str>) (s : ArmState)
  (h : s.program = <orig_map>) : fetch_inst <address_expr> s = some <raw_inst_expr>
 ```
 -/
-def genFetchTheorem (program_name : Name) (address_str : String)
+def genFetchTheorem (program : Name) (address_str : String)
   (orig_map address_expr raw_inst_expr : Expr)
   : MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genFetchTheorem] Start heartbeats: {startHB}"
-  let declName := Name.str program_name ("fetch_0x" ++ address_str)
-  let s_program_hyp_fn :=
-      fun s => -- (s.program = <orig_map>)
-         (mkAppN (mkConst ``Eq [1])
-                    #[(mkConst ``Program),
-                      (mkAppN (mkConst ``ArmState.program) #[s]),
-                      orig_map])
+  let declName := Name.str program ("fetch_0x" ++ address_str)
   let fetch_inst_fn := fun s => -- (fetch_inst <address_expr> <s>)
                         (mkAppN (mkConst ``fetch_inst) #[address_expr, s])
   let bitvec32 := (mkAppN (mkConst ``BitVec) #[mkRawNatLit 32])
@@ -61,14 +63,14 @@ def genFetchTheorem (program_name : Name) (address_str : String)
                   --      fetch_inst <address_expr> s = some <raw_inst_expr>
                 forallE `s (mkConst ``ArmState)
                   (forallE (Name.mkSimple "h")
-                    (s_program_hyp_fn (bvar 0))
+                    (programHypType (bvar 0) program)
                       (mkAppN (mkConst ``Eq [1])
                         #[opt_bitvec32, (fetch_inst_fn (bvar 1)), raw_inst_rhs])
                 Lean.BinderInfo.default)
                Lean.BinderInfo.default
   trace[gen_step.debug] "[genFetchTheorem] Statement of the theorem: {orig_thm}"
   withLocalDeclD `s (mkConst ``ArmState) fun s => do
-    withLocalDeclD `h (s_program_hyp_fn s) fun _h => do
+    withLocalDeclD `h (programHypType s program) fun _h => do
     let lhs := fetch_inst_fn s
     trace[gen_step.debug] "[genFetchTheorem] lhs: {lhs}"
     let (ctx, simprocs) ← LNSymSimpContext (config := {ground := false})
@@ -211,17 +213,11 @@ theorem (<thm_prefix> ++ "stepi_0x" ++ <address_str>) (s sn : ArmState)
   (sn = <simplified_semantics>)
 ```
 -/
-def genStepTheorem (program_name : Name) (address_str : String)
+def genStepTheorem (program : Name) (address_str : String)
   (orig_map address_expr : Expr) (simpExt : Option Name) : MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genStepTheorem] Start heartbeats: {startHB}"
-  let declName := Name.str program_name ("stepi_0x" ++ address_str)
-  let s_program_hyp_fn :=
-      fun s => -- (s.program = <orig_map>)
-        (mkAppN (mkConst ``Eq [1])
-                #[(mkConst ``Program),
-                  (mkAppN (mkConst ``ArmState.program) #[s]),
-                  orig_map])
+  let declName := Name.str program ("stepi_0x" ++ address_str)
   let bitvec64 := (mkAppN (mkConst ``BitVec) #[mkRawNatLit 64])
   let s_pc_hyp_fn :=
       fun s => -- (r StateField.PC s = <address_expr>)
@@ -241,11 +237,11 @@ def genStepTheorem (program_name : Name) (address_str : String)
   let helper_thms :=
       -- We assume that the necessary fetch, decode, and exec theorems already exist.
       Array.map
-        (fun str => Name.str program_name (str ++ address_str))
+        (fun str => Name.str program (str ++ address_str))
         #["fetch_0x", "decode_0x", "exec_0x"]
   withLocalDeclD `sn (mkConst ``ArmState) fun sn => do
   withLocalDeclD `s (mkConst ``ArmState) fun s => do
-  withLocalDeclD `h_program (s_program_hyp_fn s) fun _h_program => do
+  withLocalDeclD `h_program (programHypType s program) fun _h_program => do
   withLocalDeclD `h_pc (s_pc_hyp_fn s) fun _h_program => do
   withLocalDeclD `h_err (s_err_hyp_fn s) fun _h_err => do
     let lhs := stepi_fn sn s
@@ -280,7 +276,7 @@ def genStepTheorem (program_name : Name) (address_str : String)
       -- TODO: Compute levelParams instead of hard-coding it?
       levelParams := [],
       type := type,
-      value := value -- (← mkSorry type (synthetic := true))
+      value := value
     }
     addDecl decl
     -- Unlike the fetch, decode, and exec theorems, which we view as ephemeral,
