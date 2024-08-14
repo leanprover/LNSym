@@ -9,16 +9,37 @@ import Tests.SHA2.SHA512ProgramTest
 
 /-! ## Tests for `refuceFetchInst` simproc -/
 
-example (h : s.program = GCMGmultV8Program.gcm_gmult_v8_program) :
-    fetch_inst 0x7d8800#64 s = (some 1279294481#32) := by
+/--
+error: unsolved goals
+s : ArmState
+z : Option (BitVec 32)
+h : s.program = GCMGmultV8Program.gcm_gmult_v8_program
+⊢ some 1279294481#32 = z
+-/
+#guard_msgs in example (h : s.program = GCMGmultV8Program.gcm_gmult_v8_program) :
+    fetch_inst 0x7d8800#64 s = z := by
   simp (config := {ground := false}) only [reduceFetchInst]
 
-example (h : s.program = sha512_program_map) :
-    fetch_inst 0x1264c0#64 s = (some 0xa9bf7bfd#32) := by
+/--
+error: unsolved goals
+s : ArmState
+z : Option (BitVec 32)
+h : s.program = sha512_program_map
+⊢ some 2847898621#32 = z
+-/
+#guard_msgs in example (h : s.program = sha512_program_map) :
+    fetch_inst 0x1264c0#64 s = z := by
   simp (config := {ground := false}) only [reduceFetchInst]
 
-example (h : s.program = sha512_program_map) :
-    fetch_inst 0x126c98#64 s = (some 0xf84107fd#32) := by
+/--
+error: unsolved goals
+s : ArmState
+z : Option (BitVec 32)
+h : s.program = sha512_program_map
+⊢ some 4165011453#32 = z
+-/
+#guard_msgs in example (h : s.program = sha512_program_map) :
+    fetch_inst 0x126c98#64 s = z := by
   simp (config := {ground := false}) only [reduceFetchInst]
 
 /-! ## Tests for `refuceDecodeInst` simproc -/
@@ -33,6 +54,5 @@ z : Option ArmInst
             Rt := 17#5 })) =
     z
 -/
-#guard_msgs in
-example : decode_raw_inst 1279294481#32 = z := by
+#guard_msgs in example : decode_raw_inst 1279294481#32 = z := by
   simp (config := {ground := false}) only [reduceDecodeInst]
