@@ -490,9 +490,9 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   (val : BitVec (yn * 8)) :
     read_mem_bytes xn x (write_mem_bytes yn y val mem) =
     read_mem_bytes xn x mem := by
-  simp only [Nat.reduceMul, memory_simp_rules,
-  Nat.reduceAdd, BitVec.ofNat_eq_ofNat,
-  BitVec.cast_eq]
+  simp only [Nat.reduceMul, memory_rules,
+    Nat.reduceAdd, BitVec.ofNat_eq_ofNat,
+    BitVec.cast_eq]
   apply BitVec.eq_of_getLsb_eq
   intros i
   obtain ⟨hsrc, hdest, hsplit⟩ := hsep
