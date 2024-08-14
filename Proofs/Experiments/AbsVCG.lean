@@ -200,8 +200,6 @@ theorem program_effects_lemma (h_pre : abs_pre s0)
     simp only [run, h_step_2]
   replace h_step_2 : s2 = stepi s1 := h_step_2.symm
   rw [program.stepi_0x4005d4 s1 s2 h_s1_program h_s1_pc h_s1_err] at h_step_2
-  -- (FIXME) abs_stepi_0x4005d4 should have reduced `decode_bit_masks`.
-  simp only [reduceDecodeBitMasks] at h_step_2
   have h_s2_program : s2.program = program := by
     simp only [h_step_2, h_s1_program,
                state_simp_rules, minimal_theory, bitvec_rules]
@@ -274,6 +272,7 @@ theorem program_effects_lemma (h_pre : abs_pre s0)
             BitVec.truncate 64 1#32)) := by
     simp (config := {decide := true}) only [h_step_4, h_step_3, h_step_2, h_step_1,
                                             state_simp_rules]
+    rfl
 
   have h_sf_s4 : sf = s4 := by
     simp only [h_run, h_s4, h_s3, h_s2, h_s1, run]
