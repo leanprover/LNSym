@@ -81,7 +81,6 @@ def getStateFieldString? (e : Expr) : MetaM (Option String) := OptionT.run do
 
 /-! ## Reflection of literals (possibly after reduction) -/
 
-#check BitVec.ofFin
 
 /-- A wrapper around `Lean.Meta.getBitVecValue?`
 that additionally recognizes:

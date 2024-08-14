@@ -9,7 +9,7 @@ import Tactics.Common
 /-!
 # ProgramInfo
 We establish a `ProgramInfo` structure,
-which stores (reflected) information about ARM programs.
+which stores (reflected) information about Arm programs.
 
 Furthermore, we define a persistent env extension to store `ProgramInfo` in.
 
