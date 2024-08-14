@@ -99,13 +99,13 @@ def machine_to_regState (inst : BitVec 32) (str : String) : regState :=
   { inst, gpr, nzcv := flags[0]!, sfp }
 
 /--
-Call the `armsimulate <fileBaseName> <register>` script to
+Call the `armsimulate <uniqueBaseName> <register>` script to
 build an executable and report the results of executing <register>.
-The <fileBaseName> is used to produce a unique object file per test case.
+The <uniqueBaseName> is used to produce a unique object file per test case.
 The object file is used to report the disassembled instruction.
 Therefore, we need a  unique base name per test.
 -/
-def arm_cosim_test (input : regState) (fileBaseName : String) : IO String := do
+def arm_cosim_test (input : regState) (uniqueBaseName : String) : IO String := do
   -- Input args for the armsimulate script:
   --  first, the 32-bit instruction
   --  then 31 64-bit GPRs (no SP)
@@ -115,7 +115,7 @@ def arm_cosim_test (input : regState) (fileBaseName : String) : IO String := do
   let gprs'   := bitvec_to_hex_list input.gpr
   let flags'  := bitvec_to_hex input.nzcv
   let sfps'   := bitvec_to_hex_list input.sfp
-  let args    := [fileBaseName] ++ [inst'] ++ gprs' ++ [flags'] ++ sfps' |>.toArray
+  let args    := [uniqueBaseName] ++ [inst'] ++ gprs' ++ [flags'] ++ sfps' |>.toArray
   let sargs := { cmd := "Arm/Insts/Cosim/armsimulate", args }
   -- Copied from IO.Process.run:
   let out ← IO.Process.output sargs
@@ -131,10 +131,10 @@ Call Arm/Insts/Cosim/disasm.sh
 to get the disassembly of the instruction under test.
 We give it the base name of the test to find the object file to disassemble.
 -/
-def get_disasm (fileBaseName : String) : IO String := do
+def get_disasm (uniqueBaseName : String) : IO String := do
   let disasm ← IO.Process.output {
     cmd := "Arm/Insts/Cosim/disasm.sh",
-    args := #[toString fileBaseName]
+    args := #[toString uniqueBaseName]
   }
   if disasm.exitCode == 0 then
     pure disasm.stdout
@@ -218,9 +218,9 @@ def regStates_match (input o1 o2 : regState) : IO Bool := do
      pure false
 
 /-- Run one random test for the instruction `inst`. -/
-def one_test (inst : BitVec 32) (fileBaseName : String) : IO Bool := do
+def one_test (inst : BitVec 32) (uniqueBaseName : String) : IO Bool := do
   let input      ← input_regState inst
-  let machine    ← arm_cosim_test input fileBaseName
+  let machine    ← arm_cosim_test input uniqueBaseName
   let machine_st := machine_to_regState inst machine
   let model      := run 1 (regState_to_armState input)
   let model_st := model_to_regState inst model
@@ -228,22 +228,23 @@ def one_test (inst : BitVec 32) (fileBaseName : String) : IO Bool := do
 
 /--
 Make a task for running a single test.
-Use a `fileBaseName` to create unique files to ensure that tests do not trample on each other.
+Use a `uniqueBaseName` to create unique files to ensure that tests do not
+clobber each other's state.
 Return `some t` if a test can be produced, and `none` if not.
 - Uses `IO` to try produce a random test that shall be run in a task.
 - Returns `.none` if there is the instruction does not exist on the given architecture.
 - Returns `.some task` upon succeessful creation of the task to randomly test one instruction instance.
 -/
 def mk_one_test_task (verbose : Bool) (logPrefix : String)
-    (fn : IO (Option (BitVec 32))) (fileBaseName : String) :
+    (fn : IO (Option (BitVec 32))) (uniqueBaseName : String) :
     IO (Option (Task (Except IO.Error Bool))) := do
   let maybe_inst ← fn
   match maybe_inst with
   | .none => return .none
   | .some inst => IO.asTask do
-    let ret ← one_test inst fileBaseName
+    let ret ← one_test inst uniqueBaseName
     -- NOTE: this is broken, since it assumes that we know the file name that we are disassembling x(
-    let disasm ← get_disasm fileBaseName
+    let disasm ← get_disasm uniqueBaseName
     if verbose then
       IO.println s!"{logPrefix}: {disasm}"
     if ret == false then
