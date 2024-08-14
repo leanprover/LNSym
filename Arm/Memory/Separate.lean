@@ -392,36 +392,6 @@ private theorem Nat.sub_mod_eq_of_lt_of_le {x y : Nat} (hx : x < n) (hy : y ≤ 
   rw [Nat.mod_eq_of_lt (by omega)]
   rw [Nat.mod_eq_of_lt (by omega)]
 
-theorem BitVec.le_add_self_of_lt (a b : BitVec w₁) (hab : a.toNat + b.toNat < 2^w₁) :
-   a ≤ a + b := by
-  rw [BitVec.le_def]
-  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-  omega
-
-theorem BitVec.add_sub_cancel_left {a b : BitVec w₁}
-    (hab : a.toNat + b.toNat < 2^w₁) : (a + b) - a = b := by
-  apply BitVec.eq_of_toNat_eq
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le]
-  · rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-    omega
-  · apply BitVec.le_add_self_of_lt
-    omega
-
-theorem BitVec.le_add_iff_sub_le {a b c : BitVec w₁}
-   (hac : c ≤ a) (hbc : b.toNat + c.toNat < 2^w₁) :
-    (a ≤ b + c) ↔ (a - c ≤ b) := by
-  simp_all only [BitVec.le_def]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-  omega
-
-theorem BitVec.sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
-    (hbc : c ≤ b) : (a - c ≤ b - c) ↔ a ≤ b := by
-  simp_all only [BitVec.le_def]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  omega
-
 -- mem_subset' is a safe over-approximation of mem_subset.
 theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hbn : bn > 0) :
   mem_subset a (a + BitVec.ofNat 64 (an - 1)) b (b + BitVec.ofNat 64 (bn - 1)):= by

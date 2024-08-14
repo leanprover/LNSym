@@ -886,6 +886,37 @@ theorem toNat_add_eq_toNat_add_toNat {x y : BitVec w} (h : x.toNat + y.toNat < 2
     (x + y).toNat = x.toNat + y.toNat := by
   rw [BitVec.toNat_add, Nat.mod_eq_of_lt h]
 
+theorem le_add_self_of_lt (a b : BitVec w₁) (hab : a.toNat + b.toNat < 2^w₁) :
+   a ≤ a + b := by
+  rw [BitVec.le_def]
+  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+  omega
+
+theorem add_sub_cancel_left {a b : BitVec w₁}
+    (hab : a.toNat + b.toNat < 2^w₁) : (a + b) - a = b := by
+  apply BitVec.eq_of_toNat_eq
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le]
+  · rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+    omega
+  · apply BitVec.le_add_self_of_lt
+    omega
+
+theorem le_add_iff_sub_le {a b c : BitVec w₁}
+   (hac : c ≤ a) (hbc : b.toNat + c.toNat < 2^w₁) :
+    (a ≤ b + c) ↔ (a - c ≤ b) := by
+  simp_all only [BitVec.le_def]
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+  omega
+
+theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
+    (hbc : c ≤ b) : (a - c ≤ b - c) ↔ a ≤ b := by
+  simp_all only [BitVec.le_def]
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+  omega
+
+
 
 /-! ### Least Significant Byte -/
 
