@@ -674,7 +674,6 @@ protected theorem shift_left_zero_eq (n : Nat) (x : BitVec n) : x <<< 0 = x := b
 
 ---------------------------- Negate Lemmas ---------------------------
 
-
 @[simp]
 theorem neg_neg (x : BitVec w₁) : - (- x) = x := by
   apply BitVec.eq_of_toNat_eq
@@ -691,7 +690,6 @@ theorem neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by
   simp only [toNat_neg, ofNat_eq_ofNat, toNat_sub, toNat_ofNat, Nat.zero_mod, Nat.add_zero]
 
 ----------------------------------------------------------------------
-
 
 /- Bitvector pattern component syntax category, originally written by
 Leonardo de Moura. -/

@@ -128,14 +128,14 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
   unfold mem_separate mem_overlap at h
   obtain ⟨⟨⟨h₁, h₂⟩, h₃⟩, h₄⟩ := by simpa only [Bool.not_or, Bool.and_eq_true,
     Bool.not_eq_true', decide_eq_false_iff_not] using h
-  simp [mem_legal] at ha hb
+  simp only [mem_legal, decide_eq_true_eq] at ha hb
   rw [BitVec.le_def] at ha hb
   rw [BitVec.le_def] at h₁ h₂ h₃ h₄
   rw [BitVec.lt_def, BitVec.gt_def]
   by_cases h₅ : a2.toNat < b1.toNat
   · simp [h₅]
   · by_cases h₆ : a1.toNat > b2.toNat
-    · simp [h₆]
+    · simp only [BitVec.val_bitvec_lt, gt_iff_lt, h₆, or_true]
     · exfalso
       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le ha] at h₁ h₂
       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le hb] at h₃ h₄
