@@ -277,17 +277,20 @@ def default (curr_state_number : Nat) : SymContext :=
 
 /-! ## Incrementing the context to the next state -/
 
-/-- `c.nextState` generates names for the next intermediate state in
-symbolic evaluation.
+/-- `next_state` generates the name for the next intermediate state -/
+def next_state (c : SymContext) : Name :=
+  .mkSimple s!"{c.state_prefix}{c.curr_state_number + 1}"
+
+/-- `c.next` generates names for the next intermediate state and its hypotheses
 
 `nextPc?`, if given, will be the pc of the next context.
 If `nextPC?` is `none`, then the previous pc is incremented by 4 -/
-def nextState (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
+def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     SymContext :=
   let curr_state_number := c.curr_state_number + 1
-  let s := s!"{c.state_prefix}{curr_state_number}"
+  let s := c.next_state
   {
-    state     := .mkSimple s
+    state     := s
     h_run     := c.h_run
     h_program := .mkSimple s!"h_{s}_program"
     h_pc      := .mkSimple s!"h_{s}_pc"
@@ -312,6 +315,7 @@ def h_err : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_err")
 def h_sp  : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_sp")
 
 def state_ident       : Ident := mkIdent c.state
+def next_state_ident  : Ident := mkIdent c.next_state
 def h_run_ident       : Ident := mkIdent c.h_run
 def h_program_ident   : Ident := mkIdent c.h_program
 def h_pc_ident        : Ident := mkIdent c.h_pc

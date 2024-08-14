@@ -127,7 +127,7 @@ end stepiTac
 open Lean.Elab.Tactic (TacticM withMainContext evalTactic) in
 def sym1 (c : SymContext) : TacticM SymContext :=
   withMainContext do
-    let c' := c.nextState
+    let c' := c.next
     -- h_st: prefix of user names of hypotheses about state st
     let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
     -- h_step_n': name of the hypothesis with the `stepi` function
