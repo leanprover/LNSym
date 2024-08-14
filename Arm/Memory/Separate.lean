@@ -250,7 +250,7 @@ The new memory model is different from the old one in two ways:
 All of the new definitions are named after the old definitions with a prime (') after their name.
 For robustness (and confidence), we plan to prove theorems that establish the equivalence of the old and new memory models.
 -/
-section NewDefitions
+section NewDefinitions
 
 /--
 `mem_legal' a n` witnessses that `(a + n)` does not overflow, and thus `[a..a+n)` is a valid range
