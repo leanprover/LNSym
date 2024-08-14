@@ -306,11 +306,9 @@ partial def genStepTheorems (program map : Expr) (program_name : Name)
       throwError "Unexpected program map entry! {hd}"
     let address_expr ← whnfR address_expr -- whnfR vs whnfD?
     let raw_inst_expr ← whnfR raw_inst_expr
-    let address_str ← getBitVecString? address_expr (hex := true)
-    if address_str.isNone then
-      throwError "We expect program addresses to be concrete. \
+    let some address_string ← getBitVecString? address_expr (hex := true)
+      | throwError "We expect program addresses to be concrete. \
                   Found this instead: {address_expr}."
-    let address_string := address_str.get!
     trace[gen_step.debug] "[genStepTheorems: address_expr {address_expr} \
                               raw_inst_expr {raw_inst_expr}]"
     if thm_type == "fetch" then
