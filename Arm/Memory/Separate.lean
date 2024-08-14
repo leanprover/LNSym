@@ -133,9 +133,9 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
   rw [BitVec.le_def] at h₁ h₂ h₃ h₄
   rw [BitVec.lt_def, BitVec.gt_def]
   by_cases h₅ : a2.toNat < b1.toNat
-  · simp [h₅]
+  · simp only [h₅, gt_iff_lt, BitVec.val_bitvec_lt, true_or]
   · by_cases h₆ : a1.toNat > b2.toNat
-    · simp only [BitVec.val_bitvec_lt, gt_iff_lt, h₆, or_true]
+    · simp only  [BitVec.val_bitvec_lt, gt_iff_lt, h₆, or_true]
     · exfalso
       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le ha] at h₁ h₂
       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le hb] at h₃ h₄
@@ -370,8 +370,8 @@ structure mem_subset' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Pr
 theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
   ha := h
   hb := h
-  hstart := by simp [BitVec.le_def]
-  hend := by simp [BitVec.le_def]
+  hstart := by simp only [BitVec.le_def, Nat.le_refl]
+  hend := by simp only [Nat.le_refl]
 
 /--
 If `[a'..a'+an')` begins at least where `[a..an)` begins,
@@ -405,7 +405,7 @@ then `[a..an')` is a subset of `[b..bn)` if `an' ≤ an`.
 theorem mem_subset'_of_length_le (h : mem_subset' a an b bn)
   (han' : an' ≤ an) : mem_subset' a an' b bn := by
   apply mem_subset'_of_le_of_le h
-  · simp [BitVec.le_def]
+  · simp only [Nat.le_refl]
   · omega
 
 /-- if `[a..an) ≤ [b..bn)` and `[b..bn) ⟂ [c..cn)`,
@@ -493,13 +493,14 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   -- we need to make use of mem_separate to show that src_addr + i / 8 < dest_addr | src_addr + i/7 ≥ dest_addr + 16
   exfalso
   · rcases hsplit with this | this
-    · simp [BitVec.le_def] at h₁
+    · simp only [BitVec.not_lt, BitVec.le_def, BitVec.toNat_add,
+        BitVec.toNat_ofNat, Nat.reducePow, Nat.add_mod_mod] at h₁
       omega
     · have hcontra_h2 : x.toNat + 16 < y.toNat + 16 := by
         simp at this
         have hi : (i : Nat) / 8 < xn := by
           apply Nat.div_lt_of_lt_mul
-          simp [Nat.mul_comm]
+          simp only [Nat.mul_comm, Fin.is_lt]
         rw [BitVec.toNat_add_eq_toNat_add_toNat] at h₂
         · omega
         · have := mem_legal'_def hsrc
@@ -593,7 +594,10 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
             rw [← himod]
           rw [BitVec.le_def] at hstart
           omega
-    · simp [h₁]
+    · simp only [h₁, decide_False, BitVec.toNat_add, BitVec.toNat_ofNat,
+        Nat.reducePow, Nat.add_mod_mod, ge_iff_le, BitVec.toNat_sub,
+        Bool.false_and, decide_True, Bool.true_and,
+        Bool.false_eq, Bool.and_eq_false_imp, decide_eq_true_eq]
       intros h
       apply BitVec.getLsb_ge
       omega
