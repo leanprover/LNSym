@@ -303,7 +303,7 @@ theorem mem_legal'_of_mem_legal (h: mem_legal a b) : mem_legal' a (b.toNat - a.t
   rw [BitVec.le_def] at h
   omega
 
-def mem_legal'.of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n) :
+def mem_legal'_of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n) :
     mem_legal' a m := by
   simp only [mem_legal', Nat.reducePow] at h ⊢
   omega
@@ -318,7 +318,6 @@ structure mem_separate' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : 
   hb : mem_legal' b bn
   h : a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn
 
--- @[simp]
 theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
   rw [BitVec.le_def, BitVec.lt_def]
   omega
