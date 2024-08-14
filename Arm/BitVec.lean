@@ -343,8 +343,8 @@ instance : Ord (BitVec n) where
   -- Unsigned comparison
   compare := unsigned_compare
 
-instance : Hashable (BitVec n) where
-  hash x := ⟨Fin.ofNat' x.toNat (by decide)⟩
+instance {w} : Hashable (BitVec w) where
+  hash x := hash x.toNat
 
 -- Making sure that the following are decidable.
 example : 5#4 = 5#4 := by decide
@@ -900,5 +900,11 @@ theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) 
     Nat.add_zero, Bool.false_and]
   · simp only [extractLsBytes, getLsb_cast, getLsb_extract, Nat.zero_lt_succ, decide_True,
     Bool.true_and]
+
+/-! ## `Quote` instance -/
+
+instance (w : Nat) : Quote (BitVec w) `term where
+  quote x :=
+    Syntax.mkCApp ``BitVec.ofNat #[quote w, quote x.toNat]
 
 end BitVec
