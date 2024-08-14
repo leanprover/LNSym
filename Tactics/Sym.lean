@@ -17,8 +17,14 @@ initialize
   Lean.registerTraceClass `Sym
 
 open BitVec
-open Lean (FVarId)
+open Lean (FVarId TSyntax)
 open Lean.Elab.Tactic (TacticM evalTactic withMainContext)
+
+/-- A wrapper around `evalTactic` that traces the passed tactic script and
+then executes those tactics -/
+private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit := do
+  trace[Sym] "running:\n{tactic}"
+  evalTactic tactic
 
 /-- `init_next_step h_run` splits the hypothesis
 
@@ -131,15 +137,12 @@ def sym1 (c : SymContext) : TacticM SymContext :=
     let h_step_n' := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
     let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
 
-    let stx ←
-      `(tactic|
-         (init_next_step $c.h_run_ident:ident $h_step_n':ident $c.next_state_ident:ident
-          -- Simulate one instruction
-          stepi_tac $h_step_n':ident $h_st_prefix:str
-          intro_fetch_decode_lemmas $h_step_n':ident $c.h_program_ident:ident $h_st_prefix:str
-      ))
-    trace[Sym] "Running tactic:\n{stx}"
-    evalTactic stx
+    evalTacticAndTrace <|← `(tactic| (
+        init_next_step $c.h_run_ident:ident $h_step_n':ident $c.next_state_ident:ident
+        -- Simulate one instruction
+        stepi_tac $h_step_n':ident $h_st_prefix:str
+        intro_fetch_decode_lemmas $h_step_n':ident $c.h_program_ident:ident $h_st_prefix:str
+    ))
     return c.next
 
 
