@@ -7,6 +7,7 @@ import Lean
 import Lean.Meta
 
 import Arm.Exec
+import Tactics.Common
 
 /-!
 This files defines the `SymContext` structure,
@@ -154,42 +155,8 @@ def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
     replaceMainGoal (goal :: newGoals)
     return ctx
 
-/-- Given a ground term `e` of type `Nat`, fully reduce it,
-and attempt to reflect it into a meta-level `Nat` -/
-private def reflectNatLiteral (e : Expr) : MetaM Nat := do
-  if e.hasFVar then
-    throwError "Expected a ground term, but {e} has free variables"
 
-  let e' ← reduce (← instantiateMVars e)
-  let some x := e'.rawNatLit?
-    | throwError "Expected a numeric literal, found:\n\t{e'}
-which was obtained by reducing:\n\t{e}"
-  -- ^^ The previous reduction will have reduced a canonical-form nat literal
-  --    into a raw literal, hence, we use `rawNatLit?` rather than `nat?`
-  return x
 
-/-- For a concrete width `w`,
-reduce an expression `e` (of type `BitVec w`) to be of the form `?n#w`,
-and then reflect `?n` to build the meta-level bitvector -/
-private def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
-  if e.hasFVar then
-    throwError "Expected a ground term, but {e} has free variables"
-
-  let x ← mkFreshExprMVar (Expr.const ``Nat [])
-  let e' ← mkAppM ``BitVec.ofNat #[toExpr w, x]
-  if (←isDefEq e e') then
-    return BitVec.ofNat w (← reflectNatLiteral x)
-  else
-    throwError "Failed to unify, expected:\n\t{e'}\nbut found:\n\t{e'}"
-
-/-- Attempt to look-up a `name` in the local context,
-so that we can build an expression with its fvarid,
-to return a message with nice highlighting.
-If lookup fails, we return a message with the plain name, wihout highlighting -/
-private def userNameToMessageData (name : Name) : MetaM MessageData := do
-  return match (← getLCtx).findFromUserName? name with
-    | some decl => m!"{Expr.fvar decl.fvarId}"
-    | none      => m!"{name}"
 
 /-- Annotate any errors thrown by `k` with a local variable (and its type) -/
 private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
@@ -200,7 +167,6 @@ private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) 
       | some type => m!" : {type}"
       | none      => m!""
     throwErrorAt e.getRef "{e.toMessageData}\n\nIn {h}{type}"
-
 
 def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let lctx ← getLCtx
@@ -248,15 +214,9 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     pure state.userName
 
   -- Try to find `h_program`, and infer `program` from it
-  let program ← mkFreshExprMVar none
-  let h_program_type ← mkEq (← mkAppM ``ArmState.program #[stateExpr]) program
-  let h_program ← findLocalDeclUsernameOfTypeOrError h_program_type
-
-  -- Assert that `program` is a(n application of a) constant, and find its name
-  let program := (← instantiateMVars program).getAppFn
-  let .const program _ := program
-    | withErrorContext h_run h_run_type <|
-        throwError "Expected a constant, found:\n\t{program}"
+  let ⟨h_program, program⟩ ← withErrorContext h_run h_run_type <|
+    findProgramHyp stateExpr
+  let h_program := h_program.userName
   /-
     TODO: assert that the expected `stepi` theorems have been generated
   -/
@@ -285,16 +245,11 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
-    let some fvarId ← findLocalDeclWithType? expectedType
-      | return none
-    let decl := (← getLCtx).get! fvarId
-    -- ^^ `findLocalDeclWithType?` only returns `FVarId`s which are present in
-    --    the local context, so we can safely pass it to `get!`
-    return decl.userName
+    let decl ← findLocalDeclOfType? expectedType
+    return (·.userName) <$> decl
   findLocalDeclUsernameOfTypeOrError (expectedType : Expr) : MetaM Name := do
-    let some name ← findLocalDeclUsernameOfType? expectedType
-      | throwError "Failed to find a local hypothesis of type {expectedType}"
-    return name
+    let decl ← findLocalDeclOfTypeOrError expectedType
+    return decl.userName
 
 
 def default (curr_state_number : Nat) : SymContext :=
