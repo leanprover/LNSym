@@ -129,8 +129,6 @@ theorem popcount32_sym_no_error (s0 s_final : ArmState)
 /-! ## Tests for step theorem generation -/
 section Tests
 
--- NOTE: the following test case currently fails, but it's what we'd like the
---       stepi theorem statement to be!
 /--
 info: popcount32_program.stepi_0x4005c0 (s sn : ArmState) (h_program : s.program = popcount32_program)
   (h_pc : r StateField.PC s = 4195776#64) (h_err : r StateField.ERR s = StateError.None) :
