@@ -116,17 +116,6 @@ def stepiTac (h_step : Ident) (ctx : SymContext)
           $ctx.h_err_ident:ident)).mp
       $h_step
   ))
-  -- WORKAROUND: It seems that `#genStepTheorems` does not yet call the right
-  -- simprocs to fully normalize the generated lemmas, so for now we include
-  -- a `simp` here. This should be removed once `genStepTheorems` is fixed
-  withMainContext do
-    let h_step_decl ← getLocalDeclFromUserName h_step.getId
-    let (ctx, simprocs) ←
-      LNSymSimpContext (config := {decide := false, ground := false})
-    let some goal' ← LNSymSimp (← getMainGoal) ctx simprocs h_step_decl.fvarId
-      | throwError m!"[stepiTac] The goal appears to be solved, but this tactic\
-                                is not a finishing tactic! Something went wrong?"
-    replaceMainGoal [goal']
 
 elab "stepi_tac" h_step:ident : tactic => do
   let c ← SymContext.fromLocalContext none
