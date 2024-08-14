@@ -136,11 +136,7 @@ info: popcount32_program.stepi_0x4005c0 (s sn : ArmState) (h_program : s.program
     (sn =
       w StateField.PC (4195780#64)
         (w (StateField.GPR 0#5)
-          (truncate 64 (BitVec.zero 32) &&& truncate 64 2147483648#32 |||
-            (truncate 64 (BitVec.zero 32) &&& 0#64 |||
-                truncate 64 ((zeroExtend 32 (r (StateField.GPR 0#5) s)).rotateRight 1) &&&
-                  truncate 64 4294967295#32) &&&
-              truncate 64 2147483647#32)
+          (zeroExtend 64 ((zeroExtend 32 (r (StateField.GPR 0#5) s)).rotateRight 1) &&& 4294967295#64 &&& 2147483647#64)
           s))
 -/
 #guard_msgs in #check popcount32_program.stepi_0x4005c0
