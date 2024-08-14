@@ -99,7 +99,7 @@ def machine_to_regState (inst : BitVec 32) (str : String) : regState :=
   { inst, gpr, nzcv := flags[0]!, sfp }
 
 /-- Call the `armsimulate` script. -/
-def arm_cosim_test (input : regState) : IO String :=
+def arm_cosim_test (input : regState) : IO String := do
   -- Input args for the armsimulate script:
   --  first, the 32-bit instruction
   --  then 31 64-bit GPRs (no SP)
@@ -110,9 +110,15 @@ def arm_cosim_test (input : regState) : IO String :=
   let flags'  := bitvec_to_hex input.nzcv
   let sfps'   := bitvec_to_hex_list input.sfp
   let args    := ([inst'] ++ gprs' ++ [flags'] ++ sfps').toArray
-  -- (FIXME): catch exception nicely
-  IO.Process.run
-  { cmd := "Arm/Insts/Cosim/armsimulate", args := args }
+  let sargs := { cmd := "Arm/Insts/Cosim/armsimulate", args }
+  -- Copied from IO.Process.run:
+  let out ← IO.Process.output sargs
+  if out.exitCode != 0 then
+    throw
+      <| IO.userError
+      <| s!"Process '{sargs.cmd}' exited with code {out.exitCode}\nStdErr: {out.stderr}" ++
+          (if out.stdout.isEmpty then "" else s!"\nStdOut:\n{out.stdout}")
+  pure out.stdout
 
 /-- Call Arm/Insts/Cosim/disasm.sh to get the disassembly of the
 instruction under test. -/
