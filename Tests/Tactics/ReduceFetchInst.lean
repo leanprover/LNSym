@@ -42,7 +42,7 @@ h : s.program = sha512_program_map
     fetch_inst 0x126c98#64 s = z := by
   simp (config := {ground := false}) only [reduceFetchInst]
 
-/-! ## Tests for `refuceDecodeInst` simproc -/
+/-! ## Tests for `reduceDecodeInst` simproc -/
 
 /--
 error: unsolved goals
