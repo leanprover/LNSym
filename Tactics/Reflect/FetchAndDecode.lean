@@ -57,8 +57,6 @@ def reduceFetchInst? (addr : Expr) (s : Expr) :
   trace[Sym.reduceFetchDecode] "{Lean.checkEmoji} found a proof:\n\t{proof}"
   return ⟨rawInst, proof⟩
 
-
-
 /-! ## `reduceDecodeInst?` -/
 
 /-- `canonicalizeBitVec e` recursively walks over expression `e` to convert any
