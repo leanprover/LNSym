@@ -245,7 +245,7 @@ def run_all_tests (verbose : Bool) (n : Nat) : IO UInt32 := do
     -- Insts.rand is a list of functions of each class of instructions
     -- that generate legal, random 32-bit instructions.
     for (i, inst_fn) in Insts.rand.enum do
-        let logPrefix := s!"Instruction ({i + 1}/{Insts.rand.length})"
+        let logPrefix := s!"Instruction Class ({i + 1}/{Insts.rand.length})"
         let ret ← run_n_tests verbose logPrefix n inst_fn
         acc := acc && ret
     if acc then
