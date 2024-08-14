@@ -429,10 +429,20 @@ theorem nat_bitvec_sub (x y : BitVec n) :
   have : (x - y).toNat = ((2^n - y.toNat) + x.toNat) % 2^n := rfl
   rw [this, Nat.add_comm]
 
+
+theorem BitVec.toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
+    (BitVec.ofNat w₁ n).toNat = n := by
+  simp only [toNat_ofNat, Nat.mod_eq_of_lt hn]
+
+
 ---------------------------- Comparison Lemmas -----------------------
 
 @[simp] protected theorem not_lt {n : Nat} {a b : BitVec n} : ¬ a < b ↔ b ≤ a := by
   exact Fin.not_lt ..
+
+theorem ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by
+  simp_all only [BitVec.le_def, BitVec.lt_def]
+  omega
 
 protected theorem le_of_eq (x y : BitVec n) (h : x = y) :
   x <= y := by

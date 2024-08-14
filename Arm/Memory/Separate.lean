@@ -518,14 +518,6 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   · have := hsrc.size_le_two_pow
     omega
 
-theorem BitVec.toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
-    (BitVec.ofNat w₁ n).toNat = n := by
-  simp only [toNat_ofNat, Nat.mod_eq_of_lt hn]
-
-theorem BitVec.ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by
-  simp_all only [BitVec.le_def, BitVec.lt_def]
-  omega
-
 /- value of `read_mem_bytes'` when subset. -/
 theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
   (hsep : mem_subset' x xn y yn) -- subset relation.
