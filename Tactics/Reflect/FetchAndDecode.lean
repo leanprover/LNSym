@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Alex Keizer
 -/
 import Arm.State
+import Arm.Decode
 import Tactics.Common
 import Tactics.Reflect.ProgramInfo
 
@@ -12,6 +13,8 @@ open Elab.Tactic Elab.Term
 
 initialize
   Lean.registerTraceClass `Sym.reduceFetchDecode
+
+/-! ## `reduceFetchInst?` -/
 
 theorem fetch_inst_eq_of_prgram_eq_of_map_find
     {state : ArmState} {program : Program}
@@ -54,6 +57,43 @@ def reduceFetchInst? (addr : Expr) (s : Expr) :
   trace[Sym.reduceFetchDecode] "{Lean.checkEmoji} found a proof:\n\t{proof}"
   return ⟨rawInst, proof⟩
 
+
+
+/-! ## `reduceDecodeInst?` -/
+
+/-- `canocalizeBitVec e` recursively walks over expression `e` to convert any
+occerences of:
+  `BitVec.ofFin w (Fin.mk x _)`
+to the canonical form:
+  `BitVec.ofNat w x` (i.e., `x#w`)
+ -/
+-- TODO: should this canonicalize to `BitVec.ofNatLt` instead,
+--       as the current transformation loses information?
+partial def canonicalizeBitVec (e : Expr) : MetaM Expr := do
+  match_expr e with
+    | BitVec.ofFin w i =>
+        let_expr Fin.mk _ x _h := i | fallback
+        let w ←
+          if w.hasFVar || w.hasMVar then
+            pure w
+          else
+            withTransparency .all <| reduce w
+        return mkApp2 (mkConst ``BitVec.ofNat) w x
+    | _ => fallback
+  where
+    fallback : MetaM Expr := do
+      let fn   := e.getAppFn
+      let args  ← e.getAppArgs.mapM canonicalizeBitVec
+      return mkAppN fn args
+
+/-- Given an expr `rawInst` of type `BitVec 32`,
+return an expr of type `Option ArmInst` representing what `rawInst` decodes to.
+The resulting expr is guaranteed to be def-eq to `fetch_inst $rawInst` -/
+def reduceDecodeInst? (rawInst : Expr) : MetaM Expr := do
+  let expr := mkApp (mkConst ``decode_raw_inst) rawInst
+  let expr ← withTransparency .all <| reduce expr
+  canonicalizeBitVec expr
+
 /-! ## Simprocs -/
 
 simproc reduceFetchInst (fetch_inst _ _) := fun e => do
@@ -67,3 +107,14 @@ simproc reduceFetchInst (fetch_inst _ _) := fun e => do
   catch err =>
     trace[Sym.reduceFetchDecode] "{Lean.crossEmoji} {err.toMessageData}"
     return .continue
+
+
+
+simproc reduceDecodeInst (decode_raw_inst _) := fun e => do
+  trace[Sym.reduceFetchDecode] "⚙️ simplifying {e}"
+  let_expr decode_raw_inst rawInst := e
+    | trace[Sym.reduceFetchDecode] "{Lean.crossEmoji} did not match pattern"
+      return .continue
+  let expr ← reduceDecodeInst? rawInst
+  trace[Sym.reduceFetchDecode] "{Lean.checkEmoji} simplified to: {expr}"
+  return .visit {expr}
