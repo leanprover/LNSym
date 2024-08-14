@@ -2,20 +2,21 @@
 # Borrowed from the s2n-bignum project
 # https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/simulator.c
 # Author(s): John Harrison, Juneyoung Lee
+# Usage: armsimluate <output-file-name> <instruction in GNU assembly syntax>
 
-cd Arm/Insts/Cosim
+OUTFILE="$1" # basename for the output file
+INST="$2" # instruction to be simulated
+GITDIR="$(git rev-parse --show-toplevel)"
+COSIMDIR="${GITDIR}/Arm/Insts/Cosim"
 
-OUTFILE=$(mktemp)
+echo "Writing asm to: '${COSIMDIR}/tests/${OUTFILE}.S'. Executable to: '${COSIMDIR}/tests/${OUTFILE}.out'." >&2
 
-echo "Writing asm to: '${OUTFILE}.S'. Executable to: '${OUTFILE}.out'." >&2
+mkdir -p tests/
+cat "${COSIMDIR}/template.S" | sed -e "s/ICODE/${INST}/" > "${COSIMDIR}/tests/${OUTFILE}.S"
+gcc -c "${COSIMDIR}/tests/${OUTFILE}.S"  -o "${COSIMDIR}/tests/${OUTFILE}.o"
+gcc -o "${COSIMDIR}/tests/${OUTFILE}.out" "${COSIMDIR}/simulator.c" "${COSIMDIR}/tests/${OUTFILE}.o"
 
-cat template.S | sed -e "s/ICODE/$1/" > "${OUTFILE}.S"
-gcc -c "${OUTFILE}.S"  -o "${OUTFILE}.o"
-gcc -o "${OUTFILE}.out" simulator.c "${OUTFILE}.o"
-
-shift 1
-"${OUTFILE}.out" "$@"
-
-#### rm "${OUTFILE}.out" "${OUTFILE}.S" "${OUTFILE}.o"
+shift 2
+"${COSIMDIR}/tests/${OUTFILE}.out" "$@"
 
 ####  rm *.o simulator

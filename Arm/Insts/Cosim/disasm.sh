@@ -4,12 +4,14 @@
 
 #!/bin/sh
 
-cd Arm/Insts/Cosim
+GITDIR="$(git rev-parse --show-toplevel)"
+COSIMDIR="${GITDIR}/Arm/Insts/Cosim"
+INFILE=$1
 
-if [ -e instance.o ]; then
+if [ -e "${COSIMDIR}/tests/${INFILE}.o" ]; then
 
-    # Disassemble instance.o.
-    base_cmd="objdump -d instance.o"
+    # Disassemble cosim run <i>.
+    base_cmd="objdump -d ${COSIMDIR}/tests/${INFILE}.o"
 
     # Get 1 line (i.e., 1 instruction) after a "modinst" match.  Given
     # the layout of instance.S, this will always be the instruction
@@ -18,7 +20,7 @@ if [ -e instance.o ]; then
 
     # Do not print the address -- just the instruction bytes and its
     # corresponding disassembly.
-    snip_inst="awk '{\$1=\"\"; print}'"
+    snip_inst="awk '{\$2=\"\"; print}'"
 
     cmd=$base_cmd" | "$raw_inst" | "$snip_inst
 
