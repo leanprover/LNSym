@@ -75,7 +75,8 @@ partial def canonicalizeBitVec (e : Expr) : MetaM Expr := do
           if w.hasFVar || w.hasMVar then
             pure w
           else
-            withTransparency .all <| reduce w -- NOTE: potentially expensive reduction
+            withTransparency .all <| reduce w
+            -- ^^ NOTE: potentially expensive reduction
         return mkApp2 (mkConst ``BitVec.ofNat) w x
     | _ => fallback
   where
