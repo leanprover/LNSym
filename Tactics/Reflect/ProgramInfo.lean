@@ -17,10 +17,6 @@ Furthermore, we define a persistent env extension to store `ProgramInfo` in.
 
 open Lean Meta Elab.Term
 
--- TODO: upstream this instance
-instance {w} : Hashable (BitVec w) where
-  hash x := hash x.toNat
-
 structure ProgramInfo where
   rawProgram : HashMap (BitVec 64) (BitVec 32)
 

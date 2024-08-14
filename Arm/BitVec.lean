@@ -343,8 +343,8 @@ instance : Ord (BitVec n) where
   -- Unsigned comparison
   compare := unsigned_compare
 
-instance : Hashable (BitVec n) where
-  hash x := ⟨Fin.ofNat' x.toNat (by decide)⟩
+instance {w} : Hashable (BitVec w) where
+  hash x := hash x.toNat
 
 -- Making sure that the following are decidable.
 example : 5#4 = 5#4 := by decide
