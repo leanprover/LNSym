@@ -242,7 +242,7 @@ end Separate
 The new memory model is different from the old one in two ways:
 
 1. It uses (base pointer, length) to keep track of memory regions instead of closed intervals of [pointer 1, pointer 2].
-2. To faciliatate the new representation, it bakes in the assumption that the memory region is legal
+2. To facilitate the new representation, it bakes in the assumption that the memory region is legal
    (i.e. no wraparound).
 3. More softly, it tries to keep reasoning in terms of `Nat` rather than `BitVec` in order to allow easier
    automation via `omega` for proving disjointedness / subset assumptions.
