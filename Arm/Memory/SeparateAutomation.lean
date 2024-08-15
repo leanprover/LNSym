@@ -101,7 +101,6 @@ def processingEmoji : String := "⚙️"
 
 /-- Match an expression `h` to see if it's a useful hypothesis. -/
 def processHypothesis (h : Expr) : MetaM (Option Hypothesis) := do
-  -- trace[simp_mem] "processing hyp '{(← inferType h)}'"
   let ht ← inferType h
   trace[simp_mem.info] "{processingEmoji} Processing '{h}' : '{toString ht}'"
   match_expr ht with
