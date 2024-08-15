@@ -157,7 +157,7 @@ def h_program_type (state program : Expr) : Expr :=
     program
   ]
 
-/-- `h_sp_type state` returns an Expr for `r .PC <state> = <address>`,
+/-- `h_pc_type state` returns an Expr for `r .PC <state> = <address>`,
 the expected type of `h_pc` -/
 def h_pc_type (state address : Expr) : Expr :=
   mkAppN (mkConst ``Eq [1]) #[
