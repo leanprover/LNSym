@@ -62,6 +62,43 @@ private def fetchLemma (state program h_program : Expr)
       someRawInst
   ]
 
+-- /-! ## `reduceDecodeInst` -/
+
+/-- `canonicalizeBitVec e` recursively walks over expression `e` to convert any
+occerences of:
+  `BitVec.ofFin w (Fin.mk x _)`
+to the canonical form:
+  `BitVec.ofNat w x` (i.e., `x#w`)
+ -/
+-- TODO: should this canonicalize to `BitVec.ofNatLt` instead,
+--       as the current transformation loses information?
+partial def canonicalizeBitVec (e : Expr) : MetaM Expr := do
+  match_expr e with
+    | BitVec.ofFin w i =>
+        let_expr Fin.mk _ x _h := i | fallback
+        let w ←
+          if w.hasFVar || w.hasMVar then
+            pure w
+          else
+            withTransparency .all <| reduce w
+            -- ^^ NOTE: potentially expensive reduction
+        return mkApp2 (mkConst ``BitVec.ofNat) w x
+    | _ => fallback
+  where
+    fallback : MetaM Expr := do
+      let fn   := e.getAppFn
+      let args  ← e.getAppArgs.mapM canonicalizeBitVec
+      return mkAppN fn args
+
+/-- Given an expr `rawInst` of type `BitVec 32`,
+return an expr of type `Option ArmInst` representing what `rawInst` decodes to.
+The resulting expr is guaranteed to be def-eq to `fetch_inst $rawInst` -/
+def reduceDecodeInst (rawInst : Expr) : MetaM Expr := do
+  let expr := mkApp (mkConst ``decode_raw_inst) rawInst
+  let expr ← withTransparency .all <| reduce expr
+  -- ^^ NOTE: possibly expensive reduction
+  canonicalizeBitVec expr
+
 /- Generate and prove a fetch theorem of the following form:
 ```
 theorem (<thm_prefix> ++ "fetch_0x" ++ <address_str>) (s : ArmState)
