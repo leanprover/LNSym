@@ -241,9 +241,11 @@ attribute [bitvec_rules] Nat.reduceBneDiff
 attribute [bitvec_rules] Nat.reduceLTLE
 attribute [bitvec_rules] Nat.reduceLeDiff
 attribute [bitvec_rules] Nat.reduceSubDiff
+attribute [bitvec_rules] BitVec.toNat_ofNat
 
 -- Some Fin lemmas useful for bitvector reasoning:
 attribute [bitvec_rules] Fin.eta
+attribute [bitvec_rules] Fin.isLt
 attribute [bitvec_rules] Fin.isValue -- To normalize Fin literals
 
 -- Some lemmas useful for clean-up after the use of simp/ground
@@ -431,10 +433,20 @@ theorem nat_bitvec_sub (x y : BitVec n) :
   have : (x - y).toNat = ((2^n - y.toNat) + x.toNat) % 2^n := rfl
   rw [this, Nat.add_comm]
 
+
+theorem toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
+    (BitVec.ofNat w₁ n).toNat = n := by
+  simp only [toNat_ofNat, Nat.mod_eq_of_lt hn]
+
+
 ---------------------------- Comparison Lemmas -----------------------
 
 @[simp] protected theorem not_lt {n : Nat} {a b : BitVec n} : ¬ a < b ↔ b ≤ a := by
   exact Fin.not_lt ..
+
+theorem ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by
+  simp_all only [BitVec.le_def, BitVec.lt_def]
+  omega
 
 protected theorem le_of_eq (x y : BitVec n) (h : x = y) :
   x <= y := by
@@ -674,6 +686,23 @@ protected theorem shift_left_zero_eq (n : Nat) (x : BitVec n) : x <<< 0 = x := b
     intro i
     simp only [toNat_shiftLeft, Nat.shiftLeft_zero, toNat_mod_cancel]
 
+---------------------------- Negate Lemmas ---------------------------
+
+@[simp]
+theorem neg_neg (x : BitVec w₁) : - (- x) = x := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [toNat_neg]
+  by_cases h : x.toNat = 0
+  · simp [h]
+  · rw [Nat.mod_eq_of_lt (a := 2^w₁ - x.toNat) (by omega)]
+    rw [Nat.sub_sub_eq_min]
+    rw [Nat.min_def]
+    simp [show ¬ 2^w₁ ≤ x.toNat by omega]
+
+theorem neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by
+  apply BitVec.eq_of_toNat_eq
+  simp only [toNat_neg, ofNat_eq_ofNat, toNat_sub, toNat_ofNat, Nat.zero_mod, Nat.add_zero]
+
 ----------------------------------------------------------------------
 
 /- Bitvector pattern component syntax category, originally written by
@@ -849,6 +878,12 @@ theorem toNat_sub_eq_toNat_sub_toNat_of_le {x y : BitVec w} (h : y ≤ x) :
   · rw [Nat.sub_add_eq_add_sub_of_le_of_le (by omega) (by omega), Nat.add_mod,
       Nat.mod_self, Nat.zero_add, Nat.mod_mod, Nat.mod_eq_of_lt (by omega)]
 
+/- Subtracting bitvectors when there is overflow. -/
+theorem toNat_sub_eq_two_pow_sub_add_of_lt
+    {a b : BitVec w₁} (hab : a.toNat < b.toNat) : (a - b).toNat = 2^w₁ - b.toNat + a.toNat := by
+  simp only [toNat_sub]
+  rw [Nat.mod_eq_of_lt (by omega)]
+
 theorem neq_of_lt {x y : BitVec w₁} (h : x < y) : x ≠ y := by
   rintro rfl
   simp [BitVec.lt_def] at h
@@ -862,6 +897,36 @@ theorem neq_of_gt {x y : BitVec w₁} (h : x > y) : x ≠ y := by
 theorem toNat_add_eq_toNat_add_toNat {x y : BitVec w} (h : x.toNat + y.toNat < 2^w) :
     (x + y).toNat = x.toNat + y.toNat := by
   rw [BitVec.toNat_add, Nat.mod_eq_of_lt h]
+
+theorem le_add_self_of_lt (a b : BitVec w₁) (hab : a.toNat + b.toNat < 2^w₁) :
+   a ≤ a + b := by
+  rw [BitVec.le_def]
+  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+  omega
+
+theorem add_sub_cancel_left {a b : BitVec w₁}
+    (hab : a.toNat + b.toNat < 2^w₁) : (a + b) - a = b := by
+  apply BitVec.eq_of_toNat_eq
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le]
+  · rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+    omega
+  · apply BitVec.le_add_self_of_lt
+    omega
+
+theorem le_add_iff_sub_le {a b c : BitVec w₁}
+   (hac : c ≤ a) (hbc : b.toNat + c.toNat < 2^w₁) :
+    (a ≤ b + c) ↔ (a - c ≤ b) := by
+  simp_all only [BitVec.le_def]
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+  omega
+
+theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
+    (hbc : c ≤ b) : (a - c ≤ b - c) ↔ a ≤ b := by
+  simp_all only [BitVec.le_def]
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+  omega
 
 /-! ### Least Significant Byte -/
 
