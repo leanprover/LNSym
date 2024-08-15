@@ -7,6 +7,7 @@ import Tactics.ChangeHyps
 import Tactics.Reflect.ProgramInfo
 
 open Lean Lean.Expr Lean.Meta Lean.Elab Lean.Elab.Command
+open SymContext (h_pc_type h_program_type h_err_type)
 
 -- NOTE: This is an experimental and probably quite shoddy method of autogenerating
 -- `stepi` theorems from a program under verification, and things may change
@@ -35,6 +36,11 @@ initialize registerTraceClass `gen_step.print_names
 initialize registerTraceClass `gen_step.debug
 /- When true, prints the number of heartbeats taken per theorem. -/
 initialize registerTraceClass `gen_step.debug.heartBeats
+/- When true, prints the time taken at various steps of generation. -/
+initialize registerTraceClass `gen_step.debug.timing
+
+-- initialize
+--   registerOption `gen_step.skip_
 
 /-- Return the expression `state.program = program` -/
 def programHypType (state : Expr) (program : Name) : Expr :=
@@ -93,16 +99,149 @@ partial def canonicalizeBitVec (e : Expr) : MetaM Expr := do
 /-- Given an expr `rawInst` of type `BitVec 32`,
 return an expr of type `Option ArmInst` representing what `rawInst` decodes to.
 The resulting expr is guaranteed to be def-eq to `fetch_inst $rawInst` -/
-def reduceDecodeInst (rawInst : Expr) : MetaM Expr := do
+def reduceDecodeInstExpr (rawInst : Expr) : MetaM Expr := do
   let expr := mkApp (mkConst ``decode_raw_inst) rawInst
   let expr ← withTransparency .all <| reduce expr
   -- ^^ NOTE: possibly expensive reduction
   canonicalizeBitVec expr
 
+protected inductive ReduceDecodeM.CacheKey
+  | decodedInst (rawInst : BitVec 32)
+-- TODO: We might want to cache a (partial) result of `reduceStepi` as well.
+--       To do so, we have to separate out simplifications that don't use the
+--       PC value from those that do --- we should cache only the former.
+  deriving BEq, Hashable
+open ReduceDecodeM (CacheKey)
+
+/-- A wrapper around `MetaM` which addionally caches
+the result of `reduceDecodeInst` -/
+abbrev ReduceDecodeM := MonadCacheT CacheKey Expr MetaM
+
+/-- run `k` with an empty initial cache -/
+def ReduceDecodeM.run (k : ReduceDecodeM α) : MetaM α :=
+  MonadCacheT.run k
+
+/-- Given a (reflected) raw instruction,
+return an expr of type `Option ArmInst` representing what `rawInst` decodes to.
+The resulting expr is guaranteed to be def-eq to `fetch_inst $rawInst`.
+
+Results are cached so that the same instruction is not reduced multiple times -/
+def reduceDecodeInst (rawInst : BitVec 32) : ReduceDecodeM Expr :=
+  checkCache (CacheKey.decodedInst rawInst) fun _ =>
+    reduceDecodeInstExpr (toExpr rawInst)
+
+/-! ## reduceStepiToExecInst -/
+
+-- example : ∀ {x : BitVec 32} (h : x = 314) (h_other : z = g), x = y := by
+
+
+/-- Given a program and an address, and optionally the corresponding
+raw and decoded instructions, construct and return first the expression:
+```
+∀ {s} (h_program : s.program = <progam>) (h_pc : read_pc s = <addr>)
+  (h_err : read_err s = .None),
+  stepi s = <reduced form of `exec_inst <inst> s`>
+```
+and then a proof of this fact.
+That is, in
+  `let ⟨type, value⟩ ← reduceStepi ...`
+`value` is an expr whose type is `type` -/
+def reduceStepi (pi : ProgramInfo) (addr : BitVec 64)
+    (rawInst? : Option (BitVec 32) := none)
+    (inst? : Option Expr := none)
+    : ReduceDecodeM (Expr × Expr) := do
+  let some rawInst := rawInst? <|> pi.getRawInstrAt? addr
+    | throwError "No instruction found at address {addr} of {pi.name}"
+
+  let inst ← match inst? with
+    | some inst => pure inst
+    | none => do
+      let optInst ← reduceDecodeInst rawInst
+      let_expr some _ inst := optInst
+        | let some := mkConst ``Option.some [1]
+          throwError "Expected an application of {some}, found:\n\t{optInst}"
+      pure inst
+
+  withLocalDecl `s .implicit (mkConst ``ArmState) <| fun s =>
+  withLocalDeclD `h_program (h_program_type s pi.expr)  <| fun h_program =>
+  withLocalDeclD `h_pc      (h_pc_type s (toExpr addr)) <| fun h_pc =>
+  withLocalDeclD `h_err     (h_err_type s)              <| fun h_err => do
+    let h_fetch  := fetchLemma s pi.expr h_program addr rawInst
+    let h_decode :=
+      let armInstTy := mkConst ``ArmInst
+      mkApp2 (mkConst ``Eq.refl [1])
+        (mkApp (mkConst ``Option [0]) armInstTy)
+        (mkApp2 (mkConst ``Option.some [0]) armInstTy inst)
+
+    let proof := -- stepi s = exec_inst <inst> s
+      mkAppN (mkConst ``stepi_eq_of_fetch_inst_of_decode_raw_inst) #[
+        s, toExpr addr, toExpr rawInst, inst,
+        h_err, h_pc, h_fetch, h_decode
+      ]
+    let type ← inferType proof
+
+    let (ctx, simprocs) ← do
+      let localDecls ← do
+        let hs := #[h_pc, h_err]
+        pure <| hs.filterMap (← getLCtx).findFVar?
+      LNSymSimpContext
+        (config := {decide := true, ground := false})
+        (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules])
+        (decls := localDecls)
+        (decls_to_unfold := #[``exec_inst, ``read_pc, ``read_err])
+
+    let ⟨simpRes, _⟩ ← simp type ctx simprocs
+
+    let proof ← simpRes.mkCast proof -- stepi s = <reduced to `w ...`>
+    let hs := #[s, h_program, h_pc, h_err]
+    let proof ← mkLambdaFVars hs proof
+    let type  ← mkForallFVars hs simpRes.expr
+    return ⟨type, proof⟩
+
+def genStepEqTheorems (pi : ProgramInfo) : MetaM Unit :=
+  ReduceDecodeM.run <| for ⟨addr, inst⟩ in pi.rawProgram do
+    let startTime ← IO.monoMsNow
+    trace[gen_step.debug] "[genStepEqTheorems] Generating theorem for address {addr.toHex}\
+      with instruction {inst.toHex}"
+    let name := let addr_str := addr.toHexWithoutLeadingZeroes
+                Name.str pi.name ("stepi_eq_0x" ++ addr_str)
+    let ⟨type, value⟩ ← reduceStepi pi addr inst
+
+    trace[gen_step.debug.timing] "[genStepEqTheorems] reduced in: {(← IO.monoMsNow) - startTime}ms"
+    addDecl <| Declaration.thmDecl {
+      name, type, value,
+      levelParams := []
+    }
+    trace[gen_step.debug.timing] "[genStepEqTheorems] added to environment in: {(← IO.monoMsNow) - startTime}ms"
+
+/-- `#genProgramInfo program` ensures the `ProgramInfo` for `program`
+has been generated and persistently cached in the enviroment -/
+elab "#genProgramInfo" program:ident : command => liftTermElabM do
+  let _ ← ProgramInfo.lookupOrGenerate program.getId
+
+
+elab "#genStepEqTheorems" program:ident : command => liftTermElabM do
+  let pi ← ProgramInfo.lookupOrGenerate program.getId
+  genStepEqTheorems pi
+
+
+-- /-! ## reduceExec -/
+
+-- /-- Given an expr of type `ArmInst`,
+-- return the normal form of `exec_inst inst ?state`,
+-- with `?state` a fresh metavar that is also returned -/
+-- def reduceExecInst (inst : Expr) : MetaM (Expr × MVarId) := do
+--   let state ← mkFreshExprMVar (mkConst ``ArmState)
+--   let res := mkApp2 (mkConst ``exec_inst) inst state
+--   let res ← withTransparency .all <| reduce res
+--   -- ^^ NOTE: possibly expensive reductions
+--   let res ← canonicalizeBitVec res
+--   return ⟨res, state.mvarId!⟩
+
 /- Generate and prove a fetch theorem of the following form:
 ```
-theorem (<thm_prefix> ++ "fetch_0x" ++ <address_str>) (s : ArmState)
- (h : s.program = <orig_map>) : fetch_inst <address_expr> s = some <raw_inst_expr>
+theorem <program>.("fetch_0x" ++ <address in hex>) (s : ArmState)
+ (h : s.program = <program>) : fetch_inst <address> s = some <raw_inst>
 ```
 -/
 def genFetchTheorem (program : ProgramInfo) (address : BitVec 64)
@@ -402,6 +541,8 @@ def test_program : Program :=
     (0x126514#64 , 0x4ea21c5c#32),      --  mov     v28.16b, v2.16b
     (0x126518#64 , 0x4ea31c7d#32)]      --  mov     v29.16b, v3.16b
 
+#genStepEqTheorems test_program
+
 #genStepTheorems test_program thmType:="fetch"
 /--
 info: test_program.fetch_0x126510 (s : ArmState) (h : s.program = test_program) :
@@ -444,6 +585,14 @@ info: test_program.stepi_0x126510 (s sn : ArmState) (h_program : s.program = tes
 -/
 #guard_msgs in
 #check test_program.stepi_0x126510
+
+/--
+info: test_program.stepi_eq_0x126510 {s : ArmState} (h_program : s.program = test_program)
+  (h_pc : r StateField.PC s = 1205520#64) (h_err : r StateField.ERR s = StateError.None) :
+  stepi s = w StateField.PC (1205524#64) (w (StateField.SFP 27#5) (r (StateField.SFP 1#5) s) s)
+-/
+#guard_msgs in
+#check test_program.stepi_eq_0x126510
 
 -- Here's the theorem that we'd actually like to obtain instead of the
 -- erstwhile test_stepi_0x126510.
