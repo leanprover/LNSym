@@ -125,7 +125,7 @@ def genExecTheorem (program_name : Name) (address_str : String)
     -- let sp_aligned ← (mkAppM ``Eq #[(← mkAppM ``CheckSPAlignment #[s]), (mkConst ``true)])
     -- logInfo m!"sp_aligned: {sp_aligned}"
     -- withLocalDeclD `h_sp_aligned sp_aligned fun _h_sp_aligned => do
-    let (ctx, _simprocs) ←
+    let (ctx, simprocs) ←
             LNSymSimpContext
               -- Unfortunately, using `ground := true` exposes a lot of internal BitVec
               -- structure in terms of Fin.
@@ -140,7 +140,7 @@ def genExecTheorem (program_name : Name) (address_str : String)
       unless simpTheorems.isErased (.fvar h) do
         simpTheorems ← simpTheorems.addTheorem (.fvar h) (← h.getDecl).toExpr
     let ctx := { ctx with simpTheorems }
-    let (exec_inst_result, _) ← simp exec_inst_expr ctx
+    let (exec_inst_result, _) ← simp exec_inst_expr ctx simprocs
     trace[gen_step.debug] "[Exec_inst Simplified Expression: {exec_inst_result.expr}]"
     let hs ← getPropHyps
     let args := #[s] ++ (hs.map (fun f => (.fvar f)))
@@ -179,8 +179,8 @@ def genDecodeAndExecTheorems (program_name : Name) (address_str : String)
   -- BitVecs below. whnfR does not do enough and leaves the decode_raw_inst term
   -- unsimplified. So we use simp for this simplification.
   -- let rhs ← reduce lhs -- whnfD or whnfR?
-  let (ctx, _simprocs) ← LNSymSimpContext (config := {ground := true})
-  let (rhs, _) ← simp lhs ctx
+  let (ctx, simprocs) ← LNSymSimpContext (config := {ground := true})
+  let (rhs, _) ← simp lhs ctx simprocs
   let opt_arminst := (mkAppN (mkConst ``Option [0]) #[(mkConst ``ArmInst [])])
   let type := mkAppN (Expr.const ``Eq [1]) #[opt_arminst, lhs, rhs.expr]
   let value := mkAppN (Expr.const ``Eq.refl [1]) #[opt_arminst, lhs]
@@ -306,11 +306,9 @@ partial def genStepTheorems (program map : Expr) (program_name : Name)
       throwError "Unexpected program map entry! {hd}"
     let address_expr ← whnfR address_expr -- whnfR vs whnfD?
     let raw_inst_expr ← whnfR raw_inst_expr
-    let address_str ← getBitVecString? address_expr (hex := true)
-    if address_str.isNone then
-      throwError "We expect program addresses to be concrete. \
+    let some address_string ← getBitVecString? address_expr (hex := true)
+      | throwError "We expect program addresses to be concrete. \
                   Found this instead: {address_expr}."
-    let address_string := address_str.get!
     trace[gen_step.debug] "[genStepTheorems: address_expr {address_expr} \
                               raw_inst_expr {raw_inst_expr}]"
     if thm_type == "fetch" then
