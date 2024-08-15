@@ -18,6 +18,7 @@ Furthermore, we define a persistent env extension to store `ProgramInfo` in.
 open Lean Meta Elab.Term
 
 structure ProgramInfo where
+  name : Name
   rawProgram : HashMap (BitVec 64) (BitVec 32)
 
 namespace ProgramInfo
@@ -26,8 +27,9 @@ def getRawInstrAt? (pi : ProgramInfo) (addr : BitVec 64) :
     Option (BitVec 32) :=
   pi.rawProgram.find? addr
 
-/-- Given an `Expr` of type `Program`, generate the basic `ProgramInfo` -/
-partial def generateFromExpr (e : Expr) : MetaM ProgramInfo := do
+/-- Given the name and defining expression of a `Program`,
+generate the basic `ProgramInfo` -/
+partial def generateFromExpr (name : Name) (e : Expr) : MetaM ProgramInfo := do
   let type ← inferType e
   if !(←isDefEq type (mkConst ``Program)) then
     throwError "type mismatch: {e} {← mkHasTypeButIsExpectedMsg type (mkConst ``Program)}"
@@ -49,6 +51,7 @@ partial def generateFromExpr (e : Expr) : MetaM ProgramInfo := do
     | _ => throwError "expected `List.cons _ _` or `List.nil`, found:\n\t{e}"
 
   return {
+    name,
     rawProgram := ← go ∅ e
   }
 
@@ -57,28 +60,28 @@ generate the basic `ProgramInfo` -/
 def generateFromConstName (program : Name) : MetaM ProgramInfo := do
   let .defnInfo defnInfo ← getConstInfo program
     | throwError "expected a definition, but {program} is not"
-  generateFromExpr defnInfo.value
+  generateFromExpr program defnInfo.value
 
 /-! ## Env Extension -/
 
-initialize programInfoExt : PersistentEnvExtension (Name × ProgramInfo) (Name × ProgramInfo) (NameMap ProgramInfo) ←
+initialize programInfoExt : PersistentEnvExtension (ProgramInfo) (ProgramInfo) (NameMap ProgramInfo) ←
   registerPersistentEnvExtension {
     name            := `programInfo
     mkInitial       := pure {}
     addImportedFn   := fun _ _ => pure {}
-    addEntryFn      := fun s p => s.insert p.1 p.2
+    addEntryFn      := fun s p => s.insert p.name p
     exportEntriesFn := fun m =>
-      let r : Array (Name × _) := m.fold (fun a n p => a.push (n, p)) #[]
-      r.qsort (fun a b => Name.quickLt a.1 b.1)
+      let r : Array (ProgramInfo) :=
+        m.fold (fun a name p => a.push {p with name}) #[]
+      r.qsort (fun a b => Name.quickLt a.name b.name)
     statsFn         := fun s =>
       "program info extension" ++ Format.line
       ++ "number of local entries: " ++ format s.size
   }
 
-/-- store a `PogramInfo` for the given `program` in the environment -/
-private def store [Monad m] [MonadEnv m]
-    (program : Name) (pi : ProgramInfo) : m Unit := do
-  modifyEnv (programInfoExt.addEntry · ⟨program, pi⟩)
+/-- store a `PogramInfo` in the environment -/
+private def store [Monad m] [MonadEnv m] (pi : ProgramInfo) : m Unit := do
+  modifyEnv (programInfoExt.addEntry · pi)
 
 /-- look up the `ProgramInfo` for a given `program` in the environment,
 returns `None` if not found -/
@@ -95,5 +98,5 @@ def lookupOrGenerate (program : Name) : MetaM ProgramInfo := do
     return pi
   else
     let pi ← generateFromConstName program
-    store program pi
+    store pi
     return pi
