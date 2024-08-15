@@ -89,9 +89,15 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   simp [memory_rules]
   rw [read_mem_bytes_eq_extractLsBytes_of_subset_of_read_mem_bytes
     (hread := h_s0_ctx)]
+  -- ⊢ SHA2.h0_512.toBitVec.extractLsBytes ((ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat) 16 =
+  --  SHA2.h0_512.toBitVec.extractLsBytes 48 16
   congr
-  · bv_omega'
-  · constructor
+  · -- ⊢ (ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat = 48
+    -- this will be done by the user, maybe we can do this as well as part of address normalizatio.
+    bv_omega'
+  · -- this part should be done by the tactic to establish:
+    -- mem_subset' (ctx_addr s0 + 48#64) 16 (ctx_addr s0) (63 + 1)
+    constructor
     · bv_omega'
     · assumption
     · bv_omega'
