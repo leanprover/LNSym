@@ -39,7 +39,7 @@ The core tactic tries to simplify expressions of the form
   and can be replaced with `read_mem [a..an) mem`
 2. If `[a..an] ⊆ [b..bn)`, the write aliases the read, and can be replaced with
   `read_mem adjust([a..an), [b..bn)) val`. Here, `adjust` is a function that
-  adjusts the read indeces `[a..an)` with respect to the write indeces `[b..bn)`,
+  adjusts the read indices `[a..an)` with respect to the write indices `[b..bn)`,
   to convert a read from `mem` into a read from `val`.
 
 The tactic shall be implemented as follows:
