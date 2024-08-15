@@ -2,7 +2,12 @@
 # Borrowed from the s2n-bignum project
 # https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/simulator.c
 # Author(s): John Harrison, Juneyoung Lee
-# Usage: armsimluate <output-file-name> <instruction in GNU assembly syntax>
+# Input args for the armsimulate script:
+#  - <output-file-name>
+#  - <32-bit instruction>
+#  - 31 x <64-bit GPRs (no SP)>
+#  - 1 x <4-bit Flags>
+#  - 32*2 x <64-bit SPFs>
 
 OUTFILE="$1" # basename for the output file
 INST="$2" # instruction to be simulated
