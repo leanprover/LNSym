@@ -25,8 +25,7 @@ info: sha512_program.exec_0x126c90 (s : ArmState) :
       (ArmInst.BR (BranchInst.Compare_branch { sf := 1#1, _fixed := 26#5, op := 1#1, imm19 := 523804#19, Rt := 2#5 }))
       s =
     w StateField.PC
-      (if decide (r (StateField.GPR 2#5) s = BitVec.zero (if 1#1 = 1#1 then 64 else 32)) = false then
-        r StateField.PC s + BitVec.signExtend 64 (523804#19 <<< 2)
+      (if decide (r (StateField.GPR 2#5) s = BitVec.zero 64) = false then r StateField.PC s + 18446744073709549680#64
       else r StateField.PC s + 4#64)
       s
 -/
