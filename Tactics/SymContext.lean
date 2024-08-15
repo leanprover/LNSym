@@ -78,18 +78,6 @@ structure SymContext where
   to determine the name of the next state variable that is added by `sym` -/
   curr_state_number : Nat := 0
 
-/-- `h_err_type state` returns an Expr representing `r state = .None`,
-the expected type of `h_err` -/
-private def h_err_type (state : Expr) : MetaM Expr :=
-  mkEq
-    (mkApp2 (.const ``r []) (.const ``StateField.ERR []) state)
-    (.const ``StateError.None [])
-
-/-- `h_sp_type state` returns an Expr representing `CheckSPAlignment state`,
-the expected type of `h_sp` -/
-private def h_sp_type (state : Expr) : Expr :=
-  mkApp (.const ``CheckSPAlignment []) state
-
 namespace SymContext
 
 /-! ## Creating initial contexts -/

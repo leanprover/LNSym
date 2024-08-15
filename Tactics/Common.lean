@@ -125,12 +125,32 @@ def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
     else
       throwError "Expected a bitvector of width {w}, but\n\t{e}\nhas width {n}"
 
-  let x ← mkFreshExprMVar (Expr.const ``Nat [])
-  let e' ← mkAppM ``BitVec.ofNat #[toExpr w, x]
-  if (←isDefEq e e') then
-    return BitVec.ofNat w (← reflectNatLiteral x)
-  else
-    throwError "Failed to unify, expected:\n\t{e'}\nbut found:\n\t{e'}"
+
+/-! ## Hypothesis types -/
+namespace SymContext
+
+/-- `h_err_type state` returns an Expr for `r state = .None`,
+the expected type of `h_err` -/
+def h_err_type (state : Expr) : MetaM Expr :=
+  mkEq
+    (mkApp2 (.const ``r []) (.const ``StateField.ERR []) state)
+    (.const ``StateError.None [])
+
+/-- `h_sp_type state` returns an Expr for `CheckSPAlignment state`,
+the expected type of `h_sp` -/
+def h_sp_type (state : Expr) : Expr :=
+  mkApp (.const ``CheckSPAlignment []) state
+
+/-- `h_sp_type state` returns an Expr for `state.program = program`,
+the expected type of `h_program` -/
+def h_program_type (state program : Expr) : Expr :=
+  mkAppN (mkConst ``Eq [1]) #[
+    mkConst ``Program,
+    mkApp (mkConst ``ArmState.program) state,
+    program
+  ]
+
+end SymContext
 
 /-! ## Local Context Search -/
 
@@ -163,7 +183,7 @@ Throws an error if no such hypothesis could. -/
 def findProgramHyp (state : Expr) : MetaM (LocalDecl × Name) := do
   -- Try to find `h_program`, and infer `program` from it
   let program ← mkFreshExprMVar none
-  let h_program_type ← mkEq (← mkAppM ``ArmState.program #[state]) program
+  let h_program_type := SymContext.h_program_type state program
   let h_program ← findLocalDeclOfTypeOrError h_program_type
 
   -- Assert that `program` is a(n application of a) constant, and find its name
