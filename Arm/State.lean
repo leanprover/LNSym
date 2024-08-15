@@ -777,6 +777,21 @@ theorem getLsb_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n â‰
         omega
       Â· omega
 
+/--
+The describes the behaviour of `m.read_bytes` at a byte level granularity.
+@bollu: TODO before merge: prove theorems `extractLsByte_append`,
+`extractLsByte_read_bytes`.
+-/
+theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h : addr.toNat + n < 2^64) :
+    (m.read_bytes n addr).extractLsByte i =
+      if i < n then m.read (addr + (BitVec.ofNat 64 i)) else 0#8 := by
+  induction n generalizing i addr m
+  case zero =>
+    rw [read_bytes]
+    simp
+  case succ n' ih =>
+    simp only [read_bytes_succ_eq]
+    sorry
 
 /--
 This is a low level theorem.

@@ -586,6 +586,20 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
       apply BitVec.getLsb_ge
       omega
 
+/- value of read_mem_bytes when subset of another read. -/
+theorem read_mem_bytes_eq_read_mem_bytes_of_read_mem_bytes_of_subset
+    {mem : Memory}
+    (hab : mem_subset' a an b bn) (hb : mem.read_bytes bn b = val):
+    mem.read_bytes an a = val.extractLsBytes (b.toNat - a.toNat) an := by
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  obtain ⟨h1, h2, h3, h4⟩ := hab
+  rw [mem_legal'] at h1 h2
+  rw [BitVec.le_def] at h3
+  rw [Memory.getLsb_read_bytes (by omega)]
+  rw [BitVec.getLsb_extractLsBytes]
+  sorry
+
 /--
 info: 'read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/

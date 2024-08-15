@@ -930,12 +930,19 @@ theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
 
 /-! ### Least Significant Byte -/
 
-/-- Definition to extract the `n`th least significant *Byte* from a bitvector. -/
+/--
+Definition to extract the `n`th least significant *Byte* from a bitvector.
+TODO: this should be named `getLsByte`.
+-/
 def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
   val.extractLsb ((n + 1) * 8 - 1) (n * 8) |> .cast (by omega)
 
 theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
     val.extractLsByte n = (val.extractLsb ((n + 1)*8 - 1) (n * 8) |>.cast (by omega)) := rfl
+
+@[simp]
+theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
+  simp [extractLsByte]
 
 @[simp]
 theorem getLsb_extractLsByte (val : BitVec w₁) :
@@ -946,6 +953,25 @@ theorem getLsb_extractLsByte (val : BitVec w₁) :
   simp only [Nat.add_one_sub_one,
     Nat.add_sub_cancel_left]
 
+
+-- @bollu: todo
+-- theorem extractLsByte_append (val : BitVec (n * 8)) (new )
+
+/--
+Two bitvectors of length `n*8` are equal if all their bytes are equal.
+This theorem can be strengthened to take `(i : Fin n)`.
+-/
+theorem eq_of_extractLsByte_eq (x y : BitVec (n * 8))
+    (h : ∀ (i : Nat), x.extractLsByte i = y.extractLsByte i) : x = y := by
+  apply eq_of_getLsb_eq
+  intros j
+  obtain ⟨j, hj⟩ := j
+  specialize h (j / 8)
+  have hx := x.getLsb_extractLsByte (n := j / 8) (i := j % 8)
+  have hy := y.getLsb_extractLsByte (n := j / 8) (i := j % 8)
+  simp only [show j % 8 ≤ 7 by omega, decide_True, Bool.true_and] at hx hy
+  simp only [show j / 8 * 8 + j % 8 = j by omega] at hx hy
+  simp only [← hx, ← hy, h]
 
 /-! ### Least Significant Byte range -/
 

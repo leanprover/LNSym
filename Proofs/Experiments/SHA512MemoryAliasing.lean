@@ -82,6 +82,7 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   -- (h_run : sf = run 4 s0)
   :
   read_mem_bytes 16 (ctx_addr s0 + 48#64) s0 = xxxx := by
+  simp [memory_rules]
   -- Prelude
   -- simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation

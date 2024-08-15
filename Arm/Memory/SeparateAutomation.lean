@@ -33,9 +33,21 @@ open Lean Meta Elab Tactic
 
 ##### Tactic Loop
 
-The core tactic tries to simplify expressions of the form:
-`mem.write_bytes [b..bn) val |>. read_bytes [a..an)`
-by case splitting:
+##### Reads of Bare Memory
+Given `mem.read_bytes [a..an)`
+
+1. If `h : mem.read_bytes [b..bn) = some val`, and `[a..an) ⊆ [b..bn)`,
+  then `mem.read_bytes [a..an) = val.extractLsByte adjust([a..an), [b..bn))`.
+  Here, `adjust` is a function that adjusts the read indices `[a..an)`
+  with respect to the read indices `[b..bn)`,
+  to convert a read from `mem` into a read from `val`.
+
+**NOTE**: This can be used to preprocess writes, where for every write,
+we can add an assumption that says that `(mem.write_bytes [b..bn) val]) |>.read_bytes [b..bn) = val`.
+Note sure if this is a sensible preprocessing to perform.
+
+##### Reads of Writes
+Given `mem.write_bytes [b..bn) val |>. read_bytes [a..an)`
 
 1. If `[a..an) ⟂ [b..bn)`, the write does not alias the read,
   and can be replaced with ` mem.read_bytes [a..an) `
@@ -58,7 +70,7 @@ The tactic shall be implemented as follows:
         So try to find `[c..cn)` such that:
         (i) `[a..an) ⊆ [c..cn)`
         (ii) `[c..cn) ⊆ [b..bn)`
-    2d. If this also fails, then reduce all hypotheses to
+  2d. If this also fails, then reduce all hypotheses to
         linear integer arithmetic, and try to invoke `omega` to prove either
         `[a..an) ⟂ [b..bn)` or `[a..an) ⊆ [b..bn)`.
 3. Given a proof of either `[a..an) ⟂ [b..bn)` or `[a..an) ⊆ [b..bn)`,
