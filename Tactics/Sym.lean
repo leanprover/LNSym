@@ -17,7 +17,7 @@ initialize
   Lean.registerTraceClass `Sym
 
 open BitVec
-open Lean (FVarId TSyntax)
+open Lean (FVarId TSyntax logWarning)
 open Lean.Elab.Tactic (TacticM evalTactic withMainContext)
 
 /-- A wrapper around `evalTactic` that traces the passed tactic script and
@@ -94,40 +94,32 @@ section stepiTac
 
 open Lean Elab Tactic Expr Meta
 
-def stepiTac (goal : MVarId) (h_step : Name) (hyp_prefix : String)
-  : TacticM Bool := goal.withContext do
-  -- Find all the FVars in the local context whose name begins with
-  -- hyp_prefix.
-  let h_step_expr ← getFVarFromUserName h_step
-  let lctx ← getLCtx
-  let matching_decls := filterDeclsWithPrefix lctx hyp_prefix.toName
-  -- logInfo m!"matching_decls: {matching_decls[0]!.userName}"
+/-- Apply the relevant pre-generated stepi lemma to replace a local hypothesis
+  `h_step : ?s' = stepi ?s`
+with an hypothesis in terms of `w` and `write_mem`
+  `h_step : ?s' = w _ _ (w _ _ (... ?s))`
+-/
+def stepiTac (h_step : Ident) (ctx : SymContext)
+  : TacticM Unit := withMainContext do
+  let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
+  --  ^^ The PC in hex
+  let step_lemma := mkIdent <| Name.str ctx.program s!"stepi_0x{pc}"
 
-  -- Simplify `fetch_inst`: note: using `ground := true` here causes
-  -- maxRecDepth to be reached. Use reduceMapFind? instead.
-  let (ctx, simprocs) ←
-    LNSymSimpContext (config := {decide := false, ground := false})
-                     (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules])
-                     (decls_to_unfold := #[])
-                     (thms := #[])
-                     (decls := matching_decls)
-                     (simprocs := #[])
-  let some goal' ← LNSymSimp goal ctx simprocs (fvarid := h_step_expr.fvarId!) |
-                   logInfo m!"[stepiTac] The goal appears to be solved, but this tactic \
-                              is not a finishing tactic! Something went wrong?"
-                   return false
-  replaceMainGoal [goal']
-  return true
+  evalTacticAndTrace <|← `(tactic| (
+    replace $h_step :=
+      (propext_iff.mp
+        ($step_lemma:ident
+          _
+          $ctx.next_state_ident:ident
+          $ctx.h_program_ident:ident
+          $ctx.h_pc_ident:ident
+          $ctx.h_err_ident:ident)).mp
+      $h_step
+  ))
 
-def stepiTacElab (h_step : Name) (hyp_prefix : String) : TacticM Unit :=
-  withMainContext
-  (do
-    let success ← stepiTac (← getMainGoal) h_step hyp_prefix
-    if ! success then
-      failure)
-
-elab "stepi_tac" h_step:ident hyp_prefix:str : tactic =>
-  stepiTacElab (h_step.getId) (hyp_prefix.getString)
+elab "stepi_tac" h_step:ident : tactic => do
+  let c ← SymContext.fromLocalContext none
+  stepiTac (h_step) c
 
 end stepiTac
 
@@ -135,14 +127,21 @@ def sym1 (c : SymContext) : TacticM SymContext :=
   withMainContext do
     trace[Sym] "(sym1): simulating step {c.curr_state_number}:\n{repr c}"
     let h_step_n' := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
-    let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
 
-    evalTacticAndTrace <|← `(tactic| (
-        init_next_step $c.h_run_ident:ident $h_step_n':ident $c.next_state_ident:ident
-        -- Simulate one instruction
-        stepi_tac $h_step_n':ident $h_st_prefix:str
-        intro_fetch_decode_lemmas $h_step_n':ident $c.h_program_ident:ident $h_st_prefix:str
-    ))
+    -- Add new state to local context
+    evalTacticAndTrace <|← `(tactic|
+      init_next_step $c.h_run_ident:ident $h_step_n':ident $c.next_state_ident:ident
+    )
+
+    -- Apply relevant pre-generated `stepi` lemma
+    stepiTac h_step_n' c
+
+    -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
+    let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
+    evalTacticAndTrace <|← `(tactic|
+      intro_fetch_decode_lemmas
+        $h_step_n':ident $c.h_program_ident:ident $h_st_prefix:str
+    )
     return c.next
 
 
@@ -207,5 +206,14 @@ elab "sym1_n" n:num s:(sym_at)? : tactic =>
     let mut c ← SymContext.fromLocalContext s
     c ← c.addGoalsForMissingHypotheses
 
-    for _ in List.range n.getNat do
+    let n ←
+      if n.getNat ≤ c.runSteps then
+        pure n.getNat
+      else
+        let h_run ← userNameToMessageData c.h_run
+        logWarning m!"Symbolic simulation using {h_run} is limited to at most {c.runSteps} steps"
+        pure c.runSteps
+
+    -- The main loop
+    for _ in List.range n do
       c ← sym1 c

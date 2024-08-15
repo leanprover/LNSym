@@ -271,8 +271,7 @@ theorem program_effects_lemma (h_pre : abs_pre s0)
                 BitVec.truncate 64 4294967295#32) &&&
             BitVec.truncate 64 1#32)) := by
     simp (config := {decide := true}) only [h_step_4, h_step_3, h_step_2, h_step_1,
-                                            state_simp_rules]
-    rfl
+                                            state_simp_rules, bitvec_rules]
 
   have h_sf_s4 : sf = s4 := by
     simp only [h_run, h_s4, h_s3, h_s2, h_s1, run]
