@@ -64,6 +64,7 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   (h_s0_program : s0.program = sha512_program)
   (h_s0_num_blocks : num_blocks s0 = 1)
   (h_s0_x3 : r (StateField.GPR 3#5) s0 = ktbl_addr)
+  (hlegal : mem_legal' (ctx_addr s0) 64)
   (h_s0_ctx : read_mem_bytes 64 (ctx_addr s0) s0 = SHA2.h0_512.toBitVec)
   (h_s0_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s0 = BitVec.flatten SHA2.k_512)
   -- (FIXME) Add separateness invariants for the stack's memory region.
@@ -81,13 +82,21 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
                   ktbl_addr      (SHA2.k_512.length * 8))
   -- (h_run : sf = run 4 s0)
   :
-  read_mem_bytes 16 (ctx_addr s0 + 48#64) s0 = xxxx := by
+  read_mem_bytes 16 (ctx_addr s0 + 48#64) s0 = SHA2.h0_512.toBitVec.extractLsBytes 48 16 := by
   simp [memory_rules]
-  -- Prelude
-  -- simp_all only [state_simp_rules, -h_run]
-  -- Symbolic Simulation
-  -- sym1_n 4
-  sorry
+  rw [read_mem_bytes_eq_extractLsBytes_of_subset_of_read_mem_bytes
+    (hread := h_s0_ctx)]
+  congr
+  · rw [hlegal.toNat_add_eq_toNat_add_toNat_of_le (by omega)]
+    omega
+  · constructor
+    · apply hlegal.of_mem_legal'_self_of_lt
+      bv_omega
+    · assumption
+    · rw [BitVec.le_def]
+      unfold mem_legal' at hlegal
+      bv_omega
+    · bv_omega
 
 /-
 Let's automatically figure out what

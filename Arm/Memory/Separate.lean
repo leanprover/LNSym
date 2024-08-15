@@ -259,6 +259,8 @@ of memory. Note that the interval is left closed, right open, and thus `n` is th
 def mem_legal' (a : BitVec 64) (n : Nat) : Prop :=
   a.toNat + n ≤ 2^64
 
+theorem mem_legal'.def (h : mem_legal' a n) : a.toNat + n ≤ 2^64 := h
+
 /--
 @bollu: have proof automation exploit this.
 Equation lemma for `mem_legal'`.
@@ -272,6 +274,32 @@ The maximum size of the range we can choose to allocate is 2^64.
 theorem mem_legal'.size_le_two_pow (h : mem_legal' a n) : n ≤ 2 ^ 64 := by
   rw [mem_legal'] at h
   omega
+
+
+/--
+If we know that `[a..a+n)` is legal and `a'.toNat + n' < a.toNat + n`,
+then `[a'..a'+n')` is also legal. -/
+theorem mem_legal'.of_mem_legal'_of_lt
+    (h : mem_legal' a n) (hn : a'.toNat + n' ≤ a.toNat + n) :
+    mem_legal' a' n' := by
+  unfold mem_legal' at h ⊢
+  omega
+
+/--
+If we know that `[a..a+n)` is legal, -/
+theorem mem_legal'.of_mem_legal'_self_of_lt
+    (h : mem_legal' a n) (hn : a.toNat + offset + n' ≤ a.toNat + n) :
+    mem_legal' (a + (BitVec.ofNat 64 offset)) n' := by
+  unfold mem_legal' at h ⊢
+  bv_omega
+
+/-- If we know that `[a..a+n)` is legal, then `a+m` does not overflow for `m < n`. -/
+theorem mem_legal'.toNat_add_eq_toNat_add_toNat_of_le
+    (h : mem_legal' a n) (hm : m < n) :
+    (a + (BitVec.ofNat 64 m)).toNat = a.toNat + m := by
+  have := h.size_le_two_pow
+  have := h.def
+  bv_omega
 
 /--
 Legal in the new sense implies legal in the old sense.
@@ -587,17 +615,14 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
       omega
 
 /- value of read_mem_bytes when subset of another read. -/
-theorem read_mem_bytes_eq_read_mem_bytes_of_read_mem_bytes_of_subset
+theorem read_mem_bytes_eq_extractLsBytes_of_subset_of_read_mem_bytes
     {mem : Memory}
-    (hab : mem_subset' a an b bn) (hb : mem.read_bytes bn b = val):
-    mem.read_bytes an a = val.extractLsBytes (b.toNat - a.toNat) an := by
-  apply BitVec.eq_of_getLsb_eq
+    (hread : mem.read_bytes bn b = val)
+    (hsubset : mem_subset' a an b bn) :
+    mem.read_bytes an a = val.extractLsBytes (a.toNat - b.toNat) an := by
+  apply BitVec.eq_of_extractLsByte_eq
   intros i
-  obtain ⟨h1, h2, h3, h4⟩ := hab
-  rw [mem_legal'] at h1 h2
-  rw [BitVec.le_def] at h3
-  rw [Memory.getLsb_read_bytes (by omega)]
-  rw [BitVec.getLsb_extractLsBytes]
+  -- simp [memory_rules]
   sorry
 
 /--
