@@ -123,7 +123,6 @@ elab "stepi_tac" h_step:ident : tactic => do
 
 end stepiTac
 
-open Lean.Elab.Tactic (TacticM withMainContext evalTactic) in
 def sym1 (c : SymContext) : TacticM SymContext :=
   withMainContext do
     trace[Sym] "(sym1): simulating step {c.curr_state_number}:\n{repr c}"
