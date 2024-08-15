@@ -99,8 +99,8 @@ def machine_to_regState (inst : BitVec 32) (str : String) : regState :=
   { inst, gpr, nzcv := flags[0]!, sfp }
 
 /--
-Call the `armsimulate <uniqueBaseName> <register>` script to
-build an executable and report the results of executing <register>.
+Call the `armsimulate <uniqueBaseName> <input>` script to
+build an executable and report the results of executing <input>.
 The <uniqueBaseName> is used to produce a unique object file per test case.
 The object file is used to report the disassembled instruction.
 Therefore, we need a  unique base name per test.
@@ -232,8 +232,8 @@ Use a `uniqueBaseName` to create unique files to ensure that tests do not
 clobber each other's state.
 Return `some t` if a test can be produced, and `none` if not.
 - Uses `IO` to try produce a random test that shall be run in a task.
-- Returns `.none` if there is the instruction does not exist on the given architecture.
-- Returns `.some task` upon succeessful creation of the task to randomly test one instruction instance.
+- Returns `.none` if the instruction does not exist on the given architecture.
+- Returns `.some task` upon successful creation of the task to randomly test one instruction instance.
 -/
 def mk_one_test_task (verbose : Bool) (logPrefix : String)
     (fn : IO (Option (BitVec 32))) (uniqueBaseName : String) :
