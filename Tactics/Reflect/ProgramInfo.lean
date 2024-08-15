@@ -26,9 +26,25 @@ structure ProgramInfo where
 
 namespace ProgramInfo
 
+/-- The expression `mkConst pi.name`,
+i.e., an expression of this program referred to by name -/
+def expr (pi : ProgramInfo) : Expr := mkConst pi.name
+
 def getRawInstrAt? (pi : ProgramInfo) (addr : BitVec 64) :
     Option (BitVec 32) :=
   pi.rawProgram.find? addr
+
+-- TODO: this instance could be upstreamed (after cleaning it up)
+instance [BEq α] [Hashable α] : ForIn m (HashMap α β) (α × β) where
+  forIn map acc f := do
+    let f := fun (acc : ForInStep _) key val => do
+      match acc with
+        | .yield acc  => f ⟨key, val⟩ acc
+        | .done _     => return acc
+    match ← map.foldM f (ForInStep.yield acc) with
+     | .done x | .yield x => return x
+
+/-! ## ProgramInfo Generation -/
 
 /-- Given the name and defining expression of a `Program`,
 generate the basic `ProgramInfo` -/
