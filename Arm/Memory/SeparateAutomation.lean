@@ -45,9 +45,13 @@ The core tactic tries to simplify expressions of the form
 The tactic shall be implemented as follows:
 1. Search the goal state for a term of the form `read_mem (write_mem)`
 2. Try to prove that either `[a..an) ⟂ [b..bn)`, or `[a..an) ⊆ [b..bn)`.
-    2a. First lookup the hypotheses list for these.
-    2b. If this fails, deduce this from `[a..an) ⊆ [a'..an')`,
-        `[b..bn) ⊆ [b'..bn')`, and `[a'..an') ⟂ [b'...bn')`.
+    2a. First search the local context for assumptions of this type.
+    2b. Try to deduce `[a..an) ⟂ [b..bn)` from the fact that subsets of disjoint sets are disjoint,
+        So try to find `[a'..an')`, `[b'...bn')` such that: (i) `[a..an) ⊆ [a'..an')`,
+        (ii) `[b..bn) ⊆ [b'..bn')`, (iii) and `[a'..an') ⟂ [b'...bn')`.
+ 2c. Try to deduce `[a..an) ⊆ [b..bn)` from the fact that the subset relation is transitive.
+        So try to find `[c..cn)` such that: (i) `[a..an) ⊆ [c..cn)`, (ii) `[c..cn) ⊆ [b..bn)`.
+
     2c. If this also fails, then reduce all hypotheses to linear integer arithmetic,
         and try to invoke `omega`.
 3. Given a proof of either `[a..an) ⟂ [b..bn)` or `[a..an) ⊆ [b..bn)`,
