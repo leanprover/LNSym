@@ -13,17 +13,8 @@ open Elab.Tactic Elab.Term
 initialize
   Lean.registerTraceClass `Sym.reduceFetchInst
 
-theorem fetch_inst_eq_of_prgram_eq_of_map_find
-    {state : ArmState} {program : Program}
-    {addr : BitVec 64} {inst? : Option (BitVec 32)}
-    (h_program : state.program = program)
-    (h_map : program.find? addr = inst?) :
-    fetch_inst addr state = inst? := by
-  rw [fetch_inst, h_program, h_map]
-
-def reduceFetchInst? (addr : Expr) (s : Expr) :
+def reduceFetchInst? (addr : BitVec 64) (s : Expr) :
     MetaM (BitVec 32 × Expr) := do
-  let addr ← reflectBitVecLiteral 64 addr
   let ⟨programHyp, program⟩ ← findProgramHyp s
   let programInfo ← try ProgramInfo.lookupOrGenerate program catch err =>
     throwErrorAt
@@ -54,6 +45,7 @@ simproc reduceFetchInst (fetch_inst _ _) := fun e => do
   trace[Sym.reduceFetchInst] "⚙️ simplifying {e}"
   let_expr fetch_inst addr s := e
     | return .continue
+  let addr ← reflectBitVecLiteral 64 addr
 
   try
     let ⟨x, proof?⟩ ← reduceFetchInst? addr s

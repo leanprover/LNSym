@@ -521,6 +521,14 @@ theorem fetch_inst_from_program
     unfold fetch_inst
     simp only
 
+theorem fetch_inst_eq_of_prgram_eq_of_map_find
+    {state : ArmState} {program : Program}
+    {addr : BitVec 64} {inst? : Option (BitVec 32)}
+    (h_program : state.program = program)
+    (h_map : program.find? addr = inst?) :
+    fetch_inst addr state = inst? := by
+  rw [fetch_inst, h_program, h_map]
+
 end Load_program_and_fetch_inst
 
 ----------------------------------------------------------------------
