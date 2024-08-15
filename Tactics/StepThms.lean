@@ -42,14 +42,6 @@ initialize registerTraceClass `gen_step.debug.timing
 -- initialize
 --   registerOption `gen_step.skip_
 
-/-- Return the expression `state.program = program` -/
-def programHypType (state : Expr) (program : Name) : Expr :=
-  mkAppN (mkConst ``Eq [1]) #[
-    mkConst ``Program,
-    mkAppN (mkConst ``ArmState.program) #[state],
-    mkConst program
-  ]
-
 /-- Assuming that `rawInst` is indeed the right result, construct a proof that
   `fetch_inst addr state = some rawInst`
 given that `state.program = program` -/
@@ -260,7 +252,7 @@ def genFetchTheorem (program : ProgramInfo) (address : BitVec 64)
     let bitvec32      := mkApp (mkConst ``BitVec) (toExpr 32)
     let opt_bitvec32  := mkApp (mkConst ``Option [0]) bitvec32
     forallE `s (mkConst ``ArmState)
-      (forallE `h (programHypType (bvar 0) program.name)
+      (forallE `h (h_program_type (bvar 0) program.expr)
         (mkAppN (mkConst ``Eq [1]) #[
           opt_bitvec32,
           (fetch_inst_fn (bvar 1)),
@@ -271,7 +263,7 @@ def genFetchTheorem (program : ProgramInfo) (address : BitVec 64)
 
   let thm_proof ←
     withLocalDeclD `s (mkConst ``ArmState) fun s => do
-      withLocalDeclD `h (programHypType s program.name) fun h => do
+      withLocalDeclD `h (h_program_type s program.expr) fun h => do
         let proof := fetchLemma s (mkConst program.name) h address raw_inst
         mkLambdaFVars #[s, h] proof
 
@@ -421,7 +413,7 @@ def genStepTheorem (program : Name) (address_str : String)
         #["fetch_0x", "decode_0x", "exec_0x"]
   withLocalDeclD `sn (mkConst ``ArmState) fun sn => do
   withLocalDeclD `s (mkConst ``ArmState) fun s => do
-  withLocalDeclD `h_program (programHypType s program) fun _h_program => do
+  withLocalDeclD `h_program (h_program_type s (mkConst program)) fun _h_program => do
   withLocalDeclD `h_pc (s_pc_hyp_fn s) fun _h_program => do
   withLocalDeclD `h_err (s_err_hyp_fn s) fun _h_err => do
     let lhs := stepi_fn sn s
