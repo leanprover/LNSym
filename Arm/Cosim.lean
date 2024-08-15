@@ -243,7 +243,6 @@ def mk_one_test_task (verbose : Bool) (logPrefix : String)
   | .none => return .none
   | .some inst => IO.asTask do
     let ret ← one_test inst uniqueBaseName
-    -- NOTE: this is broken, since it assumes that we know the file name that we are disassembling x(
     let disasm ← get_disasm uniqueBaseName
     if verbose then
       IO.println s!"{logPrefix}: {disasm}"
@@ -277,7 +276,6 @@ def run_all_tests (verbose : Bool) (n : Nat) : IO UInt32 := do
   let mut tasks := #[]
   if machine_check.exitCode == 0 then
     -- We are on an Aarch64 machine.
-    -- let mut acc := true
     -- Insts.rand is a list of functions of each class of instructions
     -- that generate legal, random 32-bit instructions.
     for (i, inst_fn) in Insts.rand.enum do
