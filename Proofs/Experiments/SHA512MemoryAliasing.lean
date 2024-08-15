@@ -131,7 +131,12 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (h_s1_ktbl_input_separate :
     mem_separate' (input_addr s1) ((num_blocks s1).toNat * 128)
                   ktbl_addr      (SHA2.k_512.length * 8)) :
-  read_mem_bytes 16 ktbl_addr s1 = xxxx := by
-  sorry
+  read_mem_bytes 16 ktbl_addr s1 = (BitVec.flatten SHA2.k_512).extractLsBytes 0 16 := by
+  simp [memory_rules]
+  -- | simp discharger?
+  -- is this because SHA2.k_512 is known statically?
+  generalize hx : SHA2.k_512 = x
+  -- rw [hx]
+  rw [read_mem_bytes_eq_extractLsBytes_of_subset_of_read_mem_bytes (hread := h_s1_ktbl)]
 
 end SHA512MemoryAliasing
