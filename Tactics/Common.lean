@@ -46,6 +46,9 @@ def filterDeclsWithPrefix (lctx : LocalContext) (pfxUserName : Name)
           | some decl => String.isPrefixOf (toString pfxUserName)
                                            (toString decl.userName))))
 
+def BitVec.toHexWithoutLeadingZeroes {w} (x : BitVec w) : String :=
+  (Nat.toDigits 16 x.toNat).asString
+
 /- Get the string representation of `e` if it denotes a bitvector
 literal. The bitvector's width is not represented in the resulting
 string. -/
@@ -55,7 +58,7 @@ def getBitVecString? (e : Expr) (hex : Bool := false): MetaM (Option String) := 
   | some ⟨_, value⟩ =>
     if hex then
       -- We don't want leading zeroes here.
-      return some (Nat.toDigits 16 value.toNat).asString
+      return some value.toHexWithoutLeadingZeroes
     else
       return some (ToString.toString value.toNat)
   | none => return none
