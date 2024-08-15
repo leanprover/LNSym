@@ -21,6 +21,7 @@ import Lean.Elab.Tactic.Conv.Basic
 
 open Lean Meta Elab Tactic
 
+
 /-! ## Memory Separation Automation
 
 ##### A Note on Notation
@@ -32,33 +33,39 @@ open Lean Meta Elab Tactic
 
 ##### Tactic Loop
 
-The core tactic tries to simplify expressions of the form
-`read_mem [a..an) (write_mem [b..bn) mem val)` away by one of two assumptions:
+The core tactic tries to simplify expressions of the form:
+`mem.write_bytes [b..bn) val |>. read_bytes [a..an)`
+by case splitting:
 
 1. If `[a..an) ⟂ [b..bn)`, the write does not alias the read,
-  and can be replaced with `read_mem [a..an) mem`
+  and can be replaced with ` mem.read_bytes [a..an) `
 2. If `[a..an] ⊆ [b..bn)`, the write aliases the read, and can be replaced with
-  `read_mem adjust([a..an), [b..bn)) val`. Here, `adjust` is a function that
+  `val.extractLsBs adjust([a..an), [b..bn))`. Here, `adjust` is a function that
   adjusts the read indices `[a..an)` with respect to the write indices `[b..bn)`,
   to convert a read from `mem` into a read from `val`.
 
 The tactic shall be implemented as follows:
-1. Search the goal state for a term of the form `read_mem (write_mem)`
+1. Search the goal state for `mem.write_bytes [b..bn) val |>.read_bytes [a/..an)`.
 2. Try to prove that either `[a..an) ⟂ [b..bn)`, or `[a..an) ⊆ [b..bn)`.
     2a. First search the local context for assumptions of this type.
-    2b. Try to deduce `[a..an) ⟂ [b..bn)` from the fact that subsets of disjoint sets are disjoint,
-        So try to find `[a'..an')`, `[b'...bn')` such that: (i) `[a..an) ⊆ [a'..an')`,
-        (ii) `[b..bn) ⊆ [b'..bn')`, (iii) and `[a'..an') ⟂ [b'...bn')`.
- 2c. Try to deduce `[a..an) ⊆ [b..bn)` from the fact that the subset relation is transitive.
-        So try to find `[c..cn)` such that: (i) `[a..an) ⊆ [c..cn)`, (ii) `[c..cn) ⊆ [b..bn)`.
-
-    2c. If this also fails, then reduce all hypotheses to linear integer arithmetic,
-        and try to invoke `omega`.
+    2b. Try to deduce `[a..an) ⟂ [b..bn)` from the fact that
+        subsets of disjoint sets are disjoint.
+        So try to find `[a'..an')`, `[b'...bn')` such that:
+          (i) `[a..an) ⊆ [a'..an')`.
+          (ii) `[b..bn) ⊆ [b'..bn')`.
+          (iii) and `[a'..an') ⟂ [b'...bn')`.
+    2b. Try to deduce `[a..an) ⊆ [b..bn)` from transitivity of subset.
+        So try to find `[c..cn)` such that:
+        (i) `[a..an) ⊆ [c..cn)`
+        (ii) `[c..cn) ⊆ [b..bn)`
+    2d. If this also fails, then reduce all hypotheses to
+        linear integer arithmetic, and try to invoke `omega` to prove either
+        `[a..an) ⟂ [b..bn)` or `[a..an) ⊆ [b..bn)`.
 3. Given a proof of either `[a..an) ⟂ [b..bn)` or `[a..an) ⊆ [b..bn)`,
   simplify using the appropriate lemma from `Mem/Separate.lean`.
 4. If we manage to prove *both* `[a..an) ⟂ [b..bn)` *and* `[a..an) ⊆ [b..bn)`,
-   declare victory as this is a contradiction. This may look useless, but feels like
-   it maybe useful to prove certain memory states as impossible.
+   declare victory as this is a contradiction. This may look useless,
+   but feels like it maybe useful to prove certain memory states as impossible.
 -/
 
 namespace SeparateAutomation
