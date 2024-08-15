@@ -155,6 +155,15 @@ def h_program_type (state program : Expr) : Expr :=
     program
   ]
 
+/-- `h_sp_type state` returns an Expr for `read_pc state = address`,
+the expected type of `h_pc` -/
+def h_pc_type (state address : Expr) : Expr :=
+  mkAppN (mkConst ``Eq [1]) #[
+    mkConst ``Program,
+    mkApp (mkConst ``read_pc) state,
+    address
+  ]
+
 end SymContext
 
 /-! ## Local Context Search -/
