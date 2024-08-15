@@ -89,13 +89,13 @@ that additionally recognizes:
 -- TODO: should this be upstreamed to core?
 def getBitVecValue? (e : Expr) : MetaM (Option ((n : Nat) × BitVec n)) :=
   match_expr e with
-    | BitVec.ofFin _ i => OptionT.run do
-      let ⟨n, i⟩ ← getFinValue? i
-      let n' := Nat.log2 n
-      if h : n = 2^n' then
-        return ⟨n', .ofFin (Fin.cast h i)⟩
-      else
-        failure
+    | BitVec.ofFin w i => OptionT.run do
+      let w ← getNatValue? w
+      let v ← do
+        match_expr i with
+          | Fin.mk _n v _h  => getNatValue? v
+          | _               => pure (←getFinValue? i).2.val
+      return ⟨w, BitVec.ofNat w v⟩
     | _ => Lean.Meta.getBitVecValue? e
 
 /-- Given a ground term `e` of type `Nat`, fully reduce it,
@@ -116,14 +116,16 @@ which was obtained by reducing:\n\t{e}"
 reduce an expression `e` (of type `BitVec w`) to be of the form `?n#w`,
 and then reflect `?n` to build the meta-level bitvector -/
 def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
-  if e.hasFVar then
+  if e.hasFVar || e.hasMVar then
     throwError "Expected a ground term, but {e} has free variables"
 
-  if let some ⟨n, x⟩ ← _root_.getBitVecValue? e then
-    if h : n = w then
-      return x.cast h
-    else
-      throwError "Expected a bitvector of width {w}, but\n\t{e}\nhas width {n}"
+  let some ⟨n, x⟩ ←_root_.getBitVecValue? e
+    | throwError "Failed to reflect:\n\t{e}\ninto a BitVec"
+
+  if h : n = w then
+    return x.cast h
+  else
+    throwError "Expected a bitvector of width {w}, but\n\t{e}\nhas width {n}"
 
 
 /-! ## Hypothesis types -/
