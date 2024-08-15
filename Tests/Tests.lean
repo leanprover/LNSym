@@ -19,3 +19,5 @@ import «Tests».«AES-GCM».AESGCMProgramTests
 import «Tests».«ELFParser».AWSLCCrypto
 import «Tests».«ELFParser».MiscTests
 import «Tests».Tactics.CSE
+import «Tests».Tactics.Sym
+import «Tests».Tactics.ReduceFetchInst

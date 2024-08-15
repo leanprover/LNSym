@@ -78,3 +78,97 @@ def getStateFieldString? (e : Expr) : MetaM (Option String) := OptionT.run do
   | StateField.FLAG pExpr => getPFlagString? pExpr
   | StateField.ERR        => return "err"
   | _                     => panic! s!"[getStateFieldName?] Unexpected expression: {e}"
+
+/-! ## Reflection of literals (possibly after reduction) -/
+
+/-- A wrapper around `Lean.Meta.getBitVecValue?`
+that additionally recognizes:
+- a `BitVec.ofFin (Fin.mk _ _)` application (which is the raw normal form)
+-/
+-- TODO: should this be upstreamed to core?
+def getBitVecValue? (e : Expr) : MetaM (Option ((n : Nat) × BitVec n)) :=
+  match_expr e with
+    | BitVec.ofFin _ i => OptionT.run do
+      let ⟨n, i⟩ ← getFinValue? i
+      let n' := Nat.log2 n
+      if h : n = 2^n' then
+        return ⟨n', .ofFin (Fin.cast h i)⟩
+      else
+        failure
+    | _ => Lean.Meta.getBitVecValue? e
+
+/-- Given a ground term `e` of type `Nat`, fully reduce it,
+and attempt to reflect it into a meta-level `Nat` -/
+def reflectNatLiteral (e : Expr) : MetaM Nat := do
+  if e.hasFVar then
+    throwError "Expected a ground term, but {e} has free variables"
+
+  let e' ← reduce (← instantiateMVars e)
+  let some x := e'.rawNatLit?
+    | throwError "Expected a numeric literal, found:\n\t{e'}
+which was obtained by reducing:\n\t{e}"
+  -- ^^ The previous reduction will have reduced a canonical-form nat literal
+  --    into a raw literal, hence, we use `rawNatLit?` rather than `nat?`
+  return x
+
+/-- For a concrete width `w`,
+reduce an expression `e` (of type `BitVec w`) to be of the form `?n#w`,
+and then reflect `?n` to build the meta-level bitvector -/
+def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
+  if e.hasFVar then
+    throwError "Expected a ground term, but {e} has free variables"
+
+  if let some ⟨n, x⟩ ← _root_.getBitVecValue? e then
+    if h : n = w then
+      return x.cast h
+    else
+      throwError "Expected a bitvector of width {w}, but\n\t{e}\nhas width {n}"
+
+  let x ← mkFreshExprMVar (Expr.const ``Nat [])
+  let e' ← mkAppM ``BitVec.ofNat #[toExpr w, x]
+  if (←isDefEq e e') then
+    return BitVec.ofNat w (← reflectNatLiteral x)
+  else
+    throwError "Failed to unify, expected:\n\t{e'}\nbut found:\n\t{e'}"
+
+/-! ## Local Context Search -/
+
+/-- Attempt to look-up a `name` in the local context,
+so that we can build an expression with its fvarid,
+to return a message with nice highlighting.
+If lookup fails, we return a message with the plain name, wihout highlighting -/
+def userNameToMessageData (name : Name) : MetaM MessageData := do
+  return match (← getLCtx).findFromUserName? name with
+    | some decl => m!"{Expr.fvar decl.fvarId}"
+    | none      => m!"{name}"
+
+def findLocalDeclOfType? (expectedType : Expr) : MetaM (Option LocalDecl) := do
+    let fvarId ← findLocalDeclWithType? expectedType
+    return ((← getLCtx).get! ·) <$> fvarId
+    -- ^^ `findLocalDeclWithType?` only returns `FVarId`s which are present in
+    --    the local context, so we can safely pass it to `get!`
+
+def findLocalDeclOfTypeOrError (expectedType : Expr) : MetaM LocalDecl := do
+    let some name ← findLocalDeclOfType? expectedType
+      | throwError "Failed to find a local hypothesis of type {expectedType}"
+    return name
+
+/-- `findProgramHyp` searches the local context for an hypothesis of type
+  `state.program = ?concreteProgram`,
+asserts that `?concreteProgram` is indeed a constant (i.e., global definition),
+then returns the decl of the local hypothesis and the name of the program.
+
+Throws an error if no such hypothesis could. -/
+def findProgramHyp (state : Expr) : MetaM (LocalDecl × Name) := do
+  -- Try to find `h_program`, and infer `program` from it
+  let program ← mkFreshExprMVar none
+  let h_program_type ← mkEq (← mkAppM ``ArmState.program #[state]) program
+  let h_program ← findLocalDeclOfTypeOrError h_program_type
+
+  -- Assert that `program` is a(n application of a) constant, and find its name
+  let program := (← instantiateMVars program).getAppFn
+  let .const program _ := program
+    |  -- withErrorContext h_run h_run_type <|
+        throwError "Expected a constant, found:\n\t{program}"
+
+  return ⟨h_program, program⟩

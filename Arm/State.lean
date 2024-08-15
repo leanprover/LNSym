@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Shilpi Goel
+Author(s): Shilpi Goel, Siddharth Bhat
 -/
 import Lean.Data.Format
 import Arm.BitVec
@@ -855,6 +855,7 @@ theorem write_bytes_eq_of_le  {mem : Memory} {ix base : BitVec 64}
       · rw [BitVec.toNat_add_eq_toNat_add_toNat]
         · simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
         · simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
+
 theorem write_bytes_eq_of_ge {mem : Memory} {ix base : BitVec 64}
     (hix : ix.toNat ≥ base.toNat + n)
     (hnowrap : base.toNat + n ≤ 2^64) :

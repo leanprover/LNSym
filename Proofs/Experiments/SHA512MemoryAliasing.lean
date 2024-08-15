@@ -85,7 +85,7 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   -- Prelude
   -- simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation
-  -- sym1_i_n 0 4 h_s0_program
+  -- sym1_n 4
   sorry
 
 /-

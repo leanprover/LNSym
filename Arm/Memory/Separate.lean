@@ -126,15 +126,16 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
     (ha : mem_legal a1 a2) (hb : mem_legal b1 b2) :
     a2 < b1 ∨ a1 > b2 := by
   unfold mem_separate mem_overlap at h
-  obtain ⟨⟨⟨h₁, h₂⟩, h₃⟩, h₄⟩ := by simpa? using h
-  simp [mem_legal] at ha hb
+  obtain ⟨⟨⟨h₁, h₂⟩, h₃⟩, h₄⟩ := by simpa only [Bool.not_or, Bool.and_eq_true,
+    Bool.not_eq_true', decide_eq_false_iff_not] using h
+  simp only [mem_legal, decide_eq_true_eq] at ha hb
   rw [BitVec.le_def] at ha hb
   rw [BitVec.le_def] at h₁ h₂ h₃ h₄
   rw [BitVec.lt_def, BitVec.gt_def]
   by_cases h₅ : a2.toNat < b1.toNat
-  · simp [h₅]
+  · simp only [h₅, gt_iff_lt, BitVec.val_bitvec_lt, true_or]
   · by_cases h₆ : a1.toNat > b2.toNat
-    · simp [h₆]
+    · simp only  [BitVec.val_bitvec_lt, gt_iff_lt, h₆, or_true]
     · exfalso
       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le ha] at h₁ h₂
       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le hb] at h₃ h₄
@@ -143,27 +144,6 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le h₅'] at h₄
       rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le h₆'] at h₂
       omega
-
-@[simp]
-theorem BitVec.neg_neg (x : BitVec w₁) : - (- x) = x := by
-  apply BitVec.eq_of_toNat_eq
-  simp
-  by_cases h : x.toNat = 0
-  · simp [h]
-  · rw [Nat.mod_eq_of_lt (a := 2^w₁ - x.toNat) (by omega)]
-    rw [Nat.sub_sub_eq_min]
-    rw [Nat.min_def]
-    simp [show ¬ 2^w₁ ≤ x.toNat by omega]
-
-@[simp]
-theorem BitVec.neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by
-  apply BitVec.eq_of_toNat_eq
-  simp
-
-theorem toNat_sub_eq_two_pow_sub_add_of_lt
-    {a b : BitVec w₁} (hab : a.toNat < b.toNat) : (a - b).toNat = 2^w₁ - b.toNat + a.toNat := by
-  simp only [toNat_sub]
-  rw [Nat.mod_eq_of_lt (by omega)]
 
 /--
 Given two legal memory regions `[a1, a2]` and `[b1, b2]`,
@@ -175,9 +155,9 @@ theorem mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal (h : a2 < b1 ∨ a1 >
     (ha : mem_legal a1 a2) (hb : mem_legal b1 b2) :
     mem_separate a1 a2 b1 b2 := by
   unfold mem_separate mem_overlap
-  simp
+  simp only [Bool.not_or, Bool.and_eq_true, Bool.not_eq_true', decide_eq_false_iff_not]
   unfold mem_legal at ha hb
-  simp [mem_legal] at ha hb
+  simp only [decide_eq_true_eq] at ha hb
   rw [BitVec.le_def] at ha hb
   simp only[BitVec.le_def]
   rw [BitVec.lt_def, BitVec.gt_def] at h
@@ -205,6 +185,21 @@ theorem mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal (h : a2 < b1 ∨ a1 >
     omega
 
 /--
+Given two legal memory regions `[a1, a2]` and `[b1, b2]`,
+being separate is *equivalent* to:
+- either the first one ends before the second one starts (`a2 < b1`),
+- or the first one starts after the second one ends `(a1 > b2)`,
+-/
+theorem mem_separate_iff_lt_or_gt_of_mem_legal_of_mem_legal
+    (ha : mem_legal a1 a2) (hb : mem_legal b1 b2) :
+   a2 < b1 ∨ a1 > b2 ↔ mem_separate a1 a2 b1 b2 := by
+  constructor
+  · intros h
+    apply mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal <;> assumption
+  · intros h
+    apply lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal <;> assumption
+
+/--
 If we express a memory region as `[a..(a+n)]` for `(n : Nat)`,
 and this memory region is legal, then we could not have had any wraparound.
 Thus, it must be the case that (a + n).toNat = a.toNat + n
@@ -212,8 +207,8 @@ Thus, it must be the case that (a + n).toNat = a.toNat + n
 theorem add_lt_of_mem_legal_of_lt
     (h : mem_legal a (a + n)) :
     a.toNat + n.toNat < 2^64 := by
-  simp [mem_legal] at h
-  simp [BitVec.le_def, BitVec.toNat_add] at h
+  simp only [mem_legal, decide_eq_true_eq,
+    le_def, toNat_add, Nat.reducePow] at h
   by_cases hadd : a.toNat + n.toNat < 2^64
   · assumption
   · exfalso
@@ -234,12 +229,11 @@ Thus, it must be the case that (a + n).toNat = a.toNat + n
 theorem toNat_add_distrib_of_mem_legal_of_lt
     (h : mem_legal a (a + n)) :
     (a + n).toNat = a.toNat + n.toNat := by
-  simp [BitVec.add_def]
+  simp only [add_def, toNat_ofNat, Nat.reducePow]
   rw [Nat.mod_eq_of_lt]
   apply add_lt_of_mem_legal_of_lt h
 
 end Separate
-
 
 /-#
 
@@ -247,8 +241,8 @@ end Separate
 
 The new memory model is different from the old one in two ways:
 
-1. It uses (base pointer, length) to keep track of memory regions instead of closed inntervals of [pointer 1, pointer 2].
-2. To faciliatate the new representation, it bakes in the assumption that the memory region is legal
+1. It uses (base pointer, length) to keep track of memory regions instead of closed intervals of [pointer 1, pointer 2].
+2. To facilitate the new representation, it bakes in the assumption that the memory region is legal
    (i.e. no wraparound).
 3. More softly, it tries to keep reasoning in terms of `Nat` rather than `BitVec` in order to allow easier
    automation via `omega` for proving disjointedness / subset assumptions.
@@ -256,7 +250,7 @@ The new memory model is different from the old one in two ways:
 All of the new definitions are named after the old definitions with a prime (') after their name.
 For robustness (and confidence), we plan to prove theorems that establish the equivalence of the old and new memory models.
 -/
-section NewDefitions
+section NewDefinitions
 
 /--
 `mem_legal' a n` witnessses that `(a + n)` does not overflow, and thus `[a..a+n)` is a valid range
@@ -286,7 +280,7 @@ theorem mem_legal_of_mem_legal' (h : mem_legal' a n) :
     mem_legal a (a + (BitVec.ofNat 64 (n - 1))) := by
   simp only [mem_legal', mem_legal, BitVec.le_def] at h ⊢
   rw [BitVec.toNat_add_eq_toNat_add_toNat]
-  simp
+  simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.le_add_right, decide_True]
   rw [BitVec.toNat_ofNat]
   rw [Nat.mod_eq_of_lt (by omega)]
   omega
@@ -297,19 +291,40 @@ Legal in the new sense implies legal in the old sense.
 Note that the subtraction could also have been written as `(b - a).toNat + 1`
 -/
 theorem mem_legal'_of_mem_legal (h: mem_legal a b) : mem_legal' a (b.toNat - a.toNat + 1) := by
-  simp [mem_legal] at h
+  simp only [mem_legal, decide_eq_true_eq] at h
   rw [mem_legal']
   rw [BitVec.le_def] at h
   omega
 
-def mem_legal'.of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n) :
+
+def mem_legal'_of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n) :
     mem_legal' a m := by
-  simp [mem_legal'] at h ⊢
+  simp only [mem_legal', Nat.reducePow] at h ⊢
   omega
+
+/--
+`mem_legal` is equivalent to `mem_legal'`.
+-/
+theorem mem_legal_iff_mem_legal' : mem_legal a b ↔
+    mem_legal' a ((b - a).toNat + 1) := by
+  constructor
+  · intros h
+    simp only [mem_legal, decide_eq_true_eq] at h
+    rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le h]
+    · simp only [mem_legal']
+      omega
+  · intros h
+    simp only [mem_legal'] at h
+    simp only [mem_legal, BitVec.le_def, decide_eq_true_eq]
+    apply Classical.byContradiction
+    intros h₂
+    rw [BitVec.toNat_sub_eq_two_pow_sub_add_of_lt (by omega)] at h
+    omega
 
 /--
 `mem_separate' a an b bn` asserts that two memory regions [a..an) and [b..bn) are separate.
 Note that we use *half open* intervals.
+In prose, we may notate this as `[a..an) ⟂ [b..bn)`.
 See also: Why numbering should start at zero (https://www.cs.utexas.edu/~EWD/ewd08xx/EWD831.PDF)
 -/
 structure mem_separate' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Prop where
@@ -317,7 +332,6 @@ structure mem_separate' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : 
   hb : mem_legal' b bn
   h : a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn
 
--- @[simp]
 theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
   rw [BitVec.le_def, BitVec.lt_def]
   omega
@@ -344,7 +358,9 @@ theorem mem_separate_of_mem_separate' (h : mem_separate' a an b bn)
   · sorry
 -/
 
-/-- `mem_subset' a an b bn` witnesses that `[a..a+an)` is a subset of `[b..b+bn)`-/
+/-- `mem_subset' a an b bn` witnesses that `[a..a+an)` is a subset of `[b..b+bn)`.
+In prose, we may notate this as `[a..an) ≤ [b..bn)`.
+-/
 structure mem_subset' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Prop where
   ha : mem_legal' a an
   hb : mem_legal' b bn
@@ -354,8 +370,8 @@ structure mem_subset' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Pr
 theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
   ha := h
   hb := h
-  hstart := by simp [BitVec.le_def]
-  hend := by simp [BitVec.le_def]
+  hstart := by simp only [BitVec.le_def, Nat.le_refl]
+  hend := by simp only [Nat.le_refl]
 
 /--
 If `[a'..a'+an')` begins at least where `[a..an)` begins,
@@ -389,10 +405,13 @@ then `[a..an')` is a subset of `[b..bn)` if `an' ≤ an`.
 theorem mem_subset'_of_length_le (h : mem_subset' a an b bn)
   (han' : an' ≤ an) : mem_subset' a an' b bn := by
   apply mem_subset'_of_le_of_le h
-  · simp [BitVec.le_def]
+  · simp only [Nat.le_refl]
   · omega
 
-/-- if `[a..an) ≤ [b..bn)` and `[b..bn) ⟂ [c..cn)`, then `[a..an) ⟂ [c..cn)`. -/
+/-- if `[a..an) ≤ [b..bn)` and `[b..bn) ⟂ [c..cn)`,
+then `[a..an) ⟂ [c..cn)`.
+(Recall that `⟂` stands for `mem_separate'`.)
+-/
 theorem mem_separate'_of_mem_separate'_of_mem_subset'
     (hsep : mem_separate' b bn c cn)
     (hsub : mem_subset' a an b bn) :
@@ -405,52 +424,19 @@ theorem mem_separate'_of_mem_separate'_of_mem_subset'
     | omega
     | assumption
 
--- theorem Nat.sub_mod_eq (x y : Nat) : (x - y) % t =
-
 private theorem Nat.sub_mod_eq_of_lt_of_le {x y : Nat} (hx : x < n) (hy : y ≤ x) :
     (x - y) % n = (x % n) - (y % n) := by
   rw [Nat.mod_eq_of_lt (by omega)]
   rw [Nat.mod_eq_of_lt (by omega)]
   rw [Nat.mod_eq_of_lt (by omega)]
 
-theorem BitVec.le_add_self_of_lt (a b : BitVec w₁) (hab : a.toNat + b.toNat < 2^w₁) :
-   a ≤ a + b := by
-  rw [BitVec.le_def]
-  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-  omega
-
-theorem BitVec.add_sub_cancel_left {a b : BitVec w₁}
-    (hab : a.toNat + b.toNat < 2^w₁) : (a + b) - a = b := by
-  apply BitVec.eq_of_toNat_eq
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le]
-  · rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-    omega
-  · apply BitVec.le_add_self_of_lt
-    omega
-
-theorem BitVec.le_add_iff_sub_le {a b c : BitVec w₁}
-   (hac : c ≤ a) (hbc : b.toNat + c.toNat < 2^w₁) :
-    (a ≤ b + c) ↔ (a - c ≤ b) := by
-  simp_all only [BitVec.le_def]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-  omega
-
-theorem BitVec.sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
-    (hbc : c ≤ b) : (a - c ≤ b - c) ↔ a ≤ b := by
-  simp_all only [BitVec.le_def]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  omega
-
--- mem_subset' is a safe over-approximation of mem_subset.
+-- `mem_subset'` implies mem_subset.
 theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hbn : bn > 0) :
   mem_subset a (a + BitVec.ofNat 64 (an - 1)) b (b + BitVec.ofNat 64 (bn - 1)):= by
   unfold mem_subset
   obtain ⟨ha, hb, hstart, hend⟩ := h
   unfold mem_legal' at ha hb
-  simp only [Nat.reducePow, Nat.add_one_sub_one, Bool.or_eq_true, decide_eq_true_eq,
-    Bool.and_eq_true]
+  simp only [bitvec_rules, minimal_theory]
   by_cases hb : bn = 2^64
   · left
     apply BitVec.eq_of_toNat_eq
@@ -490,9 +476,7 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   (val : BitVec (yn * 8)) :
     read_mem_bytes xn x (write_mem_bytes yn y val mem) =
     read_mem_bytes xn x mem := by
-  simp only [Nat.reduceMul, memory_rules,
-    Nat.reduceAdd, BitVec.ofNat_eq_ofNat,
-    BitVec.cast_eq]
+  simp only [bitvec_rules, minimal_theory, memory_rules]
   apply BitVec.eq_of_getLsb_eq
   intros i
   obtain ⟨hsrc, hdest, hsplit⟩ := hsep
@@ -504,13 +488,14 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
   -- we need to make use of mem_separate to show that src_addr + i / 8 < dest_addr | src_addr + i/7 ≥ dest_addr + 16
   exfalso
   · rcases hsplit with this | this
-    · simp [BitVec.le_def] at h₁
+    · simp only [bitvec_rules, minimal_theory, BitVec.not_lt, BitVec.le_def, BitVec.toNat_add,
+        BitVec.toNat_ofNat] at h₁
       omega
     · have hcontra_h2 : x.toNat + 16 < y.toNat + 16 := by
         simp at this
         have hi : (i : Nat) / 8 < xn := by
           apply Nat.div_lt_of_lt_mul
-          simp [Nat.mul_comm]
+          simp only [Nat.mul_comm, Fin.is_lt]
         rw [BitVec.toNat_add_eq_toNat_add_toNat] at h₂
         · omega
         · have := mem_legal'_def hsrc
@@ -527,14 +512,6 @@ theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
     omega
   · have := hsrc.size_le_two_pow
     omega
-
-theorem BitVec.toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
-    (BitVec.ofNat w₁ n).toNat = n := by
-  simp only [toNat_ofNat, Nat.mod_eq_of_lt hn]
-
-theorem BitVec.ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by
-  simp_all only [BitVec.le_def, BitVec.lt_def]
-  omega
 
 /- value of `read_mem_bytes'` when subset. -/
 theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
@@ -604,7 +581,7 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
             rw [← himod]
           rw [BitVec.le_def] at hstart
           omega
-    · simp [h₁]
+    · simp only [h₁, bitvec_rules, minimal_theory]
       intros h
       apply BitVec.getLsb_ge
       omega
@@ -615,5 +592,4 @@ info: 'read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset' depends on a
 #guard_msgs in #print axioms read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
 
 
-
-----------------------------------------------------------------------
+end NewDefinitions
