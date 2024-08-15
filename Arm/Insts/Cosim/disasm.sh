@@ -20,7 +20,7 @@ if [ -e "${COSIMDIR}/tests/${INFILE}.o" ]; then
 
     # Do not print the address -- just the instruction bytes and its
     # corresponding disassembly.
-    snip_inst="awk '{\$2=\"\"; print}'"
+    snip_inst="awk '{\$1\"\"; print}'"
 
     cmd=$base_cmd" | "$raw_inst" | "$snip_inst
 
