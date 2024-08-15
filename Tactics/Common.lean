@@ -136,10 +136,12 @@ namespace SymContext
 
 /-- `h_err_type state` returns an Expr for `r state = .None`,
 the expected type of `h_err` -/
-def h_err_type (state : Expr) : MetaM Expr :=
-  mkEq
-    (mkApp2 (.const ``r []) (.const ``StateField.ERR []) state)
-    (.const ``StateError.None [])
+def h_err_type (state : Expr) : Expr :=
+  mkAppN (mkConst ``Eq [1]) #[
+    mkConst ``StateError,
+    mkApp2 (.const ``r []) (.const ``StateField.ERR []) state,
+    .const ``StateError.None []
+  ]
 
 /-- `h_sp_type state` returns an Expr for `CheckSPAlignment state`,
 the expected type of `h_sp` -/
