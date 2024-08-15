@@ -17,6 +17,9 @@ Furthermore, we define a persistent env extension to store `ProgramInfo` in.
 
 open Lean Meta Elab.Term
 
+initialize
+  registerTraceClass `ProgramInfo
+
 structure ProgramInfo where
   name : Name
   rawProgram : HashMap (BitVec 64) (BitVec 32)
@@ -30,6 +33,7 @@ def getRawInstrAt? (pi : ProgramInfo) (addr : BitVec 64) :
 /-- Given the name and defining expression of a `Program`,
 generate the basic `ProgramInfo` -/
 partial def generateFromExpr (name : Name) (e : Expr) : MetaM ProgramInfo := do
+  trace[ProgramInfo] "Generating program info for `{name}` from definition:\n\t{e}"
   let type ← inferType e
   if !(←isDefEq type (mkConst ``Program)) then
     throwError "type mismatch: {e} {← mkHasTypeButIsExpectedMsg type (mkConst ``Program)}"
@@ -38,12 +42,14 @@ partial def generateFromExpr (name : Name) (e : Expr) : MetaM ProgramInfo := do
     let e ← whnfD e
     match_expr e with
     | List.cons _ hd tl => do
+        trace[ProgramInfo] "found address/instruction pair: {hd}"
+
         let hd' ← reduce hd
         let_expr Prod.mk _ _ addr inst := hd'
           | throwError "expected `{hd}` to reduce to an application of `Prod.mk`, found:\n\t{hd'}"
 
-        let addr ← reflectBitVecLiteral 64 addr
-        let inst ← reflectBitVecLiteral 32 inst
+        let addr ← reflectBitVecLiteral 64 (← instantiateMVars addr)
+        let inst ← reflectBitVecLiteral 32 (← instantiateMVars inst)
 
         let rawProgram := rawProgram.insert addr inst
         go rawProgram tl
@@ -92,11 +98,18 @@ def lookup? [Monad m] [MonadEnv m] (program : Name) :
   return state.find? program
 
 /-- look up the `ProgramInfo` for a given `program` in the environment,
-or, if none was found, generate (and cache) new program info -/
-def lookupOrGenerate (program : Name) : MetaM ProgramInfo := do
+or, if none was found, generate (and cache) new program info.
+
+If you pass in a value for `expr?`, that is assumed to be the definition for
+`program` when generating new program info.
+If you don't pass in an expr, the definition is found in the environment -/
+def lookupOrGenerate (program : Name) (expr? : Option Expr := none) :
+    MetaM ProgramInfo := do
   if let some pi ← lookup? program then
     return pi
   else
-    let pi ← generateFromConstName program
+    let pi ← match expr? with
+      | some expr => generateFromExpr program expr
+      | none      => generateFromConstName program
     store pi
     return pi
