@@ -48,7 +48,8 @@ abbrev num_blocks (s : ArmState) : BitVec 64 := r (StateField.GPR 2#5) s
 abbrev ktbl_addr : BitVec 64 := 0x1b4300#64
 
 
-macro "bv_omega'" : tactic => `(tactic| (try simp only [bv_toNat, mem_legal'] at * <;> try rw [BitVec.le_def]) <;> omega)
+macro "bv_omega'" : tactic =>
+  `(tactic| (try simp only [bv_toNat, mem_legal'] at * <;> try rw [BitVec.le_def]) <;> omega)
 
 /-
 Let's automatically figure out what
@@ -87,21 +88,17 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   :
   read_mem_bytes 16 (ctx_addr s0 + 48#64) s0 = SHA2.h0_512.toBitVec.extractLsBytes 48 16 := by
   simp [memory_rules]
+  -- | simp discharger?
+  --   Give simp a discharger.
+  --   Just make this stuff a simproc?
   rw [read_mem_bytes_eq_extractLsBytes_of_subset_of_read_mem_bytes
-    (hread := h_s0_ctx)]
-  -- ⊢ SHA2.h0_512.toBitVec.extractLsBytes ((ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat) 16 =
-  --  SHA2.h0_512.toBitVec.extractLsBytes 48 16
-  congr
-  · -- ⊢ (ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat = 48
+    (hread := h_s0_ctx) (hsubset := by constructor <;> bv_omega')]
+  · -- ⊢ SHA2.h0_512.toBitVec.extractLsBytes ((ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat) 16 =
+    --  SHA2.h0_512.toBitVec.extractLsBytes 48 16
+    congr
+    -- ⊢ (ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat = 48
     -- this will be done by the user, maybe we can do this as well as part of address normalizatio.
     bv_omega'
-  · -- this part should be done by the tactic to establish:
-    -- mem_subset' (ctx_addr s0 + 48#64) 16 (ctx_addr s0) (63 + 1)
-    constructor
-    · bv_omega'
-    · assumption
-    · bv_omega'
-    · bv_omega'
 
 /-
 Let's automatically figure out what
