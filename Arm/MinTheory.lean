@@ -88,9 +88,8 @@ attribute [minimal_theory] bne_self_eq_false
 attribute [minimal_theory] bne_self_eq_false'
 attribute [minimal_theory] decide_False
 attribute [minimal_theory] decide_True
-attribute [minimal_theory]
-  decide_eq_false_iff_not
-  decide_eq_true_iff
+attribute [minimal_theory] decide_eq_false_iff_not
+attribute [minimal_theory] decide_eq_true_iff
 attribute [minimal_theory] bne_iff_ne
 attribute [minimal_theory] Bool.false_eq
 attribute [minimal_theory] Bool.and_eq_false_imp
