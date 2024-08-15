@@ -73,23 +73,24 @@ def genFetchTheorem (program : ProgramInfo) (address : BitVec 64)
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genFetchTheorem] Start heartbeats: {startHB}"
 
-  let address_expr  := toExpr address
-  let raw_inst_rhs  := toExpr (some raw_inst)
   let declName :=
     Name.str program.name ("fetch_0x" ++ address.toHexWithoutLeadingZeroes)
-  let fetch_inst_fn := fun s => -- (fetch_inst <address_expr> <s>)
-                        (mkAppN (mkConst ``fetch_inst) #[address_expr, s])
-  let bitvec32 := (mkAppN (mkConst ``BitVec) #[mkRawNatLit 32])
-  let opt_bitvec32 := (mkAppN (mkConst ``Option [0]) #[bitvec32])
-  let thm_type := -- ∀ (s : ArmState), (h : s.program = <orig_map>) :
-                  --      fetch_inst <address_expr> s = some <raw_inst_expr>
-                forallE `s (mkConst ``ArmState)
-                  (forallE `h
-                    (programHypType (bvar 0) program.name)
-                      (mkAppN (mkConst ``Eq [1])
-                        #[opt_bitvec32, (fetch_inst_fn (bvar 1)), raw_inst_rhs])
-                Lean.BinderInfo.default)
-               Lean.BinderInfo.default
+
+  let thm_type := -- ∀ (s : ArmState), (h : s.program = <program>),
+                  --      fetch_inst <address> s = some <raw_inst>
+    let raw_inst_rhs  := toExpr (some raw_inst)
+    let fetch_inst_fn := fun s => -- (fetch_inst <address> <s>)
+                          mkApp2 (mkConst ``fetch_inst) (toExpr address) s
+    let bitvec32      := mkApp (mkConst ``BitVec) (toExpr 32)
+    let opt_bitvec32  := mkApp (mkConst ``Option [0]) bitvec32
+    forallE `s (mkConst ``ArmState)
+      (forallE `h (programHypType (bvar 0) program.name)
+        (mkAppN (mkConst ``Eq [1]) #[
+          opt_bitvec32,
+          (fetch_inst_fn (bvar 1)),
+          raw_inst_rhs])
+      Lean.BinderInfo.default)
+    Lean.BinderInfo.default
   trace[gen_step.debug] "[genFetchTheorem] Statement of the theorem: {thm_type}"
 
   let thm_proof ←
