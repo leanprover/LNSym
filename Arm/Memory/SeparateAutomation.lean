@@ -19,10 +19,43 @@ import Lean.Meta.Tactic.Rewrites
 import Lean.Elab.Tactic.Conv
 import Lean.Elab.Tactic.Conv.Basic
 
-/- # Features Wanted List
-- `at` syntax for `simp_mem at h₁ h₂ ⊢`.
--/
 open Lean Meta Elab Tactic
+
+/-! ## Memory Separation Automation
+
+##### A Note on Notation
+
+- `[a..an)`: a range of memory starting with base address `a` of length `an`.
+  aka `mem_legal a an`.
+- `[a..an) ⟂ [b..bn)`: `mem_disjoint a an b bn`.
+- `[a..an] ⊆ [b..bn)`: `mem_subset a an b bn`
+
+##### Tactic Loop
+
+The core tactic tries to simplify expressions of the form
+`read_mem [a..an) (write_mem [b..bn) mem val)` away by one of two assumptions:
+
+1. If `[a..an) ⟂ [b..bn)`, the write does not alias the read,
+  and can be replaced with `read_mem [a..an) mem`
+2. If `[a..an] ⊆ [b..bn)`, the write aliases the read, and can be replaced with
+  `read_mem adjust([a..an), [b..bn)) val`. Here, `adjust` is a function that
+  adjusts the read indeces `[a..an)` with respect to the write indeces `[b..bn)`,
+  to convert a read from `mem` into a read from `val`.
+
+The tactic shall be implemented as follows:
+1. Search the goal state for a term of the form `read_mem (write_mem)`
+2. Try to prove that either `[a..an) ⟂ [b..bn)`, or `[a..an) ⊆ [b..bn)`.
+    2a. First lookup the hypotheses list for these.
+    2b. If this fails, deduce this from `[a..an) ⊆ [a'..an')`,
+        `[b..bn) ⊆ [b'..bn')`, and `[a'..an') ⟂ [b'...bn')`.
+    2c. If this also fails, then reduce all hypotheses to linear integer arithmetic,
+        and try to invoke `omega`.
+3. Given a proof of either `[a..an) ⟂ [b..bn)` or `[a..an) ⊆ [b..bn)`,
+  simplify using the appropriate lemma from `Mem/Separate.lean`.
+4. If we manage to prove *both* `[a..an) ⟂ [b..bn)` *and* `[a..an) ⊆ [b..bn)`,
+   declare victory as this is a contradiction. This may look useless, but feels like
+   it maybe useful to prove certain memory states as impossible.
+-/
 
 namespace SeparateAutomation
 
