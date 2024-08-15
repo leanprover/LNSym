@@ -159,6 +159,8 @@ attribute [bitvec_rules] BitVec.getLsb_rotateRight
 attribute [bitvec_rules] BitVec.ofBool_true
 attribute [bitvec_rules] BitVec.ofBool_false
 attribute [bitvec_rules] BitVec.ofNat_eq_ofNat
+attribute [bitvec_rules] BitVec.zero_eq
+attribute [bitvec_rules] BitVec.truncate_eq_zeroExtend
 
 -- BitVec Simproc rules:
 -- See Lean/Meta/Tactic/Simp/BuiltinSimprocs for the built-in
