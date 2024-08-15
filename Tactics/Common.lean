@@ -134,7 +134,7 @@ def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
 /-! ## Hypothesis types -/
 namespace SymContext
 
-/-- `h_err_type state` returns an Expr for `r state = .None`,
+/-- `h_err_type state` returns an Expr for `r .ERR <state> = .None`,
 the expected type of `h_err` -/
 def h_err_type (state : Expr) : Expr :=
   mkAppN (mkConst ``Eq [1]) #[
@@ -143,12 +143,12 @@ def h_err_type (state : Expr) : Expr :=
     .const ``StateError.None []
   ]
 
-/-- `h_sp_type state` returns an Expr for `CheckSPAlignment state`,
+/-- `h_sp_type state` returns an Expr for `CheckSPAlignment <state>`,
 the expected type of `h_sp` -/
 def h_sp_type (state : Expr) : Expr :=
   mkApp (.const ``CheckSPAlignment []) state
 
-/-- `h_sp_type state` returns an Expr for `state.program = program`,
+/-- `h_sp_type state` returns an Expr for `<state>.program = <program>`,
 the expected type of `h_program` -/
 def h_program_type (state program : Expr) : Expr :=
   mkAppN (mkConst ``Eq [1]) #[
@@ -157,12 +157,12 @@ def h_program_type (state program : Expr) : Expr :=
     program
   ]
 
-/-- `h_sp_type state` returns an Expr for `read_pc state = address`,
+/-- `h_sp_type state` returns an Expr for `r .PC <state> = <address>`,
 the expected type of `h_pc` -/
 def h_pc_type (state address : Expr) : Expr :=
   mkAppN (mkConst ``Eq [1]) #[
-    mkConst ``Program,
-    mkApp (mkConst ``read_pc) state,
+    mkApp (mkConst ``BitVec) (toExpr 64),
+    mkApp2 (mkConst ``r) (mkConst ``StateField.PC) state,
     address
   ]
 
