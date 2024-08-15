@@ -85,7 +85,7 @@ theorem popcount32_sym_no_error (s0 s_final : ArmState)
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation
-  sym1_i_n 0 27 h_s0_program
+  sym1_n 27
   try (clear h_step_1 h_step_2 h_step_3 h_step_4;
        clear h_step_5 h_step_6 h_step_7 h_step_8;
        clear h_step_9 h_step_10;
@@ -111,7 +111,7 @@ theorem popcount32_sym_no_error (s0 s_final : ArmState)
 --   -- Prelude
 --   simp_all only [state_simp_rules, -h_run]
 --   -- Symbolic Simulation
---   sym1_i_n 0 27 h_s0_program
+--   sym1_n 27
 --   try (clear h_step_1 h_step_2 h_step_3 h_step_4;
 --        clear h_step_5 h_step_6 h_step_7 h_step_8;
 --        clear h_step_9 h_step_10;

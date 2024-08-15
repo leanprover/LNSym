@@ -17,7 +17,14 @@ initialize
   Lean.registerTraceClass `Sym
 
 open BitVec
-open Lean (FVarId)
+open Lean (FVarId TSyntax)
+open Lean.Elab.Tactic (TacticM evalTactic withMainContext)
+
+/-- A wrapper around `evalTactic` that traces the passed tactic script and
+then executes those tactics -/
+private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit := do
+  trace[Sym] "running:\n{tactic}"
+  evalTactic tactic
 
 /-- `init_next_step h_run` splits the hypothesis
 
@@ -40,8 +47,8 @@ macro "init_next_step" h_run:ident h_step:ident sn:ident : tactic =>
      clear $h_run:ident; rename_i $h_run:ident
      simp (config := {ground := true}) only at $h_run:ident))
 
-def sym_one (curr_state_number : Nat) : Lean.Elab.Tactic.TacticM Unit :=
-  Lean.Elab.Tactic.withMainContext do
+def sym_one (curr_state_number : Nat) : TacticM Unit :=
+  withMainContext do
     let n_str := toString curr_state_number
     let n'_str := toString (curr_state_number + 1)
     let mk_name (s : String) : Lean.Name :=
@@ -59,7 +66,7 @@ def sym_one (curr_state_number : Nat) : Lean.Elab.Tactic.TacticM Unit :=
     let h_run := Lean.mkIdent (mk_name "h_run")
     -- h_step_n': name of the hypothesis with the `stepi` function
     let h_step_n' := Lean.mkIdent (mk_name ("h_step_" ++ n'_str))
-    Lean.Elab.Tactic.evalTactic (←
+    evalTactic (←
       `(tactic|
          (init_next_step $h_run:ident $h_step_n':ident $st':ident
           -- Simulate one instruction
@@ -124,24 +131,19 @@ elab "stepi_tac" h_step:ident hyp_prefix:str : tactic =>
 
 end stepiTac
 
-open Lean.Elab.Tactic (TacticM withMainContext evalTactic) in
 def sym1 (c : SymContext) : TacticM SymContext :=
   withMainContext do
-    let c' := c.nextState
-    -- h_st: prefix of user names of hypotheses about state st
+    trace[Sym] "(sym1): simulating step {c.curr_state_number}:\n{repr c}"
+    let h_step_n' := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
     let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
-    -- h_step_n': name of the hypothesis with the `stepi` function
-    let h_step_n' := Lean.mkIdent (.str .anonymous s!"h_step_{c'.curr_state_number}")
-    let stx ←
-      `(tactic|
-         (init_next_step $c.h_run_ident:ident $h_step_n':ident $c'.state_ident:ident
-          -- Simulate one instruction
-          stepi_tac $h_step_n':ident $h_st_prefix:str
-          intro_fetch_decode_lemmas $h_step_n':ident $c.h_program_ident:ident $h_st_prefix:str
-      ))
-    trace[Sym] "Running tactic:\n{stx}"
-    evalTactic stx
-    return c'
+
+    evalTacticAndTrace <|← `(tactic| (
+        init_next_step $c.h_run_ident:ident $h_step_n':ident $c.next_state_ident:ident
+        -- Simulate one instruction
+        stepi_tac $h_step_n':ident $h_st_prefix:str
+        intro_fetch_decode_lemmas $h_step_n':ident $c.h_program_ident:ident $h_st_prefix:str
+    ))
+    return c.next
 
 
 open Lean (Name) in
@@ -158,6 +160,7 @@ h_run      : sf = run $STEPS s0
 Where $PC and $STEPS are concrete constants.
 Note that the tactic will search for assumption of *exactly* these names,
 it won't search by def-eq -/
+@[deprecated "Use `sym1_n` instead"]
 elab "sym1_i_n" i:num n:num _program:(ident)? : tactic => do
   Lean.Elab.Tactic.evalTactic (← `(tactic|
     simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
