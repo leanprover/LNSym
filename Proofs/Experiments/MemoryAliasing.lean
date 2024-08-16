@@ -26,8 +26,8 @@ theorem mem_automation_test
 
 theorem mem_automation_test_2
   (h_n0 : n0 ≠ 0)
-  (h_no_wrap_src_region : mem_legal' src_addr ((n0 <<< 4) - 1))
-  (h_no_wrap_dest_region : mem_legal' dest_addr ((n0 <<< 4) - 1))
+  (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
+  (h_no_wrap_dest_region : mem_legal' dest_addr (n0 <<< 4))
   (h_s0_src_dest_separate :
     mem_separate' src_addr  (n0 <<< 4)
                   dest_addr (n0 <<< 4)) :
