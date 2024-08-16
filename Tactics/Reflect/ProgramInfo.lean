@@ -32,19 +32,20 @@ structure InstInfo where
   all instructions for which we generate an `InstInfo` are well-formed -/
   decodedInst? : Option Expr
 
-  /-- if `instSemantics?` is `some ⟨sem, proof⟩`, then
+  /-- if `instSemantics?` is `some ⟨sem, type, proof⟩`, then
   - `sem` is the instruction semantics, as a normalized(!) expression of type
-      `ArmState → ArmState`, and
-  - `proof` holds the proof that
+      `ArmState → ArmState`,
+  - `type` is the expression
     ```lean
     ∀ s (h_program : s.program = <program>) (h_pc : read_pc s = <PC>)
         (h_err : read_err s = .None),
       exec_inst s = <sem> s
     ```
+  - `proof` is a proof of type `type`
 
   Otherwise, if the field is `none`, this indicates that the relevant
   expressions have not been computed/cached yet. -/
-  instSemantics? : Option (Expr × Expr)
+  instSemantics? : Option (Expr × Expr × Expr)
 
 structure ProgramInfo where
   name : Name
@@ -52,30 +53,42 @@ structure ProgramInfo where
 
 --------------------------------------------------------------------------------
 
-namespace InstInfo
+/-! ## InstInfoT -/
+
+/-- A monad transformer with `InstInfo` state -/
+abbrev InstInfoT := StateT InstInfo
+
+namespace InstInfoT
 variable {m} [Monad m]
 
-/-- Return `decodedInst?` if it is `some _`,
+/-- Return `InstInfo.rawInst` from the state -/
+def getRawInst : InstInfoT m (BitVec 32) := do
+  return (← get).rawInst
+
+/-- Return `InstInfo.decodedInst?` from the state if it is `some _`,
 or use `f` to compute the relevant expression if it is missing -/
-def getDecodedInst (info : InstInfo) (f : Unit → m Expr) :
-    m (InstInfo × Expr) := do
+def getDecodedInst (f : Unit → InstInfoT m Expr) : InstInfoT m Expr := do
+  let info ← get
   match info.decodedInst? with
-    | some val => return ⟨info, val⟩
+    | some val => return val
     | none =>
         let val ← f ()
-        return ⟨{info with decodedInst? := some val}, val⟩
+        set {info with decodedInst? := some val}
+        return val
 
-/-- Return `instSemantics?` if it is `some _`,
+/-- Return `InstInfo.instSemantics?` from the state if it is `some _`,
 or use `f` to compute the relevant expressions if they are missing -/
-def getInstSemantics (info : InstInfo) (f : Unit → m (Expr × Expr)) :
-    m (InstInfo × (Expr × Expr)) := do
+def getInstSemantics (f : Unit → InstInfoT m (Expr × Expr × Expr)) :
+    InstInfoT m (Expr × Expr × Expr) := do
+  let info ← get
   match info.instSemantics? with
-    | some val => return ⟨info, val⟩
+    | some val => return val
     | none =>
         let val ← f ()
-        return ⟨{info with instSemantics? := some val}, val⟩
+        set {info with instSemantics? := some val}
+        return val
 
-end InstInfo
+end InstInfoT
 
 --------------------------------------------------------------------------------
 
@@ -198,6 +211,7 @@ end ProgramInfo
 
 /-! ## `ProgramInfoT` Monad Transformer -/
 
+/-- A monad transformer with `ProgramInfo` state -/
 abbrev ProgramInfoT (m : Type → Type) := StateT ProgramInfo m
 
 namespace ProgramInfoT
@@ -221,8 +235,9 @@ by name.
 If `persist` is set to true, then the program info state after
 executing `k` will be persistently cached in the environment
 (see `persistToEnv`). -/
-def run (programName : Name) (persist : Bool := false)
-    (k : ProgramInfoT m α) : m α :=
+def run (programName : Name) (k : ProgramInfoT m α)
+    (persist : Bool := false) :
+    m α :=
   ProgramInfoT.run' programName none persist k
 
 /-- run a `ProgramInfoT m` by looking up, or generating new program info.
@@ -231,8 +246,9 @@ The passed expression is assumed to be the definition of the program.
 If `persist` is set to true (the default), then the program info state after
 executing `k` will be persistently cached in the environment
 (see `persistToEnv`). -/
-def runE (programName : Name) (expr : Expr) (persist : Bool := false)
-    (k : ProgramInfoT m α) : m α :=
+def runE (programName : Name) (expr : Expr) (k : ProgramInfoT m α)
+    (persist : Bool := false)
+     : m α :=
   ProgramInfoT.run' programName expr persist k
 
 end Run
@@ -262,14 +278,15 @@ def setInstInfoAt (addr : BitVec 64) (info : InstInfo) :
   let pi ← StateT.get
   StateT.set {pi with instructions := pi.instructions.insert addr info}
 
-/-- Modify the instruction info for a particular address,
-returning the new value. Throws an error if the address is invalid -/
-def mofifyInstInfoAt (addr : BitVec 64) (f : InstInfo → m InstInfo) :
-    ProgramInfoT m InstInfo := do
+/-- Run `k` with the instruction info for the given address as initial state,
+and store the resulting state at that same address.
+Returns the value produced by `k`. Throws an error if the address is invalid -/
+def modifyInstInfoAt (addr : BitVec 64) (k : InstInfoT m α) :
+    ProgramInfoT m α := do
   let info ← getInstInfoAt addr
-  let info ← f info
+  let ⟨val, info⟩ ← monadLift (StateT.run k info)
   setInstInfoAt addr info
-  return info
+  return val
 
 /-! ### InstInfo Accessors -/
 
@@ -303,8 +320,8 @@ See `InstInfo.instSemantics?` for the meaning of this field.
 NOTE: the computed value is only cached in the `ProgramInfoT` monad state,
 not yet in the environment. -/
 def getInstSemanticsAt (addr : BitVec 64)
-    (k : InstInfo → ProgramInfoT m (Expr × Expr)) :
-    ProgramInfoT m (Expr × Expr) := do
+    (k : InstInfo → ProgramInfoT m (Expr × Expr × Expr)) :
+    ProgramInfoT m (Expr × Expr × Expr) := do
   let info ← getInstInfoAt addr
   match info.instSemantics? with
     | some e => return e

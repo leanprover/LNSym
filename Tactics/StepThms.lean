@@ -97,35 +97,29 @@ def reduceDecodeInstExpr (rawInst : Expr) : MetaM Expr := do
   -- ^^ NOTE: possibly expensive reduction
   canonicalizeBitVec expr
 
-protected inductive ReduceDecodeM.CacheKey
-  | decodedInst (rawInst : BitVec 32)
--- TODO: We might want to cache a (partial) result of `reduceStepi` as well.
---       To do so, we have to separate out simplifications that don't use the
---       PC value from those that do --- we should cache only the former.
-  deriving BEq, Hashable
-open ReduceDecodeM (CacheKey)
+/-! ## SymM Monad -/
 
-/-- A wrapper around `MetaM` which addionally caches
-the result of `reduceDecodeInst` -/
-abbrev ReduceDecodeM := MonadCacheT CacheKey Expr MetaM
+abbrev SymM.CacheKey := BitVec 32
+abbrev SymM.CacheM := MonadCacheT CacheKey Expr MetaM
+abbrev SymM := ProgramInfoT <| MonadCacheT SymM.CacheKey Expr MetaM
 
-/-- run `k` with an empty initial cache -/
-def ReduceDecodeM.run (k : ReduceDecodeM α) : MetaM α :=
-  MonadCacheT.run k
+@[inherit_doc ProgramInfoT.run]
+abbrev SymM.run (name : Name) (k : SymM α) (persist : Bool := true) : MetaM α :=
+  MonadCacheT.run <| ProgramInfoT.run name k persist
 
+open SymM in
 /-- Given a (reflected) raw instruction,
 return an expr of type `Option ArmInst` representing what `rawInst` decodes to.
 The resulting expr is guaranteed to be def-eq to `fetch_inst $rawInst`.
 
 Results are cached so that the same instruction is not reduced multiple times -/
-def reduceDecodeInst (rawInst : BitVec 32) : ReduceDecodeM Expr :=
-  checkCache (CacheKey.decodedInst rawInst) fun _ =>
+def reduceDecodeInst (rawInst : BitVec 32) : CacheM Expr :=
+  checkCache (rawInst) fun _ =>
     reduceDecodeInstExpr (toExpr rawInst)
 
+open ProgramInfoT InstInfoT
+
 /-! ## reduceStepiToExecInst -/
-
--- example : ∀ {x : BitVec 32} (h : x = 314) (h_other : z = g), x = y := by
-
 
 /-- Given a program and an address, and optionally the corresponding
 raw and decoded instructions, construct and return first the expression:
@@ -138,60 +132,63 @@ and then a proof of this fact.
 That is, in
   `let ⟨type, value⟩ ← reduceStepi ...`
 `value` is an expr whose type is `type` -/
-def reduceStepi (pi : ProgramInfo) (addr : BitVec 64)
-    (rawInst? : Option (BitVec 32) := none)
-    (inst? : Option Expr := none)
-    : ReduceDecodeM (Expr × Expr) := do
-  let some rawInst := rawInst? <|> pi.getRawInstAt? addr
-    | throwError "No instruction found at address {addr} of {pi.name}"
+def reduceStepi (addr : BitVec 64) : SymM (Expr × Expr) := do
+  let pi : ProgramInfo ← get
+  let ⟨_, type, proof⟩ ← modifyInstInfoAt addr <| getInstSemantics fun _ => do
+    let rawInst ← getRawInst
 
-  let inst ← match inst? with
-    | some inst => pure inst
-    | none => do
+    let inst ← getDecodedInst <| fun _ => do
       let optInst ← reduceDecodeInst rawInst
       let_expr some _ inst := optInst
         | let some := mkConst ``Option.some [1]
           throwError "Expected an application of {some}, found:\n\t{optInst}"
       pure inst
 
-  withLocalDecl `s .implicit (mkConst ``ArmState) <| fun s =>
-  withLocalDeclD `h_program (h_program_type s pi.expr)  <| fun h_program =>
-  withLocalDeclD `h_pc      (h_pc_type s (toExpr addr)) <| fun h_pc =>
-  withLocalDeclD `h_err     (h_err_type s)              <| fun h_err => do
-    let h_fetch  := fetchLemma s pi.expr h_program addr rawInst
-    let h_decode :=
-      let armInstTy := mkConst ``ArmInst
-      mkApp2 (mkConst ``Eq.refl [1])
-        (mkApp (mkConst ``Option [0]) armInstTy)
-        (mkApp2 (mkConst ``Option.some [0]) armInstTy inst)
+    withLocalDecl `s .implicit (mkConst ``ArmState) <| fun s =>
+    withLocalDeclD `h_program (h_program_type s pi.expr)  <| fun h_program =>
+    withLocalDeclD `h_pc      (h_pc_type s (toExpr addr)) <| fun h_pc =>
+    withLocalDeclD `h_err     (h_err_type s)              <| fun h_err => do
+      let h_fetch  := fetchLemma s pi.expr h_program addr rawInst
+      let h_decode :=
+        let armInstTy := mkConst ``ArmInst
+        mkApp2 (mkConst ``Eq.refl [1])
+          (mkApp (mkConst ``Option [0]) armInstTy)
+          (mkApp2 (mkConst ``Option.some [0]) armInstTy inst)
 
-    let proof := -- stepi s = exec_inst <inst> s
-      mkAppN (mkConst ``stepi_eq_of_fetch_inst_of_decode_raw_inst) #[
-        s, toExpr addr, toExpr rawInst, inst,
-        h_err, h_pc, h_fetch, h_decode
-      ]
-    let type ← inferType proof
+      let proof := -- stepi s = exec_inst <inst> s
+        mkAppN (mkConst ``stepi_eq_of_fetch_inst_of_decode_raw_inst) #[
+          s, toExpr addr, toExpr rawInst, inst,
+          h_err, h_pc, h_fetch, h_decode
+        ]
+      let type ← inferType proof
 
-    let (ctx, simprocs) ← do
-      let localDecls ← do
-        let hs := #[h_pc, h_err]
-        pure <| hs.filterMap (← getLCtx).findFVar?
-      LNSymSimpContext
-        (config := {decide := true, ground := false})
-        (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules])
-        (decls := localDecls)
-        (decls_to_unfold := #[``exec_inst, ``read_pc, ``read_err])
+      let (ctx, simprocs) ← do
+        let localDecls ← do
+          let hs := #[h_pc, h_err]
+          pure <| hs.filterMap (← getLCtx).findFVar?
+        LNSymSimpContext
+          (config := {decide := true, ground := false})
+          (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules])
+          (decls := localDecls)
+          (decls_to_unfold := #[``exec_inst, ``read_pc, ``read_err])
 
-    let ⟨simpRes, _⟩ ← simp type ctx simprocs
+      let ⟨simpRes, _⟩ ← simp type ctx simprocs
 
-    let proof ← simpRes.mkCast proof -- stepi s = <reduced to `w ...`>
-    let hs := #[s, h_program, h_pc, h_err]
-    let proof ← mkLambdaFVars hs proof
-    let type  ← mkForallFVars hs simpRes.expr
-    return ⟨type, proof⟩
+      let_expr Eq _ _ sem := simpRes.expr
+        | let eq ← mkEq (← mkFreshExprMVar none) (← mkFreshExprMVar none)
+          throwError "Failed to normalize instruction semantics. Expected {eq}, but found:\n\t{simpRes.expr}"
+      let sem ← mkLambdaFVars #[s] sem
 
-def genStepEqTheorems (pi : ProgramInfo) : MetaM Unit :=
-  ReduceDecodeM.run <| for ⟨addr, instInfo⟩ in pi.instructions do
+      let proof ← simpRes.mkCast proof -- stepi s = <reduced to `w ...`>
+      let hs := #[s, h_program, h_pc, h_err]
+      let proof ← mkLambdaFVars hs proof
+      let type  ← mkForallFVars hs simpRes.expr
+      return ⟨sem, type, proof⟩
+  return ⟨type, proof⟩
+
+def genStepEqTheorems : SymM Unit := do
+  let pi ← get
+  for ⟨addr, instInfo⟩ in pi.instructions do
     let startTime ← IO.monoMsNow
     let inst := instInfo.rawInst
 
@@ -199,7 +196,7 @@ def genStepEqTheorems (pi : ProgramInfo) : MetaM Unit :=
       with instruction {inst.toHex}"
     let name := let addr_str := addr.toHexWithoutLeadingZeroes
                 Name.str pi.name ("stepi_eq_0x" ++ addr_str)
-    let ⟨type, value⟩ ← reduceStepi pi addr inst
+    let ⟨type, value⟩ ← reduceStepi addr
 
     trace[gen_step.debug.timing] "[genStepEqTheorems] reduced in: {(← IO.monoMsNow) - startTime}ms"
     addDecl <| Declaration.thmDecl {
@@ -217,8 +214,9 @@ elab "#genProgramInfo" program:ident : command => liftTermElabM do
 elab "#genStepEqTheorems" program:term : command => liftTermElabM do
   let .const name _ ← Elab.Term.elabTerm program (mkConst ``Program)
     | throwError "Expected a constant, found: {program}"
-  let pi ← ProgramInfo.lookupOrGenerate name
-  genStepEqTheorems pi
+
+  SymM.run name (persist := true) <|
+    genStepEqTheorems
 
 
 -- /-! ## reduceExec -/
