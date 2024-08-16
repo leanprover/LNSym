@@ -1,14 +1,27 @@
+#!/usr/bin/env bash
 # Borrowed from the s2n-bignum project
 # https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/simulator.c
 # Author(s): John Harrison, Juneyoung Lee
+# Input args for the armsimulate script:
+#  - <output-file-name>
+#  - <32-bit instruction>
+#  - 31 x <64-bit GPRs (no SP)>
+#  - 1 x <4-bit Flags>
+#  - 32*2 x <64-bit SPFs>
 
-cd Arm/Insts/Cosim
+OUTFILE="$1" # basename for the output file
+INST="$2" # instruction to be simulated
+GITDIR="$(git rev-parse --show-toplevel)"
+COSIMDIR="${GITDIR}/Arm/Insts/Cosim"
 
-cat template.S | sed -e "s/ICODE/$1/" > instance.S
-gcc -c instance.S
-gcc -o simulator simulator.c instance.o
+echo "Writing asm to: '${COSIMDIR}/tests/${OUTFILE}.S'. Executable to: '${COSIMDIR}/tests/${OUTFILE}.out'." >&2
 
-shift 1
-./simulator $*
+mkdir -p tests/
+cat "${COSIMDIR}/template.S" | sed -e "s/ICODE/${INST}/" > "${COSIMDIR}/tests/${OUTFILE}.S"
+gcc -c "${COSIMDIR}/tests/${OUTFILE}.S"  -o "${COSIMDIR}/tests/${OUTFILE}.o"
+gcc -o "${COSIMDIR}/tests/${OUTFILE}.out" "${COSIMDIR}/simulator.c" "${COSIMDIR}/tests/${OUTFILE}.o"
+
+shift 2
+"${COSIMDIR}/tests/${OUTFILE}.out" "$@"
 
 ####  rm *.o simulator
