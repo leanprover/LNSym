@@ -57,18 +57,15 @@ def stepiTac (h_step : Ident) (ctx : SymContext)
   : TacticM Unit := withMainContext do
   let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
   --  ^^ The PC in hex
-  let step_lemma := mkIdent <| Name.str ctx.program s!"stepi_0x{pc}"
+  let step_lemma := mkIdent <| Name.str ctx.program s!"stepi_eq_0x{pc}"
 
   evalTacticAndTrace <|← `(tactic| (
     replace $h_step :=
-      (propext_iff.mp
+      _root_.Eq.trans $h_step
         ($step_lemma:ident
-          _
-          $ctx.next_state_ident:ident
           $ctx.h_program_ident:ident
           $ctx.h_pc_ident:ident
-          $ctx.h_err_ident:ident)).mp
-      $h_step
+          $ctx.h_err_ident:ident)
   ))
 
 elab "stepi_tac" h_step:ident : tactic => do

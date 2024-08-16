@@ -80,18 +80,6 @@ structure SymContext where
   curr_state_number : Nat := 0
   deriving Repr
 
-/-- `h_err_type state` returns an Expr representing `r state = .None`,
-the expected type of `h_err` -/
-private def h_err_type (state : Expr) : MetaM Expr :=
-  mkEq
-    (mkApp2 (.const ``r []) (.const ``StateField.ERR []) state)
-    (.const ``StateError.None [])
-
-/-- `h_sp_type state` returns an Expr representing `CheckSPAlignment state`,
-the expected type of `h_sp` -/
-private def h_sp_type (state : Expr) : Expr :=
-  mkApp (.const ``CheckSPAlignment []) state
-
 namespace SymContext
 
 /-! ## Creating initial contexts -/
@@ -131,7 +119,7 @@ def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
       let newGoal ← mkFreshMVarId
 
       goal := ← do
-        let goalType ← h_err_type stateExpr
+        let goalType := h_err_type stateExpr
         let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
         let goal' ← goal.assert h_err? goalType newGoalExpr
         let ⟨_, goal'⟩ ← goal'.intro1P
@@ -225,9 +213,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
 
   -- Then, try to find `h_pc`
   let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
-  let h_pc_type ← do
-    let lhs ← mkAppM ``r #[(.const ``StateField.PC []), stateExpr]
-    mkEq lhs pc
+  let h_pc_type := h_pc_type stateExpr pc
   let h_pc ← findLocalDeclUsernameOfTypeOrError h_pc_type
 
   -- Unwrap and reflect `pc`
@@ -235,9 +221,9 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let pc ← withErrorContext h_pc h_pc_type <| reflectBitVecLiteral 64 pc
 
   -- Attempt to find `h_err` and `h_sp`
-  let h_err? ← findLocalDeclUsernameOfType? (←h_err_type stateExpr)
+  let h_err? ← findLocalDeclUsernameOfType? (h_err_type stateExpr)
   if h_err?.isNone then
-    trace[Sym] "Could not find local hypothesis of type {←h_err_type stateExpr}"
+    trace[Sym] "Could not find local hypothesis of type {h_err_type stateExpr}"
   let h_sp?  ← findLocalDeclUsernameOfType? (h_sp_type stateExpr)
   if h_sp?.isNone then
     trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
