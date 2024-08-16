@@ -96,7 +96,7 @@ def getBitVecValue? (e : Expr) : MetaM (Option ((n : Nat) × BitVec n)) :=
       let v ← do
         match_expr i with
           | Fin.mk _n v _h  => getNatValue? v
-          | _               => pure (←getFinValue? i).2.val
+          | _               => pure (← getFinValue? i).2.val
       return ⟨w, BitVec.ofNat w v⟩
     | _ => Lean.Meta.getBitVecValue? e
 
@@ -121,14 +121,13 @@ def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
   if e.hasFVar || e.hasMVar then
     throwError "Expected a ground term, but {e} has free variables"
 
-  let some ⟨n, x⟩ ←_root_.getBitVecValue? e
+  let some ⟨n, x⟩ ← _root_.getBitVecValue? e
     | throwError "Failed to reflect:\n\t{e}\ninto a BitVec"
 
   if h : n = w then
     return x.cast h
   else
     throwError "Expected a bitvector of width {w}, but\n\t{e}\nhas width {n}"
-
 
 /-! ## Hypothesis types -/
 namespace SymContext
