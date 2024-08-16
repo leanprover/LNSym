@@ -45,7 +45,7 @@ by case splitting:
   to convert a read from `mem` into a read from `val`.
 
 The tactic shall be implemented as follows:
-1. Search the goal state for `mem.write_bytes [b..bn) val |>.read_bytes [a/..an)`.
+1. Search the goal state for `mem.write_bytes [b..bn) val |>.read_bytes [a..an)`.
 2. Try to prove that either `[a..an) ⟂ [b..bn)`, or `[a..an) ⊆ [b..bn)`.
     2a. First search the local context for assumptions of this type.
     2b. Try to deduce `[a..an) ⟂ [b..bn)` from the fact that
