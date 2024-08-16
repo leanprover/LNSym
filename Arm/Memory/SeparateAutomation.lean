@@ -161,17 +161,49 @@ partial def SimpMemM.rewrite (g : MVarId) : SimpMemM Unit := do
       -- | TODO: dispatch other goals that occur proof automation.
       Tactic.setGoals <| mvarId' :: r.mvarIds
 
+structure MemSpan where
+  base : Expr
+  offset : Expr
+
+structure MemSubsetExpr where
+  a : MemSpan
+  b : MemSpan
+
+structure MemSubsetProof (a b : MemSpan) where
+  h : Expr
+
+structure MemLegalProof (a : MemSpan) where
+  h : Expr
+
+/-- an occurrence of Memory.read in `e`. -/
+structure ReadExpr (parent : Expr) where
+  hyp : Expr
+  mem : Expr
+  read : Span
+
+structure ReadEqn (parent : Expr) extends ReadExpr parent where
+  outval : Expr -- the value we have read.
+
+def proveLegal? (a : MemSpan) : MemLegalProof a := sorry
+
+def proveSubset? (a : MemSpan) (b : MemSpan) : MemSubsetProof a b := sorry
+
+def findReadEqn? (parent : Expr) : Option (ReadEqn parent) := sorry
+
+def findRead? (parent : Expr) : Option (ReadExpr parent) := sorry
+
 def SimpMemM.analyzeLoop : SimpMemM Unit := do
     (← getMainGoal).withContext do
       let hyps := (← getLocalHyps)
       trace[simp_mem] "analyzing {hyps.size} hypotheses:\n{← hyps.mapM (liftMetaM ∘ inferType)}"
-      for h in hyps do
-        if let some hyp ← processHypothesis h then
-          trace[simp_mem.info] "{checkEmoji} Found '{h}'"
-          SimpMemM.addHypothesis hyp
-        else
-          trace[simp_mem.info] "{crossEmoji} Rejecting '{h}'"
-      SimpMemM.rewrite (← getMainGoal)
+
+      -- for h in hyps do
+      --   if let some hyp ← processHypothesis h then
+      --     trace[simp_mem.info] "{checkEmoji} Found '{h}'"
+      --     SimpMemM.addHypothesis hyp
+      --   else
+      --     trace[simp_mem.info] "{crossEmoji} Rejecting '{h}'"
+      -- SimpMemM.rewrite (← getMainGoal)
 
 /--
 Given a collection of facts, try prove `False` using the omega algorithm,
