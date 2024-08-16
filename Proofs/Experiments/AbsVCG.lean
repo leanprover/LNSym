@@ -12,7 +12,6 @@ import Arm
 import Tactics.StepThms
 import Tactics.Sym
 import Correctness.ArmSpec
-import Lean
 
 namespace AbsVCG
 
@@ -29,7 +28,10 @@ def program : Program :=
 def abs_pre (s : ArmState) : Prop :=
   read_pc s = 0x4005d0#64 ∧
   s.program = program ∧
-  read_err s = StateError.None
+  read_err s = StateError.None ∧
+  -- (FIXME) We don't really need the stack pointer to be aligned, but the
+  -- `sym1_n` tactic expects this. Can we make this optional?
+  CheckSPAlignment s
 
 /-- Specification of the absolute value computation for a 32-bit bitvector. -/
 def spec (x : BitVec 32) : BitVec 32 :=
@@ -46,7 +48,9 @@ def spec (x : BitVec 32) : BitVec 32 :=
 /-- Postcondition for the correctness of the `Abs` program. -/
 def abs_post (s0 sf : ArmState) : Prop :=
   read_gpr 32 0#5 sf = spec (read_gpr 32 0#5 s0) ∧
-  read_err sf = StateError.None
+  read_pc sf = 0x4005e0#64 ∧
+  read_err sf = StateError.None ∧
+  CheckSPAlignment sf
 
 /-- Function identifying the exit state(s) of the program. -/
 def abs_exit (s : ArmState) : Prop :=
@@ -79,9 +83,9 @@ instance : Spec' ArmState where
 
 theorem Abs.csteps_eq (s : ArmState) (i : Nat) :
   Correctness.csteps s i = if abs_cut s then i
-                           else Correctness.csteps (stepi s) (i + 1) := by
+                           else Correctness.csteps (run 1 s) (i + 1) := by
   rw [Correctness.csteps_eq]
-  simp only [Sys.next, Spec'.cut]
+  simp only [Sys.next, Spec'.cut, run]
   done
 
 -------------------------------------------------------------------------------
@@ -96,190 +100,142 @@ theorem Abs.csteps_eq (s : ArmState) (i : Nat) :
 
 -- (FIXME) Obtain *_cut theorems for each instruction automatically.
 
-theorem abs_stepi_0x4005d0_cut (s : ArmState)
+theorem program.stepi_0x4005d0_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005d0#64)
-  (h_err : r StateField.ERR s = StateError.None) :
-  abs_cut (stepi s) = false := by
-  have := program.stepi_0x4005d0 s (stepi s) h_program h_pc h_err
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) :
+  abs_cut sn = false ∧
+  r StateField.PC sn = 0x4005d4#64 ∧
+  r StateField.ERR sn = .None ∧
+  sn.program = program ∧
+  CheckSPAlignment sn := by
+  have := program.stepi_0x4005d0 s (run 1 s) h_program h_pc h_err
   simp only [minimal_theory] at this
-  simp only [abs_cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  simp_all only [run, abs_cut, this,
+                 state_simp_rules, bitvec_rules, minimal_theory]
   done
 
-theorem abs_stepi_0x4005d4_cut (s : ArmState)
+theorem program.stepi_0x4005d4_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005d4#64)
-  (h_err : r StateField.ERR s = StateError.None) :
-  abs_cut (stepi s) = false := by
-  have := program.stepi_0x4005d4 s (stepi s) h_program h_pc h_err
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) :
+  abs_cut sn = false  ∧
+  r StateField.PC sn = 0x4005d8#64 ∧
+  r StateField.ERR sn = .None ∧
+  sn.program = program ∧
+  CheckSPAlignment sn := by
+  have := program.stepi_0x4005d4 s (run 1 s) h_program h_pc h_err
   simp only [minimal_theory] at this
-  simp only [abs_cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  simp_all only [run, abs_cut, this,
+                 state_simp_rules, bitvec_rules, minimal_theory]
   done
 
-theorem abs_stepi_0x4005d8_cut (s : ArmState)
+theorem program.stepi_0x4005d8_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005d8#64)
-  (h_err : r StateField.ERR s = StateError.None) :
-  abs_cut (stepi s) = false := by
-  have := program.stepi_0x4005d8 s (stepi s) h_program h_pc h_err
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) :
+  abs_cut sn = false  ∧
+  r StateField.PC sn = 0x4005dc#64 ∧
+  r StateField.ERR sn = .None ∧
+  sn.program = program ∧
+  CheckSPAlignment sn := by
+  have := program.stepi_0x4005d8 s (run 1 s) h_program h_pc h_err
   simp only [minimal_theory] at this
-  simp only [abs_cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  simp_all only [run, abs_cut, this,
+                state_simp_rules, bitvec_rules, minimal_theory]
   done
 
-theorem abs_stepi_0x4005dc_cut (s : ArmState)
+theorem program.stepi_0x4005dc_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005dc#64)
-  (h_err : r StateField.ERR s = StateError.None) :
-  abs_cut (stepi s) = true := by
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) :
+  abs_cut sn = true  ∧
+  r StateField.PC sn = 0x4005e0#64 ∧
+  r StateField.ERR sn = .None ∧
+  sn.program = program ∧
+  CheckSPAlignment sn := by
   have := program.stepi_0x4005dc s (stepi s) h_program h_pc h_err
   simp only [minimal_theory] at this
-  simp only [abs_cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  simp_all only [run, abs_cut, this,
+                 state_simp_rules, bitvec_rules, minimal_theory]
   done
 
-/--
-(FIXME) This was tedious: we need to prove helper lemmas/build automation to
-generate these effects theorems, but the good news is that we see a
-pattern here to exploit. Our main workhorse here is symbolic
-simulation, but the interesting part is that we are symbolically simulating
-as well as determining the number of steps to simulate in tandem.
--/
-theorem program_effects_lemma (h_pre : abs_pre s0)
-  (h_run : sf = run (Correctness.csteps (stepi s0) 0) (stepi s0)) :
-  r (StateField.GPR 0#5) sf = BitVec.truncate 64
-      (BitVec.zeroExtend 32
-        (BitVec.zeroExtend 64
-          (AddWithCarry (BitVec.zeroExtend 32 (BitVec.zeroExtend 64 (BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s0))))
-              (BitVec.zeroExtend 32
-                (BitVec.truncate 64
-                      (BitVec.replicate 32
-                        (BitVec.extractLsb 31 31 (BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s0)))) &&&
-                    BitVec.truncate 64 (~~~1#32) |||
-                  (BitVec.truncate 64 (BitVec.zero 32) &&& BitVec.truncate 64 (~~~4294967295#32) |||
-                      BitVec.truncate 64 ((BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s0)).rotateRight 31) &&&
-                        BitVec.truncate 64 4294967295#32) &&&
-                    BitVec.truncate 64 1#32))
-              0#1).fst)) ^^^
-    BitVec.truncate 64
-      (BitVec.zeroExtend 32
-        (BitVec.truncate 64
-              (BitVec.replicate 32 (BitVec.extractLsb 31 31 (BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s0)))) &&&
-            BitVec.truncate 64 (~~~1#32) |||
-          (BitVec.truncate 64 (BitVec.zero 32) &&& BitVec.truncate 64 (~~~4294967295#32) |||
-              BitVec.truncate 64 ((BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s0)).rotateRight 31) &&&
-                BitVec.truncate 64 4294967295#32) &&&
-            BitVec.truncate 64 1#32)) ∧
-  r StateField.PC sf = 0x4005e0#64 ∧
-  r StateField.ERR sf = StateError.None := by
+theorem nextc_to_run_from_0x4005d0 (h : abs_pre s0) :
+  (Correctness.nextc (Sys.run s0 1)) = run 4 s0 := by
+  simp only [abs_pre, state_simp_rules] at h
+  obtain ⟨h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned⟩ := h
+  simp only
+    [Correctness.nextc, Correctness.arm_run,
+     Spec'.cut, minimal_theory]
 
-  simp only [abs_pre, state_simp_rules] at h_pre
-  have ⟨h_s0_pc, h_s0_program, h_s0_err⟩ := h_pre; clear h_pre
+  rw [Abs.csteps_eq]
+  have h_step_1 := program.stepi_0x4005d0_cut s0 (run 1 s0)
+  simp_all only [minimal_theory, bitvec_rules]
+  generalize h_s1 : run 1 s0 = s1 at h_step_1
 
-  -- Instruction 1
-  rw [Abs.csteps_eq, abs_stepi_0x4005d0_cut s0 h_s0_program h_s0_pc h_s0_err] at h_run
-  simp only [minimal_theory, Nat.reduceAdd] at h_run
-  generalize h_step_1 : stepi s0 = s1 at h_run
-  have h_s1 : s1 = run 1 s0 := by
-    simp only [run, h_step_1]
-  replace h_step_1 : s1 = stepi s0 := h_step_1.symm
-  rw [program.stepi_0x4005d0 s0 s1 h_s0_program h_s0_pc h_s0_err] at h_step_1
-  have h_s1_program : s1.program = program := by
-    simp only [h_step_1, h_s0_program,
-               state_simp_rules, minimal_theory, bitvec_rules]
-  have h_s1_err : r StateField.ERR s1 = StateError.None := by
-    simp only [h_step_1, h_s0_err,
-               state_simp_rules, minimal_theory, bitvec_rules]
-  have h_s1_pc : r StateField.PC s1 = 0x4005d4#64 := by
-    simp only [h_step_1, h_s0_pc,
-               state_simp_rules, minimal_theory, bitvec_rules]
+  rw [Abs.csteps_eq]
+  have h_step_2 := program.stepi_0x4005d4_cut s1 (run 1 s1)
+  simp_all only [minimal_theory, bitvec_rules]
+  generalize h_s2 : run 1 s1 = s2 at h_step_2
 
-  -- Instruction 2
-  rw [Abs.csteps_eq, abs_stepi_0x4005d4_cut s1 h_s1_program h_s1_pc h_s1_err] at h_run
-  simp only [minimal_theory, Nat.reduceAdd] at h_run
-  generalize h_step_2 : stepi s1 = s2 at h_run
-  have h_s2 : s2 = run 1 s1 := by
-    simp only [run, h_step_2]
-  replace h_step_2 : s2 = stepi s1 := h_step_2.symm
-  rw [program.stepi_0x4005d4 s1 s2 h_s1_program h_s1_pc h_s1_err] at h_step_2
-  have h_s2_program : s2.program = program := by
-    simp only [h_step_2, h_s1_program,
-               state_simp_rules, minimal_theory, bitvec_rules]
-  have h_s2_err : r StateField.ERR s2 = StateError.None := by
-    simp only [h_step_2, h_s1_err,
-               state_simp_rules, minimal_theory, bitvec_rules]
-  have h_s2_pc : r StateField.PC s2 = 0x4005d8#64 := by
-    simp only [h_step_2, h_s1_pc,
-               state_simp_rules, minimal_theory, bitvec_rules]
+  rw [Abs.csteps_eq]
+  have h_step_3 := program.stepi_0x4005d8_cut s2 (run 1 s2)
+  simp_all only [minimal_theory, bitvec_rules]
+  generalize h_s3 : run 1 s2 = s3 at h_step_3
 
-  -- Instruction 3
-  rw [Abs.csteps_eq, abs_stepi_0x4005d8_cut s2 h_s2_program h_s2_pc h_s2_err] at h_run
-  simp only [minimal_theory, Nat.reduceAdd] at h_run
-  generalize h_step_3 : stepi s2 = s3 at h_run
-  have h_s3 : s3 = run 1 s2 := by
-    simp only [run, h_step_3]
-  replace h_step_3 : s3 = stepi s2 := h_step_3.symm
-  rw [program.stepi_0x4005d8 s2 s3 h_s2_program h_s2_pc h_s2_err] at h_step_3
-  have h_s3_program : s3.program = program := by
-    simp only [h_step_3, h_s2_program,
-               state_simp_rules, minimal_theory, bitvec_rules]
-  have h_s3_err : r StateField.ERR s3 = StateError.None := by
-    simp only [h_step_3, h_s2_err,
-               state_simp_rules, minimal_theory, bitvec_rules]
-  have h_s3_pc : r StateField.PC s3 = 0x4005dc#64 := by
-    simp only [h_step_3, h_s2_pc,
-               state_simp_rules, minimal_theory, bitvec_rules]
+  rw [Abs.csteps_eq]
+  have h_step_4 := program.stepi_0x4005dc_cut s3 (run 1 s3)
+  simp_all only [minimal_theory, bitvec_rules]
+  generalize h_s4 : run 1 s3 = s4 at h_step_4
 
-  -- Instruction 4
-  rw [Abs.csteps_eq, abs_stepi_0x4005dc_cut s3 h_s3_program h_s3_pc h_s3_err] at h_run
-  simp only [minimal_theory, Nat.reduceAdd] at h_run
-  generalize h_step_4 : stepi s3 = s4 at h_run
-  have h_s4 : s4 = run 1 s3 := by
-    simp only [run, h_step_4]
-  replace h_step_4 : s4 = stepi s3 := h_step_4.symm
-  rw [program.stepi_0x4005dc s3 s4 h_s3_program h_s3_pc h_s3_err] at h_step_4
-  have _h_s4_program : s4.program = program := by
-    simp only [h_step_4, h_s3_program,
-               state_simp_rules, minimal_theory, bitvec_rules]
-  have h_s4_err : r StateField.ERR s4 = StateError.None := by
-    simp only [h_step_4, h_s3_err,
-               state_simp_rules, minimal_theory, bitvec_rules]
-  have h_s4_pc : r StateField.PC s4 = 0x4005e0#64 := by
-    simp only [h_step_4, h_s3_pc,
-               state_simp_rules, minimal_theory, bitvec_rules]
-
-  have h_s4_gpr0 : r (StateField.GPR 0#5) s4 =
-    BitVec.truncate 64
-      (BitVec.zeroExtend 32
-        (BitVec.zeroExtend 64
-          (AddWithCarry (BitVec.zeroExtend 32 (BitVec.zeroExtend 64 (BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s0))))
-              (BitVec.zeroExtend 32
-                (BitVec.truncate 64
-                      (BitVec.replicate 32
-                        (BitVec.extractLsb 31 31 (BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s0)))) &&&
-                    BitVec.truncate 64 (~~~1#32) |||
-                  (BitVec.truncate 64 (BitVec.zero 32) &&& BitVec.truncate 64 (~~~4294967295#32) |||
-                      BitVec.truncate 64 ((BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s0)).rotateRight 31) &&&
-                        BitVec.truncate 64 4294967295#32) &&&
-                    BitVec.truncate 64 1#32))
-              0#1).fst)) ^^^
-    BitVec.truncate 64
-      (BitVec.zeroExtend 32
-        (BitVec.truncate 64
-              (BitVec.replicate 32 (BitVec.extractLsb 31 31 (BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s0)))) &&&
-            BitVec.truncate 64 (~~~1#32) |||
-          (BitVec.truncate 64 (BitVec.zero 32) &&& BitVec.truncate 64 (~~~4294967295#32) |||
-              BitVec.truncate 64 ((BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s0)).rotateRight 31) &&&
-                BitVec.truncate 64 4294967295#32) &&&
-            BitVec.truncate 64 1#32)) := by
-    simp (config := {decide := true}) only [h_step_4, h_step_3, h_step_2, h_step_1,
-                                            state_simp_rules, bitvec_rules]
-
-  have h_sf_s4 : sf = s4 := by
-    simp only [h_run, h_s4, h_s3, h_s2, h_s1, run]
-
-  simp only [h_sf_s4, h_s4_gpr0, h_s4_pc, h_s4_err, minimal_theory]
+  have h_s4_s1 : s4 = run 3 s1 := by
+    simp only [←h_s4, ←h_s3, ←h_s2, ←run_plus]
+  simp only [←h_s4_s1, h_step_4, minimal_theory]
+  simp only [h_s4_s1, ←h_s1, ←run_plus]
   done
 
--------------------------------------------------------------------------------
+theorem effects_of_nextc_from_0x4005d0 (h_pre : abs_pre s0)
+  (_h_pc : read_pc s0 = 0x4005d0#64)
+  (h_run : sn = Correctness.nextc (Sys.run s0 1)) :
+  r StateField.PC sn = 0x4005e0#64 ∧
+  r (StateField.GPR 0#5) sn =
+    BitVec.zeroExtend 64
+      (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0))
+          (BitVec.replicate 32 (BitVec.extractLsb 31 31 (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0))) &&&
+              0xfffffffe#32 |||
+            (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0)).rotateRight 31 &&& 0xffffffff#32 &&& 0x1#32)
+          0x0#1).fst ^^^
+    (BitVec.zeroExtend 64
+          (BitVec.replicate 32 (BitVec.extractLsb 31 31 (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0)))) &&&
+        0xfffffffe#64 |||
+      BitVec.zeroExtend 64 ((BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0)).rotateRight 31) &&& 0xffffffff#64 &&&
+        0x1#64) ∧
+  r StateField.ERR sn = .None ∧
+  sn.program = program ∧
+  CheckSPAlignment sn := by
+  rw [nextc_to_run_from_0x4005d0 h_pre] at h_run
+  obtain ⟨h_pc, h_program, h_err, h_sp_aligned⟩ := h_pre
+  simp only [state_simp_rules] at *
+  -- Symbolic simulation
+  -- (FIXME) Why do we need `try assumption` below?
+  sym1_n 4 at s0 <;> try assumption
+  -- Aggregate the effects
+  simp only [run] at h_run
+  subst sn
+  simp only [abs_cut,
+            h_s4_err, h_s4_pc, h_s4_program, h_s4_sp_aligned,
+            state_simp_rules, minimal_theory]
+  simp only [h_step_4, h_step_3, h_step_2, h_step_1,
+             state_simp_rules, bitvec_rules, minimal_theory]
+  done
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by
@@ -306,15 +262,18 @@ theorem partial_correctness :
     have ⟨h_assert1, h_assert2, h_assert3⟩ := h_assert
     subst si
     clear h_exit h_assert
-    generalize h_run : (run (Correctness.csteps (stepi s0) 0) (stepi s0)) = sf
-    have effects := @program_effects_lemma s0 sf h_assert1 h_run.symm
-    simp only [Sys.next, Spec'.assert, abs_assert, h_assert1,
-               Correctness.nextc, Correctness.arm_run,
-               h_run, effects, Spec'.cut, abs_cut,
-               Spec'.assert, abs_assert, abs_post,
-               AddWithCarry, spec,
+    generalize h_run : (Correctness.nextc (Sys.run s0 1)) = sf
+    have h_effects := @effects_of_nextc_from_0x4005d0 s0 sf
+    simp only [*, minimal_theory] at h_effects
+    simp only [*, Spec'.assert, abs_assert, abs_post,
                state_simp_rules, bitvec_rules, minimal_theory]
-    split <;> bv_decide
+    simp only [spec, AddWithCarry, bitvec_rules]
+    generalize h_x0 : (r (StateField.GPR 0x0#5) s0) = x0
+    simp only [state_value] at x0
+    clear h_effects h_run h_assert1 h_assert2 sf h_x0 s0
+    split
+    case isTrue => bv_decide
+    case isFalse => bv_decide
     done
 
 theorem termination :
@@ -322,10 +281,17 @@ theorem termination :
   simp [Termination, Spec.pre, Spec.exit, abs_exit,
         state_simp_rules, bitvec_rules, minimal_theory]
   intro s h_pre
-  have h_effects := @program_effects_lemma s
-  simp only [h_pre, minimal_theory] at h_effects
-  apply Exists.intro ((Correctness.csteps (Sys.next s) 0) + 1)
-  simp only [Correctness.arm_run, Sys.next, run_succ, h_effects]
+  have h_clock := @nextc_to_run_from_0x4005d0 s h_pre
+  have h_effects := @effects_of_nextc_from_0x4005d0
+                    s (run 4 s) h_pre
+  simp only [abs_pre, state_simp_rules] at h_pre
+  simp only [h_pre, h_clock, state_simp_rules, minimal_theory]
+    at h_effects
+  obtain ⟨h_effects_pc, h_effects⟩ := h_effects
+  -- Clearing h_effects for readability.
+  clear h_effects
+  apply Exists.intro 4
+  simp only [Correctness.arm_run, h_effects_pc]
   done
 
 end AbsVCG
