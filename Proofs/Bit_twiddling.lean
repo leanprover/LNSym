@@ -68,14 +68,16 @@ theorem opposite_signs (x : BitVec 32) (y : BitVec 32) :
 
 -- ============================================================
 
--- 3. Compute the integer absolute value (abs) without branching
--- (https://graphics.stanford.edu/~seander/bithacks.html#IntegerAbs)
+/--
+3. Compute the integer absolute value (abs) without branching
+(https://graphics.stanford.edu/~seander/bithacks.html#IntegerAbs)
 
--- int v;           // we want to find the absolute value of v
--- unsigned int r;  // the result goes here
--- int const mask = v >> sizeof(int) * CHAR_BIT - 1;
+int v;           // we want to find the absolute value of v
+unsigned int r;  // the result goes here
+int const mask = v >> sizeof(int) * CHAR_BIT - 1;
 
--- r = (v + mask) ^ mask;
+r = (v + mask) ^ mask;
+-/
 
 theorem abs_no_branch (x : BitVec 32) (mask : BitVec 32)
   (h_mask : mask = (x >>>ₛ 31)) :
