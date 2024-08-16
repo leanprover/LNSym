@@ -82,6 +82,31 @@ structure SymContext where
 
 namespace SymContext
 
+/-! ## Simple projections -/
+section
+open Lean (Ident mkIdent)
+variable (c : SymContext)
+
+/-- `next_state` generates the name for the next intermediate state -/
+def next_state (c : SymContext) : Name :=
+  .mkSimple s!"{c.state_prefix}{c.curr_state_number + 1}"
+
+/-- return `h_err?` if given, or a default hardcoded name -/
+def h_err : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_err")
+
+/-- return `h_sp?` if given, or a default hardcoded name -/
+def h_sp  : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_sp")
+
+def state_ident       : Ident := mkIdent c.state
+def next_state_ident  : Ident := mkIdent c.next_state
+def h_run_ident       : Ident := mkIdent c.h_run
+def h_program_ident   : Ident := mkIdent c.h_program
+def h_pc_ident        : Ident := mkIdent c.h_pc
+def h_err_ident       : Ident := mkIdent c.h_err
+def h_sp_ident        : Ident := mkIdent c.h_sp
+
+end
+
 /-! ## Creating initial contexts -/
 
 /-- Infer `state_prefix` and `curr_state_number` from the `state` name
@@ -100,53 +125,6 @@ def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
     { ctxt with
       state_prefix := "s",
       curr_state_number := 1 }
-
-/-- If `h_sp` or `h_err` are missing from the `SymContext`,
-add new goals of the expected types,
-and use these to add `h_sp` and `h_err` to the main goal context -/
-def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
-  withMainContext do
-    let mut ctx := ctx
-    let mut goal ← getMainGoal
-    let mut newGoals := []
-    let lCtx ← getLCtx
-    let some stateExpr :=
-      (Expr.fvar ·.fvarId) <$> lCtx.findFromUserName? ctx.state
-      | throwError "Could not find '{ctx.state}' in the local context"
-
-    if ctx.h_err?.isNone then
-      let h_err? := Name.mkSimple s!"h_{ctx.state}_run"
-      let newGoal ← mkFreshMVarId
-
-      goal := ← do
-        let goalType := h_err_type stateExpr
-        let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
-        let goal' ← goal.assert h_err? goalType newGoalExpr
-        let ⟨_, goal'⟩ ← goal'.intro1P
-        return goal'
-
-      newGoals := newGoal :: newGoals
-      ctx := { ctx with h_err? }
-
-    if ctx.h_sp?.isNone then
-      let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
-      let newGoal ← mkFreshMVarId
-
-      goal := ← do
-        let h_sp_type := h_sp_type stateExpr
-        let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
-        let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
-        let ⟨_, goal'⟩ ← goal'.intro1P
-        return goal'
-
-      newGoals := newGoal :: newGoals
-      ctx := { ctx with h_sp? }
-
-    replaceMainGoal (goal :: newGoals)
-    return ctx
-
-
-
 
 /-- Annotate any errors thrown by `k` with a local variable (and its type) -/
 private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
@@ -261,11 +239,53 @@ def default (curr_state_number : Nat) : SymContext :=
     pc        := 0#64
   }
 
-/-! ## Incrementing the context to the next state -/
+/-! ## Massaging the local context -/
 
-/-- `next_state` generates the name for the next intermediate state -/
-def next_state (c : SymContext) : Name :=
-  .mkSimple s!"{c.state_prefix}{c.curr_state_number + 1}"
+/-- If `h_sp` or `h_err` are missing from the `SymContext`,
+add new goals of the expected types,
+and use these to add `h_sp` and `h_err` to the main goal context -/
+def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
+  withMainContext do
+    let mut ctx := ctx
+    let mut goal ← getMainGoal
+    let mut newGoals := []
+    let lCtx ← getLCtx
+    let some stateExpr :=
+      (Expr.fvar ·.fvarId) <$> lCtx.findFromUserName? ctx.state
+      | throwError "Could not find '{ctx.state}' in the local context"
+
+    if ctx.h_err?.isNone then
+      let h_err? := Name.mkSimple s!"h_{ctx.state}_run"
+      let newGoal ← mkFreshMVarId
+
+      goal := ← do
+        let goalType := h_err_type stateExpr
+        let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
+        let goal' ← goal.assert h_err? goalType newGoalExpr
+        let ⟨_, goal'⟩ ← goal'.intro1P
+        return goal'
+
+      newGoals := newGoal :: newGoals
+      ctx := { ctx with h_err? }
+
+    if ctx.h_sp?.isNone then
+      let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
+      let newGoal ← mkFreshMVarId
+
+      goal := ← do
+        let h_sp_type := h_sp_type stateExpr
+        let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
+        let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
+        let ⟨_, goal'⟩ ← goal'.intro1P
+        return goal'
+
+      newGoals := newGoal :: newGoals
+      ctx := { ctx with h_sp? }
+
+    replaceMainGoal (goal :: newGoals)
+    return ctx
+
+/-! ## Incrementing the context to the next state -/
 
 /-- `c.next` generates names for the next intermediate state and its hypotheses
 
@@ -288,24 +308,3 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     curr_state_number
     state_prefix := c.state_prefix
   }
-
-/-! ## Simple projections -/
-section
-open Lean (Ident mkIdent)
-variable (c : SymContext)
-
-/-- return `h_err?` if given, or a default hardcoded name -/
-def h_err : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_err")
-
-/-- return `h_sp?` if given, or a default hardcoded name -/
-def h_sp  : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_sp")
-
-def state_ident       : Ident := mkIdent c.state
-def next_state_ident  : Ident := mkIdent c.next_state
-def h_run_ident       : Ident := mkIdent c.h_run
-def h_program_ident   : Ident := mkIdent c.h_program
-def h_pc_ident        : Ident := mkIdent c.h_pc
-def h_err_ident       : Ident := mkIdent c.h_err
-def h_sp_ident        : Ident := mkIdent c.h_sp
-
-end
