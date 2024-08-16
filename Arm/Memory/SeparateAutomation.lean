@@ -27,27 +27,15 @@ open Lean Meta Elab Tactic
 ##### A Note on Notation
 
 - `[a..an)`: a range of memory starting with base address `a` of length `an`.
-  aka `mem_legal a an`.
-- `[a..an) ⟂ [b..bn)`: `mem_disjoint a an b bn`.
-- `[a..an] ⊆ [b..bn)`: `mem_subset a an b bn`
+  aka `mem_legal' a an`.
+- `[a..an) ⟂ [b..bn)`: `mem_disjoint' a an b bn`.
+- `[a..an] ⊆ [b..bn)`: `mem_subset' a an b bn`
 
 ##### Tactic Loop
 
-##### Reads of Bare Memory
-Given `mem.read_bytes [a..an)`
-
-1. If `h : mem.read_bytes [b..bn) = some val`, and `[a..an) ⊆ [b..bn)`,
-  then `mem.read_bytes [a..an) = val.extractLsByte adjust([a..an), [b..bn))`.
-  Here, `adjust` is a function that adjusts the read indices `[a..an)`
-  with respect to the read indices `[b..bn)`,
-  to convert a read from `mem` into a read from `val`.
-
-**NOTE**: This can be used to preprocess writes, where for every write,
-we can add an assumption that says that `(mem.write_bytes [b..bn) val]) |>.read_bytes [b..bn) = val`.
-Note sure if this is a sensible preprocessing to perform.
-
-##### Reads of Writes
-Given `mem.write_bytes [b..bn) val |>. read_bytes [a..an)`
+The core tactic tries to simplify expressions of the form:
+`mem.write_bytes [b..bn) val |>. read_bytes [a..an)`
+by case splitting:
 
 1. If `[a..an) ⟂ [b..bn)`, the write does not alias the read,
   and can be replaced with ` mem.read_bytes [a..an) `
@@ -57,7 +45,7 @@ Given `mem.write_bytes [b..bn) val |>. read_bytes [a..an)`
   to convert a read from `mem` into a read from `val`.
 
 The tactic shall be implemented as follows:
-1. Search the goal state for `mem.write_bytes [b..bn) val |>.read_bytes [a/..an)`.
+1. Search the goal state for `mem.write_bytes [b..bn) val |>.read_bytes [a..an)`.
 2. Try to prove that either `[a..an) ⟂ [b..bn)`, or `[a..an) ⊆ [b..bn)`.
     2a. First search the local context for assumptions of this type.
     2b. Try to deduce `[a..an) ⟂ [b..bn)` from the fact that
@@ -70,7 +58,7 @@ The tactic shall be implemented as follows:
         So try to find `[c..cn)` such that:
         (i) `[a..an) ⊆ [c..cn)`
         (ii) `[c..cn) ⊆ [b..bn)`
-  2d. If this also fails, then reduce all hypotheses to
+    2c. If this also fails, then reduce all hypotheses to
         linear integer arithmetic, and try to invoke `omega` to prove either
         `[a..an) ⟂ [b..bn)` or `[a..an) ⊆ [b..bn)`.
 3. Given a proof of either `[a..an) ⟂ [b..bn)` or `[a..an) ⊆ [b..bn)`,
@@ -78,6 +66,17 @@ The tactic shall be implemented as follows:
 4. If we manage to prove *both* `[a..an) ⟂ [b..bn)` *and* `[a..an) ⊆ [b..bn)`,
    declare victory as this is a contradiction. This may look useless,
    but feels like it maybe useful to prove certain memory states as impossible.
+
+##### Usability
+
+- If no mem separate/subset assumptions are present,
+  then throw an error to tell the user that we expect them to
+  specify such assumptions for all memory regions of interest.
+  LNSym doesn't support automated verification of programs that
+  do dynamic memory allocation.
+
+-  If any non-primed separate/subset assumptions are detected,
+  error out to tell the user that no automation is supported in this case.
 -/
 
 section BvOmega
