@@ -27,9 +27,9 @@ open Lean Meta Elab Tactic
 ##### A Note on Notation
 
 - `[a..an)`: a range of memory starting with base address `a` of length `an`.
-  aka `mem_legal a an`.
-- `[a..an) ⟂ [b..bn)`: `mem_disjoint a an b bn`.
-- `[a..an] ⊆ [b..bn)`: `mem_subset a an b bn`
+  aka `mem_legal' a an`.
+- `[a..an) ⟂ [b..bn)`: `mem_disjoint' a an b bn`.
+- `[a..an] ⊆ [b..bn)`: `mem_subset' a an b bn`
 
 ##### Tactic Loop
 
@@ -66,6 +66,18 @@ The tactic shall be implemented as follows:
 4. If we manage to prove *both* `[a..an) ⟂ [b..bn)` *and* `[a..an) ⊆ [b..bn)`,
    declare victory as this is a contradiction. This may look useless,
    but feels like it maybe useful to prove certain memory states as impossible.
+
+##### Usability
+
+- If no mem separate/subset assumptions are present,
+  then throw an error to tell the user that we expect them to
+  specify such assumptions for all memory regions of interest.
+  LNSym doesn't support automated verification of programs that
+  do dynamic memory allocation.
+
+-  If any non-primed separate/subset assumptions are detected,
+  error out to tell the user that no automation is supported in this case.
+
 -/
 
 namespace SeparateAutomation
