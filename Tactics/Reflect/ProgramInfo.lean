@@ -41,8 +41,13 @@ structure InstInfo where
     .notYetComputed
 
   /-- if `instSemantics?` is `⟨sem, type, proof⟩`, then
-  - `sem` is the instruction semantics, as a normalized(!) expression of type
-      `ArmState → ArmState`,
+  - `sem` is the instruction semantics, as a simplified expression of type
+      `ArmState → ArmState`.
+
+    That is, we've ran `simp` on `sem` with our dedicated simp-sets in the hopes
+    of obtaining only a sequence of `w` and `write_mem`s to the initial state.
+    However, note that some instructions might have conditional behaviour,
+    in which case `sem` might still contain `if`s
   - `type` is the expression
     ```lean
     ∀ s (h_program : s.program = <program>) (h_pc : read_pc s = <PC>)
