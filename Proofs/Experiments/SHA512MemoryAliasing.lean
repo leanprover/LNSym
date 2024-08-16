@@ -6,6 +6,8 @@ Author(s): Shilpi Goel
 import Arm.Exec
 import Arm.Memory.MemoryProofs
 import Specs.SHA512
+import Arm.Memory.SeparateAutomation
+
 -- import Tactics.Sym
 -- import Proofs.SHA512.Sha512StepLemmas
 open BitVec
