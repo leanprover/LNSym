@@ -170,9 +170,9 @@ theorem run_onestep (s s': ArmState) (n : Nat) (h_nonneg : 0 < n):
 /-- helper lemma for automation -/
 theorem stepi_eq_of_fetch_inst_of_decode_raw_inst
     (s : ArmState) (addr : BitVec 64) (rawInst : BitVec 32) (inst : ArmInst)
-    (h_err    : read_err s = .None)
-    (h_pc     : read_pc s = addr)
+    (h_err    : r .ERR s = .None)
+    (h_pc     : r .PC s = addr)
     (h_fetch  : fetch_inst addr s = some rawInst)
     (h_decode : decode_raw_inst rawInst = some inst) :
     stepi s = exec_inst inst s := by
-  simp only [stepi, h_err, h_pc, h_fetch, h_decode]
+  simp only [stepi, h_err, h_pc, h_fetch, h_decode, read_err, read_pc]
