@@ -39,9 +39,6 @@ initialize registerTraceClass `gen_step.debug.heartBeats
 /- When true, prints the time taken at various steps of generation. -/
 initialize registerTraceClass `gen_step.debug.timing
 
--- initialize
---   registerOption `gen_step.skip_
-
 /-- Assuming that `rawInst` is indeed the right result, construct a proof that
   `fetch_inst addr state = some rawInst`
 given that `state.program = program` -/
