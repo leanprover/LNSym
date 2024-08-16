@@ -21,7 +21,7 @@ def reduceFetchInst? (addr : BitVec 64) (s : Expr) :
       err.getRef
       "Could not generate ProgramInfo for {program}:\n\n{err.toMessageData}"
 
-  let some rawInst := programInfo.getRawInstrAt? addr
+  let some rawInst := programInfo.getRawInstAt? addr
     | throwError "No instruction found at address {addr}"
 
   trace[Sym.reduceFetchInst] "{Lean.checkEmoji} reduced to: {rawInst}"

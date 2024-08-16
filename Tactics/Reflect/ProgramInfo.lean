@@ -60,7 +60,7 @@ def getInstInfoAt? (pi : ProgramInfo) (addr : BitVec 64) :
     Option InstInfo :=
   pi.instructions.find? addr
 
-def getRawInstrAt? (pi : ProgramInfo) (addr : BitVec 64) :
+def getRawInstAt? (pi : ProgramInfo) (addr : BitVec 64) :
     Option (BitVec 32) :=
   (·.rawInst) <$> pi.getInstInfoAt? addr
 

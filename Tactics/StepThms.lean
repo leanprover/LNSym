@@ -142,7 +142,7 @@ def reduceStepi (pi : ProgramInfo) (addr : BitVec 64)
     (rawInst? : Option (BitVec 32) := none)
     (inst? : Option Expr := none)
     : ReduceDecodeM (Expr × Expr) := do
-  let some rawInst := rawInst? <|> pi.getRawInstrAt? addr
+  let some rawInst := rawInst? <|> pi.getRawInstAt? addr
     | throwError "No instruction found at address {addr} of {pi.name}"
 
   let inst ← match inst? with
