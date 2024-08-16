@@ -65,11 +65,15 @@ private def fetchLemma (state program h_program : Expr)
 -- /-! ## `reduceDecodeInst` -/
 
 /-- `canonicalizeBitVec e` recursively walks over expression `e` to convert any
-occerences of:
+occurrences of:
   `BitVec.ofFin w (Fin.mk x _)`
 to the canonical form:
   `BitVec.ofNat w x` (i.e., `x#w`)
- -/
+
+Such expressions tend to result from using `reduce` or
+`simp` with `{ground := true}`.
+You can call `canonicalizeBitVec` after these functions to ensure you don't
+needlessly expose `BitVec` internal details -/
 -- TODO: should this canonicalize to `BitVec.ofNatLt` instead,
 --       as the current transformation loses information?
 partial def canonicalizeBitVec (e : Expr) : MetaM Expr := do
@@ -92,7 +96,7 @@ partial def canonicalizeBitVec (e : Expr) : MetaM Expr := do
 
 /-- Given an expr `rawInst` of type `BitVec 32`,
 return an expr of type `Option ArmInst` representing what `rawInst` decodes to.
-The resulting expr is guaranteed to be def-eq to `fetch_inst $rawInst` -/
+The resulting expr is guaranteed to be def-eq to `decode_raw_inst $rawInst` -/
 def reduceDecodeInstExpr (rawInst : Expr) : MetaM Expr := do
   let expr := mkApp (mkConst ``decode_raw_inst) rawInst
   let expr ← withTransparency .all <| reduce expr
@@ -112,7 +116,7 @@ abbrev SymM.run (name : Name) (k : SymM α) (persist : Bool := true) : MetaM α 
 open SymM in
 /-- Given a (reflected) raw instruction,
 return an expr of type `Option ArmInst` representing what `rawInst` decodes to.
-The resulting expr is guaranteed to be def-eq to `fetch_inst $rawInst`.
+The resulting expr is guaranteed to be def-eq to `decode_raw_inst $rawInst`.
 
 Results are cached so that the same instruction is not reduced multiple times -/
 def reduceDecodeInst (rawInst : BitVec 32) : CacheM Expr :=
@@ -126,8 +130,8 @@ open ProgramInfoT InstInfoT
 /-- Given a program and an address, and optionally the corresponding
 raw and decoded instructions, construct and return first the expression:
 ```
-∀ {s} (h_program : s.program = <progam>) (h_pc : read_pc s = <addr>)
-  (h_err : read_err s = .None),
+∀ {s} (h_program : s.program = <progam>) (h_pc : r .PC s = <addr>)
+  (h_err : r .ERR s = .None),
   stepi s = <reduced form of `exec_inst <inst> s`>
 ```
 and then a proof of this fact.
@@ -172,7 +176,7 @@ def reduceStepi (addr : BitVec 64) : SymM (Expr × Expr) := do
           (config := {decide := true, ground := false})
           (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules])
           (decls := localDecls)
-          (decls_to_unfold := #[``exec_inst, ``read_pc, ``read_err])
+          (decls_to_unfold := #[``exec_inst])
 
       let ⟨simpRes, _⟩ ← simp type ctx simprocs
 
