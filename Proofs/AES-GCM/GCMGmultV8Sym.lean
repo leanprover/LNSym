@@ -14,7 +14,7 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     (h_run : sf = run gcm_gmult_v8_program.length s0) :
     read_err sf = .None := by
   simp (config := {ground := true}) only [Option.some.injEq] at h_s0_pc h_run
-  sym1_n 27
+  sym_n 27
   subst h_run
   assumption
   done

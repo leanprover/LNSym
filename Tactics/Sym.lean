@@ -96,13 +96,14 @@ def sym1 (c : SymContext) : TacticM SymContext :=
     return c.next
 
 
-/- used in `sym1_n` tactic -/
+/- used in `sym_n` tactic -/
 syntax sym_at := "at" ident
 
+open Elab.Term (elabTerm) in
 /--
-`sym1_n n` will symbolically evaluate a program for `n` steps.
+`sym_n n` will symbolically evaluate a program for `n` steps.
 Alternatively,
-  `sym1_n n at s` does the same, with `s` as initial state
+  `sym_n n at s` does the same, with `s` as initial state
 
 If `s` is not passed, the initial state is inferred from the local context
 
@@ -122,7 +123,7 @@ Hypotheses `h_err` and `h_sp` may be missing,
 in which case a new goal of the appropriate type will be added.
 The other hypotheses *must* be present,
 since we infer required information from their types. -/
-elab "sym1_n" n:num s:(sym_at)? : tactic =>
+elab "sym_n" n:num s:(sym_at)? : tactic =>
   let s := s.map fun
     | `(sym_at|at $s:ident) => s.getId
     | _ => panic! "Unexpected syntax: {s}"
@@ -134,6 +135,7 @@ elab "sym1_n" n:num s:(sym_at)? : tactic =>
     let mut c ← SymContext.fromLocalContext s
     c ← c.addGoalsForMissingHypotheses
 
+    -- Check that we are not asked to simulate more steps than available
     let n ←
       if n.getNat ≤ c.runSteps then
         pure n.getNat
@@ -141,6 +143,18 @@ elab "sym1_n" n:num s:(sym_at)? : tactic =>
         let h_run ← userNameToMessageData c.h_run
         logWarning m!"Symbolic simulation using {h_run} is limited to at most {c.runSteps} steps"
         pure c.runSteps
+
+    -- Check that step theorems have been pre-generated
+    try
+      let pc := c.pc.toHexWithoutLeadingZeroes
+      let step_thm := Name.str c.program ("stepi_eq_0x" ++ pc)
+      let _ ← getConstInfo step_thm
+    catch err =>
+      throwErrorAt err.getRef "{err.toMessageData}\n
+Did you remember to generate step theorems with:
+  #generateStepEqTheorems {c.program}"
+-- TODO: can we make this error ^^ into a `Try this:` suggestion that
+--       automatically adds the right command just before the theorem?
 
     -- The main loop
     for _ in List.range n do
