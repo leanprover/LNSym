@@ -190,7 +190,7 @@ initialize programInfoExt : PersistentEnvExtension (ProgramInfo) (ProgramInfo) (
       ++ "number of local entries: " ++ format s.size
   }
 
-/-- persistently store a `PogramInfo` in the environment -/
+/-- persistently store a `ProgramInfo` in the environment -/
 def persistToEnv [Monad m] [MonadEnv m] (pi : ProgramInfo) : m Unit := do
   modifyEnv (programInfoExt.addEntry · pi)
 
