@@ -28,17 +28,18 @@ notation:50 x " >>>ₛ " y => BitVec.sshiftRight x y
 
 -- ============================================================
 
--- 1. Compute the sign of an integer
--- (https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign)
+/--
+1. Compute the sign of an integer
+(https://graphics.stanford.edu/~seander/bithacks.html#CopyIntegerSign)
 
--- int v;      // we want to find the sign of v
--- int sign;   // the result goes here
+int v;      // we want to find the sign of v
+int sign;   // the result goes here
 
--- // CHAR_BIT is the number of bits per byte (normally 8).
--- sign = -(v < 0);  // if v < 0 then -1, else 0.
--- // or, for one less instruction (but not portable):
--- sign = v >> (sizeof(int) * CHAR_BIT - 1);
-
+// CHAR_BIT is the number of bits per byte (normally 8).
+sign = -(v < 0);  // if v < 0 then -1, else 0.
+// or, for one less instruction (but not portable):
+sign = v >> (sizeof(int) * CHAR_BIT - 1);
+-/
 def c_slt {n : Nat} (x : BitVec n) (y : BitVec n) : (BitVec n) :=
   if (x <ₛ y) then 1 else 0
 
