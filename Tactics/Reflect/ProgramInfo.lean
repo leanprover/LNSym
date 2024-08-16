@@ -144,12 +144,16 @@ def lookup? [Monad m] [MonadEnv m] (program : Name) :
   return state.find? program
 
 /-- look up the `ProgramInfo` for a given `program` in the environment,
-or, if none was found, generate (and cache) new program info.
+or, if none was found, generate new program info.
 
 If you pass in a value for `expr?`, that is assumed to be the definition for
 `program` when generating new program info.
-If you don't pass in an expr, the definition is found in the environment -/
-def lookupOrGenerate (program : Name) (expr? : Option Expr := none) :
+If you don't pass in an expr, the definition is found in the environment
+
+If `persist` is set to true (the default), then the newly generated program info
+will be persistently cached in the environment (see `persistToEnv`) -/
+def lookupOrGenerate (program : Name) (expr? : Option Expr := none)
+    (persist : Bool := true) :
     MetaM ProgramInfo := do
   if let some pi ← lookup? program then
     return pi
@@ -157,7 +161,8 @@ def lookupOrGenerate (program : Name) (expr? : Option Expr := none) :
     let pi ← match expr? with
       | some expr => generateFromExpr program expr
       | none      => generateFromConstName program
-    persistToEnv pi
+    if persist then
+      persistToEnv pi
     return pi
 
 end ProgramInfo
@@ -167,25 +172,41 @@ end ProgramInfo
 abbrev ProgramInfoT (m : Type → Type) := StateT ProgramInfo m
 
 namespace ProgramInfoT
-variable [Monad m] [MonadLiftT MetaM m] [MonadEnv m]
+variable [Monad m] [MonadEnv m] [MonadError m]
 
 /-! ### run -/
+section Run
+variable [MonadLiftT MetaM m]
 
-protected def run' (programName : Name) (expr? : Option Expr)
+protected def run' (programName : Name) (expr? : Option Expr) (persist : Bool)
     (k : ProgramInfoT m α) : m α := do
   let pi ← ProgramInfo.lookupOrGenerate programName expr?
-  let ⟨a, _⟩ ← StateT.run k pi
+  let ⟨a, pi⟩ ← StateT.run k pi
+  if persist then
+    pi.persistToEnv
   return a
 
-/-- run a `ProgramInfoT m` by looking up, or generating new program info, by name -/
-def run (programName : Name) (k : ProgramInfoT m α) : m α :=
-  ProgramInfoT.run' programName none k
+/-- run a `ProgramInfoT m` by looking up, or generating new program info,
+by name.
+
+If `persist` is set to true, then the program info state after
+executing `k` will be persistently cached in the environment
+(see `persistToEnv`). -/
+def run (programName : Name) (persist : Bool := false)
+    (k : ProgramInfoT m α) : m α :=
+  ProgramInfoT.run' programName none persist k
 
 /-- run a `ProgramInfoT m` by looking up, or generating new program info.
-The passed expression is assumed to be the definition of the program -/
-def runE (programName : Name) (expr : Expr) (k : ProgramInfoT m α) : m α :=
-  ProgramInfoT.run' programName expr k
+The passed expression is assumed to be the definition of the program.
 
+If `persist` is set to true (the default), then the program info state after
+executing `k` will be persistently cached in the environment
+(see `persistToEnv`). -/
+def runE (programName : Name) (expr : Expr) (persist : Bool := false)
+    (k : ProgramInfoT m α) : m α :=
+  ProgramInfoT.run' programName expr persist k
+
+end Run
 
 /-! ### Wrappers -/
 
