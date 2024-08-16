@@ -208,6 +208,15 @@ def runE (programName : Name) (expr : Expr) (persist : Bool := false)
 
 end Run
 
+/-! ### MonadError instance -/
+
+instance [Monad m] [i : MonadError m] : MonadError (ProgramInfoT m) where
+  throw e       := i.throw e
+  tryCatch k f  := fun s => i.tryCatch (k s) (fun e => f e s)
+  getRef        := i.getRef
+  withRef stx k := fun s => i.withRef stx (k s)
+  add stx msg   := i.add stx msg
+
 /-! ### Wrappers -/
 
 /-- Persistently store the `ProgramInfo` state in the environment,
