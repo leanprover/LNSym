@@ -97,6 +97,9 @@ def getInstSemantics (f : Unit → InstInfoT m (Expr × Expr × Expr)) :
 
 end InstInfoT
 
+def InstInfo.ofRawInst (rawInst : BitVec 32) : InstInfo :=
+  { rawInst }
+
 --------------------------------------------------------------------------------
 
 namespace ProgramInfo
@@ -145,8 +148,10 @@ partial def generateFromExpr (name : Name) (e : Expr) : MetaM ProgramInfo := do
 
         let addr ← reflectBitVecLiteral 64 (← instantiateMVars addr)
         let rawInst ← reflectBitVecLiteral 32 (← instantiateMVars inst)
+        let rawProgram :=
+          let info := InstInfo.ofRawInst rawInst
+          instructions.insert addr info
 
-        let rawProgram := instructions.insert addr { rawInst }
         go rawProgram tl
     | List.nil _ => return instructions
     | _ => throwError "expected `List.cons _ _` or `List.nil`, found:\n\t{e}"
