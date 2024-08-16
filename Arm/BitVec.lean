@@ -339,6 +339,14 @@ example : split 0xabcd1234#32 8 (by omega) = [0xab#8, 0xcd#8, 0x12#8, 0x34#8] :=
 /-- Get the width of a bitvector. -/
 protected def width (_ : BitVec n) : Nat := n
 
+/-- Convert a bitvector into its hex representation, without leading zeroes.
+
+See `BitVec.toHex` if you do want the leading zeroes.
+
+NOTE: returns only the digits, without a `0x` prefix -/
+def toHexWithoutLeadingZeroes {w} (x : BitVec w) : String :=
+  "0x" ++ (Nat.toDigits 16 x.toNat).asString
+
 ----------------------------------------------------------------------
 
 attribute [ext] BitVec
