@@ -65,7 +65,7 @@ private def fetchLemma (state program h_program : Expr)
 -- /-! ## `reduceDecodeInst` -/
 
 /-- `canonicalizeBitVec e` recursively walks over expression `e` to convert any
-occerences of:
+occurrences of:
   `BitVec.ofFin w (Fin.mk x _)`
 to the canonical form:
   `BitVec.ofNat w x` (i.e., `x#w`)
