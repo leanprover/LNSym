@@ -1,12 +1,15 @@
 /-
-Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Nathan Wetzler
+
+The goal is to stress-test LeanSAT's performance using some classic 
+bit-twiddling problems as benchmarks.
 -/
 
 import LeanSAT
 
-section bit_twiddling
+namespace BitTwiddlingTests
 
 open BitVec
 
@@ -87,18 +90,20 @@ theorem abs_no_branch (x : BitVec 32) (mask : BitVec 32)
 
 -- ============================================================
 
--- 4. Compute the minimum (min) or maximum (max) of two integers without branching
--- (https://graphics.stanford.edu/~seander/bithacks.html#IntegerMinOrMax)
+/--
+4. Compute the minimum (min) or maximum (max) of two integers without branching
+(https://graphics.stanford.edu/~seander/bithacks.html#IntegerMinOrMax)
 
--- int x;  // we want to find the minimum of x and y
--- int y;
--- int r;  // the result goes here
+int x;  // we want to find the minimum of x and y
+int y;
+int r;  // the result goes here
 
--- r = y ^ ((x ^ y) & -(x < y)); // min(x, y)
+r = y ^ ((x ^ y) & -(x < y)); // min(x, y)
 
--- To find the maximum, use:
+To find the maximum, use:
 
--- r = x ^ ((x ^ y) & -(x < y)); // max(x, y)
+r = x ^ ((x ^ y) & -(x < y)); // max(x, y)
+-/
 
 def bv_min {n : Nat} (x : BitVec n) (y : BitVec n) : (BitVec n) :=
     if (x <ₛ y) then x else y
@@ -118,17 +123,19 @@ theorem max_no_branch (x : BitVec 32) (y : BitVec 32) :
 
 -- ============================================================
 
--- 5. Determining if an integer is a power of 2
--- (https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2)
+/--
+5. Determining if an integer is a power of 2
+(https://graphics.stanford.edu/~seander/bithacks.html#DetermineIfPowerOf2)
 
--- unsigned int v; // we want to see if v is a power of 2
--- bool f;         // the result goes here
+unsigned int v; // we want to see if v is a power of 2
+bool f;         // the result goes here
 
--- f = (v & (v - 1)) == 0;
+f = (v & (v - 1)) == 0;
 
--- Note that 0 is incorrectly considered a power of 2 here. To remedy this, use:
+Note that 0 is incorrectly considered a power of 2 here. To remedy this, use:
 
--- f = v && !(v & (v - 1));
+f = v && !(v & (v - 1));
+-/
 
 theorem power_of_two (x : BitVec 32) (i : BitVec 5)
   (hi : (0#5 ≤ i) ∧ (i < 32#5))
@@ -142,14 +149,16 @@ theorem power_of_two (x : BitVec 32) (i : BitVec 5)
 
 -- ============================================================
 
--- 6. Conditionally set or clear bits without branching
--- (https://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching)
+/--
+6. Conditionally set or clear bits without branching
+(https://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching)
 
--- bool f;         // conditional flag
--- unsigned int m; // the bit mask
--- unsigned int w; // the word to modify:  if (f) w |= m; else w &= ~m;
+bool f;         // conditional flag
+unsigned int m; // the bit mask
+unsigned int w; // the word to modify:  if (f) w |= m; else w &= ~m;
 
--- w ^= (-f ^ w) & m;
+w ^= (-f ^ w) & m;
+-/
 
 theorem set_clear_no_branch (x : BitVec 32) (f : Bool) (mask : BitVec 32) :
   (if f then (x ||| mask) else (x &&& ~~~mask)) =
@@ -158,14 +167,16 @@ theorem set_clear_no_branch (x : BitVec 32) (f : Bool) (mask : BitVec 32) :
 
 -- ============================================================
 
--- 7. Conditionally negate a value without branching
--- (https://graphics.stanford.edu/~seander/bithacks.html#ConditionalNegate)
+/--
+7. Conditionally negate a value without branching
+(https://graphics.stanford.edu/~seander/bithacks.html#ConditionalNegate)
 
--- bool fNegate;  // Flag indicating if we should negate v.
--- int v;         // Input value to negate if fNegate is true.
--- int r;         // result = fNegate ? -v : v;
+bool fNegate;  // Flag indicating if we should negate v.
+int v;         // Input value to negate if fNegate is true.
+int r;         // result = fNegate ? -v : v;
 
--- r = (v ^ -fNegate) + fNegate;
+r = (v ^ -fNegate) + fNegate;
+-/
 
 theorem negate_no_branch (x : BitVec 32) (fNegate : Bool) :
   (if fNegate then -x else x) =
@@ -174,15 +185,17 @@ theorem negate_no_branch (x : BitVec 32) (fNegate : Bool) :
 
 -- ============================================================
 
--- 8. Merge bits from two values according to a mask
--- (https://graphics.stanford.edu/~seander/bithacks.html#MaskedMerge)
+/--
+8. Merge bits from two values according to a mask
+(https://graphics.stanford.edu/~seander/bithacks.html#MaskedMerge)
 
--- unsigned int a;    // value to merge in non-masked bits
--- unsigned int b;    // value to merge in masked bits
--- unsigned int mask; // 1 where bits from b should be selected; 0 where from a.
--- unsigned int r;    // result of (a & ~mask) | (b & mask) goes here
+unsigned int a;    // value to merge in non-masked bits
+unsigned int b;    // value to merge in masked bits
+unsigned int mask; // 1 where bits from b should be selected; 0 where from a.
+unsigned int r;    // result of (a & ~mask) | (b & mask) goes here
 
--- r = a ^ ((a ^ b) & mask);
+r = a ^ ((a ^ b) & mask);
+-/
 
 theorem merge_from_mask (x : BitVec 32) (y : BitVec 32) (mask : BitVec 32) :
   ((x &&& ~~~mask) ||| (y &&& mask)) = (x ^^^ ((x ^^^ y) &&& mask)) := by
@@ -190,12 +203,14 @@ theorem merge_from_mask (x : BitVec 32) (y : BitVec 32) (mask : BitVec 32) :
 
 -- ============================================================
 
--- 9. Counting bits set, in parallel
--- (https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel)
+/--
+9. Counting bits set, in parallel
+(https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel)
 
--- v = v - ((v >> 1) & 0x55555555);                    // reuse input as temporary
--- v = (v & 0x33333333) + ((v >> 2) & 0x33333333);     // temp
--- c = ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24; // count
+v = v - ((v >> 1) & 0x55555555);                    // reuse input as temporary
+v = (v & 0x33333333) + ((v >> 2) & 0x33333333);     // temp
+c = ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24; // count
+-/
 
 def popcount32_spec_rec (i : Nat) (x : BitVec 32) : (BitVec 32) :=
   match i with
@@ -222,15 +237,17 @@ theorem popcount32_correct (x : BitVec 32) :
 
 -- ============================================================
 
--- 10. Compute parity in parallel
--- (https://graphics.stanford.edu/~seander/bithacks.html#ParityParallel)
+/--
+10. Compute parity in parallel
+(https://graphics.stanford.edu/~seander/bithacks.html#ParityParallel)
 
--- unsigned int v;  // word value to compute the parity of
--- v ^= v >> 16;
--- v ^= v >> 8;
--- v ^= v >> 4;
--- v &= 0xf;
--- return (0x6996 >> v) & 1;
+unsigned int v;  // word value to compute the parity of
+v ^= v >> 16;
+v ^= v >> 8;
+v ^= v >> 4;
+v &= 0xf;
+return (0x6996 >> v) & 1;
+-/
 
 def parity32_spec_rec (i : Nat) (x : BitVec 32) : Bool :=
   match i with
@@ -256,4 +273,4 @@ theorem parity32_correct (x : BitVec 32) :
   repeat (unfold parity32_spec_rec)
   bv_decide
 
-end bit_twiddling
+end BitTwiddlingTests
