@@ -54,13 +54,14 @@ theorem computing_sign1 (x : BitVec 32) :
 
 -- ============================================================
 
--- 2. Detect if two integers have opposite signs
--- (https://graphics.stanford.edu/~seander/bithacks.html#DetectOppositeSigns)
+/--
+2. Detect if two integers have opposite signs
+(https://graphics.stanford.edu/~seander/bithacks.html#DetectOppositeSigns)
 
--- int x, y;               // input values to compare signs
+int x, y;               // input values to compare signs
 
--- bool f = ((x ^ y) < 0); // true iff x and y have opposite signs
-
+bool f = ((x ^ y) < 0); // true iff x and y have opposite signs
+-/
 theorem opposite_signs (x : BitVec 32) (y : BitVec 32) :
   ((0#32 ≤ₛ x) ∧ (y <ₛ 0#32)) ∨ ((x <ₛ 0#32) ∧ (0#32 ≤ₛ y)) ↔ ((x ^^^ y) <ₛ 0#32) := by
   bv_decide
