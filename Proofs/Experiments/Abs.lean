@@ -32,7 +32,6 @@ theorem correct
   (h_run : sf = run program.length s0) :
   read_gpr 32 0 sf = spec (read_gpr 32 0 s0) ∧
   read_err sf = StateError.None := by
-  simp (config := {ground := true}) at h_run
 
   sym_n 5
   sorry

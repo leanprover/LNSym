@@ -128,12 +128,9 @@ elab "sym_n" n:num s:(sym_at)? : tactic =>
     | `(sym_at|at $s:ident) => s.getId
     | _ => panic! "Unexpected syntax: {s}"
   Lean.Elab.Tactic.withMainContext <| do
-    Lean.Elab.Tactic.evalTactic (← `(tactic|
-      simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
-    ))
-
     let mut c ← SymContext.fromLocalContext s
     c ← c.addGoalsForMissingHypotheses
+    c.changeHypothesisTypes
 
     -- Check that we are not asked to simulate more steps than available
     let n ←

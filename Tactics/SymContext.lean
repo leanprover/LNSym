@@ -271,6 +271,34 @@ def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
     replaceMainGoal (goal :: newGoals)
     return ctx
 
+/-- change the type (in the local context of the main goal)
+of the hypotheses tracked by the given `SymContext` to be *exactly* of the shape
+described in the relevant docstrings.
+
+That is, (un)fold types which were definitionally, but not syntactically,
+equal to the expected shape. -/
+def changeHypothesisTypes (c : SymContext) : TacticM Unit := withMainContext do
+  let lctx ← getLCtx
+  let mut goal ← getMainGoal
+  let state ← c.stateExpr
+  let program := mkConst c.program
+
+  let mut hyps := #[
+    (c.h_run, h_run_type c.finalState (toExpr c.runSteps) state),
+    (c.h_program, h_program_type state program),
+    (c.h_pc, h_pc_type state (toExpr c.pc))
+  ]
+  if let some h_err := c.h_err? then
+    hyps := hyps.push (h_err, h_err_type state)
+  if let some h_sp := c.h_sp? then
+    hyps := hyps.push (h_sp, h_sp_type state)
+
+  for ⟨name, type⟩ in hyps do
+    let some decl := lctx.findFromUserName? name
+      | throwError "Unknown local hypothesis `{c.state}`"
+    goal ← goal.changeLocalDecl decl.fvarId type
+  replaceMainGoal [goal]
+
 /-! ## Incrementing the context to the next state -/
 
 /-- `c.next` generates names for the next intermediate state and its hypotheses
