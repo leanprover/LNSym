@@ -175,4 +175,4 @@ theorem stepi_eq_of_fetch_inst_of_decode_raw_inst
     (h_fetch  : fetch_inst addr s = some rawInst)
     (h_decode : decode_raw_inst rawInst = some inst) :
     stepi s = exec_inst inst s := by
-  simp [stepi, *]
+  simp only [stepi, h_err, h_pc, h_fetch, h_decode]
