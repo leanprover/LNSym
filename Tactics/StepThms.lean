@@ -191,8 +191,10 @@ def reduceStepi (pi : ProgramInfo) (addr : BitVec 64)
     return ⟨type, proof⟩
 
 def genStepEqTheorems (pi : ProgramInfo) : MetaM Unit :=
-  ReduceDecodeM.run <| for ⟨addr, inst⟩ in pi.rawProgram do
+  ReduceDecodeM.run <| for ⟨addr, instInfo⟩ in pi.instructions do
     let startTime ← IO.monoMsNow
+    let inst := instInfo.rawInst
+
     trace[gen_step.debug] "[genStepEqTheorems] Generating theorem for address {addr.toHex}\
       with instruction {inst.toHex}"
     let name := let addr_str := addr.toHexWithoutLeadingZeroes
@@ -468,7 +470,7 @@ partial def genStepTheorems (program map : Expr) (program_name : Name)
   (thm_type : String) (simpExt : Option Name) : MetaM Unit := do
   if thm_type == "fetch" then
     let pi ← ProgramInfo.lookupOrGenerate program_name
-    pi.rawProgram.forM fun addr rawInst => do
+    for ⟨addr, {rawInst, ..}⟩ in pi.instructions do
       genFetchTheorem pi addr rawInst
   else
 
