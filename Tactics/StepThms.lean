@@ -212,8 +212,10 @@ elab "#genProgramInfo" program:ident : command => liftTermElabM do
   let _ ← ProgramInfo.lookupOrGenerate program.getId
 
 
-elab "#genStepEqTheorems" program:ident : command => liftTermElabM do
-  let pi ← ProgramInfo.lookupOrGenerate program.getId
+elab "#genStepEqTheorems" program:term : command => liftTermElabM do
+  let .const name _ ← Elab.Term.elabTerm program (mkConst ``Program)
+    | throwError "Expected a constant, found: {program}"
+  let pi ← ProgramInfo.lookupOrGenerate name
   genStepEqTheorems pi
 
 
