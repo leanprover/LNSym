@@ -101,8 +101,8 @@ initialize programInfoExt : PersistentEnvExtension (ProgramInfo) (ProgramInfo) (
       ++ "number of local entries: " ++ format s.size
   }
 
-/-- store a `PogramInfo` in the environment -/
-private def store [Monad m] [MonadEnv m] (pi : ProgramInfo) : m Unit := do
+/-- persistently store a `PogramInfo` in the environment -/
+def persistToEnv [Monad m] [MonadEnv m] (pi : ProgramInfo) : m Unit := do
   modifyEnv (programInfoExt.addEntry · pi)
 
 /-- look up the `ProgramInfo` for a given `program` in the environment,
@@ -127,5 +127,40 @@ def lookupOrGenerate (program : Name) (expr? : Option Expr := none) :
     let pi ← match expr? with
       | some expr => generateFromExpr program expr
       | none      => generateFromConstName program
-    store pi
+    persistToEnv pi
     return pi
+
+end ProgramInfo
+
+/-! ## `ProgramInfoT` Monad Transformer -/
+
+abbrev ProgramInfoT (m : Type → Type) := StateT ProgramInfo m
+
+namespace ProgramInfoT
+variable [Monad m] [MonadLiftT MetaM m] [MonadEnv m]
+
+/-! ### run -/
+
+protected def run' (programName : Name) (expr? : Option Expr)
+    (k : ProgramInfoT m α) : m α := do
+  let pi ← ProgramInfo.lookupOrGenerate programName expr?
+  let ⟨a, _⟩ ← StateT.run k pi
+  return a
+
+/-- run a `ProgramInfoT m` by looking up, or generating new program info, by name -/
+def run (programName : Name) (k : ProgramInfoT m α) : m α :=
+  ProgramInfoT.run' programName none k
+
+/-- run a `ProgramInfoT m` by looking up, or generating new program info.
+The passed expression is assumed to be the definition of the program -/
+def runE (programName : Name) (expr : Expr) (k : ProgramInfoT m α) : m α :=
+  ProgramInfoT.run' programName expr k
+
+
+/-! ### Wrappers -/
+
+/-- Persistently store the `ProgramInfo` state in the environment,
+so that cached information will be available in downstream files as wells -/
+def persistToEnv : ProgramInfoT m Unit := do
+  (← StateT.get).persistToEnv
+end ProgramInfoT
