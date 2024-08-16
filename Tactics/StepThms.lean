@@ -219,74 +219,83 @@ elab "#genStepEqTheorems" program:term : command => liftTermElabM do
     genStepEqTheorems
 
 
--- /-! ## reduceExec -/
-
--- /-- Given an expr of type `ArmInst`,
--- return the normal form of `exec_inst inst ?state`,
--- with `?state` a fresh metavar that is also returned -/
--- def reduceExecInst (inst : Expr) : MetaM (Expr × MVarId) := do
---   let state ← mkFreshExprMVar (mkConst ``ArmState)
---   let res := mkApp2 (mkConst ``exec_inst) inst state
---   let res ← withTransparency .all <| reduce res
---   -- ^^ NOTE: possibly expensive reductions
---   let res ← canonicalizeBitVec res
---   return ⟨res, state.mvarId!⟩
-
 /- Generate and prove a fetch theorem of the following form:
 ```
 theorem <program>.("fetch_0x" ++ <address in hex>) (s : ArmState)
  (h : s.program = <program>) : fetch_inst <address> s = some <raw_inst>
 ```
 -/
-def genFetchTheorem (program : ProgramInfo) (address : BitVec 64)
-    (raw_inst : BitVec 32) : MetaM Unit := do
+def genFetchTheorem (program_name : Name) (address_str : String)
+  (orig_map address_expr raw_inst_expr : Expr)
+  : MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genFetchTheorem] Start heartbeats: {startHB}"
-
-  let declName :=
-    Name.str program.name ("fetch_0x" ++ address.toHexWithoutLeadingZeroes)
-
-  let thm_type := -- ∀ (s : ArmState), (h : s.program = <program>),
-                  --      fetch_inst <address> s = some <raw_inst>
-    let raw_inst_rhs  := toExpr (some raw_inst)
-    let fetch_inst_fn := fun s => -- (fetch_inst <address> <s>)
-                          mkApp2 (mkConst ``fetch_inst) (toExpr address) s
-    let bitvec32      := mkApp (mkConst ``BitVec) (toExpr 32)
-    let opt_bitvec32  := mkApp (mkConst ``Option [0]) bitvec32
-    forallE `s (mkConst ``ArmState)
-      (forallE `h (h_program_type (bvar 0) program.expr)
-        (mkAppN (mkConst ``Eq [1]) #[
-          opt_bitvec32,
-          (fetch_inst_fn (bvar 1)),
-          raw_inst_rhs])
-      Lean.BinderInfo.default)
-    Lean.BinderInfo.default
-  trace[gen_step.debug] "[genFetchTheorem] Statement of the theorem: {thm_type}"
-
-  let thm_proof ←
-    withLocalDeclD `s (mkConst ``ArmState) fun s => do
-      withLocalDeclD `h (h_program_type s program.expr) fun h => do
-        let proof := fetchLemma s (mkConst program.name) h address raw_inst
-        mkLambdaFVars #[s, h] proof
-
-  trace[gen_step.debug] "[genFetchTheorem] Proof: {thm_proof}"
-  let decl := Declaration.thmDecl {
-    name := declName,
-    -- TODO: Compute levelParams instead of hard-coding it?
-    levelParams := [],
-    type := thm_type,
-    value := thm_proof
-  }
-  addDecl decl
-  -- addAndCompile decl
-  trace[gen_step.print_names] "[Proved theorem {declName}.]"
-  let stopHB ← IO.getNumHeartbeats
-  trace[gen_step.debug.heartBeats] "[genFetchTheorem]: Stop heartbeats: {stopHB}"
-  trace[gen_step.debug.heartBeats] "[genFetchTheorem]: HeartBeats used: {stopHB - startHB}"
+  let declName := Name.str program_name ("fetch_0x" ++ address_str)
+  let s_program_hyp_fn :=
+      fun s => -- (s.program = <orig_map>)
+         (mkAppN (mkConst ``Eq [1])
+                    #[(mkConst ``Program),
+                      (mkAppN (mkConst ``ArmState.program) #[s]),
+                      orig_map])
+  let fetch_inst_fn := fun s => -- (fetch_inst <address_expr> <s>)
+                        (mkAppN (mkConst ``fetch_inst) #[address_expr, s])
+  let bitvec32 := (mkAppN (mkConst ``BitVec) #[mkRawNatLit 32])
+  let opt_bitvec32 := (mkAppN (mkConst ``Option [0]) #[bitvec32])
+  let raw_inst_rhs := (mkAppN (mkConst ``Option.some [0]) #[bitvec32, raw_inst_expr])
+  let orig_thm := -- ∀ (s : ArmState), (h : s.program = <orig_map>) :
+                  --      fetch_inst <address_expr> s = some <raw_inst_expr>
+                forallE `s (mkConst ``ArmState)
+                  (forallE (Name.mkSimple "h")
+                    (s_program_hyp_fn (bvar 0))
+                      (mkAppN (mkConst ``Eq [1])
+                        #[opt_bitvec32, (fetch_inst_fn (bvar 1)), raw_inst_rhs])
+                Lean.BinderInfo.default)
+               Lean.BinderInfo.default
+  trace[gen_step.debug] "[genFetchTheorem] Statement of the theorem: {orig_thm}"
+  withLocalDeclD `s (mkConst ``ArmState) fun s => do
+    withLocalDeclD `h (s_program_hyp_fn s) fun _h => do
+    let lhs := fetch_inst_fn s
+    trace[gen_step.debug] "[genFetchTheorem] lhs: {lhs}"
+    let (ctx, simprocs) ← LNSymSimpContext (config := {ground := false})
+                            (simp_attrs := #[`minimal_theory])
+                            (thms := #[``fetch_inst_from_program])
+                            (simprocs := #[``reduceMapFind?])
+    -- Adding local declarations to the context.
+    let mut simpTheorems := ctx.simpTheorems
+    let hs ← getPropHyps
+    for h in hs do
+      trace[gen_step.debug] "[genFetchTheorem] Prop. in Local Context: {← h.getType}"
+      unless simpTheorems.isErased (.fvar h) do
+        simpTheorems ← simpTheorems.addTheorem (.fvar h) (← h.getDecl).toExpr
+    let ctx := { ctx with simpTheorems }
+    let (result, _) ← simp lhs ctx simprocs
+    trace[gen_step.debug] "[genFetchTheorem] Simp result: result: {result.expr}"
+    trace[gen_step.debug] "[genFetchTheorem] result.proof?: {result.proof?}"
+    -- FIXME: Is this DefEq check necessary?
+    -- if ! (← isDefEq result.expr raw_inst_rhs) then
+    --   throwError "[genFetchTheorem] {lhs} simplified to {result.expr}, which is not \
+    --                the expected term, {raw_inst_rhs}"
+    -- Why do we need to add s explicitly here?
+    let args := #[s] ++ (hs.map (fun f => (.fvar f)))
+    let value ← mkLambdaFVars args result.proof?.get! (usedOnly := true) (usedLetOnly := true)
+    trace[gen_step.debug] "[genFetchTheorem] Proof: {value}"
+    let decl := Declaration.thmDecl {
+      name := declName,
+      -- TODO: Compute levelParams instead of hard-coding it?
+      levelParams := [],
+      type := orig_thm,
+      value := value
+    }
+    addDecl decl
+    -- addAndCompile decl
+    trace[gen_step.print_names] "[Proved theorem {declName}.]"
+    let stopHB ← IO.getNumHeartbeats
+    trace[gen_step.debug.heartBeats] "[genFetchTheorem]: Stop heartbeats: {stopHB}"
+    trace[gen_step.debug.heartBeats] "[genFetchTheorem]: HeartBeats used: {stopHB - startHB}"
 
 /- Generate and prove an exec theorem of the following form:
 ```
-theorem (<thm_prefix> ++ "exec_0x" ++ <address_str>) (s : ArmState) :
+theorem <program_name>.("exec_0x" ++ <address_str>) (s : ArmState) :
   exec_inst <decoded_inst> s = <simplified_semantics>
 ```
 -/
@@ -387,11 +396,17 @@ theorem (<thm_prefix> ++ "stepi_0x" ++ <address_str>) (s sn : ArmState)
   (sn = <simplified_semantics>)
 ```
 -/
-def genStepTheorem (program : Name) (address_str : String)
-    (address_expr : Expr) (simpExt : Option Name) : MetaM Unit := do
+def genStepTheorem (program_name : Name) (address_str : String)
+  (orig_map address_expr : Expr) (simpExt : Option Name) : MetaM Unit := do
   let startHB ← IO.getNumHeartbeats
   trace[gen_step.debug.heartBeats] "[genStepTheorem] Start heartbeats: {startHB}"
-  let declName := Name.str program ("stepi_0x" ++ address_str)
+  let declName := Name.str program_name ("stepi_0x" ++ address_str)
+  let s_program_hyp_fn :=
+      fun s => -- (s.program = <orig_map>)
+        (mkAppN (mkConst ``Eq [1])
+                #[(mkConst ``Program),
+                  (mkAppN (mkConst ``ArmState.program) #[s]),
+                  orig_map])
   let bitvec64 := (mkAppN (mkConst ``BitVec) #[mkRawNatLit 64])
   let s_pc_hyp_fn :=
       fun s => -- (r StateField.PC s = <address_expr>)
@@ -411,11 +426,11 @@ def genStepTheorem (program : Name) (address_str : String)
   let helper_thms :=
       -- We assume that the necessary fetch, decode, and exec theorems already exist.
       Array.map
-        (fun str => Name.str program (str ++ address_str))
+        (fun str => Name.str program_name (str ++ address_str))
         #["fetch_0x", "decode_0x", "exec_0x"]
   withLocalDeclD `sn (mkConst ``ArmState) fun sn => do
   withLocalDeclD `s (mkConst ``ArmState) fun s => do
-  withLocalDeclD `h_program (h_program_type s (mkConst program)) fun _h_program => do
+  withLocalDeclD `h_program (s_program_hyp_fn s) fun _h_program => do
   withLocalDeclD `h_pc (s_pc_hyp_fn s) fun _h_program => do
   withLocalDeclD `h_err (s_err_hyp_fn s) fun _h_err => do
     let lhs := stepi_fn sn s
@@ -450,7 +465,7 @@ def genStepTheorem (program : Name) (address_str : String)
       -- TODO: Compute levelParams instead of hard-coding it?
       levelParams := [],
       type := type,
-      value := value
+      value := value -- (← mkSorry type (synthetic := true))
     }
     addDecl decl
     -- Unlike the fetch, decode, and exec theorems, which we view as ephemeral,
@@ -466,37 +481,31 @@ def genStepTheorem (program : Name) (address_str : String)
 
 partial def genStepTheorems (program map : Expr) (program_name : Name)
   (thm_type : String) (simpExt : Option Name) : MetaM Unit := do
-  if thm_type == "fetch" then
-    let pi ← ProgramInfo.lookupOrGenerate program_name
-    for ⟨addr, {rawInst, ..}⟩ in pi.instructions do
-      genFetchTheorem pi addr rawInst
-  else
-
-    trace[gen_step.debug] "[genStepTheorems: Poised to run whnfD on the map: {map}]"
-    let map ← whnfD map
-    trace[gen_step.debug] "[genStepTheorems: after whnfD: {map}]"
-    match_expr map with
-    | List.cons _ hd tl =>
-      let hd ← whnfD hd
-      let_expr Prod.mk _ _ address_expr raw_inst_expr ← hd |
-        throwError "Unexpected program map entry! {hd}"
-      let address_expr ← whnfR address_expr -- whnfR vs whnfD?
-      let raw_inst_expr ← whnfR raw_inst_expr
-      let address_str ← getBitVecString? address_expr (hex := true)
-      if address_str.isNone then
-        throwError "We expect program addresses to be concrete. \
-                    Found this instead: {address_expr}."
-      let address_string := address_str.get!
-      trace[gen_step.debug] "[genStepTheorems: address_expr {address_expr} \
-                                raw_inst_expr {raw_inst_expr}]"
-      if thm_type == "decodeExec" then
-        genDecodeAndExecTheorems program_name address_string raw_inst_expr
-      if thm_type == "step" then
-        genStepTheorem program_name address_string address_expr simpExt
-      genStepTheorems program tl program_name thm_type simpExt
-    | List.nil _ => return
-    | _ =>
-      throwError "Unexpected program map term! {map}"
+  trace[gen_step.debug] "[genStepTheorems: Poised to run whnfD on the map: {map}]"
+  let map ← whnfD map
+  trace[gen_step.debug] "[genStepTheorems: after whnfD: {map}]"
+  match_expr map with
+  | List.cons _ hd tl =>
+    let hd ← whnfD hd
+    let_expr Prod.mk _ _ address_expr raw_inst_expr ← hd |
+      throwError "Unexpected program map entry! {hd}"
+    let address_expr ← whnfR address_expr -- whnfR vs whnfD?
+    let raw_inst_expr ← whnfR raw_inst_expr
+    let some address_string ← getBitVecString? address_expr (hex := true)
+      | throwError "We expect program addresses to be concrete. \
+                  Found this instead: {address_expr}."
+    trace[gen_step.debug] "[genStepTheorems: address_expr {address_expr} \
+                              raw_inst_expr {raw_inst_expr}]"
+    if thm_type == "fetch" then
+      genFetchTheorem program_name address_string program address_expr raw_inst_expr
+    if thm_type == "decodeExec" then
+      genDecodeAndExecTheorems program_name address_string raw_inst_expr
+    if thm_type == "step" then
+      genStepTheorem program_name address_string program address_expr simpExt
+    genStepTheorems program tl program_name thm_type simpExt
+  | List.nil _ => return
+  | _ =>
+    throwError "Unexpected program map term! {map}"
 
 -- TODO:
 -- The arguments of this command are pretty clunky. For instance, they are sort
