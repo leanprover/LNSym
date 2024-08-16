@@ -20,19 +20,27 @@ open Lean Meta Elab.Term
 initialize
   registerTraceClass `ProgramInfo
 
+/-- `OnDemand α` is morally an `Option α`,
+we use it for values that are computed, and cached, on demand. -/
+inductive InstInfo.OnDemand (α : Type)
+  /-- a value has not yet been cached,
+  you should run the relevant computation -/
+  | notYetComputed
+  /-- a value has been cached -/
+  | value (value : α)
+open InstInfo (OnDemand)
+
 structure InstInfo where
   /-- the raw instruction, as a bitvector -/
   rawInst : BitVec 32
 
   /-- the decoded instruction, as a normalized(!) `Expr` of type `ArmInst`.
   That is, `decode_raw_inst <rawInst>` should be def-eq to `some <decodeInst>`.
+  -/
+  decodedInst? : OnDemand Expr :=
+    .notYetComputed
 
-  NOTE: a `none` value indicates that this expression has not been computed yet,
-  *not* that `decode_raw_inst` returned `none`-- we assume that
-  all instructions for which we generate an `InstInfo` are well-formed -/
-  decodedInst? : Option Expr
-
-  /-- if `instSemantics?` is `some ⟨sem, type, proof⟩`, then
+  /-- if `instSemantics?` is `⟨sem, type, proof⟩`, then
   - `sem` is the instruction semantics, as a normalized(!) expression of type
       `ArmState → ArmState`,
   - `type` is the expression
@@ -42,10 +50,9 @@ structure InstInfo where
       exec_inst s = <sem> s
     ```
   - `proof` is a proof of type `type`
-
-  Otherwise, if the field is `none`, this indicates that the relevant
-  expressions have not been computed/cached yet. -/
-  instSemantics? : Option (Expr × Expr × Expr)
+  -/
+  instSemantics? : OnDemand (Expr × Expr × Expr) :=
+    .notYetComputed
 
 structure ProgramInfo where
   name : Name
@@ -70,10 +77,10 @@ or use `f` to compute the relevant expression if it is missing -/
 def getDecodedInst (f : Unit → InstInfoT m Expr) : InstInfoT m Expr := do
   let info ← get
   match info.decodedInst? with
-    | some val => return val
-    | none =>
+    | .value val => return val
+    | .notYetComputed =>
         let val ← f ()
-        set {info with decodedInst? := some val}
+        set {info with decodedInst? := .value val}
         return val
 
 /-- Return `InstInfo.instSemantics?` from the state if it is `some _`,
@@ -82,10 +89,10 @@ def getInstSemantics (f : Unit → InstInfoT m (Expr × Expr × Expr)) :
     InstInfoT m (Expr × Expr × Expr) := do
   let info ← get
   match info.instSemantics? with
-    | some val => return val
-    | none =>
+    | .value val => return val
+    | .notYetComputed =>
         let val ← f ()
-        set {info with instSemantics? := some val}
+        set {info with instSemantics? := .value val}
         return val
 
 end InstInfoT
@@ -137,9 +144,9 @@ partial def generateFromExpr (name : Name) (e : Expr) : MetaM ProgramInfo := do
           | throwError "expected `{hd}` to reduce to an application of `Prod.mk`, found:\n\t{hd'}"
 
         let addr ← reflectBitVecLiteral 64 (← instantiateMVars addr)
-        let inst ← reflectBitVecLiteral 32 (← instantiateMVars inst)
+        let rawInst ← reflectBitVecLiteral 32 (← instantiateMVars inst)
 
-        let rawProgram := instructions.insert addr ⟨inst, none, none⟩
+        let rawProgram := instructions.insert addr { rawInst }
         go rawProgram tl
     | List.nil _ => return instructions
     | _ => throwError "expected `List.cons _ _` or `List.nil`, found:\n\t{e}"
@@ -305,10 +312,10 @@ def getDecodedInstAt (addr : BitVec 64) (k : InstInfo → ProgramInfoT m Expr) :
     ProgramInfoT m Expr := do
   let info ← getInstInfoAt addr
   match info.decodedInst? with
-    | some e => return e
-    | none   =>
+    | .value e => return e
+    | .notYetComputed =>
       let decodedInst ← k info
-      setInstInfoAt addr {info with decodedInst? := some decodedInst}
+      setInstInfoAt addr {info with decodedInst? := .value decodedInst}
       return decodedInst
 
 /-- if `instSemantics?` is `some _` for the instruction info at the given address,
@@ -324,10 +331,10 @@ def getInstSemanticsAt (addr : BitVec 64)
     ProgramInfoT m (Expr × Expr × Expr) := do
   let info ← getInstInfoAt addr
   match info.instSemantics? with
-    | some e => return e
-    | none   =>
+    | .value e => return e
+    | .notYetComputed =>
       let instSemantics ← k info
-      setInstInfoAt addr {info with instSemantics? := some instSemantics}
+      setInstInfoAt addr {info with instSemantics? := .value instSemantics}
       return instSemantics
 
 
