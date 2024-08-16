@@ -50,6 +50,35 @@ structure ProgramInfo where
   name : Name
   instructions : HashMap (BitVec 64) InstInfo
 
+--------------------------------------------------------------------------------
+
+namespace InstInfo
+variable {m} [Monad m]
+
+/-- Return `decodedInst?` if it is `some _`,
+or use `f` to compute the relevant expression if it is missing -/
+def getDecodedInst (info : InstInfo) (f : Unit → m Expr) :
+    m (InstInfo × Expr) := do
+  match info.decodedInst? with
+    | some val => return ⟨info, val⟩
+    | none =>
+        let val ← f ()
+        return ⟨{info with decodedInst? := some val}, val⟩
+
+/-- Return `instSemantics?` if it is `some _`,
+or use `f` to compute the relevant expressions if they are missing -/
+def getInstSemantics (info : InstInfo) (f : Unit → m (Expr × Expr)) :
+    m (InstInfo × (Expr × Expr)) := do
+  match info.instSemantics? with
+    | some val => return ⟨info, val⟩
+    | none =>
+        let val ← f ()
+        return ⟨{info with instSemantics? := some val}, val⟩
+
+end InstInfo
+
+--------------------------------------------------------------------------------
+
 namespace ProgramInfo
 
 /-- The expression `mkConst pi.name`,
@@ -219,8 +248,70 @@ instance [Monad m] [i : MonadError m] : MonadError (ProgramInfoT m) where
 
 /-! ### Wrappers -/
 
-/-- Persistently store the `ProgramInfo` state in the environment,
-so that cached information will be available in downstream files as wells -/
-def persistToEnv : ProgramInfoT m Unit := do
-  (← StateT.get).persistToEnv
+/-- Access the info for the instruction at a given address,
+or throw an error if none is found -/
+def getInstInfoAt (addr : BitVec 64) : ProgramInfoT m InstInfo := do
+  let some x := (← StateT.get).getInstInfoAt? addr
+    | let addr := addr.toHexWithoutLeadingZeroes
+      throwError "No instruction found at address {addr}"
+  return x
+
+/-- Set the instruction info for a particular address -/
+def setInstInfoAt (addr : BitVec 64) (info : InstInfo) :
+    ProgramInfoT m Unit := do
+  let pi ← StateT.get
+  StateT.set {pi with instructions := pi.instructions.insert addr info}
+
+/-- Modify the instruction info for a particular address,
+returning the new value. Throws an error if the address is invalid -/
+def mofifyInstInfoAt (addr : BitVec 64) (f : InstInfo → m InstInfo) :
+    ProgramInfoT m InstInfo := do
+  let info ← getInstInfoAt addr
+  let info ← f info
+  setInstInfoAt addr info
+  return info
+
+/-! ### InstInfo Accessors -/
+
+def getRawInstAt (addr : BitVec 64) : ProgramInfoT m (BitVec 32) := do
+  return (← getInstInfoAt addr).rawInst
+
+/-- if `decodedInst?` is `some _` for the instruction info at the given address,
+return the cached value.
+Otherwise, use `k` to compute the decoded instruction, then
+cache and return that new value.
+See `InstInfo.decodInst?` for the meaning of this field.
+
+NOTE: the computed value is only cached in the `ProgramInfoT` monad state,
+not yet in the environment. -/
+def getDecodedInstAt (addr : BitVec 64) (k : InstInfo → ProgramInfoT m Expr) :
+    ProgramInfoT m Expr := do
+  let info ← getInstInfoAt addr
+  match info.decodedInst? with
+    | some e => return e
+    | none   =>
+      let decodedInst ← k info
+      setInstInfoAt addr {info with decodedInst? := some decodedInst}
+      return decodedInst
+
+/-- if `instSemantics?` is `some _` for the instruction info at the given address,
+return the cached value.
+Otherwise, use `k` to compute the decoded instruction, then
+cache and return that new value.
+See `InstInfo.instSemantics?` for the meaning of this field.
+
+NOTE: the computed value is only cached in the `ProgramInfoT` monad state,
+not yet in the environment. -/
+def getInstSemanticsAt (addr : BitVec 64)
+    (k : InstInfo → ProgramInfoT m (Expr × Expr)) :
+    ProgramInfoT m (Expr × Expr) := do
+  let info ← getInstInfoAt addr
+  match info.instSemantics? with
+    | some e => return e
+    | none   =>
+      let instSemantics ← k info
+      setInstInfoAt addr {info with instSemantics? := some instSemantics}
+      return instSemantics
+
+
 end ProgramInfoT
