@@ -345,7 +345,7 @@ See `BitVec.toHex` if you do want the leading zeroes.
 
 NOTE: returns only the digits, without a `0x` prefix -/
 def toHexWithoutLeadingZeroes {w} (x : BitVec w) : String :=
-  "0x" ++ (Nat.toDigits 16 x.toNat).asString
+  (Nat.toDigits 16 x.toNat).asString
 
 ----------------------------------------------------------------------
 
