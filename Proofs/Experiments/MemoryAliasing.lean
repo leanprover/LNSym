@@ -10,6 +10,25 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
+namespace MemLegal
+/-- Show reflexivity of legality. -/
+example (l : mem_legal' a 16) : mem_legal' a 16 := by
+  bv_omega'
+end MemLegal
+
+namespace MemSubset
+/-- Show reflexivity of subset. -/
+example (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
+  sorry
+end MemSubset
+
+coinductive Bisim (R : S -> S -> Prop) : Prop
+|
+|
+
+
+theorem mem_automation_test (l : mem_legal a 16) : mem_legal a 16 := sorry
+
 set_option trace.simp_mem true in
 set_option trace.simp_mem.info true in
 theorem mem_automation_test

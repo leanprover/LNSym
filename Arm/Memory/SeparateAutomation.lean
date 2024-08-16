@@ -80,6 +80,13 @@ The tactic shall be implemented as follows:
    but feels like it maybe useful to prove certain memory states as impossible.
 -/
 
+section BvOmega
+
+macro "bv_omega'" : tactic =>
+  `(tactic| (try simp only [bv_toNat, mem_legal'] at * <;> try rw [BitVec.le_def]) <;> omega)
+
+end BvOmega
+
 namespace SeparateAutomation
 
 structure SimpMemConfig where
@@ -92,18 +99,61 @@ structure Context where
 def Context.init (cfg : SimpMemConfig) : Context where
   cfg := cfg
 
-inductive Hypothesis
-| separate (h : Expr) (a na b nb : Expr)
-| subset (h : Expr)
 
-def Hypothesis.expr : Hypothesis → Expr
-| .separate h .. => h
-| .subset h .. => h
+structure MemSpan where
+  base : Expr
+  n : Expr
+
+instance : ToMessageData MemSpan where
+  toMessageData span := m! "[{span.base}..{span.n})"
+
+structure MemSubsetExpr where
+  a : MemSpan
+  b : MemSpan
+
+structure MemSubsetProof (a b : MemSpan) where
+  h : Expr
+
+instance : ToMessageData (MemSubsetProof a b) where
+  toMessageData _ := m! "{a}⊆{b}"
+
+structure MemSeparateProof (a b : MemSpan) where
+  h : Expr
+
+instance : ToMessageData (MemSeparateProof a b) where
+  toMessageData _ := m! "{a}⟂{b}"
+
+structure MemLegalProof (a : MemSpan) where
+  h : Expr
+
+instance : ToMessageData (MemLegalProof a) where
+  toMessageData _ := m! "{a}.legal"
+
+/-- an occurrence of Memory.read in `e`. -/
+structure ReadExpr (parent : Expr) where
+  hyp : Expr
+  mem : Expr
+  read : Span
+
+structure ReadEqn (parent : Expr) extends ReadExpr parent where
+  outval : Expr -- the value we have read.
+
+
+inductive Hypothesis
+| separate (a : MemSpan) (b : MemSpan) (proof : MemSeparateProof a b)
+| subset (a : MemSpan) (b : MemSpan) (proof : MemSubsetProof a b)
+| legal (a : MemSpan) (proof : MemLegalProof a)
+
+def Hypothesis.proof : Hypothesis → Expr
+| .separate a b proof  => proof.h
+| .subset a b proof => proof.h
+| .legal a proof => proof.h
 
 instance : ToMessageData Hypothesis where
   toMessageData
-  | .subset h => toMessageData h
-  | .separate h _a _na _b _nb => toMessageData h
+  | .subset a b proof => toMessageData proof
+  | .separate a b proof => toMessageData proof
+  | .legal a proof => toMessageData proof
 
 /-- The internal state for the `SimpMemM` monad, recording previously encountered atoms. -/
 structure State where
@@ -123,11 +173,24 @@ def SimpMemM.addHypothesis (h : Hypothesis) : SimpMemM Unit :=
 def processingEmoji : String := "⚙️"
 
 /-- Match an expression `h` to see if it's a useful hypothesis. -/
-def processHypothesis (h : Expr) : MetaM (Option Hypothesis) := do
+def processHypothesis (h : Expr)  : MetaM (Option Hypothesis) := do
   let ht ← inferType h
   trace[simp_mem.info] "{processingEmoji} Processing '{h}' : '{toString ht}'"
   match_expr ht with
-  | mem_separate' a ha b hb => return .some (.separate h a ha b hb)
+  | mem_separate' a na b nb =>
+    let sa : MemSpan := ⟨a, na⟩
+    let sb : MemSpan := ⟨b, nb⟩
+    let proof : MemSeparateProof sa sb := ⟨ht⟩
+    return .some (.separate sa sb proof)
+  | mem_subset' a na b nb =>
+    let sa : MemSpan := ⟨a, na⟩
+    let sb : MemSpan := ⟨b, nb⟩
+    let proof : MemSeparateProof sa sb := ⟨ht⟩
+    return .some (.separate sa sb proof)
+  | mem_legal' a na =>
+    let sa : MemSpan := ⟨a, na⟩
+    let proof : MemLegalProof sa := ⟨ht⟩
+    return .some (.legal sa proof)
   | _ => return .none
 
 /--
@@ -150,7 +213,7 @@ partial def SimpMemM.rewrite (g : MVarId) : SimpMemM Unit := do
     let f := (Expr.const ``read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate' [])
     let result : Option RewriteResult ←
       try
-        pure <| some (← g.rewrite (← g.getType) (mkAppN f #[x, xn, y, yn, state, h.expr]) false)
+        pure <| some (← g.rewrite (← g.getType) (mkAppN f #[x, xn, y, yn, state, h.proof]) false)
       catch _ =>
         pure <| none
     match result with
@@ -161,32 +224,17 @@ partial def SimpMemM.rewrite (g : MVarId) : SimpMemM Unit := do
       -- | TODO: dispatch other goals that occur proof automation.
       Tactic.setGoals <| mvarId' :: r.mvarIds
 
-structure MemSpan where
-  base : Expr
-  offset : Expr
-
-structure MemSubsetExpr where
-  a : MemSpan
-  b : MemSpan
-
-structure MemSubsetProof (a b : MemSpan) where
-  h : Expr
-
-structure MemLegalProof (a : MemSpan) where
-  h : Expr
-
-/-- an occurrence of Memory.read in `e`. -/
-structure ReadExpr (parent : Expr) where
-  hyp : Expr
-  mem : Expr
-  read : Span
-
-structure ReadEqn (parent : Expr) extends ReadExpr parent where
-  outval : Expr -- the value we have read.
+def addUsefulHypothesis (e : Expr) : SimpMemM Unit := sorry
 
 def proveLegal? (a : MemSpan) : MemLegalProof a := sorry
 
-def proveSubset? (a : MemSpan) (b : MemSpan) : MemSubsetProof a b := sorry
+def proveSubsetRefl? (a : MemSpan) (b : MemSpan) : SimpMemM <| Option (MemSubsetProof a b) := sorry
+
+def proveSubset? (a : MemSpan) (b : MemSpan) : SimpMemM <| Option (MemSubsetProof a b) := sorry
+  -- mkFreshMVar.
+  -- withLocalContext.
+
+def proveSeparate? (a : MemSpan) (b : MemSpan) : SimpMemM <| Option (MemSubsetProof a b) := sorry
 
 def findReadEqn? (parent : Expr) : Option (ReadEqn parent) := sorry
 
@@ -195,15 +243,14 @@ def findRead? (parent : Expr) : Option (ReadExpr parent) := sorry
 def SimpMemM.analyzeLoop : SimpMemM Unit := do
     (← getMainGoal).withContext do
       let hyps := (← getLocalHyps)
-      trace[simp_mem] "analyzing {hyps.size} hypotheses:\n{← hyps.mapM (liftMetaM ∘ inferType)}"
-
-      -- for h in hyps do
-      --   if let some hyp ← processHypothesis h then
-      --     trace[simp_mem.info] "{checkEmoji} Found '{h}'"
-      --     SimpMemM.addHypothesis hyp
-      --   else
-      --     trace[simp_mem.info] "{crossEmoji} Rejecting '{h}'"
-      -- SimpMemM.rewrite (← getMainGoal)
+      -- trace[simp_mem] "analyzing {hyps.size} hypotheses:\n{← hyps.mapM (liftMetaM ∘ inferType)}"
+      for h in hyps do
+        if let some hyp ← processHypothesis h then
+          trace[simp_mem.info] "{checkEmoji} Found '{h}'"
+          SimpMemM.addHypothesis hyp
+        else
+          trace[simp_mem.info] "{crossEmoji} Rejecting '{h}'"
+      SimpMemM.rewrite (← getMainGoal)
 
 /--
 Given a collection of facts, try prove `False` using the omega algorithm,

@@ -47,10 +47,6 @@ abbrev num_blocks (s : ArmState) : BitVec 64 := r (StateField.GPR 2#5) s
 -- (0x1264d8#64 , 0x910c0063#32),      --  add     x3, x3, #0x300
 abbrev ktbl_addr : BitVec 64 := 0x1b4300#64
 
-
-macro "bv_omega'" : tactic =>
-  `(tactic| (try simp only [bv_toNat, mem_legal'] at * <;> try rw [BitVec.le_def]) <;> omega)
-
 /-
 Let's automatically figure out what
 `read_mem_bytes 16 <addr> s0`
