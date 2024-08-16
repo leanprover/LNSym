@@ -10,6 +10,9 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
+set_option trace.simp_mem true
+set_option trace.simp_mem.info true
+
 namespace MemLegal
 /-- Show reflexivity of legality. -/
 theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
@@ -30,13 +33,11 @@ example (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
 
 end MemSubset
 
-set_option trace.simp_mem true in
-set_option trace.simp_mem.info true in
-
 theorem mem_automation_test_1
   (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
   read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
   read_mem_bytes 16 src_addr s0 := by
+  simp_mem
   sorry
 
 /-- info: 'mem_automation_test_1' depends on axioms: [propext, sorryAx, Quot.sound] -/

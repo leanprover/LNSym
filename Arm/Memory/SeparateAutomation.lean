@@ -114,19 +114,19 @@ structure MemSubsetProof (a b : MemSpan) where
   h : Expr
 
 instance : ToMessageData (MemSubsetProof a b) where
-  toMessageData _ := m! "{a}⊆{b}"
+  toMessageData proof := m! "{proof.h}: {a}⊆{b}"
 
 structure MemSeparateProof (a b : MemSpan) where
   h : Expr
 
 instance : ToMessageData (MemSeparateProof a b) where
-  toMessageData _ := m! "{a}⟂{b}"
+  toMessageData proof := m! "{proof.h}: {a}⟂{b}"
 
 structure MemLegalProof (a : MemSpan) where
   h : Expr
 
 instance : ToMessageData (MemLegalProof a) where
-  toMessageData _ := m! "{a}.legal"
+  toMessageData proof := m! "{proof.h}: {a}.legal"
 
 /-- an occurrence of Memory.read in `e`. -/
 structure ReadExpr (parent : Expr) where
@@ -172,25 +172,25 @@ def SimpMemM.addHypothesis (h : Hypothesis) : SimpMemM Unit :=
 def processingEmoji : String := "⚙️"
 
 /-- Match an expression `h` to see if it's a useful hypothesis. -/
-def processHypothesis (h : Expr)  : MetaM (Option Hypothesis) := do
+def processHypothesis (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothesis) := do
   let ht ← inferType h
   trace[simp_mem.info] "{processingEmoji} Processing '{h}' : '{toString ht}'"
   match_expr ht with
   | mem_separate' a na b nb =>
     let sa : MemSpan := ⟨a, na⟩
     let sb : MemSpan := ⟨b, nb⟩
-    let proof : MemSeparateProof sa sb := ⟨ht⟩
-    return .some (.separate sa sb proof)
+    let proof : MemSeparateProof sa sb := ⟨h⟩
+    return hyps.push (.separate sa sb proof)
   | mem_subset' a na b nb =>
     let sa : MemSpan := ⟨a, na⟩
     let sb : MemSpan := ⟨b, nb⟩
-    let proof : MemSeparateProof sa sb := ⟨ht⟩
-    return .some (.separate sa sb proof)
+    let proof : MemSeparateProof sa sb := ⟨h⟩
+    return hyps.push (.separate sa sb proof)
   | mem_legal' a na =>
     let sa : MemSpan := ⟨a, na⟩
-    let proof : MemLegalProof sa := ⟨ht⟩
-    return .some (.legal sa proof)
-  | _ => return .none
+    let proof : MemLegalProof sa := ⟨h⟩
+    return hyps.push (.legal sa proof)
+  | _ => return hyps
 
 /--
 info: read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat}
@@ -243,13 +243,23 @@ def SimpMemM.analyzeLoop : SimpMemM Unit := do
     (← getMainGoal).withContext do
       let hyps := (← getLocalHyps)
       -- trace[simp_mem] "analyzing {hyps.size} hypotheses:\n{← hyps.mapM (liftMetaM ∘ inferType)}"
-      for h in hyps do
-        if let some hyp ← processHypothesis h then
-          trace[simp_mem.info] "{checkEmoji} Found '{h}'"
-          SimpMemM.addHypothesis hyp
-        else
-          trace[simp_mem.info] "{crossEmoji} Rejecting '{h}'"
-      SimpMemM.rewrite (← getMainGoal)
+      let foundHyps ← withTraceNode `simp_mem.info (fun _ => return m!"Searching for Hypotheses") do
+        let mut foundHyps : Array Hypothesis := #[]
+        for h in hyps do
+          foundHyps ← processHypothesis h foundHyps
+        pure foundHyps
+        -- if let some hyp ← processHypothesis h then
+        --   trace[simp_mem.info] m!"{checkEmoji} Found '{h}'"
+        --   SimpMemM.addHypothesis hyp
+        -- else
+        --   trace[simp_mem.info] m!"{crossEmoji} Rejecting '{h}'"
+      withTraceNode `simp_mem.info (fun _ => return m!"Summary: Found {foundHyps.size} hypotheses") do
+        -- trace[simp_mem.info] "▶ Found hypotheses: "
+        for (i, h) in foundHyps.toList.enum do
+          trace[simp_mem.info] m!"{i+1}) {h}"
+
+      withTraceNode `simp_mem.info (fun _ => return m!"Performing Rewrite At Main Goal") do
+        SimpMemM.rewrite (← getMainGoal)
 
 /--
 Given a collection of facts, try prove `False` using the omega algorithm,
