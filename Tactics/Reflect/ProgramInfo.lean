@@ -20,9 +20,35 @@ open Lean Meta Elab.Term
 initialize
   registerTraceClass `ProgramInfo
 
+structure InstInfo where
+  /-- the raw instruction, as a bitvector -/
+  rawInst : BitVec 32
+
+  /-- the decoded instruction, as a normalized(!) `Expr` of type `ArmInst`.
+  That is, `decode_raw_inst <rawInst>` should be def-eq to `some <decodeInst>`.
+
+  NOTE: a `none` value indicates that this expression has not been computed yet,
+  *not* that `decode_raw_inst` returned `none`-- we assume that
+  all instructions for which we generate an `InstInfo` are well-formed -/
+  decodedInst? : Option Expr
+
+  /-- if `instSemantics?` is `some ⟨sem, proof⟩`, then
+  - `sem` is the instruction semantics, as a normalized(!) expression of type
+      `ArmState → ArmState`, and
+  - `proof` holds the proof that
+    ```lean
+    ∀ s (h_program : s.program = <program>) (h_pc : read_pc s = <PC>)
+        (h_err : read_err s = .None),
+      exec_inst s = <sem> s
+    ```
+
+  Otherwise, if the field is `none`, this indicates that the relevant
+  expressions have not been computed/cached yet. -/
+  instSemantics? : Option (Expr × Expr)
+
 structure ProgramInfo where
   name : Name
-  rawProgram : HashMap (BitVec 64) (BitVec 32)
+  instructions : HashMap (BitVec 64) InstInfo
 
 namespace ProgramInfo
 
@@ -30,9 +56,13 @@ namespace ProgramInfo
 i.e., an expression of this program referred to by name -/
 def expr (pi : ProgramInfo) : Expr := mkConst pi.name
 
+def getInstInfoAt? (pi : ProgramInfo) (addr : BitVec 64) :
+    Option InstInfo :=
+  pi.instructions.find? addr
+
 def getRawInstrAt? (pi : ProgramInfo) (addr : BitVec 64) :
     Option (BitVec 32) :=
-  pi.rawProgram.find? addr
+  (·.rawInst) <$> pi.getInstInfoAt? addr
 
 -- TODO: this instance could be upstreamed (after cleaning it up)
 instance [BEq α] [Hashable α] : ForIn m (HashMap α β) (α × β) where
@@ -54,7 +84,7 @@ partial def generateFromExpr (name : Name) (e : Expr) : MetaM ProgramInfo := do
   if !(←isDefEq type (mkConst ``Program)) then
     throwError "type mismatch: {e} {← mkHasTypeButIsExpectedMsg type (mkConst ``Program)}"
 
-  let rec go (rawProgram : HashMap _ _) (e : Expr) : MetaM (HashMap _ _) := do
+  let rec go (instructions : HashMap _ _) (e : Expr) : MetaM (HashMap _ _) := do
     let e ← whnfD e
     match_expr e with
     | List.cons _ hd tl => do
@@ -67,14 +97,14 @@ partial def generateFromExpr (name : Name) (e : Expr) : MetaM ProgramInfo := do
         let addr ← reflectBitVecLiteral 64 (← instantiateMVars addr)
         let inst ← reflectBitVecLiteral 32 (← instantiateMVars inst)
 
-        let rawProgram := rawProgram.insert addr inst
+        let rawProgram := instructions.insert addr ⟨inst, none, none⟩
         go rawProgram tl
-    | List.nil _ => return rawProgram
+    | List.nil _ => return instructions
     | _ => throwError "expected `List.cons _ _` or `List.nil`, found:\n\t{e}"
 
   return {
     name,
-    rawProgram := ← go ∅ e
+    instructions := ← go ∅ e
   }
 
 /-- Given the `Name` of a constant of type `Program`,
