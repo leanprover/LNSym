@@ -259,6 +259,9 @@ of memory. Note that the interval is left closed, right open, and thus `n` is th
 def mem_legal' (a : BitVec 64) (n : Nat) : Prop :=
   a.toNat + n ≤ 2^64
 
+/-- Build a `mem_legal'` from a proof obligation that can be closed by `omega`. -/
+def mem_legal'.of_omega (h : a.toNat + n ≤ 2^64) : mem_legal' a n := h
+
 theorem mem_legal'.def (h : mem_legal' a n) : a.toNat + n ≤ 2^64 := h
 
 /--
@@ -360,6 +363,28 @@ structure mem_separate' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : 
   hb : mem_legal' b bn
   h : a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn
 
+/--
+Unfold the definition of `mem_subset'` to write definitions that `omega` can process.
+-/
+theorem mem_separate'.omega_def (h : mem_separate' a an b bn) :
+  a.toNat + an ≤ 2^64 ∧
+  b.toNat + bn ≤ 2^64 ∧
+  (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn) := by
+  obtain ⟨ha, hb, hsplit⟩ := h
+  unfold mem_legal' at ha hb
+  omega
+
+/-- Build a mem_subset' from a goal that `h` that can be closed by `omega`. -/
+theorem mem_separate'.of_omega
+  (h :a.toNat + an ≤ 2^64 ∧
+  b.toNat + bn ≤ 2^64 ∧
+  (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn) := by omega) :
+  mem_separate' a an b bn :=  by
+constructor
+· unfold mem_legal'; omega
+· unfold mem_legal'; omega
+· omega
+
 theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
   rw [BitVec.le_def, BitVec.lt_def]
   omega
@@ -394,6 +419,31 @@ structure mem_subset' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Pr
   hb : mem_legal' b bn
   hstart : b ≤ a
   hend : a.toNat + an ≤ b.toNat + bn
+
+/--
+Unfold the definition of `mem_subset'` to write definitions that `omega` can process.
+-/
+theorem mem_subset'.omega_def (h : mem_subset' a an b bn) :
+  a.toNat + an ≤ 2^64 ∧
+  b.toNat + bn ≤ 2^64 ∧
+  b.toNat ≤ a.toNat ∧
+  a.toNat + an ≤ b.toNat + bn := by
+  obtain ⟨ha, hb, hstart, hend⟩ := h
+  rw [BitVec.le_def] at hstart
+  unfold mem_legal' at ha hb
+  omega
+
+/-- Build a mem_subset' from a goal that `h` that can be closed by `omega`. -/
+theorem mem_subset'.of_omega
+  (h : a.toNat + an ≤ 2^64 ∧
+  b.toNat + bn ≤ 2^64 ∧
+  b.toNat ≤ a.toNat ∧
+  a.toNat + an ≤ b.toNat + bn := by omega) : mem_subset' a an b bn :=  by
+constructor
+· unfold mem_legal'; omega
+· unfold mem_legal'; omega
+· rw [BitVec.le_def]; omega
+· omega
 
 theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
   ha := h

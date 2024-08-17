@@ -16,7 +16,7 @@ set_option trace.simp_mem.info true
 namespace MemLegal
 /-- Show reflexivity of legality. -/
 theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
-  bv_omega'
+  simp_mem
 
 /-- info: 'MemLegal.legal_1' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms legal_1

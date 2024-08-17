@@ -98,35 +98,60 @@ structure Context where
 def Context.init (cfg : SimpMemConfig) : Context where
   cfg := cfg
 
+structure WithWitness (α : Type) (e : α) where
+  h : Expr -- a proof of an expression `a`.
 
-structure MemSpan where
+def WithWitness.e {α : Type} {e : α} (p : WithWitness α e) : α := e
+
+instance [ToMessageData α] : ToMessageData (WithWitness α e) where
+  toMessageData proof := m! "{proof.h}: {e}"
+
+
+structure MemSpanExpr where
   base : Expr
   n : Expr
 
-instance : ToMessageData MemSpan where
+instance : ToMessageData MemSpanExpr where
   toMessageData span := m! "[{span.base}..{span.n})"
 
+/-- a term of the form 'mem_legal a' -/
+structure MemLegalExpr  where
+  span : MemSpanExpr
+
+/-- convert this back to an Expr -/
+def MemLegalExpr.toExpr (legal : MemLegalExpr) : Expr :=
+  mkAppN (Expr.const ``mem_legal' []) #[legal.span.base, legal.span.n]
+
+instance : ToMessageData MemLegalExpr where
+  toMessageData e := m!"{e.span}.legal"
+
+/-- Coerce a span into a `span.legal` hypothesis. -/
+instance : Coe MemSpanExpr MemLegalExpr where
+  coe := MemLegalExpr.mk
+
 structure MemSubsetExpr where
-  a : MemSpan
-  b : MemSpan
+  sa : MemSpanExpr
+  sb : MemSpanExpr
 
-structure MemSubsetProof (a b : MemSpan) where
-  h : Expr
+instance : ToMessageData MemSubsetExpr where
+  toMessageData e := m!"{e.sa}⊆{e.sb}"
 
-instance : ToMessageData (MemSubsetProof a b) where
-  toMessageData proof := m! "{proof.h}: {a}⊆{b}"
+abbrev MemSubsetProof := WithWitness MemSubsetExpr
 
-structure MemSeparateProof (a b : MemSpan) where
-  h : Expr
+structure MemSeparateExpr where
+  sa : MemSpanExpr
+  sb : MemSpanExpr
 
-instance : ToMessageData (MemSeparateProof a b) where
-  toMessageData proof := m! "{proof.h}: {a}⟂{b}"
+instance : ToMessageData MemSeparateExpr where
+  toMessageData e := m!"{e.sa}⟂{e.sb}"
 
-structure MemLegalProof (a : MemSpan) where
-  h : Expr
+abbrev MemSeparateProof := WithWitness MemSeparateExpr
 
-instance : ToMessageData (MemLegalProof a) where
-  toMessageData proof := m! "{proof.h}: {a}.legal"
+
+abbrev MemLegalProof := WithWitness MemLegalExpr
+
+def MemLegalProof.mk {e : MemLegalExpr} (h : Expr) : MemLegalProof e :=
+  { h }
 
 /-- an occurrence of Memory.read in `e`. -/
 structure ReadExpr (parent : Expr) where
@@ -139,20 +164,20 @@ structure ReadEqn (parent : Expr) extends ReadExpr parent where
 
 
 inductive Hypothesis
-| separate (a : MemSpan) (b : MemSpan) (proof : MemSeparateProof a b)
-| subset (a : MemSpan) (b : MemSpan) (proof : MemSubsetProof a b)
-| legal (a : MemSpan) (proof : MemLegalProof a)
+| separate (proof : MemSeparateProof e)
+| subset (proof : MemSubsetProof e)
+| legal (proof : MemLegalProof e)
 
 def Hypothesis.proof : Hypothesis → Expr
-| .separate a b proof  => proof.h
-| .subset a b proof => proof.h
-| .legal a proof => proof.h
+| .separate proof  => proof.h
+| .subset proof => proof.h
+| .legal proof => proof.h
 
 instance : ToMessageData Hypothesis where
   toMessageData
-  | .subset a b proof => toMessageData proof
-  | .separate a b proof => toMessageData proof
-  | .legal a proof => toMessageData proof
+  | .subset proof => toMessageData proof
+  | .separate proof => toMessageData proof
+  | .legal proof => toMessageData proof
 
 /-- The internal state for the `SimpMemM` monad, recording previously encountered atoms. -/
 structure State where
@@ -169,28 +194,101 @@ def SimpMemM.run (m : SimpMemM α) (cfg : SimpMemConfig) : TacticM α :=
 def SimpMemM.addHypothesis (h : Hypothesis) : SimpMemM Unit :=
   modify fun s => { s with hypotheses := s.hypotheses.push h }
 
+def SimpMemM.withMainContext (ma : SimpMemM α) : SimpMemM α := do
+  (← getMainGoal).withContext ma
+
 def processingEmoji : String := "⚙️"
+
+/--
+info: mem_separate'.ha {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_separate' a an b bn) :
+  mem_legal' a an
+-/
+#guard_msgs in #check mem_separate'.ha
+
+def MemSeparateProof.mem_separate'_ha (self : MemSeparateProof sep) :
+    MemLegalProof sep.sa :=
+  let h := mkAppN (Expr.const ``mem_separate'.ha []) #[sep.sa.base, sep.sa.n, sep.sb.base, sep.sb.n, self.h]
+  MemLegalProof.mk h
+
+/--
+info: mem_separate'.hb {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_separate' a an b bn) :
+  mem_legal' b bn
+-/
+#guard_msgs in #check mem_separate'.hb
+
+def MemSeparateProof.mem_separate'_hb (self : MemSeparateProof sep) :
+    MemLegalProof sep.sb :=
+  let h := mkAppN (Expr.const ``mem_separate'.hb []) #[sep.sa.base, sep.sa.n, sep.sb.base, sep.sb.n, self.h]
+  MemLegalProof.mk h
+
+/--
+info: mem_subset'.ha {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_subset' a an b bn) : mem_legal' a an
+-/
+#guard_msgs in #check mem_subset'.ha
+
+def MemSubsetProof.mem_subset'_ha (self : MemSubsetProof sub) :
+    MemLegalProof sub.sa :=
+  let h := mkAppN (Expr.const ``mem_separate'.ha [])
+    #[sub.sa.base, sub.sa.n, sub.sb.base, sub.sb.n, self.h]
+  MemLegalProof.mk h
+
+/--
+info: mem_subset'.hb {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_subset' a an b bn) : mem_legal' b bn
+-/
+#guard_msgs in #check mem_subset'.hb
+
+def MemSubsetProof.mem_subset'_hb (self : MemSubsetProof sub) :
+    MemLegalProof sub.sb :=
+  let h := mkAppN (Expr.const ``mem_separate'.hb [])
+      #[sub.sa.base, sub.sa.n, sub.sb.base, sub.sb.n, self.h]
+  MemLegalProof.mk h
+
+/-- match an expression `e` to a `mem_legal'`. -/
+def MemLegalExpr.match? (e : Expr) : Option (MemLegalExpr) :=
+  match_expr e with
+  | mem_legal' a n => .some { span := { base := a, n := n } }
+  | _ => none
+
+/-- match an expression `e` to a `mem_subset'`. -/
+def MemSubsetExpr.match? (e : Expr) : Option (MemSubsetExpr) :=
+  match_expr e with
+  | mem_subset' a na b nb =>
+    let sa : MemSpanExpr := { base := a, n := na }
+    let sb : MemSpanExpr := { base := b, n := nb }
+    .some { sa, sb }
+  | _ => none
+
+/-- match an expression `e` to a `mem_separate'`. -/
+def MemSeparateExpr.match? (e : Expr) : Option MemSeparateExpr :=
+  match_expr e with
+  | mem_separate' a na b nb =>
+    let sa : MemSpanExpr := ⟨a, na⟩
+    let sb : MemSpanExpr := ⟨b, nb⟩
+    .some { sa, sb }
+  | _ => none
 
 /-- Match an expression `h` to see if it's a useful hypothesis. -/
 def processHypothesis (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothesis) := do
   let ht ← inferType h
   trace[simp_mem.info] "{processingEmoji} Processing '{h}' : '{toString ht}'"
-  match_expr ht with
-  | mem_separate' a na b nb =>
-    let sa : MemSpan := ⟨a, na⟩
-    let sb : MemSpan := ⟨b, nb⟩
-    let proof : MemSeparateProof sa sb := ⟨h⟩
-    return hyps.push (.separate sa sb proof)
-  | mem_subset' a na b nb =>
-    let sa : MemSpan := ⟨a, na⟩
-    let sb : MemSpan := ⟨b, nb⟩
-    let proof : MemSeparateProof sa sb := ⟨h⟩
-    return hyps.push (.separate sa sb proof)
-  | mem_legal' a na =>
-    let sa : MemSpan := ⟨a, na⟩
-    let proof : MemLegalProof sa := ⟨h⟩
-    return hyps.push (.legal sa proof)
-  | _ => return hyps
+  if let .some sep := MemSeparateExpr.match? ht then
+    let proof : MemSeparateProof sep := ⟨h⟩
+    let hyps := hyps.push (.separate proof)
+    let hyps := hyps.push (.legal proof.mem_separate'_ha)
+    let hyps := hyps.push (.legal proof.mem_separate'_hb)
+    return hyps
+  else if let .some sub := MemSubsetExpr.match? ht then
+    let proof : MemSubsetProof sub := ⟨h⟩
+    let hyps := hyps.push (.subset proof)
+    let hyps := hyps.push (.legal proof.mem_subset'_ha)
+    let hyps := hyps.push (.legal proof.mem_subset'_hb)
+    return hyps
+  else if let .some legal := MemLegalExpr.match? ht then
+    let proof : MemLegalProof legal := ⟨h⟩
+    let hyps := hyps.push (.legal proof)
+    return hyps
+  else
+    return hyps
 
 /--
 info: read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat}
@@ -199,45 +297,153 @@ info: read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate' {x : Bit
 -/
 #guard_msgs in #check read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
 
-partial def SimpMemM.rewrite (g : MVarId) : SimpMemM Unit := do
-  trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
-  let some (_, _lhs, _rhs) ← matchEq? (← g.getType) | throwError "invalid goal, expected 'lhs = rhs'."
-  -- TODO: do this till fixpoint.
-  for h in (← get).hypotheses do
-    let x ← mkFreshExprMVar .none
-    let xn ← mkFreshExprMVar .none
-    let y ← mkFreshExprMVar .none
-    let yn ← mkFreshExprMVar .none
-    let state ← mkFreshExprMVar .none
-    let f := (Expr.const ``read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate' [])
-    let result : Option RewriteResult ←
-      try
-        pure <| some (← g.rewrite (← g.getType) (mkAppN f #[x, xn, y, yn, state, h.proof]) false)
-      catch _ =>
-        pure <| none
-    match result with
-    | .none =>
-      trace[simp_mem.info] "{crossEmoji} rewrite did not fire"
-    | .some r =>
-      let mvarId' ← g.replaceTargetEq r.eNew r.eqProof
-      -- | TODO: dispatch other goals that occur proof automation.
-      Tactic.setGoals <| mvarId' :: r.mvarIds
 
-def addUsefulHypothesis (e : Expr) : SimpMemM Unit := sorry
 
-def proveLegal? (a : MemSpan) : MemLegalProof a := sorry
+section MemLegal
 
-def proveSubsetRefl? (a : MemSpan) (b : MemSpan) : SimpMemM <| Option (MemSubsetProof a b) := sorry
+/-- info: mem_legal'.def {a : BitVec 64} {n : Nat} (h : mem_legal' a n) : a.toNat + n ≤ 2 ^ 64 -/
+#guard_msgs in #check mem_legal'.def
 
-def proveSubset? (a : MemSpan) (b : MemSpan) : SimpMemM <| Option (MemSubsetProof a b) := sorry
-  -- mkFreshMVar.
-  -- withLocalContext.
+/-- Build a term corresponding to `mem_legal'.def`. -/
+def MemLegalProof.def (h : MemLegalProof e) : Expr :=
+  mkAppN (Expr.const ``mem_legal'.def []) #[e.span.base, e.span.n, h.h]
 
-def proveSeparate? (a : MemSpan) (b : MemSpan) : SimpMemM <| Option (MemSubsetProof a b) := sorry
+/-- Add the omega fact from `mem_legal'.def` and run the rest of the continuation. -/
+def MemLegalProof.withOmegaDecl (h : MemLegalProof e) (k : Expr → SimpMemM α) : SimpMemM α := do
+  SimpMemM.withMainContext do
+    let name ← mkFreshUserName <| .mkSimple "memLegal_omegaH"
+    let hdef := h.def
+    let goal ← getMainGoal
+    let goal ← goal.define name (← inferType hdef) hdef
+    let (_, goal) ← goal.intro1P
+    replaceMainGoal [goal]
+    withLetDecl name (← inferType hdef) hdef (fun var => do
+      trace[simp_mem.info]  "{h}.withOmegaDecl added {var} in context {← getMainGoal}"
+      k var
+    )
 
-def findReadEqn? (parent : Expr) : Option (ReadEqn parent) := sorry
+/--
+info: mem_subset'.omega_def {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (h : mem_subset' a an b bn) :
+  a.toNat + an ≤ 2 ^ 64 ∧ b.toNat + bn ≤ 2 ^ 64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn
+-/
+#guard_msgs in #check mem_subset'.omega_def
 
-def findRead? (parent : Expr) : Option (ReadExpr parent) := sorry
+/--
+Build a term corresponding to `mem_subset'.omega_def` which has facts written
+in a style that is exploitable by omega.
+-/
+def MemSubsetProof.omega_def (h : MemSubsetProof e) : Expr :=
+  mkAppN (Expr.const ``mem_subset'.omega_def [])
+    #[e.sa.base, e.sa.n, e.sb.base, e.sb.n, h.h]
+
+/--
+Given a hypothesis, add declarations that would be useful for omega-blasing, and then run the
+continuation. -/
+def Hypothesis.withOmegaDef (h : Hypothesis) (args : Array Expr) (k : Array Expr → SimpMemM α) : SimpMemM α :=
+  match h with
+  | Hypothesis.legal h => h.withOmegaDecl (fun e => k (args.push e))
+  | _ => k args
+
+/--
+Accumulate all omega defs in `args` and finally call the continuation `k`
+with all omega definitions added.
+-/
+def Hypothesis.withOmegaDefs (hs : List Hypothesis) (args : Array Expr)
+    (k : Array Expr → SimpMemM α) : SimpMemM α :=
+  match hs with
+  | [] => k args
+  | h :: hs => h.withOmegaDef args (fun args' => withOmegaDefs hs args' k)
+
+/--
+info: mem_legal'.of_omega {n : Nat} {a : BitVec 64} (h : a.toNat + n ≤ 2 ^ 64) : mem_legal' a n
+-/
+#guard_msgs in #check mem_legal'.of_omega
+
+/--
+Try to prove that the memory access is legal by reducing the problem to `omega`.
+Eventually, this will be supplemented by heuristics.
+-/
+def proveMemLegalWithOmega? (legal : MemLegalExpr)
+    (hyps : Array Hypothesis) : SimpMemM (Option (MemLegalProof legal)) := do
+
+  -- let ofOmegaFn := mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a, omegaGoal]
+  -- let goal ← mkFreshExprMVar (type? := .some legal.toExpr)
+  let omegaGoal ← mkFreshExprMVar (type? := .none)
+  let a := legal.span.base
+  let n := legal.span.n
+  let legalOfOmega := mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a]
+  let omegaGoal2MemLegal ← inferType legalOfOmega
+  trace[simp_mem.info] "partially applied: {omegaGoal2MemLegal}"
+  let legalOfOmega := mkAppN legalOfOmega #[omegaGoal]
+  if ! (← isDefEq (← inferType legalOfOmega) legal.toExpr) then
+    throwError "unable to unify {legalOfOmega} ~ {legal.toExpr}"
+  Term.synthesizeSyntheticMVarsNoPostponing
+  let legalOfOmega ← instantiateMVars legalOfOmega
+  let omegaGoal ← instantiateMVars omegaGoal
+  -- let omegaGoalId := omegaGoal.mvarId!
+  -- let omegaGoalId ← omegaGoalId.replaceTargetDefEq (← instantiateMVars <|← omegaGoalId.getType)
+  -- let omegaGoal ← instantiateMVars omegaGoal
+  trace[simp_mem.info] "fully applied: {legalOfOmega}, type: {← inferType legalOfOmega} |\n goal: {omegaGoal}, type: {← inferType omegaGoal}"
+  try
+    setGoals (omegaGoal.mvarId! :: (← getGoals))
+    SimpMemM.withMainContext do
+      Hypothesis.withOmegaDefs hyps.toList (args := #[]) fun _ => do
+        trace[simp_mem.info] "Executing `omega` to close {legal} in context {← getMainGoal}"
+        Omega.omegaDefault
+        trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+    return (.some <| MemLegalProof.mk (← instantiateMVars legalOfOmega))
+  catch e =>
+      trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+      -- let mut declInfos : Array (Name × BinderInfo × (Array Expr → n Expr)) := Sorry
+      -- withLocalDecls
+    return none
+
+end MemLegal
+
+-- /--
+-- Try to perform a rewrite on expression `e`, and if we succeed
+-- -/
+-- partial def tryReadSimplification (e : Expr) (hyps : Array Hypothesis) : SimpMemM (RewriteResult Expr) := do
+--   match e with
+--   | .app f x => sorry
+--   | _ => -- TODO: handle binders with forallTelescoping.
+--     match_expr e with
+--     | Memory.read_bytes a b c d e => sorry
+--     | _ => return .NoProgress
+
+
+-- /-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
+-- #guard_msgs in #check mem_legal'
+
+partial def SimpMemM.improveGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM Unit := do
+  SimpMemM.withMainContext do
+    trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
+    let gt ← g.getType
+    if let .some legal := MemLegalExpr.match? gt then do
+      withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {legal}. Proving...") do
+      if let .some proof ←  proveMemLegalWithOmega? legal hyps then do
+        (← getMainGoal).assign proof.h
+    -- let some (_, _lhs, _rhs) ← matchEq? (← g.getType) | throwError "invalid goal, expected 'lhs = rhs'."
+    -- -- TODO: do this till fixpoint.
+    -- for h in (← get).hypotheses do
+    --   let x ← mkFreshExprMVar .none
+    --   let xn ← mkFreshExprMVar .none
+    --   let y ← mkFreshExprMVar .none
+    --   let yn ← mkFreshExprMVar .none
+    --   let state ← mkFreshExprMVar .none
+    --   let f := (Expr.const ``read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate' [])
+    --   let result : Option RewriteResult ←
+    --     try
+    --       pure <| some (← g.rewrite (← g.getType) (mkAppN f #[x, xn, y, yn, state, h.proof]) false)
+    --     catch _ =>
+    --       pure <| none
+    --   match result with
+    --   | .none =>
+    --     trace[simp_mem.info] "{crossEmoji} rewrite did not fire"
+    --   | .some r =>
+    --     let mvarId' ← g.replaceTargetEq r.eNew r.eqProof
+    --     -- | TODO: dispatch other goals that occur proof automation.
+    --     Tactic.setGoals <| mvarId' :: r.mvarIds
 
 def SimpMemM.analyzeLoop : SimpMemM Unit := do
     (← getMainGoal).withContext do
@@ -254,13 +460,11 @@ def SimpMemM.analyzeLoop : SimpMemM Unit := do
         -- else
         --   trace[simp_mem.info] m!"{crossEmoji} Rejecting '{h}'"
       withTraceNode `simp_mem.info (fun _ => return m!"Summary: Found {foundHyps.size} hypotheses") do
-        -- trace[simp_mem.info] "▶ Found hypotheses: "
         for (i, h) in foundHyps.toList.enum do
           trace[simp_mem.info] m!"{i+1}) {h}"
 
       withTraceNode `simp_mem.info (fun _ => return m!"Performing Rewrite At Main Goal") do
-        SimpMemM.rewrite (← getMainGoal)
-
+        SimpMemM.improveGoal (← getMainGoal) foundHyps
 /--
 Given a collection of facts, try prove `False` using the omega algorithm,
 and close the goal using that.
