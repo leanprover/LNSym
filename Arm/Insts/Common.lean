@@ -22,16 +22,17 @@ as source operands does not violate the Apple ABI.
 For details, see
 https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Respect-the-purpose-of-specific-CPU-registers
 -/
-partial def GPRIndex.rand (lo := 0) (hi := 31) : 
+partial def GPRIndex.rand (lo := 0) (hi := 31) :
   IO (BitVec 5) := do
-  let feat_check ←
+  let darwin_check ←
   IO.Process.output
       { cmd  := "Arm/Insts/Cosim/platform_check.sh",
         args := #["-d"] }
-  if feat_check.exitCode == 0 then
-    BitVec.rand 5 lo hi
-  else 
+  if darwin_check.exitCode == 1 then
     go lo hi
+  else
+    -- On non-Darwin machines, fall through to `BitVec.rand`.
+    BitVec.rand 5 lo hi
   where go (lo hi : Nat) : IO (BitVec 5) := do
     let ans ← BitVec.rand 5 lo hi
     -- GPRs 18 and 29 are reserved on Apple Arm platforms.
