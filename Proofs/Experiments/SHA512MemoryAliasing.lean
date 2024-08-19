@@ -86,6 +86,9 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
                   ktbl_addr      (SHA2.k_512.length * 8))
   -- (h_run : sf = run 4 s0)
   :
+  -- @shilpi: rewrite `SHA2.h0_512.toBitVec.extractLsBytes 48 16` to
+  -- `(extractLsBytes SHA2.h0_512.toBitVec 48 16)`
+  -- cause it's easier to read.
   read_mem_bytes 16 (ctx_addr s0 + 48#64) s0 = SHA2.h0_512.toBitVec.extractLsBytes 48 16 := by
   simp_all only [memory_rules]
   simp_mem
@@ -112,6 +115,11 @@ should simplify to, where `<addr>` can be
 
 Let's also check our address normalization implementation, e.g., does the automation
 work for `16#64 + ktbl_addr`?
+
+-- @bollu: TODO: implement address normalization here, so we can simplify e.g.
+--   TODO: add similar tests for all `ktbl_addr + n*16#64` for n in [0, 16].
+--   (16#64 + ktbl_addr) + 16#64
+--   ~> 32#64 ktbl_addr
 -/
 set_option trace.simp_mem true in
 set_option trace.simp_mem.info true in
@@ -124,9 +132,6 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (h_s1_x3 : r (StateField.GPR 3#5) s1 = ktbl_addr)
   (h_s1_ctx : read_mem_bytes 64 (ctx_addr s1) s1 = SHA2.h0_512.toBitVec)
   (h_s1_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s1 = BitVec.flatten SHA2.k_512)
- -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
- -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.
-  (hSHA2_k512_length :  SHA2.k_512.length = 80 := by rfl)
   -- (FIXME) Add separateness invariants for the stack's memory region.
   -- @bollu: can we assume that `h_s1_ctx_input_separate`
   -- will be given as ((num_blocks s1).toNat * 128)?
@@ -143,7 +148,10 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   read_mem_bytes 16 ktbl_addr s1 =
   (BitVec.flatten SHA2.k_512).extractLsBytes 0 16 := by
   simp_all only [memory_rules]
-  simp_mem
+  -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
+  -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.
+  have hSHA2_k512_length : SHA2.k_512.length = 80 := by rfl
+  simp_mem -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
   rfl
 
 /--
@@ -153,5 +161,6 @@ info: 'SHA512MemoryAliasing.sha512_block_armv8_loop_sym_ktbl_access' depends on 
  Quot.sound]
 -/
 #guard_msgs in #print axioms sha512_block_armv8_loop_sym_ktbl_access
+
 
 end SHA512MemoryAliasing
