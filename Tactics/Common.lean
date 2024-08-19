@@ -55,7 +55,7 @@ def getBitVecString? (e : Expr) (hex : Bool := false): MetaM (Option String) := 
   | some ⟨_, value⟩ =>
     if hex then
       -- We don't want leading zeroes here.
-      return some (Nat.toDigits 16 value.toNat).asString
+      return some value.toHexWithoutLeadingZeroes
     else
       return some (ToString.toString value.toNat)
   | none => return none
@@ -88,13 +88,13 @@ that additionally recognizes:
 -- TODO: should this be upstreamed to core?
 def getBitVecValue? (e : Expr) : MetaM (Option ((n : Nat) × BitVec n)) :=
   match_expr e with
-    | BitVec.ofFin _ i => OptionT.run do
-      let ⟨n, i⟩ ← getFinValue? i
-      let n' := Nat.log2 n
-      if h : n = 2^n' then
-        return ⟨n', .ofFin (Fin.cast h i)⟩
-      else
-        failure
+    | BitVec.ofFin w i => OptionT.run do
+      let w ← getNatValue? w
+      let v ← do
+        match_expr i with
+          | Fin.mk _n v _h  => getNatValue? v
+          | _               => pure (← getFinValue? i).2.val
+      return ⟨w, BitVec.ofNat w v⟩
     | _ => Lean.Meta.getBitVecValue? e
 
 /-- Given a ground term `e` of type `Nat`, fully reduce it,
@@ -115,21 +115,53 @@ which was obtained by reducing:\n\t{e}"
 reduce an expression `e` (of type `BitVec w`) to be of the form `?n#w`,
 and then reflect `?n` to build the meta-level bitvector -/
 def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
-  if e.hasFVar then
+  if e.hasFVar || e.hasMVar then
     throwError "Expected a ground term, but {e} has free variables"
 
-  if let some ⟨n, x⟩ ← _root_.getBitVecValue? e then
-    if h : n = w then
-      return x.cast h
-    else
-      throwError "Expected a bitvector of width {w}, but\n\t{e}\nhas width {n}"
+  let some ⟨n, x⟩ ← _root_.getBitVecValue? e
+    | throwError "Failed to reflect:\n\t{e}\ninto a BitVec"
 
-  let x ← mkFreshExprMVar (Expr.const ``Nat [])
-  let e' ← mkAppM ``BitVec.ofNat #[toExpr w, x]
-  if (←isDefEq e e') then
-    return BitVec.ofNat w (← reflectNatLiteral x)
+  if h : n = w then
+    return x.cast h
   else
-    throwError "Failed to unify, expected:\n\t{e'}\nbut found:\n\t{e'}"
+    throwError "Expected a bitvector of width {w}, but\n\t{e}\nhas width {n}"
+
+/-! ## Hypothesis types -/
+namespace SymContext
+
+/-- `h_err_type state` returns an Expr for `r .ERR <state> = .None`,
+the expected type of `h_err` -/
+def h_err_type (state : Expr) : Expr :=
+  mkAppN (mkConst ``Eq [1]) #[
+    mkConst ``StateError,
+    mkApp2 (.const ``r []) (.const ``StateField.ERR []) state,
+    .const ``StateError.None []
+  ]
+
+/-- `h_sp_type state` returns an Expr for `CheckSPAlignment <state>`,
+the expected type of `h_sp` -/
+def h_sp_type (state : Expr) : Expr :=
+  mkApp (.const ``CheckSPAlignment []) state
+
+/-- `h_sp_type state` returns an Expr for `<state>.program = <program>`,
+the expected type of `h_program` -/
+def h_program_type (state program : Expr) : Expr :=
+  mkAppN (mkConst ``Eq [1]) #[
+    mkConst ``Program,
+    mkApp (mkConst ``ArmState.program) state,
+    program
+  ]
+
+/-- `h_pc_type state` returns an Expr for `r .PC <state> = <address>`,
+the expected type of `h_pc` -/
+def h_pc_type (state address : Expr) : Expr :=
+  mkAppN (mkConst ``Eq [1]) #[
+    mkApp (mkConst ``BitVec) (toExpr 64),
+    mkApp2 (mkConst ``r) (mkConst ``StateField.PC) state,
+    address
+  ]
+
+end SymContext
 
 /-! ## Local Context Search -/
 
@@ -162,7 +194,7 @@ Throws an error if no such hypothesis could. -/
 def findProgramHyp (state : Expr) : MetaM (LocalDecl × Name) := do
   -- Try to find `h_program`, and infer `program` from it
   let program ← mkFreshExprMVar none
-  let h_program_type ← mkEq (← mkAppM ``ArmState.program #[state]) program
+  let h_program_type := SymContext.h_program_type state program
   let h_program ← findLocalDeclOfTypeOrError h_program_type
 
   -- Assert that `program` is a(n application of a) constant, and find its name
