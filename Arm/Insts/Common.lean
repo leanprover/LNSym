@@ -7,6 +7,7 @@ Author(s): Shilpi Goel, Yan Peng, Nathan Wetzler
 import LeanSAT
 import Arm.BitVec
 import Arm.State
+import Arm.Insts.CosimM
 
 section Common
 
@@ -27,12 +28,8 @@ the latest version is available at
 https://github.com/ARM-software/abi-aa/releases
 -/
 partial def GPRIndex.rand (lo := 0) (hi := 31) :
-  IO (BitVec 5) := do
-  let darwin_check ←
-  IO.Process.output
-      { cmd  := "Arm/Insts/Cosim/platform_check.sh",
-        args := #["-d"] }
-  if darwin_check.exitCode == 1 then
+  Cosim.CosimM (BitVec 5) := do
+  if ← Cosim.darwin? then
     go lo hi
   else
     -- On non-Darwin machines, fall through to `BitVec.rand`.

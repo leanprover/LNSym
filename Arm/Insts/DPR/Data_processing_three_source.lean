@@ -75,7 +75,7 @@ def exec_data_processing_three_source
 
 def Data_processing_three_source_cls.shift.rand
   (sf : BitVec 1) (op54 : BitVec 2) (op31 : BitVec 3) (o0 : BitVec 1)
-  : IO (Option (BitVec 32)) := do
+  : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Data_processing_three_source_cls) :=
     { sf := sf,
       op54 := op54,

@@ -96,11 +96,7 @@ def exec_crypto_three_reg_sha512
 ----------------------------------------------------------------------
 
 def Crypto_three_reg_sha512_cls.sha512.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let feat_check ←
-      IO.Process.output
-      { cmd  := "Arm/Insts/Cosim/platform_check.sh",
-        args := #["-f", "sha512"] }
-  if feat_check.exitCode == 1 then
+  if (← Cosim.sha512?) then
     -- SHA512 feature supported.
     let (inst : Crypto_three_reg_sha512_cls) :=
       { Rm     := ← BitVec.rand 5,

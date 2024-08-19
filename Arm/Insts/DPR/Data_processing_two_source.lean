@@ -43,7 +43,7 @@ def exec_data_processing_two_source
 ----------------------------------------------------------------------
 
 def Data_processing_two_source_cls.shift.rand
-  (opcode : BitVec 6) : IO (Option (BitVec 32)) := do
+  (opcode : BitVec 6) : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Data_processing_two_source_cls) :=
     { sf := ← BitVec.rand 1,
       S := 0b0#1,
