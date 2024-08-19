@@ -368,22 +368,18 @@ def proveMemLegalWithOmega? (legal : MemLegalExpr)
 
   -- let ofOmegaFn := mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a, omegaGoal]
   -- let goal ← mkFreshExprMVar (type? := .some legal.toExpr)
-  let omegaGoal ← mkFreshExprMVar (type? := .none)
   let a := legal.span.base
   let n := legal.span.n
   let legalOfOmega := mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a]
   let omegaGoal2MemLegal ← inferType legalOfOmega
   trace[simp_mem.info] "partially applied: {omegaGoal2MemLegal}"
-  let legalOfOmega := mkAppN legalOfOmega #[omegaGoal]
-  if ! (← isDefEq (← inferType legalOfOmega) legal.toExpr) then
-    throwError "unable to unify {legalOfOmega} ~ {legal.toExpr}"
-  Term.synthesizeSyntheticMVarsNoPostponing
-  let legalOfOmega ← instantiateMVars legalOfOmega
-  let omegaGoal ← instantiateMVars omegaGoal
-  -- let omegaGoalId := omegaGoal.mvarId!
-  -- let omegaGoalId ← omegaGoalId.replaceTargetDefEq (← instantiateMVars <|← omegaGoalId.getType)
-  -- let omegaGoal ← instantiateMVars omegaGoal
-  trace[simp_mem.info] "fully applied: {legalOfOmega}, type: {← inferType legalOfOmega} |\n goal: {omegaGoal}, type: {← inferType omegaGoal}"
+  let (proofObligation, omegaGoalState) ← do
+    match omegaGoal2MemLegal with
+    | Expr.forallE _argName argTy body binderInfo => pure (argTy, body)
+    | _ => throwError "expected '{omegaGoal2MemLegal}' to a ∀"
+  trace[simp_mem.info] "proof obligation '{proofObligation}', goal state after: {omegaGoalState}"
+  let omegaGoal ← mkFreshExprMVar (type? := proofObligation)
+
   try
     setGoals (omegaGoal.mvarId! :: (← getGoals))
     SimpMemM.withMainContext do
@@ -391,13 +387,13 @@ def proveMemLegalWithOmega? (legal : MemLegalExpr)
         trace[simp_mem.info] "Executing `omega` to close {legal} in context {← getMainGoal}"
         Omega.omegaDefault
         trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+    let legalOfOmega := mkAppN legalOfOmega #[omegaGoal]
     return (.some <| MemLegalProof.mk (← instantiateMVars legalOfOmega))
   catch e =>
       trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
       -- let mut declInfos : Array (Name × BinderInfo × (Array Expr → n Expr)) := Sorry
       -- withLocalDecls
     return none
-
 end MemLegal
 
 -- /--
