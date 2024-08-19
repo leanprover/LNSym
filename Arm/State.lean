@@ -805,16 +805,23 @@ The describes the behaviour of `m.read_bytes` at a byte level granularity.
 `extractLsByte_read_bytes`.
 -/
 @[memory_rules]
-theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h : addr.toNat + n < 2^64) :
+theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h : addr.toNat + n ≤ 2^64) :
     (m.read_bytes n addr).extractLsByte i =
       if i < n then m.read (addr + (BitVec.ofNat 64 i)) else 0#8 := by
-  induction n generalizing i addr m
-  case zero =>
-    rw [read_bytes]
-    simp
-  case succ n' ih =>
-    simp only [read_bytes_succ_eq]
-    sorry
+  apply BitVec.eq_of_getLsb_eq
+  simp only [BitVec.getLsb_extractLsByte]
+  intros j
+  simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
+  rw [getLsb_read_bytes]
+  by_cases h₁ : i * 8 + ↑j < n * 8
+  · simp only [h₁, decide_True, Bool.true_and]
+    simp only [show (i < n) by omega, ↓reduceIte]
+    simp only [show (i * 8 + ↑j) / 8 = i by omega]
+    simp only [show (i * 8 + ↑j) % 8 = j by omega]
+    rfl
+  · simp only [h₁, decide_False, Bool.false_and, Bool.false_eq]
+    simp only [show ¬(i < n) by omega, ↓reduceIte, BitVec.getLsb_zero]
+  · omega
 
 /--
 This is a low level theorem.

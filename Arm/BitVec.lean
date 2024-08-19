@@ -940,9 +940,17 @@ def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
 theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
     val.extractLsByte n = (val.extractLsb ((n + 1)*8 - 1) (n * 8) |>.cast (by omega)) := rfl
 
-@[simp]
+-- @[simp]
+theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
+    (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
+  apply BitVec.eq_of_getLsb_eq
+  simp
+  intros i
+  by_cases h : (i : Nat) ≤ n - lo <;> simp [h]
+
+-- @[simp]
 theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
-  simp [extractLsByte]
+  simp only [extractLsByte, BitVec.extractLsb_ofNat, Nat.zero_mod, Nat.zero_shiftRight, cast_ofNat]
 
 @[simp]
 theorem getLsb_extractLsByte (val : BitVec w₁) :
