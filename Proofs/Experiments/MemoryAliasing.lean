@@ -32,10 +32,20 @@ example (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
 example (l : mem_subset' a 16 b 16) : mem_subset' a 10 b 16 := by
   simp_mem
 
+
+/-- Show that smaller subsets are also subsets, even when moving base pointer. -/
+example (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
+  simp_mem
+
+
 /-- error: unknown constant 'legal_2' -/
 #guard_msgs in #print axioms legal_2
 
 end MemSubset
+
+
+namespace MemSeparate
+end MemSeparate
 
 theorem mem_automation_test_1
   (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :

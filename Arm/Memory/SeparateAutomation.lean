@@ -315,6 +315,11 @@ def introDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     replaceMainGoal [goal]
     return fvar
 
+/-- SimpMemM's omega invoker -/
+def omega : SimpMemM Unit := do
+    evalTactic (← `(tactic| bv_omega'))
+
+
 section MemLegal
 
 /-- info: mem_legal'.def {a : BitVec 64} {n : Nat} (h : mem_legal' a n) : a.toNat + n ≤ 2 ^ 64 -/
@@ -409,7 +414,7 @@ def proveMemLegalWithOmega? (legal : MemLegalExpr)
     let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
     trace[simp_mem.info] "Executing `omega` to close {legal}"
     trace[simp_mem.info] "{← getMainGoal}"
-    Omega.omegaDefault
+    omega
     trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
     return (.some <| MemLegalProof.mk (← instantiateMVars legalOfOmegaVal))
   catch e =>
@@ -456,7 +461,7 @@ def proveMemSubsetWithOmega? (subset : MemSubsetExpr)
     let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
     trace[simp_mem.info] "Executing `omega` to close {subset}"
     trace[simp_mem.info] "{← getMainGoal}"
-    Omega.omegaDefault
+    omega
     trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
     return (.some <| MemSubsetProof.mk (← instantiateMVars ofOmegaVal))
   catch e =>
