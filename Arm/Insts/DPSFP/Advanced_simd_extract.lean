@@ -9,6 +9,7 @@ import Arm.Decode
 import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -41,7 +42,7 @@ def exec_advanced_simd_extract
 
 ----------------------------------------------------------------------
 
-def Advanced_simd_extract_cls.ext.rand_128 : IO (Option (BitVec 32)) := do
+def Advanced_simd_extract_cls.ext.rand_128 : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Advanced_simd_extract_cls) :=
     -- When Q is 1, there are no restrictions on imm4.
     { Q     := ← pure 0b1#1,
@@ -52,7 +53,7 @@ def Advanced_simd_extract_cls.ext.rand_128 : IO (Option (BitVec 32)) := do
       Rd    := ← BitVec.rand 5 }
   pure (some (inst.toBitVec32))
 
-def Advanced_simd_extract_cls.ext.rand_64 : IO (Option (BitVec 32)) := do
+def Advanced_simd_extract_cls.ext.rand_64 : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Advanced_simd_extract_cls) :=
     -- When Q is 0, imm4<3> must not be 1.
     { Q     := ← pure 0b0#1,
@@ -64,7 +65,7 @@ def Advanced_simd_extract_cls.ext.rand_64 : IO (Option (BitVec 32)) := do
   pure (some (inst.toBitVec32))
 
 /-- Generate random instructions of Advanced_simd_extract class. -/
-def Advanced_simd_extract_cls.rand : List (IO (Option (BitVec 32))) :=
+def Advanced_simd_extract_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [Advanced_simd_extract_cls.ext.rand_128,
    Advanced_simd_extract_cls.ext.rand_64]
 

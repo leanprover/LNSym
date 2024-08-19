@@ -7,6 +7,7 @@ Author(s): Yan Peng
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -21,7 +22,7 @@ def exec_hints (inst : Hints_cls) (s : ArmState) : ArmState :=
   else
     write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
 
-def Hints_cls.nop.rand : IO (Option (BitVec 32)) := do
+def Hints_cls.nop.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Hints_cls) :=
     { CRm := 0b0000#4,
       op2 := 0b000#3
@@ -29,7 +30,7 @@ def Hints_cls.nop.rand : IO (Option (BitVec 32)) := do
   pure (some (inst.toBitVec32))
 
 /-- Generate random instructions of Hints_cls class. -/
-def Hints_cls.rand : IO (Option (BitVec 32)) :=
+def Hints_cls.rand : Cosim.CosimM (Option (BitVec 32)) :=
   Hints_cls.nop.rand
 
 end BR

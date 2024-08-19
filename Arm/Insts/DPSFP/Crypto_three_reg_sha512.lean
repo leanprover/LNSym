@@ -10,6 +10,7 @@ import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
 import Specs.SHA512Common
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -94,12 +95,12 @@ def exec_crypto_three_reg_sha512
 
 ----------------------------------------------------------------------
 
-def Crypto_three_reg_sha512_cls.sha512.rand : IO (Option (BitVec 32)) := do
+def Crypto_three_reg_sha512_cls.sha512.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let feat_check ←
       IO.Process.output
       { cmd  := "Arm/Insts/Cosim/platform_check.sh",
         args := #["-f", "sha512"] }
-  if feat_check.exitCode == 1 then 
+  if feat_check.exitCode == 1 then
     -- SHA512 feature supported.
     let (inst : Crypto_three_reg_sha512_cls) :=
       { Rm     := ← BitVec.rand 5,
@@ -112,7 +113,7 @@ def Crypto_three_reg_sha512_cls.sha512.rand : IO (Option (BitVec 32)) := do
     pure none
 
 /-- Generate random instructions of Crypto_three_reg_sha512_cls class. -/
-def Crypto_three_reg_sha512_cls.rand : List (IO (Option (BitVec 32))) :=
+def Crypto_three_reg_sha512_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [Crypto_three_reg_sha512_cls.sha512.rand]
 
 

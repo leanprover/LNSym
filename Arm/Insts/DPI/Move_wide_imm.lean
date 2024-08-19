@@ -7,6 +7,7 @@ Author(s): Yan Peng
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 namespace DPI
 
@@ -35,7 +36,7 @@ def exec_move_wide_imm (inst : Move_wide_imm_cls) (s : ArmState) : ArmState :=
 ----------------------------------------------------------------------
 
 /-- Generate random instructions of the DPI.Move_wide_imm class. -/
-partial def Move_wide_imm_cls.inst.rand : IO (Option (BitVec 32)) := do
+partial def Move_wide_imm_cls.inst.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let opc := ← BitVec.rand 2
   let sf := ← BitVec.rand 1
   let hw := ← BitVec.rand 2
@@ -52,7 +53,7 @@ partial def Move_wide_imm_cls.inst.rand : IO (Option (BitVec 32)) := do
     pure (some inst.toBitVec32)
 
 
-def Move_wide_imm_cls.rand : List (IO (Option (BitVec 32))) :=
+def Move_wide_imm_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Move_wide_imm_cls.inst.rand ]
 ----------------------------------------------------------------------
 

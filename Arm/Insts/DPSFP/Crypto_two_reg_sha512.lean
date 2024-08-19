@@ -8,6 +8,7 @@ Author(s): Shilpi Goel
 import Arm.Decode
 import Arm.Insts.Common
 import Specs.SHA512Common
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -66,7 +67,7 @@ def Crypto_two_reg_sha512_cls.sha512su0.rand : IO (Option (BitVec 32)) := do
     pure none
 
 /-- Generate random instructions of Crypto_two_reg_sha512_cls class. -/
-def Crypto_two_reg_sha512_cls.rand : List (IO (Option (BitVec 32))) :=
+def Crypto_two_reg_sha512_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [Crypto_two_reg_sha512_cls.sha512su0.rand]
 
 end DPSFP

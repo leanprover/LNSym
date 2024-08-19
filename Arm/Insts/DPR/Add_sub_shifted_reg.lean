@@ -7,6 +7,7 @@ Author(s): Yan Peng
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 namespace DPR
 
@@ -38,7 +39,7 @@ def exec_add_sub_shifted_reg (inst : Add_sub_shifted_reg_cls) (s : ArmState) : A
 ----------------------------------------------------------------------
 
 /-- Generate random instructions of the DPR.Add_sub_shifted_reg class. -/
-partial def Add_sub_shifted_reg_cls.rand : IO (Option (BitVec 32)) := do
+partial def Add_sub_shifted_reg_cls.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let shift := ← BitVec.rand 2
   let sf := ← BitVec.rand 1
   let imm6 := ← BitVec.rand 6

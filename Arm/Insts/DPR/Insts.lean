@@ -10,10 +10,11 @@ import Arm.Insts.DPR.Data_processing_one_source
 import Arm.Insts.DPR.Data_processing_two_source
 import Arm.Insts.DPR.Logical_shifted_reg
 import Arm.Insts.DPR.Data_processing_three_source
+import Arm.Insts.CosimM
 
 /-- List of functions to generate random instructions of the
 DPR class. -/
-def DPR.rand : List (IO (Option (BitVec 32))) :=
+def DPR.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [DPR.Add_sub_carry_cls.rand,
    DPR.Add_sub_shifted_reg_cls.rand,
    DPR.Conditional_select_cls.rand,

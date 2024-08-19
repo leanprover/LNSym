@@ -7,6 +7,7 @@ Author(s): Yan Peng
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 namespace DPR
 
@@ -71,7 +72,7 @@ def exec_logical_shifted_reg (inst : Logical_shifted_reg_cls) (s : ArmState) : A
 ----------------------------------------------------------------------
 
 /-- Generate random instructions of the DPR.Logical_shifted_reg class. -/
-partial def Logical_shifted_reg_cls.rand : IO (Option (BitVec 32)) := do
+partial def Logical_shifted_reg_cls.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let sf    := ← BitVec.rand 1
   let imm6  := ← BitVec.rand 6
   if sf = 0#1 ∧ imm6 &&& 32 ≠ 0 then
