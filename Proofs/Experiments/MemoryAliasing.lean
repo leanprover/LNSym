@@ -25,21 +25,25 @@ end MemLegal
 
 namespace MemSubset
 /-- Show reflexivity of subset. -/
-example (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
+theorem subset_1 (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
   simp_mem
+
+/-- info: 'MemSubset.subset_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms subset_1
 
 /-- Show that smaller subsets are also subsets. -/
-example (l : mem_subset' a 16 b 16) : mem_subset' a 10 b 16 := by
+theorem subset_2 (l : mem_subset' a 16 b 16) : mem_subset' a 10 b 16 := by
   simp_mem
 
+/-- info: 'MemSubset.subset_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms subset_2
 
 /-- Show that smaller subsets are also subsets, even when moving base pointer. -/
-example (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
+theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
   simp_mem
 
-
-/-- error: unknown constant 'legal_2' -/
-#guard_msgs in #print axioms legal_2
+/-- info: 'MemSubset.subset_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms subset_3
 
 end MemSubset
 
