@@ -92,7 +92,7 @@ namespace SeparateAutomation
 
 structure SimpMemConfig where
   /-- number of times rewrites must be performed. -/
-  rewriteFuel : Nat := 100
+  rewriteFuel : Nat := 1000
 
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
@@ -776,11 +776,16 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
       Lean.Meta.forallTelescope e fun xs b => do
         for x in xs do
           improveExpr x hyps
+          -- we may have a hypothesis like
+          -- ∀ (x : read_mem (read_mem_bytes ...) ... = out).
+          -- we want to simplify the *type* of x.
+          improveExpr (← inferType x) hyps
         improveExpr b hyps
     else if e.isLambda then
       Lean.Meta.lambdaTelescope e fun xs b => do
         for x in xs do
           improveExpr x hyps
+          improveExpr (← inferType x) hyps
         improveExpr b hyps
     else
       -- check if we have expressions.

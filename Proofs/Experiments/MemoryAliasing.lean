@@ -285,8 +285,9 @@ info: 'ExprVisitor.test_quantified_app_1' depends on axioms: [propext, Classical
 #guard_msgs in #print axioms test_quantified_app_1
 
 /--
-Check that we correctly simplify hypotheses as well,
-where the hypotheses are universally quantified variables
+Check that we correctly simplify the *types* of binders as well.
+Here, the bound variable `P` has *type* that involves a memory read.
+We make sure that we simplify these as well.
 -/
 theorem test_quantified_app_2 {val : BitVec (16 * 8)}
     (hlegal : ∀ (addr : Nat), mem_legal' addr 16)
@@ -294,6 +295,6 @@ theorem test_quantified_app_2 {val : BitVec (16 * 8)}
     f (∀ (P : Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem) = irrelevant), Nat) =
     f (∀ (P : val.extractLsBytes 0 16 = irrelevant), Nat) := by
   simp_mem
-  simp
+  rfl
 
 end ExprVisitor
