@@ -103,7 +103,14 @@ partial def Conversion_between_FP_and_Int_cls.fmov_general.rand : IO (Option (Bi
         rmode  := rmode,
         opcode := opcode,
         Rn := ← BitVec.rand 5,
-        Rd := ← BitVec.rand 5 }
+        Rd := ← (if (lsb opcode 0) = 1#1 then
+                -- FPConvOp.FPConvOp_MOV_ItoF
+                -- GPR used as a source operand.
+                  BitVec.rand 5
+                else
+                -- FPConvOp.FPConvOp_MOV_FtoI
+                -- GPR used as a destination operand.
+                  GPRIndex.rand) }
     pure (inst.toBitVec32)
 
 /-- Generate random instructions of Conversion_between_FP_and_Int class. -/

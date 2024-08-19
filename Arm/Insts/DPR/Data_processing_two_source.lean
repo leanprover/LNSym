@@ -49,7 +49,7 @@ def Data_processing_two_source_cls.shift.rand
       Rm := ← BitVec.rand 5,
       opcode := opcode,
       Rn := ← BitVec.rand 5,
-      Rd := ← BitVec.rand 5
+      Rd := ← GPRIndex.rand
     }
   pure (some inst.toBitVec32)
 

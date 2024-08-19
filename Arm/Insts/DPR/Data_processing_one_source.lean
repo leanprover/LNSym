@@ -112,7 +112,7 @@ partial def Data_processing_one_source_cls.rev_all.rand : IO (Option (BitVec 32)
         opcode2 := 0b00000#5,
         opcode := 0b0000#4 ++ opc,
         Rn := ← BitVec.rand 5,
-        Rd := ← BitVec.rand 5
+        Rd := ← GPRIndex.rand
       }
     pure (some (inst.toBitVec32))
 

@@ -13,6 +13,34 @@ section Common
 open BitVec
 
 ----------------------------------------------------------------------
+/-- `GPRIndex.rand` picks a safe GPR index (i.e., one not reserved on
+Apple platforms). Use this function instead of `BitVec.rand` to pick
+an appropriate random index for a destination GPR during
+cosimulations. We say "destination" because using reserved registers
+as source operands does not violate the Apple ABI.
+
+For details, see
+https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Respect-the-purpose-of-specific-CPU-registers
+-/
+partial def GPRIndex.rand (lo := 0) (hi := 31) : 
+  IO (BitVec 5) := do
+  let feat_check ←
+  IO.Process.output
+      { cmd  := "Arm/Insts/Cosim/platform_check.sh",
+        args := #["-d"] }
+  if feat_check.exitCode == 0 then
+    BitVec.rand 5 lo hi
+  else 
+    go lo hi
+  where go (lo hi : Nat) : IO (BitVec 5) := do
+    let ans ← BitVec.rand 5 lo hi
+    -- GPRs 18 and 29 are reserved on Apple Arm platforms.
+    if ans ∈ [18#5, 29#5] then
+      go lo hi
+    else
+      pure ans
+
+----------------------------------------------------------------------
 
 def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   (BitVec n × PState) :=
@@ -590,5 +618,7 @@ inductive MemOp where
   | MemOp_STORE : MemOp
   | MemOp_PREFETCH : MemOp
 deriving DecidableEq, Repr
+
+----------------------------------------------------------------------
 
 end Common
