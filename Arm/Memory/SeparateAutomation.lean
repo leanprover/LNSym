@@ -159,15 +159,22 @@ abbrev MemLegalProof := WithWitness MemLegalExpr
 def MemLegalProof.mk {e : MemLegalExpr} (h : Expr) : MemLegalProof e :=
   { h }
 
-/-- an occurrence of Memory.read in `e`. -/
-structure ReadExpr (parent : Expr) where
-  hyp : Expr
+/-- info: Memory.read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) -/
+#guard_msgs in #check Memory.read_bytes
+
+structure ReadBytesExpr where
+  span : MemSpan
   mem : Expr
-  read : Span
 
-structure ReadEqn (parent : Expr) extends ReadExpr parent where
-  outval : Expr -- the value we have read.
+/--
+info: Memory.write_bytes (n : Nat) (addr : BitVec 64) (val : BitVec (n * 8)) (m : Memory) : Memory
+-/
+#guard_msgs in #check Memory.write_bytes
 
+structure WriteBytesExpr where
+  span : MemSpan
+  val : Expr
+  mem : Expr
 
 inductive Hypothesis
 | separate (proof : MemSeparateProof e)
@@ -536,6 +543,7 @@ def proveMemSeparateWithOmega? (e : MemSeparateExpr)
     return none
 
 end MemSeparate
+
 
 -- /-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
 -- #guard_msgs in #check mem_legal'
