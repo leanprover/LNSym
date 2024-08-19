@@ -6,6 +6,8 @@ Author(s): Shilpi Goel, Siddharth Bhat
 The goal is to prove that this program implements absolute value correctly.
 -/
 import Arm
+import Tactics.StepThms
+import Tactics.Sym
 
 namespace Abs
 
@@ -19,14 +21,21 @@ def program : Program :=
 
 def spec (x : BitVec 32) : BitVec 32 := BitVec.ofNat 32 x.toInt.natAbs
 
+#genStepEqTheorems program
+
 theorem correct
   {s0 sf : ArmState}
   (h_s0_pc : read_pc s0 = 0x4005d0#64)
   (h_s0_program : s0.program = program)
   (h_s0_err : read_err s0 = StateError.None)
+  (h_s0_sp : CheckSPAlignment s0)
   (h_run : sf = run program.length s0) :
   read_gpr 32 0 sf = spec (read_gpr 32 0 s0) ∧
-  read_err sf = StateError.None := by sorry
+  read_err sf = StateError.None := by
+  simp (config := {ground := true}) at h_run
+
+  sym1_n 5
+  sorry
 
 /-- info: 'Abs.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms correct
