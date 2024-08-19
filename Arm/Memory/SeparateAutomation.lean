@@ -383,6 +383,9 @@ def introDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
 
 /-- SimpMemM's omega invoker -/
 def omega : SimpMemM Unit := do
+  -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
+  -- @bollu: TODO: understand what precisely we are recovering from.
+  withoutRecover do
     evalTactic (← `(tactic| bv_omega'))
 
 
@@ -520,6 +523,7 @@ info: mem_subset'.of_omega {an bn : Nat} {a b : BitVec 64}
 /--
 Try to prove that the memory subset is legal by reducing the problem to `omega`.
 Eventually, this will be supplemented by heuristics.
+-- @bollu: TODO: move error recovery code into the other proveMemSeparateWithOmega? also.
 -/
 def proveMemSubsetWithOmega? (subset : MemSubsetExpr)
     (hyps : Array Hypothesis) : SimpMemM (Option (MemSubsetProof subset)) := do
@@ -539,7 +543,7 @@ def proveMemSubsetWithOmega? (subset : MemSubsetExpr)
   trace[simp_mem.info] "omega obligation '{omegaObligationTy}'"
   let omegaGoal ← mkFreshExprMVar (type? := omegaObligationTy)
   let ofOmegaVal := mkAppN ofOmegaVal #[omegaGoal]
-
+  let oldGoals := (← getGoals)
   try
     setGoals (omegaGoal.mvarId! :: (← getGoals))
     SimpMemM.withMainContext do
@@ -547,11 +551,15 @@ def proveMemSubsetWithOmega? (subset : MemSubsetExpr)
     trace[simp_mem.info] "Executing `omega` to close {subset}"
     trace[simp_mem.info] "{← getMainGoal}"
     omega
+    -- Term.synthesizeSyntheticMVarsNoPostponing
+    -- unless ← omegaGoal.mvarId!.isAssigned do
+    --   throwError "{crossEmoji} omega failed to close the goal"
     trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
     return (.some <| MemSubsetProof.mk (← instantiateMVars ofOmegaVal))
   catch e =>
     -- | TODO: raise `e`.
     trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+    setGoals oldGoals
     return none
 
 end MemSubset
@@ -615,7 +623,7 @@ info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {x : BitVec 6
 def SimpMemM.rewriteReadOfSeparatedWrite (e : Expr) (hyps : Array Hypothesis)
     (er : ReadBytesExpr) (ew : WriteBytesExpr)
     (separate : MemSeparateProof { sa := er.span, sb := ew.span }) : SimpMemM Unit := do
-  withTraceNode `simp_mem.info (fun _ => return m!"simplifying read {er}⟂{ew} write") do
+  withTraceNode `simp_mem.info (fun _ => return m!"rewriting read({er})⟂write({ew})") do
   withMainContext do
     let call :=
       mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' [])
@@ -656,7 +664,7 @@ def SimpMemM.rewriteReadOfSubsetRead
       er.mem,
       hread.h,
       hsubset.h]
-  withTraceNode `simp_mem.info (fun _ => return m!"simplifying read {er}⊆{hread.read} read") do
+  withTraceNode `simp_mem.info (fun _ => return m!"rewriting read({er})⊆read({hread.read})") do
     withMainContext do
       let goal ← getMainGoal
       let result ← goal.rewrite (← getMainTarget) call
@@ -704,14 +712,13 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
             -- the read we are analyzing should be a subset of the hypothesis
             let subset := (MemSubsetExpr.mk er.span hReadEq.read.span)
             if let some hSubsetProof ← proveMemSubsetWithOmega? subset hyps then
-              rewriteReadOfSubsetRead e hyps er hReadEq hSubsetProof
-              trace[simp_mem.info] "{checkEmoji} {hReadEq.read.span} ⊆ {er.span}"
-              succees? := true
-              break -- we successfully rewrote, end the loop.
+              trace[simp_mem.info] "{checkEmoji} {hSubsetProof}"
+                rewriteReadOfSubsetRead e hyps er hReadEq hSubsetProof
+                return ()
             else
-              trace[simp_mem.info] "{crossEmoji}  {hReadEq.read.span} ⊊ {er.span}"
+              trace[simp_mem.info] "{crossEmoji}  {er.span} ⊊ {hReadEq.read.span}"
         unless succees? do
-          trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⊆ any read."
+          trace[simp_mem.info] "{crossEmoji} {er.span} ⊊ any read."
           return ()
   return ()
 

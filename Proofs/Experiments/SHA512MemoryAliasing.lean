@@ -113,6 +113,8 @@ should simplify to, where `<addr>` can be
 Let's also check our address normalization implementation, e.g., does the automation
 work for `16#64 + ktbl_addr`?
 -/
+set_option trace.simp_mem true in
+set_option trace.simp_mem.info true in
 theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (h_s1_err : read_err s1 = StateError.None)
   (h_s1_sp_aligned : CheckSPAlignment s1)
@@ -122,6 +124,9 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (h_s1_x3 : r (StateField.GPR 3#5) s1 = ktbl_addr)
   (h_s1_ctx : read_mem_bytes 64 (ctx_addr s1) s1 = SHA2.h0_512.toBitVec)
   (h_s1_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s1 = BitVec.flatten SHA2.k_512)
+ -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
+ -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.
+  (hSHA2_k512_length :  SHA2.k_512.length = 80)
   -- (FIXME) Add separateness invariants for the stack's memory region.
   -- @bollu: can we assume that `h_s1_ctx_input_separate`
   -- will be given as ((num_blocks s1).toNat * 128)?
@@ -135,9 +140,12 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (h_s1_ktbl_input_separate :
     mem_separate' (input_addr s1) ((num_blocks s1).toNat * 128)
                   ktbl_addr      (SHA2.k_512.length * 8)) :
-  read_mem_bytes 16 ktbl_addr s1 = xxxx := by
+  read_mem_bytes 16 ktbl_addr s1 =
+  (BitVec.flatten SHA2.k_512).extractLsBytes 0 16 := by
   simp_all only [memory_rules]
-  -- simp_mem
-  sorry
+  simp_mem
+  · -- ⊢ (BitVec.flatten SHA2.k_512).extractLsBytes (ktbl_addr.toNat - ktbl_addr.toNat) 16 =
+    --     (BitVec.flatten SHA2.k_512).extractLsBytes 0 16
+    congr
 
 end SHA512MemoryAliasing
