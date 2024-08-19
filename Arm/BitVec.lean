@@ -994,6 +994,25 @@ theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) 
   · simp only [extractLsBytes, getLsb_cast, getLsb_extract, Nat.zero_lt_succ, decide_True,
     Bool.true_and]
 
+/-- Extracting out bytes from the zero bitvector is equal to the zero bitvector. -/
+@[simp]
+theorem extractLsBytes_zero {w : Nat} (base : Nat) :
+    (0#w).extractLsBytes base n = 0#(n*8) := by
+  apply BitVec.eq_of_getLsb_eq
+  simp
+
+/-- Extracing out all the bytes is equal to the bitvector. -/
+@[simp]
+theorem extractLsBytes_eq_self {n : Nat} (x : BitVec (n * 8)) :
+    x.extractLsBytes 0 n = x := by
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  simp only [getLsb_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero]
+  simp [show (i : Nat) ≤ n * 8 - 1 by omega]
+  intros h
+  have := BitVec.lt_of_getLsb _ _ h
+  omega
+
 /-! ## `Quote` instance -/
 
 instance (w : Nat) : Quote (BitVec w) `term where

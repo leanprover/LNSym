@@ -135,7 +135,7 @@ structure ArmState where
   /-- PState -/
   private pstate     : PState
   /-- Memory: maps 64-bit addresses to bytes -/
-  private mem        : Memory
+  mem        : Memory
   /--
   Program: maps 64-bit addresses to 32-bit instructions.
   Note that we have the following assumption baked into our machine model:

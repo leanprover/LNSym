@@ -130,5 +130,81 @@ theorem mem_automation_test_2
 #guard_msgs in #print axioms mem_automation_test_2
 
 
--- @bollu: TODO: add test for overlapping read
--- @bollu: TODO: add test for overlapping read where both sides of equality are memory reads!
+namespace ReadOverlappingRead
+
+/-- A read overlapping with another read. -/
+theorem overlapping_read_test_1 {out : BitVec (16 * 8)}
+    (hlegal : mem_legal' src_addr 16)
+    (h : read_mem_bytes 16 src_addr s = out) :
+    read_mem_bytes 16 src_addr s = out := by
+  simp only [memory_rules] at h ⊢
+  simp_mem
+  simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self]
+
+/--
+info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext,
+ to_prove_memory_fact,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in #print axioms overlapping_read_test_1
+
+/-- A read overlapping with another read. -/
+theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
+    (hlegal : mem_legal' src_addr 16)
+    (h : read_mem_bytes 16 src_addr s = out) :
+    read_mem_bytes 10 (src_addr + 6) s = out.extractLsBytes 6 10 := by
+  simp only [memory_rules] at h ⊢
+  simp_mem
+  · congr
+    -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
+    bv_omega'
+/--
+info: 'ReadOverlappingRead.overlapping_read_test_2' depends on axioms: [propext,
+ to_prove_memory_fact,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in #print axioms overlapping_read_test_2
+
+/-- A read in the goal state overlaps with a read in the
+left hand side of the hypotheis `h`.
+-/
+theorem overlapping_read_test_3
+    (hlegal : mem_legal' src_addr 16)
+    (h : read_mem_bytes 16 src_addr s = read_mem_bytes 16 other_addr s) :
+    read_mem_bytes 10 (src_addr + 6) s =
+    -- @bollu: unfortunate, this needs `s.mem` to be public. Annoying.
+      (Memory.read_bytes 16 other_addr s.mem).extractLsBytes 6 10 := by
+  simp only [memory_rules] at h ⊢
+  simp_mem
+  · congr
+    -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
+    bv_omega'
+/--
+info: 'ReadOverlappingRead.overlapping_read_test_3' depends on axioms: [propext,
+ to_prove_memory_fact,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in #print axioms overlapping_read_test_3
+
+/- TODO(@bollu): This test case hangs at `bv_omega'`. This is to be debugged.
+/-- A read in the goal state overlaps with a read in the
+right hand side of the hypotheis `h`.
+-/
+theorem overlapping_read_test_4
+    (hlegal : mem_legal' src_addr 16)
+    (h : read_mem_bytes 16 other_addr s = read_mem_bytes 16 src_addr s) :
+    read_mem_bytes 10 (src_addr + 6) s =
+    -- @bollu: unfortunate, this needs `s.mem` to be public. Annoying.
+      (Memory.read_bytes 16 other_addr s.mem).extractLsBytes 6 10 := by
+  simp only [memory_rules] at h ⊢
+  simp_mem
+  · congr
+    -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
+    bv_omega' -- TODO: Lean gets stuck here?
+
+#guard_msgs in #print axioms overlapping_read_test_4
+-/
+end ReadOverlappingRead

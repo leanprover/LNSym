@@ -155,7 +155,6 @@ abbrev MemSeparateProof := WithWitness MemSeparateExpr
 def MemSeparateProof.mk {e : MemSeparateExpr} (h : Expr) : MemSeparateProof e :=
   { h }
 
-
 abbrev MemLegalProof := WithWitness MemLegalExpr
 
 def MemLegalProof.mk {e : MemLegalExpr} (h : Expr) : MemLegalProof e :=
