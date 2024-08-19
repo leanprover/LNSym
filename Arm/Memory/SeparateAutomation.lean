@@ -150,6 +150,9 @@ instance : ToMessageData MemSeparateExpr where
 
 abbrev MemSeparateProof := WithWitness MemSeparateExpr
 
+def MemSeparateProof.mk {e : MemSeparateExpr} (h : Expr) : MemSeparateProof e :=
+  { h }
+
 
 abbrev MemLegalProof := WithWitness MemLegalExpr
 
@@ -334,7 +337,7 @@ def MemLegalProof.def (h : MemLegalProof e) : Expr :=
 def MemLegalProof.addOmegaFacts (h : MemLegalProof e) (args : Array Expr) :
     SimpMemM (Array Expr) := do
   SimpMemM.withMainContext do
-    let fvar ← introDef "memLegal_omegaH" h.def
+    let fvar ← introDef "hmemLegal_omega" h.def
     trace[simp_mem.info]  "{h}: added omega fact ({h.def})"
     return args.push (Expr.fvar fvar)
 
@@ -356,7 +359,23 @@ def MemSubsetProof.omega_def (h : MemSubsetProof e) : Expr :=
 def MemSubsetProof.addOmegaFacts (h : MemSubsetProof e) (args : Array Expr) :
     SimpMemM (Array Expr) := do
   SimpMemM.withMainContext do
-    let fvar ← introDef "memSubset_omegaH" h.omega_def
+    let fvar ← introDef "hmemSubset_omega" h.omega_def
+    trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
+    return args.push (Expr.fvar fvar)
+
+/--
+Build a term corresponding to `mem_separate'.omega_def` which has facts written
+in a style that is exploitable by omega.
+-/
+def MemSeparateProof.omega_def (h : MemSeparateProof e) : Expr :=
+  mkAppN (Expr.const ``mem_separate'.omega_def [])
+    #[e.sa.base, e.sa.n, e.sb.base, e.sb.n, h.h]
+
+/-- Add the omega fact from `mem_legal'.def` and run the rest of the continuation. -/
+def MemSeparateProof.addOmegaFacts (h : MemSeparateProof e) (args : Array Expr) :
+    SimpMemM (Array Expr) := do
+  SimpMemM.withMainContext do
+    let fvar ← introDef "hmemSeparate_omega" h.omega_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
     return args.push (Expr.fvar fvar)
 
@@ -367,7 +386,7 @@ def Hypothesis.addOmegaFactsOfHyp (h : Hypothesis) (args : Array Expr) : SimpMem
   match h with
   | Hypothesis.legal h => h.addOmegaFacts args
   | Hypothesis.subset h => h.addOmegaFacts args
-  | _ => return args
+  | Hypothesis.separate h => h.addOmegaFacts args
 
 /--
 Accumulate all omega defs in `args` and finally call the continuation `k`
@@ -465,10 +484,59 @@ def proveMemSubsetWithOmega? (subset : MemSubsetExpr)
     trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
     return (.some <| MemSubsetProof.mk (← instantiateMVars ofOmegaVal))
   catch e =>
+    -- | TODO: raise `e`.
     trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
     return none
 
 end MemSubset
+
+section MemSeparate
+
+/--
+info: mem_subset'.of_omega {an bn : Nat} {a b : BitVec 64}
+  (h : a.toNat + an ≤ 2 ^ 64 ∧ b.toNat + bn ≤ 2 ^ 64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn) :
+  mem_subset' a an b bn
+-/
+#guard_msgs in #check mem_subset'.of_omega
+
+
+/--
+Try to prove that the memory subset is legal by reducing the problem to `omega`.
+Eventually, this will be supplemented by heuristics.
+-/
+def proveMemSeparateWithOmega? (e : MemSeparateExpr)
+    (hyps : Array Hypothesis) : SimpMemM (Option (MemSeparateProof e)) := do
+  -- [a..n)
+  let a := e.sa.base
+  let an := e.sa.n
+  let b := e.sb.base
+  let bn := e.sb.n
+  let ofOmegaVal := mkAppN (Expr.const ``mem_separate'.of_omega []) #[an, bn, a, b]
+  let ofOmegaTy ← inferType ofOmegaVal
+  trace[simp_mem.info] "partially applied: '{ofOmegaVal} : {ofOmegaTy}'"
+  let omegaObligationTy ← do
+    match ofOmegaTy with
+    | Expr.forallE _argName argTy _body _binderInfo => pure argTy
+    | _ => throwError "expected '{ofOmegaTy}' to a ∀"
+  trace[simp_mem.info] "omega obligation '{omegaObligationTy}'"
+  let omegaGoal ← mkFreshExprMVar (type? := omegaObligationTy)
+  let ofOmegaVal := mkAppN ofOmegaVal #[omegaGoal]
+
+  try
+    setGoals (omegaGoal.mvarId! :: (← getGoals))
+    SimpMemM.withMainContext do
+    let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
+    trace[simp_mem.info] "Executing `omega` to close {e}"
+    trace[simp_mem.info] "{← getMainGoal}"
+    omega
+    trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+    return (.some <| MemSeparateProof.mk (← instantiateMVars ofOmegaVal))
+  catch e =>
+    trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+    return none
+
+end MemSeparate
+
 -- /-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
 -- #guard_msgs in #check mem_legal'
 
@@ -476,13 +544,17 @@ partial def SimpMemM.improveGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMe
   SimpMemM.withMainContext do
     trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
     let gt ← g.getType
-    if let .some legal := MemLegalExpr.match? gt then do
-      withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {legal}. Proving...") do
-      if let .some proof ←  proveMemLegalWithOmega? legal hyps then do
+    if let .some e := MemLegalExpr.match? gt then do
+      withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {e}. Proving...") do
+      if let .some proof ←  proveMemLegalWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
-    if let .some legal := MemSubsetExpr.match? gt then do
-      withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {legal}. Proving...") do
-      if let .some proof ←  proveMemSubsetWithOmega? legal hyps then do
+    if let .some e := MemSubsetExpr.match? gt then do
+      withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {e}. Proving...") do
+      if let .some proof ←  proveMemSubsetWithOmega? e hyps then do
+        (← getMainGoal).assign proof.h
+    if let .some e := MemSeparateExpr.match? gt then do
+      withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {e}. Proving...") do
+      if let .some proof ←  proveMemSeparateWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
 
     -- let some (_, _lhs, _rhs) ← matchEq? (← g.getType) | throwError "invalid goal, expected 'lhs = rhs'."

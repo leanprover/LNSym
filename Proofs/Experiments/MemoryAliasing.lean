@@ -24,7 +24,7 @@ theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
 end MemLegal
 
 namespace MemSubset
-/-- Show reflexivity of subset. -/
+/-- Reflexivity. -/
 theorem subset_1 (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
   simp_mem
 
@@ -46,6 +46,50 @@ theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
 #guard_msgs in #print axioms subset_3
 
 end MemSubset
+
+namespace MemSeparate
+
+/-- Reflexivity. -/
+theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
+  simp_mem
+
+/-- info: 'MemSeparate.separate_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms separate_1
+
+
+/-- Symmetry. -/
+theorem separate_2 (l : mem_separate' a 16 b 16) : mem_separate' b 16 a 16 := by
+  simp_mem
+
+/-- info: 'MemSeparate.separate_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms separate_2
+
+/-- Smaller subsets. -/
+theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
+  simp_mem
+
+/-- sliding subset to the right. -/
+theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
+    mem_separate' a 17 (b+1) 15 := by
+  simp_mem
+
+/-- shifts inside the arithmetic. -/
+theorem separate_5 {n : Nat} (hn : n ≠ 0)
+    (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
+    mem_separate' a 16 b 16 := by
+  simp_mem
+
+/-- shifts inside the arithmetic. -/
+theorem separate_6 {n : Nat} (hn : n ≠ 0)
+    (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
+    mem_separate' a (n <<< 3 + 8) b (n <<< 4) := by
+  simp_mem
+
+/-- info: 'MemSeparate.separate_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms separate_2
+
+
+end MemSeparate
 
 
 namespace MemSeparate

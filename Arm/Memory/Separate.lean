@@ -378,7 +378,7 @@ theorem mem_separate'.omega_def (h : mem_separate' a an b bn) :
 theorem mem_separate'.of_omega
   (h :a.toNat + an ≤ 2^64 ∧
   b.toNat + bn ≤ 2^64 ∧
-  (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn) := by omega) :
+  (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn)) :
   mem_separate' a an b bn :=  by
 constructor
 · unfold mem_legal'; omega
