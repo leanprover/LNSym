@@ -359,26 +359,27 @@ info: mem_legal'.of_omega {n : Nat} {a : BitVec 64} (h : a.toNat + n ≤ 2 ^ 64)
 -/
 #guard_msgs in #check mem_legal'.of_omega
 
+
 /--
 Try to prove that the memory access is legal by reducing the problem to `omega`.
 Eventually, this will be supplemented by heuristics.
 -/
 def proveMemLegalWithOmega? (legal : MemLegalExpr)
     (hyps : Array Hypothesis) : SimpMemM (Option (MemLegalProof legal)) := do
-
-  -- let ofOmegaFn := mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a, omegaGoal]
-  -- let goal ← mkFreshExprMVar (type? := .some legal.toExpr)
+  -- [a..n)
   let a := legal.span.base
   let n := legal.span.n
-  let legalOfOmega := mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a]
-  let omegaGoal2MemLegal ← inferType legalOfOmega
-  trace[simp_mem.info] "partially applied: {omegaGoal2MemLegal}"
-  let (proofObligation, omegaGoalState) ← do
-    match omegaGoal2MemLegal with
-    | Expr.forallE _argName argTy body binderInfo => pure (argTy, body)
-    | _ => throwError "expected '{omegaGoal2MemLegal}' to a ∀"
-  trace[simp_mem.info] "proof obligation '{proofObligation}', goal state after: {omegaGoalState}"
-  let omegaGoal ← mkFreshExprMVar (type? := proofObligation)
+  -- (h : a.toNat + n ≤ 2 ^ 64) → mem_legal' a n
+  let legalOfOmegaVal := mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a]
+  let legalOfOmegaTy ← inferType legalOfOmegaVal
+  trace[simp_mem.info] "partially applied: '{legalOfOmegaVal} : {legalOfOmegaTy}'"
+  let omegaObligationTy ← do -- (h : a.toNat + n ≤ 2 ^ 64)
+    match legalOfOmegaTy with
+    | Expr.forallE _argName argTy _body _binderInfo => pure argTy
+    | _ => throwError "expected '{legalOfOmegaTy}' to a ∀"
+  trace[simp_mem.info] "omega obligation '{omegaObligationTy}'"
+  let omegaGoal ← mkFreshExprMVar (type? := omegaObligationTy)
+  let legalOfOmegaVal := mkAppN legalOfOmegaVal #[omegaGoal]
 
   try
     setGoals (omegaGoal.mvarId! :: (← getGoals))
@@ -387,12 +388,9 @@ def proveMemLegalWithOmega? (legal : MemLegalExpr)
         trace[simp_mem.info] "Executing `omega` to close {legal} in context {← getMainGoal}"
         Omega.omegaDefault
         trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
-    let legalOfOmega := mkAppN legalOfOmega #[omegaGoal]
-    return (.some <| MemLegalProof.mk (← instantiateMVars legalOfOmega))
+    return (.some <| MemLegalProof.mk (← instantiateMVars legalOfOmegaVal))
   catch e =>
       trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
-      -- let mut declInfos : Array (Name × BinderInfo × (Array Expr → n Expr)) := Sorry
-      -- withLocalDecls
     return none
 end MemLegal
 
