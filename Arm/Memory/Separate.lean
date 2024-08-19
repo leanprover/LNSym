@@ -438,7 +438,7 @@ theorem mem_subset'.of_omega
   (h : a.toNat + an ≤ 2^64 ∧
   b.toNat + bn ≤ 2^64 ∧
   b.toNat ≤ a.toNat ∧
-  a.toNat + an ≤ b.toNat + bn := by omega) : mem_subset' a an b bn :=  by
+  a.toNat + an ≤ b.toNat + bn) : mem_subset' a an b bn :=  by
 constructor
 · unfold mem_legal'; omega
 · unfold mem_legal'; omega

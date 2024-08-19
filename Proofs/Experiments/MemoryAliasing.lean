@@ -27,7 +27,10 @@ namespace MemSubset
 /-- Show reflexivity of subset. -/
 example (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
   simp_mem
-  sorry
+
+/-- Show that smaller subsets are also subsets. -/
+example (l : mem_subset' a 16 b 16) : mem_subset' a 10 b 16 := by
+  simp_mem
 
 /-- error: unknown constant 'legal_2' -/
 #guard_msgs in #print axioms legal_2
