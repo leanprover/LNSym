@@ -591,7 +591,7 @@ theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
     omega
 
 /- value of `read_mem_bytes'` when subset. -/
-theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
+theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
   (hsep : mem_subset' x xn y yn) -- subset relation.
   (val : BitVec (yn * 8)) :
     Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
@@ -678,9 +678,9 @@ theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
   exact to_prove_memory_fact
 
 /--
-info: 'read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: 'Memory.read_bytes_write_bytes_eq_of_mem_subset'' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
-#guard_msgs in #print axioms read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
+#guard_msgs in #print axioms Memory.read_bytes_write_bytes_eq_of_mem_subset'
 
 
 end NewDefinitions

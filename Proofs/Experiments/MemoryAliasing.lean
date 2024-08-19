@@ -211,16 +211,21 @@ end ReadOverlappingRead
 
 namespace ReadOverlappingWrite
 
-theorem test_1 {out : BitVec (16 * 8)}
+theorem test_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' src_addr 16) :
-    Memory.read_bytes 16 src_addr (Memory.write_bytes 16 dest_addr blah mem) = out := by
+    Memory.read_bytes 16 src_addr (Memory.write_bytes 16 src_addr val mem) =
+     val.extractLsBytes 0 16  := by
   simp_mem
-  sorry
+  · -- ⊢ val.extractLsBytes (src_addr.toNat - src_addr.toNat) 16 = val.extractLsBytes 0 16
+    congr
+    simp
 
-theorem test_2 {out : BitVec (6 * 8)}
+theorem test_2 {val : BitVec _}
     (hlegal : mem_legal' src_addr 16) :
-    Memory.read_bytes 6 (src_addr + 10) (Memory.write_bytes 16 dest_addr blah mem) = out := by
+    Memory.read_bytes 6 (src_addr + 10) (Memory.write_bytes 16 src_addr val mem) =
+    val.extractLsBytes 10 6 := by
   simp_mem
-  sorry
+  have : ((src_addr + 10).toNat - src_addr.toNat) = 10 := by bv_omega'
+  rw [this]
 
 end ReadOverlappingWrite
