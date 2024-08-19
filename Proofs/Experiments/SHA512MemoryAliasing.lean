@@ -146,4 +146,12 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   simp_mem
   rfl
 
+/--
+info: 'SHA512MemoryAliasing.sha512_block_armv8_loop_sym_ktbl_access' depends on axioms: [propext,
+ to_prove_memory_fact,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in #print axioms sha512_block_armv8_loop_sym_ktbl_access
+
 end SHA512MemoryAliasing
