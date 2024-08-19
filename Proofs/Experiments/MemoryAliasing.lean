@@ -269,8 +269,8 @@ theorem test_app_1 {val : BitVec (16 * 8)}
 #guard_msgs in #print axioms test_app_1
 
 /--
-Check that we correctly walk under applications
-and binders simultaneously.
+Check that we correctly walk under applications (`f <walk inside>`)
+and binders (`∀ f, <walk inside>`) simultaneously.
 -/
 theorem test_quantified_app_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' 0 16) : ∀ (f : BitVec _ → Nat),
