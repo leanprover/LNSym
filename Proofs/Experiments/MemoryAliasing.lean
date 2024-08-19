@@ -228,4 +228,45 @@ theorem test_2 {val : BitVec _}
   have : ((src_addr + 10).toNat - src_addr.toNat) = 10 := by bv_omega'
   rw [this]
 
+/--
+TODO(@bollu): the definition of overlap doesn't seem to do well with zero width!
+That's pretty interesting. I wonder if we ever need this though.
+-/
+theorem test_write_zero (hlegalw : mem_legal' write_addr 0)
+    (hlegalr : mem_legal' read_addr read_n) :
+    Memory.read_bytes read_n read_addr (Memory.write_bytes 0 write_addr write_val mem) =
+    mem.read_bytes read_n read_addr := by
+  simp_mem
+  sorry
+
 end ReadOverlappingWrite
+
+/- We check that we correctly visit the expression tree, both for binders,
+and for general walking. -/
+namespace ExprVisitor
+
+/-- Check that we correctly go under binders -/
+theorem test_quantified_1 {val : BitVec (16 * 8)}
+    (hlegal : mem_legal' 0 16) : ∀ (irrelevant : Nat),
+    Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem) =
+     val.extractLsBytes 0 16  := by
+  simp_mem
+  simp
+
+/-- Check that we correctly walk under applications. -/
+theorem test_app_1 {val : BitVec (16 * 8)}
+    (hlegal : mem_legal' 0 16) (f : BitVec _ → Nat) :
+    f (Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem)) =
+    f (val.extractLsBytes 0 16)  := by
+  simp_mem
+  simp
+
+/-- Check that we correctly walk under applications and binders simultaneously. -/
+theorem test_quantified_app_1 {val : BitVec (16 * 8)}
+    (hlegal : mem_legal' 0 16) : ∀ (f : BitVec _ → Nat),
+    f (Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem)) =
+    f (val.extractLsBytes 0 16)  := by
+  simp_mem
+  simp
+
+end ExprVisitor
