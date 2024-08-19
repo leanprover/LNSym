@@ -68,10 +68,17 @@ theorem separate_2 (l : mem_separate' a 16 b 16) : mem_separate' b 16 a 16 := by
 theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
   simp_mem
 
+/-- info: 'MemSeparate.separate_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms separate_3
+
+
 /-- sliding subset to the right. -/
 theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
     mem_separate' a 17 (b+1) 15 := by
   simp_mem
+
+/-- info: 'MemSeparate.separate_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms separate_4
 
 /-- shifts inside the arithmetic. -/
 theorem separate_5 {n : Nat} (hn : n ≠ 0)
@@ -79,21 +86,20 @@ theorem separate_5 {n : Nat} (hn : n ≠ 0)
     mem_separate' a 16 b 16 := by
   simp_mem
 
+/-- info: 'MemSeparate.separate_5' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms separate_5
+
 /-- shifts inside the arithmetic. -/
 theorem separate_6 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
     mem_separate' a (n <<< 3 + 8) b (n <<< 4) := by
   simp_mem
 
-/-- info: 'MemSeparate.separate_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms separate_2
-
+/-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms separate_6
 
 end MemSeparate
 
-
-namespace MemSeparate
-end MemSeparate
 
 theorem mem_automation_test_1
   (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
