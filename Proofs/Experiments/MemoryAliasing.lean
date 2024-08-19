@@ -253,6 +253,11 @@ theorem test_quantified_1 {val : BitVec (16 * 8)}
   simp_mem
   simp
 
+/--
+info: 'ExprVisitor.test_quantified_1' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in #print axioms test_quantified_1
+
 /-- Check that we correctly walk under applications. -/
 theorem test_app_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' 0 16) (f : BitVec _ → Nat) :
@@ -260,12 +265,34 @@ theorem test_app_1 {val : BitVec (16 * 8)}
     f (val.extractLsBytes 0 16)  := by
   simp_mem
   simp
+/-- info: 'ExprVisitor.test_app_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms test_app_1
 
-/-- Check that we correctly walk under applications and binders simultaneously. -/
+/--
+Check that we correctly walk under applications
+and binders simultaneously.
+-/
 theorem test_quantified_app_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' 0 16) : ∀ (f : BitVec _ → Nat),
     f (Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem)) =
     f (val.extractLsBytes 0 16)  := by
+  simp_mem
+  simp
+
+/--
+info: 'ExprVisitor.test_quantified_app_1' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
+#guard_msgs in #print axioms test_quantified_app_1
+
+/--
+Check that we correctly simplify hypotheses as well,
+where the hypotheses are universally quantified variables
+-/
+theorem test_quantified_app_2 {val : BitVec (16 * 8)}
+    (hlegal : ∀ (addr : Nat), mem_legal' addr 16)
+    (f : _ → Nat) :
+    f (∀ (P : Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem) = irrelevant), Nat) =
+    f (∀ (P : val.extractLsBytes 0 16 = irrelevant), Nat) := by
   simp_mem
   simp
 

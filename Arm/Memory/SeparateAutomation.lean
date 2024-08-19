@@ -91,6 +91,9 @@ end BvOmega
 namespace SeparateAutomation
 
 structure SimpMemConfig where
+  /-- number of times rewrites must be performed. -/
+  rewriteFuel : Nat := 100
+
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
 structure Context where
@@ -254,13 +257,15 @@ instance : ToMessageData Hypothesis where
 /-- The internal state for the `SimpMemM` monad, recording previously encountered atoms. -/
 structure State where
   hypotheses : Array Hypothesis := #[]
+  rewriteFuel : Nat
 
-def State.init : State := {}
+def State.init (cfg : SimpMemConfig) : State :=
+  { rewriteFuel := cfg.rewriteFuel}
 
 abbrev SimpMemM := StateRefT State (ReaderT Context TacticM)
 
 def SimpMemM.run (m : SimpMemM α) (cfg : SimpMemConfig) : TacticM α :=
-  m.run' State.init |>.run (Context.init cfg)
+  m.run' (State.init cfg) |>.run (Context.init cfg)
 
 /-- Add a `Hypothesis` to our hypothesis cache. -/
 def SimpMemM.addHypothesis (h : Hypothesis) : SimpMemM Unit :=
@@ -270,6 +275,12 @@ def SimpMemM.withMainContext (ma : SimpMemM α) : SimpMemM α := do
   (← getMainGoal).withContext ma
 
 def processingEmoji : String := "⚙️"
+
+def consumeRewriteFuel : SimpMemM Unit :=
+  modify fun s => { s with rewriteFuel := s.rewriteFuel - 1 }
+
+def outofRewriteFuel? : SimpMemM Bool := do
+  return (← get).rewriteFuel == 0
 
 /--
 info: mem_separate'.ha {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_separate' a an b bn) :
@@ -713,6 +724,15 @@ mutual
 
 
 partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM Unit := do
+  consumeRewriteFuel
+  if ← outofRewriteFuel? then
+    trace[simp_mem.info] "out of fuel for rewriting, stopping."
+    return ()
+  -- withTraceNode `simp_mem.info (fun _ => return "improving expression (NOTE: can be large)") do
+  --   trace[simp_mem.info] "{e}"
+  --   if e.isSort then trace[simp_mem.info] "{crossEmoji} skipping sorts."
+  if e.isSort then return ()
+
   if let .some er := ReadBytesExpr.match? e then
     if let .some ew := WriteBytesExpr.match? er.mem then
       trace[simp_mem.info] "{checkEmoji} Found read of write."
@@ -751,8 +771,24 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
             else
               trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
       -- trace[simp_mem.info] "{crossEmoji} {er.span} ⊊ any read."
-  return ()
-
+  else
+    if e.isForall then
+      Lean.Meta.forallTelescope e fun xs b => do
+        for x in xs do
+          improveExpr x hyps
+        improveExpr b hyps
+    else if e.isLambda then
+      Lean.Meta.lambdaTelescope e fun xs b => do
+        for x in xs do
+          improveExpr x hyps
+        improveExpr b hyps
+    else
+      -- check if we have expressions.
+      match e with
+      | .app f x =>
+        improveExpr f hyps
+        improveExpr x hyps
+      | _ => return ()
 -- /-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
 -- #guard_msgs in #check mem_legal'
 
@@ -772,13 +808,14 @@ partial def SimpMemM.improveGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMe
       withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {e}. Proving...") do
       if let .some proof ←  proveMemSeparateWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
-
-    if let some (_, lhs, rhs) ← matchEq? gt then
-      withTraceNode `simp_mem.info (fun _ => return m!"Matched on equality. Simplifying") do
-        withTraceNode `simp_mem.info (fun _ => return m!"⊢ Simplifying LHS") do
-          improveExpr lhs hyps
-        withTraceNode `simp_mem.info (fun _ => return m!"⊢ Simplifying RHS") do
-          improveExpr rhs hyps
+    withTraceNode `simp_mem.info (fun _ => return m!"Simplifying goal.") do
+      improveExpr gt hyps
+    -- if let some (_, lhs, rhs) ← matchEq? gt then
+    --   withTraceNode `simp_mem.info (fun _ => return m!"Matched on equality. Simplifying") do
+    --     withTraceNode `simp_mem.info (fun _ => return m!"⊢ Simplifying LHS") do
+    --       improveExpr lhs hyps
+    --     withTraceNode `simp_mem.info (fun _ => return m!"⊢ Simplifying RHS") do
+    --       improveExpr rhs hyps
     -- -- TODO: do this till fixpoint.
     -- for h in (← get).hypotheses do
     --   let x ← mkFreshExprMVar .none
