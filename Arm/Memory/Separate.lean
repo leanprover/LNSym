@@ -549,12 +549,11 @@ theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hb
         omega
 
 /- value of read_mem_bytes when separate. -/
-theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
+theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
   (hsep : mem_separate' x xn y yn) -- separation
   (val : BitVec (yn * 8)) :
-    read_mem_bytes xn x (write_mem_bytes yn y val mem) =
-    read_mem_bytes xn x mem := by
-  simp only [bitvec_rules, minimal_theory, memory_rules]
+    Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
+    Memory.read_bytes xn x mem := by
   apply BitVec.eq_of_getLsb_eq
   intros i
   obtain ⟨hsrc, hdest, hsplit⟩ := hsep

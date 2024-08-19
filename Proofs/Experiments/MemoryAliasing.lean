@@ -105,10 +105,11 @@ theorem mem_automation_test_1
   (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
   read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
   read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
   simp_mem
-  sorry
+  rfl
 
-/-- info: 'mem_automation_test_1' depends on axioms: [propext, sorryAx, Quot.sound] -/
+/-- info: 'mem_automation_test_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_1
 
 theorem mem_automation_test_2
@@ -120,7 +121,10 @@ theorem mem_automation_test_2
                   dest_addr (n0 <<< 4)) :
   read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
   read_mem_bytes 16 src_addr s0 := by
-  sorry
+  simp only [memory_rules]
+  simp_mem
+  rfl
 
-/-- info: 'mem_automation_test_2' depends on axioms: [propext, sorryAx, Quot.sound] -/
+
+/-- info: 'mem_automation_test_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_2
