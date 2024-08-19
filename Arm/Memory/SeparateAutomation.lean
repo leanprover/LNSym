@@ -297,30 +297,47 @@ info: read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate' {x : Bit
 -/
 #guard_msgs in #check read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
 
-
+/-
+Introduce a new definition into the local context,
+and then run the rest of the continuation as `(k newDefExpr)`,
+where `newDefExpr` is the FVarId of the new definition in the goal.
+-/
+def introDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
+  SimpMemM.withMainContext do
+    let name ← mkFreshUserName <| .mkSimple name
+    let goal ← getMainGoal
+    let hdefTy ← inferType hdefVal
+    let goal ← goal.define name hdefTy hdefVal
+    let (fvar, goal) ← goal.intro1P
+    replaceMainGoal [goal]
+    return fvar
 
 section MemLegal
 
 /-- info: mem_legal'.def {a : BitVec 64} {n : Nat} (h : mem_legal' a n) : a.toNat + n ≤ 2 ^ 64 -/
 #guard_msgs in #check mem_legal'.def
 
+
 /-- Build a term corresponding to `mem_legal'.def`. -/
 def MemLegalProof.def (h : MemLegalProof e) : Expr :=
   mkAppN (Expr.const ``mem_legal'.def []) #[e.span.base, e.span.n, h.h]
 
 /-- Add the omega fact from `mem_legal'.def` and run the rest of the continuation. -/
-def MemLegalProof.withOmegaDecl (h : MemLegalProof e) (k : Expr → SimpMemM α) : SimpMemM α := do
+def MemLegalProof.withOmegaFact (h : MemLegalProof e) (k : Expr → SimpMemM α) : SimpMemM α := do
   SimpMemM.withMainContext do
-    let name ← mkFreshUserName <| .mkSimple "memLegal_omegaH"
-    let hdef := h.def
-    let goal ← getMainGoal
-    let goal ← goal.define name (← inferType hdef) hdef
-    let (_, goal) ← goal.intro1P
-    replaceMainGoal [goal]
-    withLetDecl name (← inferType hdef) hdef (fun var => do
-      trace[simp_mem.info]  "{h}.withOmegaDecl added {var} in context {← getMainGoal}"
-      k var
-    )
+    -- let name ← mkFreshUserName <| .mkSimple "memLegal_omegaH"
+    -- let hdef := h.def
+    let fvar ← introDef "memLegal_omegaH" h.def
+    -- let goal ← getMainGoal
+    -- let goal ← goal.define name (← inferType hdef) hdef
+    -- let (fvar, goal) ← goal.intro1P
+    -- replaceMainGoal [goal]
+    trace[simp_mem.info]  "+ hypothesis({h}) added omega fact ({h.def})"
+    k (Expr.fvar fvar)
+    -- withLetDecl name (← inferType hdef) hdef (fun var => do
+    --   trace[simp_mem.info]  "{h}.withOmegaFact added {var} in context {← getMainGoal}"
+    --   k var
+    -- )
 
 /--
 info: mem_subset'.omega_def {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (h : mem_subset' a an b bn) :
@@ -339,20 +356,20 @@ def MemSubsetProof.omega_def (h : MemSubsetProof e) : Expr :=
 /--
 Given a hypothesis, add declarations that would be useful for omega-blasing, and then run the
 continuation. -/
-def Hypothesis.withOmegaDef (h : Hypothesis) (args : Array Expr) (k : Array Expr → SimpMemM α) : SimpMemM α :=
+def Hypothesis.withOmegaFacts (h : Hypothesis) (args : Array Expr) (k : Array Expr → SimpMemM α) : SimpMemM α :=
   match h with
-  | Hypothesis.legal h => h.withOmegaDecl (fun e => k (args.push e))
+  | Hypothesis.legal h => h.withOmegaFact (fun e => k (args.push e))
   | _ => k args
 
 /--
 Accumulate all omega defs in `args` and finally call the continuation `k`
 with all omega definitions added.
 -/
-def Hypothesis.withOmegaDefs (hs : List Hypothesis) (args : Array Expr)
+def Hypothesis.withOmegaFactsOfList (hs : List Hypothesis) (args : Array Expr)
     (k : Array Expr → SimpMemM α) : SimpMemM α :=
   match hs with
   | [] => k args
-  | h :: hs => h.withOmegaDef args (fun args' => withOmegaDefs hs args' k)
+  | h :: hs => h.withOmegaFacts args (fun args' => withOmegaFactsOfList hs args' k)
 
 /--
 info: mem_legal'.of_omega {n : Nat} {a : BitVec 64} (h : a.toNat + n ≤ 2 ^ 64) : mem_legal' a n
@@ -384,7 +401,7 @@ def proveMemLegalWithOmega? (legal : MemLegalExpr)
   try
     setGoals (omegaGoal.mvarId! :: (← getGoals))
     SimpMemM.withMainContext do
-      Hypothesis.withOmegaDefs hyps.toList (args := #[]) fun _ => do
+      Hypothesis.withOmegaFactsOfList hyps.toList (args := #[]) fun _ => do
         trace[simp_mem.info] "Executing `omega` to close {legal} in context {← getMainGoal}"
         Omega.omegaDefault
         trace[simp_mem.info] "{checkEmoji} `omega` succeeded."

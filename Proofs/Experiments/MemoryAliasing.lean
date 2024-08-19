@@ -26,6 +26,7 @@ end MemLegal
 namespace MemSubset
 /-- Show reflexivity of subset. -/
 example (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
+  simp_mem
   sorry
 
 /-- error: unknown constant 'legal_2' -/
