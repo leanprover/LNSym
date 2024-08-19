@@ -128,3 +128,7 @@ theorem mem_automation_test_2
 
 /-- info: 'mem_automation_test_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_2
+
+
+-- @bollu: TODO: add test for overlapping read
+-- @bollu: TODO: add test for overlapping read where both sides of equality are memory reads!

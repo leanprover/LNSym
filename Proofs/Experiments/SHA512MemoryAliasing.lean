@@ -59,6 +59,8 @@ Let's also check our address normalization implementation, e.g., does the automa
 work for `16#64 + ctx_addr`? What about `8#64 + ctx_addr + 8#64`? Other
 variations?
 -/
+set_option trace.simp_mem true in
+set_option trace.simp_mem.info true in
 theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   (h_s0_err : read_err s0 = StateError.None)
   (h_s0_sp_aligned : CheckSPAlignment s0)
@@ -85,18 +87,22 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   -- (h_run : sf = run 4 s0)
   :
   read_mem_bytes 16 (ctx_addr s0 + 48#64) s0 = SHA2.h0_512.toBitVec.extractLsBytes 48 16 := by
-  simp [memory_rules]
-  -- | simp discharger?
-  --   Give simp a discharger.
-  --   Just make this stuff a simproc?
-  rw [read_mem_bytes_eq_extractLsBytes_of_subset_of_read_mem_bytes
-    (hread := h_s0_ctx) (hsubset := by constructor <;> bv_omega')]
-  · -- ⊢ SHA2.h0_512.toBitVec.extractLsBytes ((ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat) 16 =
-    --  SHA2.h0_512.toBitVec.extractLsBytes 48 16
-    congr
+  simp_all only [memory_rules]
+  simp_mem
+  -- ⊢ SHA2.h0_512.toBitVec.extractLsBytes ((ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat) 16 =
+  -- SHA2.h0_512.toBitVec.extractLsBytes 48 16
+  -- @shilpi: should this also be proven automatically? feels a little unreasonable to me.
+  · congr
     -- ⊢ (ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat = 48
-    -- this will be done by the user, maybe we can do this as well as part of address normalizatio.
     bv_omega'
+
+/--
+info: 'SHA512MemoryAliasing.sha512_block_armv8_prelude_sym_ctx_access' depends on axioms: [propext,
+ to_prove_memory_fact,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in #print axioms sha512_block_armv8_prelude_sym_ctx_access
 
 /-
 Let's automatically figure out what
@@ -130,6 +136,8 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
     mem_separate' (input_addr s1) ((num_blocks s1).toNat * 128)
                   ktbl_addr      (SHA2.k_512.length * 8)) :
   read_mem_bytes 16 ktbl_addr s1 = xxxx := by
+  simp_all only [memory_rules]
+  -- simp_mem
   sorry
 
 end SHA512MemoryAliasing

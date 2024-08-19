@@ -203,19 +203,39 @@ A proof of the form `h : val = Mem.read_bytes ...`.
 Note that we expect the canonical ordering of `val` on the left hand side.
 If `val` was on the right hand, we build `h` wih an `Eq.symm` to
 enforce this canonical form.
+
+TODO: there must be a better way to handle this?
  -/
-structure ReadBytesEqProof (e : ReadBytesExpr) where
+structure ReadBytesEqProof  where
   val : Expr
+  read : ReadBytesExpr
   h : Expr
 
-instance : ToMessageData (ReadBytesEqProof e) where
-  toMessageData proof := m!"{proof.h} : {e} = {proof.val}"
+instance : ToMessageData ReadBytesEqProof where
+  toMessageData proof := m!"{proof.h} : {proof.val} = {proof.h}"
+
+/--
+we can have some kind of funny situation where both LHS and RHS are ReadBytes.
+For example, `mem1.read base1 n = mem2.read base2 n`.
+In such a scenario, we should record both reads.
+-/
+def ReadBytesEqProof.match? (eval : Expr) (etype : Expr) :  Array ReadBytesEqProof := Id.run do
+  let mut out := #[]
+  if let .some ⟨_ty, lhs, rhs⟩ := etype.eq? then do
+    let lhs := lhs
+    let rhs := rhs
+    if let .some read := ReadBytesExpr.match? lhs then
+      out := out.push { val := rhs, read := read, h := eval }
+
+    if let .some read := ReadBytesExpr.match? rhs then
+      out:= out.push { val := lhs, read := read, h := eval }
+  return out
 
 inductive Hypothesis
 | separate (proof : MemSeparateProof e)
 | subset (proof : MemSubsetProof e)
 | legal (proof : MemLegalProof e)
-| read_eq (proof : ReadBytesEqProof e)
+| read_eq (proof : ReadBytesEqProof)
 
 def Hypothesis.proof : Hypothesis → Expr
 | .separate proof  => proof.h
@@ -339,6 +359,10 @@ def processHypothesis (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypoth
     let hyps := hyps.push (.legal proof)
     return hyps
   else
+    let mut hyps := hyps
+    for eqProof in ReadBytesEqProof.match? h ht do
+      let proof : Hypothesis := .read_eq eqProof
+      hyps := hyps.push proof
     return hyps
 
 
@@ -453,6 +477,7 @@ Eventually, this will be supplemented by heuristics.
 def proveMemLegalWithOmega? (legal : MemLegalExpr)
     (hyps : Array Hypothesis) : SimpMemM (Option (MemLegalProof legal)) := do
   -- [a..n)
+  withTraceNode `simp_mem.info (fun _ => return m!"proving {legal}") do
   let a := legal.span.base
   let n := legal.span.n
   -- (h : a.toNat + n ≤ 2 ^ 64) → mem_legal' a n
@@ -499,6 +524,7 @@ Eventually, this will be supplemented by heuristics.
 def proveMemSubsetWithOmega? (subset : MemSubsetExpr)
     (hyps : Array Hypothesis) : SimpMemM (Option (MemSubsetProof subset)) := do
   -- [a..n)
+  withTraceNode `simp_mem.info (fun _ => return m!"proving {subset}") do
   let a := subset.sa.base
   let an := subset.sa.n
   let b := subset.sb.base
@@ -585,13 +611,8 @@ info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {x : BitVec 6
 -/
 #guard_msgs in #check Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
 
-/-
-TODO: add fuel to make sure we don't fuck up and create an infinite loop:
--/
-mutual
-
 /-- given that `e` is a read of the write, perform a rewrite. using -/
-partial def SimpMemM.rewriteReadOfSeparatedWrite (e : Expr) (hyps : Array Hypothesis)
+def SimpMemM.rewriteReadOfSeparatedWrite (e : Expr) (hyps : Array Hypothesis)
     (er : ReadBytesExpr) (ew : WriteBytesExpr)
     (separate : MemSeparateProof { sa := er.span, sb := ew.span }) : SimpMemM Unit := do
   withTraceNode `simp_mem.info (fun _ => return m!"simplifying read {er}⟂{ew} write") do
@@ -615,6 +636,41 @@ partial def SimpMemM.rewriteReadOfSeparatedWrite (e : Expr) (hyps : Array Hypoth
     -- improveGoal goal hyps
     replaceMainGoal [mvarId']
 
+/--
+info: Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' {bn : Nat} {b : BitVec 64} {val : BitVec (bn * 8)}
+  {a : BitVec 64} {an : Nat} {mem : Memory} (hread : Memory.read_bytes bn b mem = val)
+  (hsubset : mem_subset' a an b bn) : Memory.read_bytes an a mem = val.extractLsBytes (a.toNat - b.toNat) an
+-/
+#guard_msgs in #check Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
+
+def SimpMemM.rewriteReadOfSubsetRead
+    (e : Expr) (hyps : Array Hypothesis)
+    (er : ReadBytesExpr)
+    (hread : ReadBytesEqProof)
+    (hsubset : MemSubsetProof { sa := er.span, sb := hread.read.span })
+  : SimpMemM Unit := do
+  let call := mkAppN (Expr.const ``Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' [])
+    #[hread.read.span.n, hread.read.span.base,
+      hread.val,
+      er.span.base, er.span.n,
+      er.mem,
+      hread.h,
+      hsubset.h]
+  withTraceNode `simp_mem.info (fun _ => return m!"simplifying read {er}⊆{hread.read} read") do
+    withMainContext do
+      let goal ← getMainGoal
+      let result ← goal.rewrite (← getMainTarget) call
+      let mvarId' ← (← getMainGoal).replaceTargetEq result.eNew result.eqProof
+      trace[simp_mem.info] "{checkEmoji} rewritten goal {mvarId'}"
+      unless result.mvarIds == [] do
+        throwError m!"{crossEmoji} internal error: expected rewrite to produce no side conditions. Produced {result.mvarIds}"
+      replaceMainGoal [mvarId']
+/-
+TODO: add fuel to make sure we don't fuck up and create an infinite loop:
+-/
+mutual
+
+
 partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM Unit := do
   if let .some er := ReadBytesExpr.match? e then
     if let .some ew := WriteBytesExpr.match? er.mem then
@@ -631,14 +687,32 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
         return ()
       else if let .some subsetProof ← proveMemSubsetWithOmega? subset hyps then do
         trace[simp_mem.info] "{checkEmoji} {subset}"
+        -- TODO: extend tactic to prove reads.
       else
         trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
         return ()
     else
       -- read
       trace[simp_mem.info] "{checkEmoji} Found read {er}."
-      trace[simp_mem.info] "Searching for overlapping read {er.span}."
-      return ()
+      -- TODO: we don't need a separate `subset` branch for the writes: instead, for the write,
+      -- we can add the theorem that `(write region).read = write val`.
+      -- Then this generic theory will take care of it.
+      withTraceNode `simp_mem.info (fun _ => return m!"Searching for overlapping read {er.span}.") do
+        let mut succees? : Bool := false
+        for hyp in hyps do
+          if let Hypothesis.read_eq hReadEq := hyp then do
+            -- the read we are analyzing should be a subset of the hypothesis
+            let subset := (MemSubsetExpr.mk er.span hReadEq.read.span)
+            if let some hSubsetProof ← proveMemSubsetWithOmega? subset hyps then
+              rewriteReadOfSubsetRead e hyps er hReadEq hSubsetProof
+              trace[simp_mem.info] "{checkEmoji} {hReadEq.read.span} ⊆ {er.span}"
+              succees? := true
+              break -- we successfully rewrote, end the loop.
+            else
+              trace[simp_mem.info] "{crossEmoji}  {hReadEq.read.span} ⊊ {er.span}"
+        unless succees? do
+          trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⊆ any read."
+          return ()
   return ()
 
 -- /-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
