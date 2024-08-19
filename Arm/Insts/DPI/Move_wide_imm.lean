@@ -47,7 +47,7 @@ partial def Move_wide_imm_cls.inst.rand : IO (Option (BitVec 32)) := do
         opc := opc,
         hw := hw,
         imm16 := ← BitVec.rand 16,
-        Rd := ← BitVec.rand 5
+        Rd := ← GPRIndex.rand
       }
     pure (some inst.toBitVec32)
 

@@ -274,7 +274,7 @@ def run_all_tests (verbose : Bool) (n : Nat) : IO UInt32 := do
     { cmd  := "Arm/Insts/Cosim/platform_check.sh",
       args := #["-m"] }
   let mut tasks := #[]
-  if machine_check.exitCode == 0 then
+  if machine_check.exitCode == 1 then
     -- We are on an Aarch64 machine.
     -- Insts.rand is a list of functions of each class of instructions
     -- that generate legal, random 32-bit instructions.

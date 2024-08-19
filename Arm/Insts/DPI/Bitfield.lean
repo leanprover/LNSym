@@ -76,7 +76,7 @@ partial def Bitfield_cls.all.rand : IO (Option (BitVec 32)) := do
       immr  := immr,
       imms  := imms,
       Rn    := ← BitVec.rand 5,
-      Rd    := ← BitVec.rand 5 }
+      Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))
  where pick_legal_bitfield_opc : IO (BitVec 2) := do
   let opc ← BitVec.rand 2
@@ -102,7 +102,7 @@ partial def Bitfield_cls.lsr.rand : IO (Option (BitVec 32)) := do
       immr  := immr,
       imms  := imms,
       Rn    := ← BitVec.rand 5,
-      Rd    := ← BitVec.rand 5 }
+      Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))
 
 partial def Bitfield_cls.lsl.rand : IO (Option (BitVec 32)) := do
@@ -118,7 +118,7 @@ partial def Bitfield_cls.lsl.rand : IO (Option (BitVec 32)) := do
       immr  := immr,
       imms  := imms,
       Rn    := ← BitVec.rand 5,
-      Rd    := ← BitVec.rand 5 }
+      Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))
   where pick_legal_lsl_low_imms_bits : IO (BitVec 5) := do
     let bits ← BitVec.rand 5

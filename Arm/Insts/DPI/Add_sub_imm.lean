@@ -53,7 +53,7 @@ def Add_sub_imm_cls.inst.rand : IO (Option (BitVec 32)) := do
        -- cases. For now, we do sacrifice a little bit of the state
        -- space.
       Rn    := ← BitVec.rand 5 (lo := 0) (hi := 30),
-      Rd    := ← BitVec.rand 5 (lo := 0) (hi := 30) }
+      Rd    := ← GPRIndex.rand (lo := 0) (hi := 30) }
   pure (some (inst.toBitVec32))
 
 def Add_sub_imm_cls.rand : List (IO (Option (BitVec 32))) :=
