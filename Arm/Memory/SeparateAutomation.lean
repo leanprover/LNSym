@@ -173,6 +173,7 @@ def ReadBytesExpr.match? (e : Expr) : Option (ReadBytesExpr) :=
     some { span := { base := addr, n := n }, mem := m }
   | _ => none
 
+-- TODO: try to use `pp.deepTerms` to make the memory expressions more readable.
 instance : ToMessageData ReadBytesExpr where
   toMessageData e := m!"{e.mem}[{e.span}]"
 
@@ -197,21 +198,37 @@ def WriteBytesExpr.match? (e : Expr) : Option WriteBytesExpr :=
     some { span := { base := addr, n := n }, val := val, mem := m }
   | _ => none
 
+/--
+A proof of the form `h : val = Mem.read_bytes ...`.
+Note that we expect the canonical ordering of `val` on the left hand side.
+If `val` was on the right hand, we build `h` wih an `Eq.symm` to
+enforce this canonical form.
+ -/
+structure ReadBytesEqProof (e : ReadBytesExpr) where
+  val : Expr
+  h : Expr
+
+instance : ToMessageData (ReadBytesEqProof e) where
+  toMessageData proof := m!"{proof.h} : {e} = {proof.val}"
+
 inductive Hypothesis
 | separate (proof : MemSeparateProof e)
 | subset (proof : MemSubsetProof e)
 | legal (proof : MemLegalProof e)
+| read_eq (proof : ReadBytesEqProof e)
 
 def Hypothesis.proof : Hypothesis → Expr
 | .separate proof  => proof.h
 | .subset proof => proof.h
 | .legal proof => proof.h
+| .read_eq proof => proof.h
 
 instance : ToMessageData Hypothesis where
   toMessageData
   | .subset proof => toMessageData proof
   | .separate proof => toMessageData proof
   | .legal proof => toMessageData proof
+  | .read_eq proof => toMessageData proof
 
 /-- The internal state for the `SimpMemM` monad, recording previously encountered atoms. -/
 structure State where
@@ -409,6 +426,7 @@ def Hypothesis.addOmegaFactsOfHyp (h : Hypothesis) (args : Array Expr) : SimpMem
   | Hypothesis.legal h => h.addOmegaFacts args
   | Hypothesis.subset h => h.addOmegaFacts args
   | Hypothesis.separate h => h.addOmegaFacts args
+  | Hypothesis.read_eq _h => return args -- read has no extra `omega` facts.
 
 /--
 Accumulate all omega defs in `args` and finally call the continuation `k`
