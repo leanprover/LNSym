@@ -208,3 +208,19 @@ theorem overlapping_read_test_4
 #guard_msgs in #print axioms overlapping_read_test_4
 -/
 end ReadOverlappingRead
+
+namespace ReadOverlappingWrite
+
+theorem test_1 {out : BitVec (16 * 8)}
+    (hlegal : mem_legal' src_addr 16) :
+    Memory.read_bytes 16 src_addr (Memory.write_bytes 16 dest_addr blah mem) = out := by
+  simp_mem
+  sorry
+
+theorem test_2 {out : BitVec (6 * 8)}
+    (hlegal : mem_legal' src_addr 16) :
+    Memory.read_bytes 6 (src_addr + 10) (Memory.write_bytes 16 dest_addr blah mem) = out := by
+  simp_mem
+  sorry
+
+end ReadOverlappingWrite
