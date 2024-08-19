@@ -247,7 +247,7 @@ namespace ExprVisitor
 
 /-- Check that we correctly go under binders -/
 theorem test_quantified_1 {val : BitVec (16 * 8)}
-    (hlegal : mem_legal' 0 16) : ∀ (irrelevant : Nat),
+    (hlegal : mem_legal' 0 16) : ∀ (_irrelevant : Nat),
     Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem) =
      val.extractLsBytes 0 16  := by
   simp_mem
@@ -290,10 +290,10 @@ Here, the bound variable `P` has *type* that involves a memory read.
 We make sure that we simplify these as well.
 -/
 theorem test_quantified_app_2 {val : BitVec (16 * 8)}
-    (hlegal : ∀ (addr : Nat), mem_legal' addr 16)
+    (_hlegal : ∀ (addr : Nat), mem_legal' addr 16)
     (f : _ → Nat) :
-    f (∀ (P : Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem) = irrelevant), Nat) =
-    f (∀ (P : val.extractLsBytes 0 16 = irrelevant), Nat) := by
+    f (∀ (_P : Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem) = irrelevant), Nat) =
+    f (∀ (_P : val.extractLsBytes 0 16 = irrelevant), Nat) := by
   simp_mem
   rfl
 
