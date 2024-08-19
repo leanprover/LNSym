@@ -144,8 +144,6 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (BitVec.flatten SHA2.k_512).extractLsBytes 0 16 := by
   simp_all only [memory_rules]
   simp_mem
-  · -- ⊢ (BitVec.flatten SHA2.k_512).extractLsBytes (ktbl_addr.toNat - ktbl_addr.toNat) 16 =
-    --     (BitVec.flatten SHA2.k_512).extractLsBytes 0 16
-    congr
+  rfl
 
 end SHA512MemoryAliasing

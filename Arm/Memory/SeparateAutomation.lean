@@ -706,20 +706,18 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
       -- we can add the theorem that `(write region).read = write val`.
       -- Then this generic theory will take care of it.
       withTraceNode `simp_mem.info (fun _ => return m!"Searching for overlapping read {er.span}.") do
-        let mut succees? : Bool := false
         for hyp in hyps do
           if let Hypothesis.read_eq hReadEq := hyp then do
+            withTraceNode `simp_mem.info (fun _ => return m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? ") do
             -- the read we are analyzing should be a subset of the hypothesis
             let subset := (MemSubsetExpr.mk er.span hReadEq.read.span)
             if let some hSubsetProof ← proveMemSubsetWithOmega? subset hyps then
-              trace[simp_mem.info] "{checkEmoji} {hSubsetProof}"
-                rewriteReadOfSubsetRead e hyps er hReadEq hSubsetProof
-                return ()
+              trace[simp_mem.info] "{checkEmoji}  ... ⊆ {hReadEq.read.span}"
+              rewriteReadOfSubsetRead e hyps er hReadEq hSubsetProof
+              return ()
             else
-              trace[simp_mem.info] "{crossEmoji}  {er.span} ⊊ {hReadEq.read.span}"
-        unless succees? do
-          trace[simp_mem.info] "{crossEmoji} {er.span} ⊊ any read."
-          return ()
+              trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
+      -- trace[simp_mem.info] "{crossEmoji} {er.span} ⊊ any read."
   return ()
 
 -- /-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
