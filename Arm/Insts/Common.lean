@@ -21,6 +21,10 @@ as source operands does not violate the Apple ABI.
 
 For details, see
 https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Respect-the-purpose-of-specific-CPU-registers
+
+Also see "Procedure Call Standard for the Arm 64-bit Architecture";
+the latest version is available at
+https://github.com/ARM-software/abi-aa/releases
 -/
 partial def GPRIndex.rand (lo := 0) (hi := 31) :
   IO (BitVec 5) := do

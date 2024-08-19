@@ -105,11 +105,11 @@ partial def Conversion_between_FP_and_Int_cls.fmov_general.rand : IO (Option (Bi
         Rn := ← BitVec.rand 5,
         Rd := ← (if (lsb opcode 0) = 1#1 then
                 -- FPConvOp.FPConvOp_MOV_ItoF
-                -- GPR used as a source operand.
+                -- Destination operand is a SIMD&FP register.
                   BitVec.rand 5
                 else
                 -- FPConvOp.FPConvOp_MOV_FtoI
-                -- GPR used as a destination operand.
+                -- Destination operand is a GPR register.
                   GPRIndex.rand) }
     pure (inst.toBitVec32)
 
