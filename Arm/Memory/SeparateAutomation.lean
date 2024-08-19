@@ -717,6 +717,7 @@ def SimpMemM.rewriteReadOfSubsetWrite (e : Expr) (hyps : Array Hypothesis)
         throwError m!"{crossEmoji} internal error: expected rewrite to produce no side conditions. Produced {result.mvarIds}"
       replaceMainGoal [mvarId']
 
+
 /-
 TODO: add fuel to make sure we don't fuck up and create an infinite loop:
 -/
@@ -731,7 +732,9 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
   -- withTraceNode `simp_mem.info (fun _ => return "improving expression (NOTE: can be large)") do
   --   trace[simp_mem.info] "{e}"
   --   if e.isSort then trace[simp_mem.info] "{crossEmoji} skipping sorts."
-  if e.isSort then return ()
+  if e.isSort then
+    trace[simp_mem.info] "skipping sort '{e}'."
+    return ()
 
   if let .some er := ReadBytesExpr.match? e then
     if let .some ew := WriteBytesExpr.match? er.mem then
@@ -814,7 +817,7 @@ partial def SimpMemM.improveGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMe
       if let .some proof ←  proveMemSeparateWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
     withTraceNode `simp_mem.info (fun _ => return m!"Simplifying goal.") do
-      improveExpr gt hyps
+      improveExpr (← whnf gt) hyps
     -- if let some (_, lhs, rhs) ← matchEq? gt then
     --   withTraceNode `simp_mem.info (fun _ => return m!"Matched on equality. Simplifying") do
     --     withTraceNode `simp_mem.info (fun _ => return m!"⊢ Simplifying LHS") do
