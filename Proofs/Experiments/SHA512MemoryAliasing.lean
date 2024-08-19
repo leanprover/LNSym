@@ -126,7 +126,7 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (h_s1_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s1 = BitVec.flatten SHA2.k_512)
  -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
  -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.
-  (hSHA2_k512_length :  SHA2.k_512.length = 80)
+  (hSHA2_k512_length :  SHA2.k_512.length = 80 := by rfl)
   -- (FIXME) Add separateness invariants for the stack's memory region.
   -- @bollu: can we assume that `h_s1_ctx_input_separate`
   -- will be given as ((num_blocks s1).toNat * 128)?
