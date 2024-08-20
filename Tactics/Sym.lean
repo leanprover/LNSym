@@ -131,7 +131,7 @@ Hypotheses `h_err` and `h_sp` may be missing,
 in which case a new goal of the appropriate type will be added.
 The other hypotheses *must* be present,
 since we infer required information from their types. -/
-elab "sym_n" while_tactic?:(sym_while)? n:num s:(sym_at)? : tactic =>
+elab "sym_n" while_tactic?:(sym_while)? n:num s:(sym_at)? : tactic => do
   let s ← s.mapM fun
     | `(sym_at|at $s:ident) => pure s.getId
     | _ => Lean.Elab.throwUnsupportedSyntax
