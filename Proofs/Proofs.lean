@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Siddharth Bhat
 -/
 import «Proofs».MultiInsts
-import «Proofs».«SHA512».Sha512
+import «Proofs».«SHA512».SHA512
 import Proofs.«AES-GCM».GCM
 import Proofs.Popcount32
 
