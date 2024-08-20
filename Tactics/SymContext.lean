@@ -41,9 +41,11 @@ structure SymContext where
   Note that `runSteps` is a meta-level natural number, reflecting the fact that
   we expect the number of steps in `h_run` to be expressed as a concrete literal
   -/
-  runSteps : Nat
+  runSteps? : Option Nat
   /-- `h_run` is a local hypothesis of the form
-  `finalState = run {runSteps} state` -/
+    `finalState = run <runSteps> state`
+  Note that `runSteps` is allowed to be a symbolic value, in which case
+  the `runSteps?` field will be `none` -/
   h_run : Name
   /-- `program` is a *constant* which represents the program being evaluated -/
   program : Name
@@ -177,9 +179,12 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let h_run ← findLocalDeclUsernameOfTypeOrError h_run_type
 
   -- Unwrap and reflect `runSteps`
-  let runSteps ← withErrorContext h_run h_run_type <| reflectNatLiteral runSteps
-  -- TODO: we should allow all ground terms here, not just literals.
-  -- For example, we sometimes use `sf = run someProgram.length s0`
+  let runSteps? ←
+    try
+      some <$> reflectNatLiteral runSteps
+    catch _ =>
+      pure none
+
 
   -- At this point, `stateExpr` should have been assigned (if it was an mvar),
   -- so we can unwrap it to get the underlying name
@@ -229,7 +234,8 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
 
   return inferStatePrefixAndNumber {
-    state, h_run, runSteps, program, h_program, pc, h_pc, h_err?, h_sp?
+    state, h_run, program, h_program, pc, h_pc, h_err?, h_sp?,
+    runSteps?,
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
@@ -256,7 +262,7 @@ def default (curr_state_number : Nat) : SymContext :=
       We can safely put in bogus values for now.
       (Or we could do the honest thing and make these `Option`s)
     -/
-    runSteps  := 9999999999
+    runSteps? := none
     program   := `UNUSED
     pc        := 0#64
   }
@@ -282,7 +288,7 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     h_pc      := .mkSimple s!"h_{s}_pc"
     h_err?    := some <| .mkSimple s!"h_{s}_err"
     h_sp?     := some <| .mkSimple s!"h_{s}_sp"
-    runSteps  := c.runSteps - 1
+    runSteps? := (· - 1) <$> c.runSteps?
     program   := c.program
     pc        := nextPc?.getD (c.pc + 4#64)
     curr_state_number

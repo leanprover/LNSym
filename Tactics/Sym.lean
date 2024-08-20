@@ -120,6 +120,9 @@ elab "stepi_tac" h_step:ident : tactic => do
 
 end stepiTac
 
+/--
+Symbolically simulate a single step, according the the symbolic simulation
+context `c`, returning the context for the next step in simulation. -/
 def sym1 (c : SymContext) : TacticM SymContext :=
   withMainContext do
     trace[Sym] "(sym1): simulating step {c.curr_state_number}:\n{repr c}"
@@ -165,8 +168,10 @@ elab "sym1_i_n" i:num n:num _program:(ident)? : tactic => do
   for _ in List.range n.getNat do
     c ← sym1 c
 
-/- used in `sym1_n` tactic -/
+/- used in `sym1_n` tactic to specify an initial state -/
 syntax sym_at := "at" ident
+
+syntax sym_while := "while" " := " tactic
 
 /--
 `sym1_n n` will symbolically evaluate a program for `n` steps.
@@ -191,10 +196,17 @@ Hypotheses `h_err` and `h_sp` may be missing,
 in which case a new goal of the appropriate type will be added.
 The other hypotheses *must* be present,
 since we infer required information from their types. -/
-elab "sym1_n" n:num s:(sym_at)? : tactic =>
-  let s := s.map fun
-    | `(sym_at|at $s:ident) => s.getId
-    | _ => panic! "Unexpected syntax: {s}"
+elab "sym1_n" while_tactic?:(sym_while)? n:num s:(sym_at)? : tactic => do
+  let s ← s.mapM fun
+    | `(sym_at|at $s:ident) => pure s.getId
+    | _ => Lean.Elab.throwUnsupportedSyntax
+  let while_tactic? : Option (TSyntax `tactic) ← while_tactic?.mapM fun
+    | `(sym_while|while := $tactic) => pure tactic
+    | _ => Lean.Elab.throwUnsupportedSyntax
+  let while_tactic ← match while_tactic? with
+    | some t => pure t
+    | none   => `(tactic| omega)
+
   Lean.Elab.Tactic.withMainContext <| do
     Lean.Elab.Tactic.evalTactic (← `(tactic|
       simp (config := {failIfUnchanged := false}) only [state_simp_rules] at *
@@ -203,13 +215,17 @@ elab "sym1_n" n:num s:(sym_at)? : tactic =>
     let mut c ← SymContext.fromLocalContext s
     c ← c.addGoalsForMissingHypotheses
 
-    let n ←
-      if n.getNat ≤ c.runSteps then
-        pure n.getNat
-      else
-        let h_run ← userNameToMessageData c.h_run
-        logWarning m!"Symbolic simulation using {h_run} is limited to at most {c.runSteps} steps"
-        pure c.runSteps
+    let n ← do
+      let n := n.getNat
+      match c.runSteps? with
+        | none => pure n -- Just assume the number makes sense
+        | some runSteps =>
+            if n ≤ runSteps then
+              pure n
+            else
+              let h_run ← userNameToMessageData c.h_run
+              logWarning m!"Symbolic simulation using {h_run} is limited to at most {runSteps} steps"
+              pure runSteps
 
     -- The main loop
     for _ in List.range n do
