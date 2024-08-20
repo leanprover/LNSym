@@ -94,6 +94,8 @@ attribute [minimal_theory] bne_iff_ne
 attribute [minimal_theory] Bool.false_eq
 attribute [minimal_theory] Bool.and_eq_false_imp
 
+attribute [minimal_theory] Decidable.not_not
+
 attribute [minimal_theory] Nat.le_zero_eq
 attribute [minimal_theory] Nat.zero_add
 attribute [minimal_theory] Nat.zero_eq

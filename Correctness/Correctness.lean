@@ -142,7 +142,8 @@ theorem partial_correctness_from_verification_conditions [Sys σ] [Spec' σ]
     (v1 : ∀ s0 : σ, pre s0 → assert s0 s0)
     (v2 : ∀ sf : σ, exit sf → cut sf)
     (v3 : ∀ s0 sf : σ, assert s0 sf → exit sf → post s0 sf)
-    (v4 : ∀ s0 si : σ, assert s0 si → ¬ exit si → assert s0 (nextc (next si)))
+    -- We prefer to use `run` instead of `step`.
+    (v4 : ∀ s0 si : σ, assert s0 si → ¬ exit si → assert s0 (nextc (run si 1)))
     : PartialCorrectness σ :=
   fun s0 n hp hexit =>
     let rec find (i : Nat) (h : assert s0 (run s0 i)) (hle : i ≤ n) :
