@@ -27,10 +27,6 @@ proofs:
 tests:
 	time -p $(LAKE) build Tests
 
-.PHONY: awslc_elftests
-awslc_elftests:
-	time -p $(LAKE) build AWSLCELFTests
-
 .PHONY: cosim
 cosim:
 	time -p lake exe lnsym $(VERBOSE) --num-tests $(NUM_TESTS)
