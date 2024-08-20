@@ -12,9 +12,6 @@ import Tactics.SymContext
 
 import Lean
 
-initialize
-  Lean.registerTraceClass `Sym
-
 open BitVec
 open Lean Meta
 open Lean.Elab.Tactic
@@ -22,7 +19,7 @@ open Lean.Elab.Tactic
 /-- A wrapper around `evalTactic` that traces the passed tactic script and
 then executes those tactics -/
 private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit := do
-  trace[Sym] "running:\n{tactic}"
+  trace[Tactic.sym] "running:\n{tactic}"
   evalTactic tactic
 
 /-- `init_next_step h_run` splits the hypothesis
@@ -155,7 +152,7 @@ Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
 def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
   withMainContext do
-    trace[Sym] "(sym1): simulating step {c.curr_state_number}:\n{repr c}"
+    trace[Tactic.sym] "(sym1): simulating step {c.curr_state_number}:\n{repr c}"
     let h_step_n' := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
 
     unfoldRun c (fun _ => evalTactic whileTac)
@@ -219,7 +216,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
   Lean.Elab.Tactic.withMainContext <| do
     let mut c ← SymContext.fromLocalContext s
     c ← c.addGoalsForMissingHypotheses
-    c.canonicalizeHypothesisTypes
+    -- c.canonicalizeHypothesisTypes
 
     -- Check that we are not asked to simulate more steps than available
     let n ← do

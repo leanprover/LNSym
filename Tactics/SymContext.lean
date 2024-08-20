@@ -8,6 +8,7 @@ import Lean.Meta
 
 import Arm.Exec
 import Tactics.Common
+import Tactics.Attr
 
 /-!
 This files defines the `SymContext` structure,
@@ -154,6 +155,9 @@ private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) 
 /-- Build a `SymContext` by searching the local context for hypotheses of the
 required types (up-to defeq) -/
 def fromLocalContext (state? : Option Name) : MetaM SymContext := do
+  let msg := m!"Building a `SymContext` from the local context"
+  withTraceNode `Tactic.sym (fun _ => pure msg) do
+  trace[Tactic.Sym] "state? := {state?}"
   let lctx ← getLCtx
 
   -- Either get the state expression from the local context,
@@ -227,11 +231,17 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
-    let decl ← findLocalDeclOfType? expectedType
-    return (·.userName) <$> decl
+    let msg := m!"Searching for hypothesis of type: {expectedType}"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      let decl? ← findLocalDeclOfType? expectedType
+      trace[Tactic.sym] "Found: {(·.toExpr) <$> decl?}"
+      return (·.userName) <$> decl?
   findLocalDeclUsernameOfTypeOrError (expectedType : Expr) : MetaM Name := do
-    let decl ← findLocalDeclOfTypeOrError expectedType
-    return decl.userName
+    let msg := m!"Searching for hypothesis of type: {expectedType}"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      let decl ← findLocalDeclOfTypeOrError expectedType
+      trace[Tactic.sym] "Found: {decl.toExpr}"
+      return decl.userName
 
 
 
