@@ -12,6 +12,9 @@ import Tactics.SymContext
 
 import Lean
 
+example : True := by
+  simp?
+
 initialize
   Lean.registerTraceClass `Sym
 
@@ -130,7 +133,7 @@ elab "sym_n" n:num s:(sym_at)? : tactic =>
   Lean.Elab.Tactic.withMainContext <| do
     let mut c ← SymContext.fromLocalContext s
     c ← c.addGoalsForMissingHypotheses
-    c.changeHypothesisTypes
+    c.canonicalizeHypothesisTypes
 
     -- Check that we are not asked to simulate more steps than available
     let n ←

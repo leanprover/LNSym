@@ -277,7 +277,7 @@ described in the relevant docstrings.
 
 That is, (un)fold types which were definitionally, but not syntactically,
 equal to the expected shape. -/
-def changeHypothesisTypes (c : SymContext) : TacticM Unit := withMainContext do
+def canonicalizeHypothesisTypes (c : SymContext) : TacticM Unit := withMainContext do
   let lctx ← getLCtx
   let mut goal ← getMainGoal
   let state ← c.stateExpr
