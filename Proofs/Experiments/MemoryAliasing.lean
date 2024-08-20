@@ -142,10 +142,7 @@ theorem overlapping_read_test_1 {out : BitVec (16 * 8)}
   simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self]
 
 /--
-info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext,
- to_prove_memory_fact,
- Classical.choice,
- Quot.sound]
+info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms overlapping_read_test_1
 
@@ -160,10 +157,7 @@ theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
     bv_omega'
 /--
-info: 'ReadOverlappingRead.overlapping_read_test_2' depends on axioms: [propext,
- to_prove_memory_fact,
- Classical.choice,
- Quot.sound]
+info: 'ReadOverlappingRead.overlapping_read_test_2' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms overlapping_read_test_2
 
@@ -182,10 +176,7 @@ theorem overlapping_read_test_3
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
     bv_omega'
 /--
-info: 'ReadOverlappingRead.overlapping_read_test_3' depends on axioms: [propext,
- to_prove_memory_fact,
- Classical.choice,
- Quot.sound]
+info: 'ReadOverlappingRead.overlapping_read_test_3' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms overlapping_read_test_3
 

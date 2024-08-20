@@ -101,7 +101,6 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
 
 /--
 info: 'SHA512MemoryAliasing.sha512_block_armv8_prelude_sym_ctx_access' depends on axioms: [propext,
- to_prove_memory_fact,
  Classical.choice,
  Quot.sound]
 -/
@@ -156,7 +155,6 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
 
 /--
 info: 'SHA512MemoryAliasing.sha512_block_armv8_loop_sym_ktbl_access' depends on axioms: [propext,
- to_prove_memory_fact,
  Classical.choice,
  Quot.sound]
 -/
