@@ -129,6 +129,14 @@ def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
 /-! ## Hypothesis types -/
 namespace SymContext
 
+/-- `h_run_type state` returns an Expr for
+`<finalState> = run <steps> <initialState>`, the expected type of `h_run` -/
+def h_run_type (finalState steps initialState : Expr) : Expr :=
+  mkApp3 (mkConst ``Eq [1])
+    (mkConst ``ArmState)
+    finalState
+    (mkApp2 (mkConst ``_root_.run) steps initialState)
+
 /-- `h_err_type state` returns an Expr for `r .ERR <state> = .None`,
 the expected type of `h_err` -/
 def h_err_type (state : Expr) : Expr :=
