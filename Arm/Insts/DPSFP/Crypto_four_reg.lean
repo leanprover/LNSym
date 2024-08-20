@@ -36,7 +36,7 @@ def exec_crypto_four_reg (inst : Crypto_four_reg_cls) (s : ArmState) : ArmState 
 ----------------------------------------------------------------------
 
 def Crypto_four_reg_cls.eor3.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  if (← Cosim.sha3?) then
+  if ← Cosim.sha3? then
     -- SHA3 feature supported.
     let (inst : Crypto_four_reg_cls) :=
       { Op0    := ← pure 0b00#2,
