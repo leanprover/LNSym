@@ -33,9 +33,8 @@ the local context required for symbolic evaluation -/
 structure SymContext where
   /-- `state` is a local variable of type `ArmState` -/
   state : Name
-  -- TODO: Should we eventually track the final state as well?
-  --       We could use it to avoid introducing the last intermediate state,
-  --       when we detect that `runSteps = 0`
+  /-- `finalState` is an expression of type `ArmState` -/
+  finalState : Expr
   /-- `runSteps` is the number of steps that we can *maximally* simulate,
   because of the way it occurs in `h_run`.
   Note that `runSteps` is a meta-level natural number, reflecting the fact that
@@ -84,6 +83,36 @@ structure SymContext where
 
 namespace SymContext
 
+/-! ## Simple projections -/
+section
+open Lean (Ident mkIdent)
+variable (c : SymContext)
+
+/-- `next_state` generates the name for the next intermediate state -/
+def next_state (c : SymContext) : Name :=
+  .mkSimple s!"{c.state_prefix}{c.curr_state_number + 1}"
+
+/-- return `h_err?` if given, or a default hardcoded name -/
+def h_err : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_err")
+
+/-- return `h_sp?` if given, or a default hardcoded name -/
+def h_sp  : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_sp")
+
+def state_ident       : Ident := mkIdent c.state
+def next_state_ident  : Ident := mkIdent c.next_state
+def h_run_ident       : Ident := mkIdent c.h_run
+def h_program_ident   : Ident := mkIdent c.h_program
+def h_pc_ident        : Ident := mkIdent c.h_pc
+def h_err_ident       : Ident := mkIdent c.h_err
+def h_sp_ident        : Ident := mkIdent c.h_sp
+
+def stateExpr : MetaM Expr := do
+  let some decl := (← getLCtx).findFromUserName? c.state
+    | throwError "Unknown local variable `{c.state}`"
+  return Expr.fvar decl.fvarId
+
+end
+
 /-! ## Creating initial contexts -/
 
 /-- Infer `state_prefix` and `curr_state_number` from the `state` name
@@ -103,53 +132,6 @@ def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
       state_prefix := "s",
       curr_state_number := 1 }
 
-/-- If `h_sp` or `h_err` are missing from the `SymContext`,
-add new goals of the expected types,
-and use these to add `h_sp` and `h_err` to the main goal context -/
-def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
-  withMainContext do
-    let mut ctx := ctx
-    let mut goal ← getMainGoal
-    let mut newGoals := []
-    let lCtx ← getLCtx
-    let some stateExpr :=
-      (Expr.fvar ·.fvarId) <$> lCtx.findFromUserName? ctx.state
-      | throwError "Could not find '{ctx.state}' in the local context"
-
-    if ctx.h_err?.isNone then
-      let h_err? := Name.mkSimple s!"h_{ctx.state}_run"
-      let newGoal ← mkFreshMVarId
-
-      goal := ← do
-        let goalType := h_err_type stateExpr
-        let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
-        let goal' ← goal.assert h_err? goalType newGoalExpr
-        let ⟨_, goal'⟩ ← goal'.intro1P
-        return goal'
-
-      newGoals := newGoal :: newGoals
-      ctx := { ctx with h_err? }
-
-    if ctx.h_sp?.isNone then
-      let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
-      let newGoal ← mkFreshMVarId
-
-      goal := ← do
-        let h_sp_type := h_sp_type stateExpr
-        let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
-        let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
-        let ⟨_, goal'⟩ ← goal'.intro1P
-        return goal'
-
-      newGoals := newGoal :: newGoals
-      ctx := { ctx with h_sp? }
-
-    replaceMainGoal (goal :: newGoals)
-    return ctx
-
-
-
-
 /-- Annotate any errors thrown by `k` with a local variable (and its type) -/
 private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
     MetaM α :=
@@ -160,6 +142,8 @@ private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) 
       | none      => m!""
     throwErrorAt e.getRef "{e.toMessageData}\n\nIn {h}{type}"
 
+/-- Build a `SymContext` by searching the local context for hypotheses of the
+required types (up-to defeq) -/
 def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let lctx ← getLCtx
 
@@ -172,19 +156,17 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
       pure (Expr.fvar decl.fvarId)
     | none => mkFreshExprMVar (Expr.const ``ArmState [])
 
-  -- Find `h_run` and infer `runSteps` from it
-  let sf ← mkFreshExprMVar none
+  -- Find `h_run`
+  let finalState ← mkFreshExprMVar none
   let runSteps ← mkFreshExprMVar (Expr.const ``Nat [])
-  let h_run_type ← mkEq sf (←mkAppM ``_root_.run #[runSteps, stateExpr])
+  let h_run_type := h_run_type finalState runSteps stateExpr
   let h_run ← findLocalDeclUsernameOfTypeOrError h_run_type
 
   -- Unwrap and reflect `runSteps`
   let runSteps? ←
-    try
-      some <$> reflectNatLiteral runSteps
-    catch _ =>
-      pure none
-
+    try some <$> reflectNatLiteral runSteps
+    catch _ => pure none
+  let finalState ← instantiateMVars finalState
 
   -- At this point, `stateExpr` should have been assigned (if it was an mvar),
   -- so we can unwrap it to get the underlying name
@@ -234,8 +216,8 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
 
   return inferStatePrefixAndNumber {
-    state, h_run, program, h_program, pc, h_pc, h_err?, h_sp?,
-    runSteps?,
+    state, finalState, h_run, runSteps?, program, h_program, pc, h_pc,
+    h_err?, h_sp?
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
@@ -246,32 +228,83 @@ where
     return decl.userName
 
 
-def default (curr_state_number : Nat) : SymContext :=
-  let s := s!"s{curr_state_number}"
-  {
-    state     := .mkSimple s
-    h_run     := .mkSimple s!"h_run"
-    h_program := .mkSimple s!"h_{s}_program"
-    h_pc      := .mkSimple s!"h_{s}_pc"
-    h_err?    := some <| .mkSimple s!"h_{s}_err"
-    h_sp?     := some <| .mkSimple s!"h_{s}_sp"
-    /-
-      `runSteps`, `pc` and `program` actually require inspection of the context.
-      However, these values are not actually used yet,
-      they are merely kept because they will be useful in the future.
-      We can safely put in bogus values for now.
-      (Or we could do the honest thing and make these `Option`s)
-    -/
-    runSteps? := none
-    program   := `UNUSED
-    pc        := 0#64
-  }
+
+/-! ## Massaging the local context -/
+
+/-- If `h_sp` or `h_err` are missing from the `SymContext`,
+add new goals of the expected types,
+and use these to add `h_sp` and `h_err` to the main goal context -/
+def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
+  withMainContext do
+    let mut ctx := ctx
+    let mut goal ← getMainGoal
+    let mut newGoals := []
+    let lCtx ← getLCtx
+    let some stateExpr :=
+      (Expr.fvar ·.fvarId) <$> lCtx.findFromUserName? ctx.state
+      | throwError "Could not find '{ctx.state}' in the local context"
+
+    if ctx.h_err?.isNone then
+      let h_err? := Name.mkSimple s!"h_{ctx.state}_run"
+      let newGoal ← mkFreshMVarId
+
+      goal := ← do
+        let goalType := h_err_type stateExpr
+        let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
+        let goal' ← goal.assert h_err? goalType newGoalExpr
+        let ⟨_, goal'⟩ ← goal'.intro1P
+        return goal'
+
+      newGoals := newGoal :: newGoals
+      ctx := { ctx with h_err? }
+
+    if ctx.h_sp?.isNone then
+      let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
+      let newGoal ← mkFreshMVarId
+
+      goal := ← do
+        let h_sp_type := h_sp_type stateExpr
+        let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
+        let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
+        let ⟨_, goal'⟩ ← goal'.intro1P
+        return goal'
+
+      newGoals := newGoal :: newGoals
+      ctx := { ctx with h_sp? }
+
+    replaceMainGoal (goal :: newGoals)
+    return ctx
+
+/-- change the type (in the local context of the main goal)
+of the hypotheses tracked by the given `SymContext` to be *exactly* of the shape
+described in the relevant docstrings.
+
+That is, (un)fold types which were definitionally, but not syntactically,
+equal to the expected shape. -/
+def canonicalizeHypothesisTypes (c : SymContext) : TacticM Unit := withMainContext do
+  let lctx ← getLCtx
+  let mut goal ← getMainGoal
+  let state ← c.stateExpr
+  let program := mkConst c.program
+
+  let mut hyps := #[
+    (c.h_program, h_program_type state program),
+    (c.h_pc, h_pc_type state (toExpr c.pc))
+  ]
+  if let some runSteps := c.runSteps? then
+    hyps := hyps.push (c.h_run, h_run_type c.finalState (toExpr runSteps) state)
+  if let some h_err := c.h_err? then
+    hyps := hyps.push (h_err, h_err_type state)
+  if let some h_sp := c.h_sp? then
+    hyps := hyps.push (h_sp, h_sp_type state)
+
+  for ⟨name, type⟩ in hyps do
+    let some decl := lctx.findFromUserName? name
+      | throwError "Unknown local hypothesis `{c.state}`"
+    goal ← goal.changeLocalDecl decl.fvarId type
+  replaceMainGoal [goal]
 
 /-! ## Incrementing the context to the next state -/
-
-/-- `next_state` generates the name for the next intermediate state -/
-def next_state (c : SymContext) : Name :=
-  .mkSimple s!"{c.state_prefix}{c.curr_state_number + 1}"
 
 /-- `c.next` generates names for the next intermediate state and its hypotheses
 
@@ -282,36 +315,16 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
   let curr_state_number := c.curr_state_number + 1
   let s := c.next_state
   {
-    state     := s
-    h_run     := c.h_run
-    h_program := .mkSimple s!"h_{s}_program"
-    h_pc      := .mkSimple s!"h_{s}_pc"
-    h_err?    := some <| .mkSimple s!"h_{s}_err"
-    h_sp?     := some <| .mkSimple s!"h_{s}_sp"
-    runSteps? := (· - 1) <$> c.runSteps?
-    program   := c.program
-    pc        := nextPc?.getD (c.pc + 4#64)
+    state       := s
+    finalState  := c.finalState
+    h_run       := c.h_run
+    h_program   := .mkSimple s!"h_{s}_program"
+    h_pc        := .mkSimple s!"h_{s}_pc"
+    h_err?      := some <| .mkSimple s!"h_{s}_err"
+    h_sp?       := some <| .mkSimple s!"h_{s}_sp"
+    runSteps?   := (· - 1) <$> c.runSteps?
+    program     := c.program
+    pc          := nextPc?.getD (c.pc + 4#64)
     curr_state_number
     state_prefix := c.state_prefix
   }
-
-/-! ## Simple projections -/
-section
-open Lean (Ident mkIdent)
-variable (c : SymContext)
-
-/-- return `h_err?` if given, or a default hardcoded name -/
-def h_err : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_err")
-
-/-- return `h_sp?` if given, or a default hardcoded name -/
-def h_sp  : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_sp")
-
-def state_ident       : Ident := mkIdent c.state
-def next_state_ident  : Ident := mkIdent c.next_state
-def h_run_ident       : Ident := mkIdent c.h_run
-def h_program_ident   : Ident := mkIdent c.h_program
-def h_pc_ident        : Ident := mkIdent c.h_pc
-def h_err_ident       : Ident := mkIdent c.h_err
-def h_sp_ident        : Ident := mkIdent c.h_sp
-
-end

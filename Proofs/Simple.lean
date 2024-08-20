@@ -6,6 +6,7 @@ Author(s): Shilpi Goel, Nathan Wetzler
 import Arm.Exec
 import Arm.Util
 import Tactics.Sym
+import Tactics.StepThms
 
 section simple
 
@@ -14,6 +15,8 @@ open BitVec
 def eor_program : Program :=
   def_program
   [(0x4005a8#64 , 0xca000000#32)]      --  eor	x0, x0, x0
+
+#genStepEqTheorems eor_program
 
 theorem small_asm_snippet_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x4005a8#64)

@@ -26,7 +26,7 @@ theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation
-  sym1_n 11
+  sym_n 11
   try (clear h_step_1 h_step_2 h_step_3 h_step_4;
        clear h_step_5 h_step_6 h_step_7 h_step_8;
        clear h_step_9 h_step_10 h_step_11)
@@ -37,7 +37,7 @@ theorem sha512_block_armv8_test_4_sym (s0 s_final : ArmState)
   done
 
 /-
-  -- sym1_n 1
+  -- sym_n 1
   -- let s0_x31 := (r (StateField.GPR 31#5) s0)
   -- simp only [state_value] at s0_x31
   -- have h_s0_x31 : s0_x31 = (r (StateField.GPR 31#5) s0) := by rfl
