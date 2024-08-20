@@ -940,7 +940,6 @@ def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
 theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
     val.extractLsByte n = (val.extractLsb ((n + 1)*8 - 1) (n * 8) |>.cast (by omega)) := rfl
 
--- @[simp]
 theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
     (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
   apply BitVec.eq_of_getLsb_eq
@@ -948,7 +947,6 @@ theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
   intros i
   by_cases h : (i : Nat) ≤ n - lo <;> simp [h]
 
--- @[simp]
 theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
   simp only [extractLsByte, BitVec.extractLsb_ofNat, Nat.zero_mod, Nat.zero_shiftRight, cast_ofNat]
 
@@ -972,9 +970,6 @@ theorem getLsb_extractLsByte (val : BitVec w₁) :
   simp only [Nat.add_one_sub_one,
     Nat.add_sub_cancel_left]
 
-
--- @bollu: todo
--- theorem extractLsByte_append (val : BitVec (n * 8)) (new )
 
 /--
 Two bitvectors of length `n*8` are equal if all their bytes are equal.

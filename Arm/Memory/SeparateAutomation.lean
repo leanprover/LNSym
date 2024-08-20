@@ -84,7 +84,7 @@ section BvOmega
 -- |@shilpi: upstream BitVec.le_def unfolding to bv_omega, and
 -- generally kep an eye out.
 macro "bv_omega'" : tactic =>
-  `(tactic| (try simp only [bv_toNat, mem_legal'] at * <;> try rw [BitVec.le_def]) <;> omega)
+  `(tactic| (try simp only [bv_toNat, mem_legal'] at * <;> try rw [BitVec.le_def]) <;> bv_omega)
 
 end BvOmega
 
@@ -104,7 +104,8 @@ def Context.init (cfg : SimpMemConfig) : Context where
   cfg := cfg
 
 structure WithWitness (α : Type) (e : α) where
-  h : Expr -- a proof of an expression `a`.
+  /-- `h` is an expression of type `e`. -/
+  h : Expr
 
 def WithWitness.e {α : Type} {e : α} (p : WithWitness α e) : α := e
 
@@ -380,8 +381,7 @@ def processHypothesis (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypoth
 
 /-
 Introduce a new definition into the local context,
-and then run the rest of the continuation as `(k newDefExpr)`,
-where `newDefExpr` is the FVarId of the new definition in the goal.
+and return the FVarId of the new definition in the goal.
 -/
 def introDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
   SimpMemM.withMainContext do
@@ -411,7 +411,7 @@ section MemLegal
 def MemLegalProof.def (h : MemLegalProof e) : Expr :=
   mkAppN (Expr.const ``mem_legal'.def []) #[e.span.base, e.span.n, h.h]
 
-/-- Add the omega fact from `mem_legal'.def` and run the rest of the continuation. -/
+/-- Add the omega fact from `mem_legal'.def`. -/
 def MemLegalProof.addOmegaFacts (h : MemLegalProof e) (args : Array Expr) :
     SimpMemM (Array Expr) := do
   SimpMemM.withMainContext do
@@ -433,7 +433,7 @@ def MemSubsetProof.omega_def (h : MemSubsetProof e) : Expr :=
   mkAppN (Expr.const ``mem_subset'.omega_def [])
     #[e.sa.base, e.sa.n, e.sb.base, e.sb.n, h.h]
 
-/-- Add the omega fact from `mem_legal'.def` and run the rest of the continuation. -/
+/-- Add the omega fact from `mem_legal'.def` into the main goal. -/
 def MemSubsetProof.addOmegaFacts (h : MemSubsetProof e) (args : Array Expr) :
     SimpMemM (Array Expr) := do
   SimpMemM.withMainContext do
@@ -458,7 +458,7 @@ def MemSeparateProof.addOmegaFacts (h : MemSeparateProof e) (args : Array Expr) 
     return args.push (Expr.fvar fvar)
 
 /--
-Given a hypothesis, add declarations that would be useful for omega-blasing, and then run the
+Given a hypothesis, add declarations that would be useful for omega-blasting, and then run the
 continuation. -/
 def Hypothesis.addOmegaFactsOfHyp (h : Hypothesis) (args : Array Expr) : SimpMemM (Array Expr) :=
   match h with
