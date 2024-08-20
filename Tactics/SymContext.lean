@@ -194,9 +194,6 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let ⟨h_program, program⟩ ← withErrorContext h_run h_run_type <|
     findProgramHyp stateExpr
   let h_program := h_program.userName
-  /-
-    TODO: assert that the expected `stepi` theorems have been generated
-  -/
 
   -- Then, try to find `h_pc`
   let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
