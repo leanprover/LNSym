@@ -7,6 +7,9 @@
 # Remember where LNSym is
 LNSym_DIR = ${PWD}
 
+# Install dependencies
+brew install ninja
+
 # Fetching and building AWS-LC
 git clone https://github.com/aws/aws-lc.git $HOME/aws-lc
 cd $HOME/aws-lc; mkdir aws-lc-build; cd aws-lc-build
