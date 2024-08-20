@@ -6,6 +6,7 @@ Author(s): Shilpi Goel
 import Arm.Exec
 import Arm.Util
 import Tactics.Sym
+import Tactics.StepThms
 import Tests.SHA2.SHA512ProgramTest
 
 section SHA512_proof
@@ -24,6 +25,8 @@ def sha512_program_test_1 : Program :=
      (0x126540#64 , 0xce6680a3#32),      --  sha512h q3, q5, v6.2d
      (0x126544#64 , 0xce678af0#32)       --  sha512su1       v16.2d, v23.2d, v7.2d
      ]
+
+#genStepEqTheorems sha512_program_test_1
 
 -- set_option profiler true in
 -- set_option trace.profiler.output "new_sym.log" in
@@ -60,6 +63,8 @@ def sha512_program_test_2 : Program :=
      (0x12654c#64 , 0xce608423#32)       --  sha512h2        q3, q1, v0
      ]
 
+#genStepEqTheorems sha512_program_test_2
+
 -- set_option profiler true in
 theorem sha512_program_test_2_sym (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x126538#64)
@@ -88,6 +93,8 @@ def sha512_program_test_3 : Program :=
     (0x1264c8#64 , 0x4cdf2030#32),      --  ld1     {v16.16b-v19.16b}, [x1], #64
     (0x1264cc#64 , 0x4cdf2034#32)       --  ld1     {v20.16b-v23.16b}, [x1], #64
   ]
+
+#genStepEqTheorems sha512_program_test_3
 
 -- set_option profiler true in
 -- set_option pp.deepTerms false in

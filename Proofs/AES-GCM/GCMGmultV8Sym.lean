@@ -13,8 +13,10 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     (h_s0_sp_aligned : CheckSPAlignment s0)
     (h_run : sf = run gcm_gmult_v8_program.length s0) :
     read_err sf = .None := by
-  simp (config := {ground := true}) only [Option.some.injEq] at h_s0_pc h_run
-  sym1_n 27
+  simp (config := {ground := true}) only at h_s0_pc
+  -- ^^ Still needed, because `gcm_gmult_v8_program.min` is somehow
+  --    unable to be reflected
+  sym_n 27
   subst h_run
   assumption
   done
