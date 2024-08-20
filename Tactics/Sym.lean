@@ -19,8 +19,8 @@ initialize
   Lean.registerTraceClass `Sym
 
 open BitVec
-open Lean
-open Lean.Elab.Tactic (TacticM evalTactic withMainContext)
+open Lean Meta
+open Lean.Elab.Tactic
 
 /-- A wrapper around `evalTactic` that traces the passed tactic script and
 then executes those tactics -/
@@ -77,14 +77,91 @@ elab "stepi_tac" h_step:ident : tactic => do
 
 end stepiTac
 
+/-- Attempt to show that we have (at least) one more step available,
+by ensuring that `h_run`'s type is def-eq to:
+  `<finalState> = run (_ + 1) <initialState>`
+
+If the number of steps is statically tracked in `runSteps?`,
+(i.e., it is a literal that we managed to reflect)
+we check that this number is non-zero.
+This means we trust that the reflected value is accurate
+w.r.t. to the current goal state.
+
+Otherwise, if the number is steps is *not* statically known, we assert that
+`c.h_run` is of type `<finalState> = run ?runSteps <initialState>`,
+for some metavariable `?runSteps`, then create the proof obligation
+`?runSteps = _ + 1`, and attempt to close it using `whileTac`.
+Finally, we use this proof to change the type of `h_run` accordingly.
+-/
+def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
+    TacticM Unit :=
+  match c.runSteps? with
+    | some (_ + 1) => return
+    | some 0 =>
+        throwError "No more steps available to symbolically simulate!"
+        -- NOTE: this error shouldn't occur, as we should have checked in
+        -- `sym_n` that, if the number of runSteps is statically known,
+        -- that we never simulate more than that many steps
+    | none => withMainContext do
+        let mut goal :: originalGoals ← getGoals
+          | throwNoGoalsToBeSolved
+        let hRunDecl ← c.hRunDecl
+
+        -- Assert that `h_run : <finalState> = run ?runSteps <state>`
+        let runSteps ← mkFreshExprMVar (mkConst ``Nat)
+        guard <|← isDefEq hRunDecl.type (
+          mkApp3 (.const ``Eq [1]) (mkConst ``ArmState)
+            c.finalState
+            (mkApp2 (mkConst ``_root_.run) runSteps (←c.stateExpr)))
+        -- NOTE: ^^ Since we check for def-eq on SymContext construction,
+        --          this check should never fail
+
+        -- Attempt to prove that `?runSteps` is non-zero
+        let runStepsPredId ← mkFreshMVarId
+        let runStepsPred ← mkFreshExprMVarWithId runStepsPredId (mkConst ``Nat)
+        let subGoalTyRhs := mkApp (mkConst ``Nat.succ) runStepsPred
+        let subGoalTy := -- `?runSteps = ?runStepsPred + 1`
+          mkApp3 (.const ``Eq [1]) (mkConst ``Nat) runSteps subGoalTyRhs
+        let subGoal ← mkFreshMVarId
+        let _ ← mkFreshExprMVarWithId subGoal subGoalTy
+        subGoal.withContext <|
+          setGoals [subGoal]
+          let () ← whileTac () -- run `whileTac` to attempt to close `subGoal`
+
+        -- Ensure `runStepsPred` is assigned, by giving it a default value
+        -- This is important because of the use of `replaceLocalDecl` below
+        if !(← runStepsPredId.isAssigned) then
+          runStepsPredId.assign <| mkApp (mkConst ``Nat.pred) runSteps
+
+        -- Change the type of `h_run`
+        let typeNew ← do
+          let rhs := (mkApp2 (mkConst ``_root_.run) subGoalTyRhs (←c.stateExpr))
+          mkEq c.finalState rhs
+        let eqProof ← do
+          let f := -- `fun s => <finalState> = s`
+            let eq := mkApp3 (.const ``Eq [1]) (mkConst ``ArmState)
+                        c.finalState (.bvar 0)
+            .lam `s (mkConst ``ArmState) eq .default
+          let g := mkConst ``_root_.run
+          let s ← c.stateExpr
+          let h ← instantiateMVars (.mvar subGoal)
+          mkCongrArg f (←mkCongrFun (←mkCongrArg g h) s)
+        let res ← goal.replaceLocalDecl hRunDecl.fvarId typeNew eqProof
+
+        -- Restore goal state
+        if !(←subGoal.isAssigned) then
+          originalGoals := originalGoals.concat subGoal
+        setGoals (res.mvarId :: originalGoals)
+
 /--
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
-def sym1 (c : SymContext) : TacticM SymContext :=
+def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
   withMainContext do
     trace[Sym] "(sym1): simulating step {c.curr_state_number}:\n{repr c}"
     let h_step_n' := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
 
+    unfoldRun c (fun _ => evalTactic whileTac)
     -- Add new state to local context
     evalTacticAndTrace <|← `(tactic|
       init_next_step $c.h_run_ident:ident $h_step_n':ident $c.next_state_ident:ident
@@ -105,7 +182,7 @@ def sym1 (c : SymContext) : TacticM SymContext :=
 /- used in `sym_n` tactic to specify an initial state -/
 syntax sym_at := "at" ident
 
-syntax sym_while := "while" " := " tactic
+syntax sym_while := "(" "while" " := " tactic ")"
 
 open Elab.Term (elabTerm) in
 /--
@@ -131,16 +208,17 @@ Hypotheses `h_err` and `h_sp` may be missing,
 in which case a new goal of the appropriate type will be added.
 The other hypotheses *must* be present,
 since we infer required information from their types. -/
-elab "sym_n" while_tactic?:(sym_while)? n:num s:(sym_at)? : tactic => do
+elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
   let s ← s.mapM fun
     | `(sym_at|at $s:ident) => pure s.getId
     | _ => Lean.Elab.throwUnsupportedSyntax
-  let while_tactic? : Option (TSyntax `tactic) ← while_tactic?.mapM fun
-    | `(sym_while|while := $tactic) => pure tactic
+  let whileTac? : Option (TSyntax `tactic) ← whileTac?.mapM fun
+    | `(sym_while|(while := $tactic)) => pure tactic
     | _ => Lean.Elab.throwUnsupportedSyntax
-  let while_tactic ← match while_tactic? with
+  let whileTac ← match whileTac? with
     | some t => pure t
-    | none   => `(tactic| omega)
+    | none   => `(tactic| omega) -- the default `whileTac` is `omega`
+
   Lean.Elab.Tactic.withMainContext <| do
     let mut c ← SymContext.fromLocalContext s
     c ← c.addGoalsForMissingHypotheses
@@ -173,4 +251,4 @@ Did you remember to generate step theorems with:
 
     -- The main loop
     for _ in List.range n do
-      c ← sym1 c
+      c ← sym1 c whileTac
