@@ -952,6 +952,17 @@ theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
 theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
   simp only [extractLsByte, BitVec.extractLsb_ofNat, Nat.zero_mod, Nat.zero_shiftRight, cast_ofNat]
 
+theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
+  x.extractLsByte a = 0#8 := by
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  simp
+  rw [extractLsByte_def]
+  simp
+  intros hi
+  apply BitVec.getLsb_ge
+  omega
+
 @[simp]
 theorem getLsb_extractLsByte (val : BitVec w₁) :
     ((BitVec.extractLsByte val n).getLsb i) =
@@ -1002,6 +1013,42 @@ theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) 
   · simp only [extractLsBytes, getLsb_cast, getLsb_extract, Nat.zero_lt_succ, decide_True,
     Bool.true_and]
 
+-- val.extractLsBytes (a.toNat - b.toNat) an).extractLsByte i
+
+-- theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
+--     (BitVec.extractLsBytes val base n).extractLsByte i = xxx := by
+--   apply BitVec.eq_of_getLsb_eq
+--   simp only [getLsb_extractLsByte, getLsb_extractLsBytes]
+
+--     if base + i < n then val.extractLsByte (base + i) else 0#8 := by
+--   apply BitVec.eq_of_getLsb_eq
+--   intros j
+--   simp
+--   simp [show (j : Nat) ≤ 7 by omega]
+--   by_cases hn : 0 < n
+--   · simp [hn]
+--     by_cases h : (i * 8 + ↑j ≤ base * 8 + n * 8 - 1 - base * 8)
+--     · simp [h]
+--       by_cases h₂ : base + i < n
+--       · simp [h₂]
+--         simp [show (j : Nat) ≤ 7 by omega]
+--         congr 1
+--         omega
+--       · simp [h₂]
+--         apply Classical.byContradiction
+--         intros hcontra
+--         simp at hcontra
+--         have := BitVec.lt_of_getLsb _ _ hcontra
+--         omega
+--     · simp [h]
+--       by_cases h₂ : base + i < n
+--       · omega
+--       · simp [h₂]
+--   · simp [hn]
+--     by_cases h : base + i < n
+--     · simp [h]
+--       omega
+--     · simp [h]
 /-- Extracting out bytes from the zero bitvector is equal to the zero bitvector. -/
 @[simp]
 theorem extractLsBytes_zero {w : Nat} (base : Nat) :
@@ -1019,6 +1066,16 @@ theorem extractLsBytes_eq_self {n : Nat} (x : BitVec (n * 8)) :
   simp [show (i : Nat) ≤ n * 8 - 1 by omega]
   intros h
   have := BitVec.lt_of_getLsb _ _ h
+  omega
+
+/-- @bollu: what is the corresponding getLsb theorem? -/
+theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
+  x.extractLsBytes a n = 0#(n*8) := by
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  simp
+  intros h₁ h₂
+  apply BitVec.getLsb_ge
   omega
 
 /-! ## `Quote` instance -/

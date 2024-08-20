@@ -663,19 +663,35 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
       apply BitVec.getLsb_ge
       omega
 
+theorem mem_eq_mem_write {mem : Memory} (hlegal : mem_legal' x xn) :
+    mem =
+      (mem.write_bytes yn y (mem.read_bytes yn y)) := by
 
-axiom to_prove_memory_fact : False
+  funext i
+  rw [BitVec.eq_of_extractLsByte_eq (n := 1) (x := mem i)
+    (y := Memory.write_bytes yn y (Memory.read_bytes yn y mem) mem i)]
+  rw [Memory.write_bytes_eq_extractLsByte]
+  intros j
+  rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
+
+theorem mem_eq_mem_write {mem : Memory} (hlegal : mem_legal' x xn) :
+    mem.read_bytes xn x =
+      (mem.write_bytes yn y (mem.read_bytes yn y)).read_bytes xn x := by
+  rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  simp
+  sorry
 /- value of read_mem_bytes when subset of another read. -/
 theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
     {mem : Memory}
     (hread : mem.read_bytes bn b = val)
     (hsubset : mem_subset' a an b bn) :
     mem.read_bytes an a = val.extractLsBytes (a.toNat - b.toNat) an := by
-  apply BitVec.eq_of_extractLsByte_eq
-  intros i
-  -- simp [memory_rules]
-  exfalso
-  exact to_prove_memory_fact
+  rw [mem_eq_mem_write]
+  rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' hsubset]
+  rw [hread]
+  exact hsubset.ha
 
 /--
 info: 'Memory.read_bytes_write_bytes_eq_of_mem_subset'' depends on axioms: [propext, Classical.choice, Quot.sound]
