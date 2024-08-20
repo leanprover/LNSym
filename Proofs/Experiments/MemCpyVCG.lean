@@ -27,9 +27,9 @@ namespace Memcpy
 
 /-
 while (x0 != 0) {
-  tmp := read_mem(16 bytes from address x1)
+  q4 := read_mem(16 bytes from address x1)
   x1 := x1 + 16
-  write_mem(16 bytes of tmp to address x2)
+  write_mem(16 bytes of q4 to address x2)
   x2 := x2 + 16
   x0 := x0 - 1
 }
@@ -57,7 +57,10 @@ def pre (s : ArmState) : Prop :=
   let num_bytes := num_blks * 16
   let src_base  := ArmState.x1 s
   let dst_base  := ArmState.x2 s
-  -- (TODO) Also allow for the possibility of src_base = dst_base.
+  -- (TODO) Also allow for the possibility of src_base = dst_base
+  -- or even more generally,
+  -- dst_base ≤ src_base ∨
+  -- src_base + num_bytes ≤ dst_base.
   mem_separate' src_base num_bytes.toNat dst_base num_bytes.toNat ∧
   read_pc s = 0x8e0#64 ∧
   s.program = program ∧
@@ -90,10 +93,10 @@ def post (s0 sf : ArmState) : Prop :=
   -/
   (∀ i : BitVec 64, i < num_blks →
     read_mem_bytes 16 (dst_base + (16 * i)) sf =
-    read_mem_bytes 16 (src_base + (16 * i)) s0) ∧
+    id (read_mem_bytes 16 (src_base + (16 * i)) s0)) ∧
   -- All memory regions separate from the destination are unchanged.
   (∀ (n : Nat) (addr : BitVec 64),
-      mem_separate' src_base num_bytes.toNat addr n →
+      mem_separate' dst_base num_bytes.toNat addr n →
       read_mem_bytes n addr sf = read_mem_bytes n addr s0) ∧
   read_pc sf = 0x8f8#64 ∧
   read_err sf = .None ∧
@@ -107,9 +110,9 @@ def exit (s : ArmState) : Prop :=
 
 def cut (s : ArmState) : Bool :=
   -- First instruction
-  read_pc s = 0x8e0#64 ∧
+  read_pc s = 0x8e0#64 ||
   -- Loop guard (branch instruction)
-  read_pc s = 0x8f4#64 ∧
+  read_pc s = 0x8f4#64 ||
   -- First instruction following the loop
   -- which also happens to be the program's last instruction
   read_pc s = 0x8f8#64
@@ -124,13 +127,13 @@ def loop_inv (s0 si : ArmState) : Prop :=
   let dst_base  := ArmState.x2 s0
   let curr_dst_base  := ArmState.x2 si
   let curr_zf := r (StateField.FLAG PFlag.Z) si
-  curr_num_blks <= num_blks ∧
+  curr_num_blks ≤ num_blks ∧
   ((curr_zf = 1#1) ↔ (curr_num_blks = 0#64)) ∧
   curr_src_base = src_base + num_bytes_copied ∧
   curr_dst_base = dst_base + num_bytes_copied ∧
   (∀ i : BitVec 64, i < num_blks_copied →
     read_mem_bytes 16 (dst_base + (16 * i)) si =
-    read_mem_bytes 16 (src_base + (16 * i)) s0) ∧
+    id (read_mem_bytes 16 (src_base + (16 * i)) s0)) ∧
   read_err si = .None ∧
   si.program = program ∧
   CheckSPAlignment si
@@ -141,7 +144,7 @@ def assert (s0 si : ArmState) : Prop :=
   | 0x8e0#64 => -- First instruction
     si = s0
   | 0x8f4#64 => -- Loop guard
-    cut s0
+    loop_inv s0 si
   | 0x8f8 => -- Loop and program post
     post s0 si
   | _ => False
@@ -152,6 +155,11 @@ instance : Spec' ArmState where
   exit   := exit
   cut    := cut
   assert := assert
+
+-------------------------------------------------------------------------------
+-- Symbolic Simulation of basic blocks
+
+-- #genStepEqThms program
 
 -------------------------------------------------------------------------------
 
