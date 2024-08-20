@@ -7,10 +7,7 @@ This file contains bitvector theorems that stress Isabelle automation.
 We port the file to Lean for comparison.
 -/
 
-import Tactics.Sym
-import Init.Data.BitVec.Folds
-import Init.Data.BitVec.Bitblast
-import Init.Data.BitVec.Lemmas
+import LeanSAT
 open BitVec
 
 /--
