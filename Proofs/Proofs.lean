@@ -15,3 +15,4 @@ import Proofs.Experiments.SHA512MemoryAliasing
 import Proofs.Experiments.Max
 import Proofs.Experiments.Abs
 import Proofs.Experiments.AbsVCG
+import Proofs.Experiments.IsabelleHard
