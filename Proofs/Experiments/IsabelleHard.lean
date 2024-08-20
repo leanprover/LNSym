@@ -96,9 +96,9 @@ theorem mask_split_left (x y : BitVec 64) (n m : Nat)
 /--
 It's highly suspect that LeanSAT can prove `mask_split_left` without
 unfolding the definition of `mask64`.
-For sanity, we prove the same theorem with
-`mask64 m` as an uninterpreted symbol called `mask64m`,
-and `mask64 n` as an uninterpreted symbol `mask64n`.
+For sanity, we prove the same theorem with:
+- `mask64 m` as an uninterpreted symbol called `mask64m`,
+- `mask64 n` as an uninterpreted symbol `mask64n`.
 -/
 theorem mask_split_left' (x y mask64m mask64n : BitVec 64) (n : Nat)
     (h : (x &&& (mask64m <<< n) ||| x &&& mask64n) = y) :
