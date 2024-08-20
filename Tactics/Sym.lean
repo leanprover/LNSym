@@ -12,9 +12,6 @@ import Tactics.SymContext
 
 import Lean
 
-example : True := by
-  simp?
-
 initialize
   Lean.registerTraceClass `Sym
 
