@@ -46,7 +46,7 @@ def pre (s : ArmState) : Prop :=
   s.program = program ∧
   read_err s = StateError.None ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym1_n` tactic expects this. Can we make this optional?
+  -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment s
 
 /-- Specification function. -/
@@ -59,7 +59,7 @@ def post (s0 sf : ArmState) : Prop :=
   read_err sf = StateError.None ∧
   sf.program = program ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym1_n` tactic expects this. Can we make this optional?
+  -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment sf
 
 def exit (s : ArmState) : Prop :=
@@ -89,7 +89,7 @@ def loop_inv (s0 si : ArmState) : Prop :=
   read_err si = .None ∧
   si.program = program ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym1_n` tactic expects this. Can we make this optional?
+  -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment si
 
 def loop_post (s0 si : ArmState) : Prop :=
@@ -97,7 +97,7 @@ def loop_post (s0 si : ArmState) : Prop :=
   read_err si = .None ∧
   si.program = program ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym1_n` tactic expects this. Can we make this optional?
+  -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment si
 
 def assert (s0 si : ArmState) : Prop :=
@@ -306,7 +306,7 @@ theorem effects_of_nextc_from_0x4005a4
   -- TODO: Tactic to "explode" conjunctions?
   obtain ⟨h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned⟩ := h_pre
   -- Symbolic simulation
-  -- (FIXME) sym1_n doesn't play well with unconditional branches.
+  -- (FIXME) sym_n doesn't play well with unconditional branches.
   /-
   application type mismatch
   program.stepi_0x4005a8 s1 s2 h_s1_program h_s1_pc
@@ -317,9 +317,9 @@ theorem effects_of_nextc_from_0x4005a4
   but is expected to have type
   r StateField.PC s1 = 0x4005a8#64 : Prop
   -/
-  -- sym1_n 2
-  sym1_n 1 at s0
-  sym1_n 1 at s1
+  -- sym_n 2
+  sym_n 1 at s0
+  sym_n 1 at s1
   -- (FIXME) better stepi lemma generation
   simp (config := {ground := true}) only at h_step_2
   -- Aggregate block effects
@@ -447,7 +447,7 @@ theorem effects_of_nextc_from_0x4005b4_cond_holds_true
   (intro_fetch_decode_lemmas h_step_1 h_inv_program "h_inv";
    all_goals (try assumption))
   --
-  sym1_n 3 at s1
+  sym_n 3 at s1
   -- Aggregating the effects
   simp (config := {ground := true}) only
     at h_step_2 h_step_3 h_step_4
@@ -479,7 +479,7 @@ theorem effects_of_nextc_from_0x4005b4_cond_holds_false
   simp (config := {decide := true}) only
     [non_zero_one_bit_is_one, h_cond_holds_false, minimal_theory] at h_inv_z
   -- Symbolic simulation
-  -- sym1_n 1 at si
+  -- sym_n 1 at si
   -- (TODO) Better handling for branch instructions.
   init_next_step h_run h_step_1 s1
   rw [program.stepi_eq_0x4005b4] at h_step_1
@@ -530,7 +530,7 @@ theorem effects_of_nextc_from_0x4005b8 (_h_pre : pre s0)
   obtain ⟨_h_inv_x0, h_inv_err, h_inv_program, h_inv_sp_aligned⟩ := h_assert
   -- Symbolic simulation
   -- TODO: Why do we need `try assumption` here?
-  sym1_n 1 at si <;> try assumption
+  sym_n 1 at si <;> try assumption
   -- Aggregate effects.
   simp only [run] at h_run
   subst h_run

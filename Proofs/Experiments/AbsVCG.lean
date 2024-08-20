@@ -30,7 +30,7 @@ def abs_pre (s : ArmState) : Prop :=
   s.program = program ∧
   read_err s = StateError.None ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym1_n` tactic expects this. Can we make this optional?
+  -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment s
 
 /-- Specification of the absolute value computation for a 32-bit bitvector. -/
@@ -222,7 +222,7 @@ theorem effects_of_nextc_from_0x4005d0 (h_pre : abs_pre s0)
   simp only [state_simp_rules] at *
   -- Symbolic simulation
   -- (FIXME) Why do we need `try assumption` below?
-  sym1_n 4 at s0 <;> try assumption
+  sym_n 4 at s0 <;> try assumption
   -- Aggregate the effects
   simp only [run] at h_run
   subst sn
