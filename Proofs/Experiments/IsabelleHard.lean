@@ -91,7 +91,27 @@ mask_split_left
 theorem mask_split_left (x y : BitVec 64) (n m : Nat)
     (h : (x &&& (mask64 m <<< n) ||| x &&& mask64 n) = y) :
     x &&& (mask64 m <<< n) = (y &&& (mask64 m <<< n)) := by
-  bv_decide  -- sus
+  bv_decide
+
+/--
+It's highly suspect that LeanSAT can prove `mask_split_left` without
+unfolding the definition of `mask64`.
+For sanity, we prove the same theorem with
+`mask64 m` as an uninterpreted symbol called `mask64m`,
+and `mask64 n` as an uninterpreted symbol `mask64n`.
+-/
+theorem mask_split_left' (x y mask64m mask64n : BitVec 64) (n : Nat)
+    (h : (x &&& (mask64m <<< n) ||| x &&& mask64n) = y) :
+    x &&& (mask64m <<< n) = (y &&& (mask64m <<< n)) := by
+  rw [← h]
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  simp only [getLsb_and, getLsb_shiftLeft, Fin.is_lt, decide_True, Bool.true_and, getLsb_or]
+  rcases (x.getLsb i) with rfl | rfl
+  · simp
+  · simp
+    intros hi hk
+    simp [hi, hk]
 
 /--
 info: 'mask_split_left' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
@@ -108,7 +128,26 @@ mask_split_right
 theorem mask_split_right (x y : BitVec 64) (n m : Nat)
     (h : ((x &&& (mask64 m <<< n)) ||| (x &&& mask64 n)) = y) :
     x &&& mask64 n = y &&& mask64 n := by
-  bv_decide -- sus
+  bv_decide
+
+/--
+See `mask_split_left'`.
+We prove `mask_split_right` with
+- `mask64 m` as an uninterpreted symbol called `mask64m`,
+- `mask64 n` as an uninterpreted symbol `mask64n`.
+-/
+theorem mask_split_right' (x y mask64m mask64n : BitVec 64) (n : Nat)
+    (h : ((x &&& (mask64m <<< n)) ||| (x &&& mask64n)) = y) :
+    x &&& mask64n = y &&& mask64n := by
+  rw [← h]
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  simp only [getLsb_and, getLsb_shiftLeft, Fin.is_lt, decide_True, Bool.true_and, getLsb_or]
+  rcases (x.getLsb i) with rfl | rfl
+  · simp
+  · simp
+    intros hi
+    simp [hi]
 
 /--
 info: 'mask_split_right' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
