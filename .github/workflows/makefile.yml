@@ -41,7 +41,7 @@ jobs:
         key: ${{ runner.os }}-lake
 
     - name: Build AWS-LC (MacOS)
-      if : ${{ runner.os != 'macOS' }}
+      if : ${{ runner.os == 'macOS' }}
       run: |
           ./scripts/build_awslc.sh
 
