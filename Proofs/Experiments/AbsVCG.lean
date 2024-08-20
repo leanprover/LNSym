@@ -92,11 +92,7 @@ theorem Abs.csteps_eq (s : ArmState) (i : Nat) :
 -- Generating the program effects and non-effects
 
 -- set_option trace.gen_step.print_names true in
-#genStepTheorems program thmType:="fetch"
--- set_option trace.gen_step.print_names true in
-#genStepTheorems program thmType:="decodeExec"
--- set_option trace.gen_step.print_names true in
-#genStepTheorems program thmType:="step" `state_simp_rules
+#genStepEqTheorems program
 
 -- (FIXME) Obtain *_cut theorems for each instruction automatically.
 
@@ -111,7 +107,7 @@ theorem program.stepi_0x4005d0_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_0x4005d0 s (run 1 s) h_program h_pc h_err
+  have := program.stepi_eq_0x4005d0 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
@@ -128,7 +124,7 @@ theorem program.stepi_0x4005d4_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_0x4005d4 s (run 1 s) h_program h_pc h_err
+  have := program.stepi_eq_0x4005d4 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
@@ -145,7 +141,7 @@ theorem program.stepi_0x4005d8_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_0x4005d8 s (run 1 s) h_program h_pc h_err
+  have := program.stepi_eq_0x4005d8 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
                 state_simp_rules, bitvec_rules, minimal_theory]
@@ -162,7 +158,7 @@ theorem program.stepi_0x4005dc_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_0x4005dc s (stepi s) h_program h_pc h_err
+  have := program.stepi_eq_0x4005dc h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]

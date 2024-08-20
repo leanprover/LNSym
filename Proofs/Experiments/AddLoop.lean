@@ -136,12 +136,9 @@ theorem AddLoop.csteps_eq (s : ArmState) (i : Nat) :
 -------------------------------------------------------------------------------
 -- Generating the program effects and non-effects
 
--- set_option trace.gen_step.print_names true in
-#genStepTheorems program thmType:="fetch"
--- set_option trace.gen_step.print_names true in
-#genStepTheorems program thmType:="decodeExec"
--- set_option trace.gen_step.print_names true in
-#genStepTheorems program thmType:="step" `state_simp_rules
+-- (FIXME) Print names of generated theorems.
+-- set_option trace.gen_step.debug true in
+#genStepEqTheorems program
 
 -- (FIXME) Obtain *_cut theorems for each instruction automatically.
 
@@ -156,7 +153,7 @@ theorem program.stepi_0x4005a4_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_0x4005a4 s (stepi s) h_program h_pc h_err
+  have := program.stepi_eq_0x4005a4 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
@@ -173,7 +170,7 @@ theorem program.stepi_0x4005a8_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_0x4005a8 s (stepi s) h_program h_pc h_err
+  have := program.stepi_eq_0x4005a8 h_program h_pc h_err
   simp only [minimal_theory, bitvec_rules] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -189,7 +186,7 @@ theorem program.stepi_0x4005ac_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_0x4005ac s (run 1 s) h_program h_pc h_err
+  have := program.stepi_eq_0x4005ac h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -205,7 +202,7 @@ theorem program.stepi_0x4005b0_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_0x4005b0 s (run 1 s) h_program h_pc h_err
+  have := program.stepi_eq_0x4005b0 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -225,18 +222,17 @@ theorem program.stepi_0x4005b4_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_0x4005b4 s (run 1 s) h_program h_pc h_err
+  have := program.stepi_eq_0x4005b4 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   split
   · rename_i h
     simp_all only [state_simp_rules, bitvec_rules, minimal_theory]
-
   · rename_i h; simp only [minimal_theory] at h
     simp_all only [state_simp_rules, minimal_theory]
     done
 
-theorem program.stepi_0x4005b8_cut (s sn : ArmState)
+theorem program.stepi_eq_0x4005b8_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005b8#64)
   (h_err : r StateField.ERR s = StateError.None)
@@ -247,7 +243,7 @@ theorem program.stepi_0x4005b8_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_0x4005b8 s (run 1 s) h_program h_pc h_err
+  have := program.stepi_eq_0x4005b8 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -446,7 +442,7 @@ theorem effects_of_nextc_from_0x4005b4_cond_holds_true
   -- Symbolic simulation
   -- (TODO) Better handling for branch instructions.
   init_next_step h_run h_step_1 s1
-  rw [program.stepi_0x4005b4] at h_step_1
+  rw [program.stepi_eq_0x4005b4] at h_step_1
   simp only [*, bitvec_rules, minimal_theory] at h_step_1
   (intro_fetch_decode_lemmas h_step_1 h_inv_program "h_inv";
    all_goals (try assumption))
@@ -486,7 +482,7 @@ theorem effects_of_nextc_from_0x4005b4_cond_holds_false
   -- sym1_n 1 at si
   -- (TODO) Better handling for branch instructions.
   init_next_step h_run h_step_1 s1
-  rw [program.stepi_0x4005b4] at h_step_1
+  rw [program.stepi_eq_0x4005b4] at h_step_1
   simp only [*, non_zero_one_bit_is_one, bitvec_rules, minimal_theory]
     at h_step_1
   (intro_fetch_decode_lemmas h_step_1 h_inv_program "h_inv";
@@ -512,7 +508,7 @@ theorem nextc_to_run_from_0x4005b8 (_h_pre : pre s0)
 
   -- Stop when the *_cut theorem says (cut <state>) = true.
   rw [AddLoop.csteps_eq]
-  have h_step_1 := program.stepi_0x4005b8_cut si (run 1 si)
+  have h_step_1 := program.stepi_eq_0x4005b8_cut si (run 1 si)
   simp_all only [minimal_theory, bitvec_rules]
   generalize _h_s1 : run 1 si = s1 at h_step_1
 
