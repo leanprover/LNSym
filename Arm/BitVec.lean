@@ -954,9 +954,8 @@ theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
   x.extractLsByte a = 0#8 := by
   apply BitVec.eq_of_getLsb_eq
   intros i
-  simp
-  rw [extractLsByte_def]
-  simp
+  simp only [getLsb_zero, extractLsByte_def,
+    getLsb_cast, getLsb_extract, Bool.and_eq_false_imp, decide_eq_true_eq]
   intros hi
   apply BitVec.getLsb_ge
   omega
@@ -1005,7 +1004,7 @@ theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) 
   rcases n with rfl | n
   · simp only [Nat.reduceMul, Nat.zero_le, getLsb_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
     Nat.add_zero, Bool.false_and]
-    simp [show ¬ i < 0 by omega]
+    simp only [show ¬i < 0 by omega, decide_False, Bool.false_and]
   · simp only [extractLsBytes, getLsb_cast, getLsb_extract, Nat.zero_lt_succ, decide_True,
     Bool.true_and]
     simp only [show base * 8 + (n + 1) * 8 - 1 - base * 8 = (n + 1) * 8 - 1 by omega]
@@ -1019,19 +1018,18 @@ theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i 
   apply BitVec.eq_of_getLsb_eq
   simp only [getLsb_extractLsByte, getLsb_extractLsBytes]
   intros j
-  simp [show (j : Nat) ≤ 7 by omega]
+  simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
   by_cases hn : i < n
-  · simp [hn]
-    simp [show (j : Nat) ≤ 7 by omega]
+  · simp only [hn, ↓reduceIte, getLsb_extractLsByte,
+      show (j : Nat) ≤ 7 by omega]
     by_cases h : (i * 8 + (j : Nat) < n * 8)
-    · simp [h]
+    · simp only [h, decide_True, Bool.true_and]
       congr 1
       omega
-    · simp [h]
+    · simp only [h, decide_False, Bool.false_and, decide_True, Bool.true_and, Bool.false_eq]
       apply BitVec.getLsb_ge
       omega
-  · simp [hn]
-    intros h
+  · simp only [hn, ↓reduceIte, getLsb_zero, Bool.and_eq_false_imp, decide_eq_true_eq]
     omega
 
 /-- Extracting out bytes from the zero bitvector is equal to the zero bitvector. -/
@@ -1039,7 +1037,8 @@ theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i 
 theorem extractLsBytes_zero {w : Nat} (base : Nat) :
     (0#w).extractLsBytes base n = 0#(n*8) := by
   apply BitVec.eq_of_getLsb_eq
-  simp
+  simp only [getLsb_extractLsBytes, Fin.is_lt, decide_True, getLsb_zero, Bool.and_false,
+    implies_true]
 
 /-- Extracing out all the bytes is equal to the bitvector. -/
 @[simp]
