@@ -36,7 +36,6 @@ macro "init_next_step" h_run:ident h_step:ident sn:ident : tactic =>
   `(tactic|
     (-- use `let` over `obtain` to prevent `.intro` goal tags
      let ⟨$sn:ident, ⟨$h_step:ident, _⟩⟩ := run_onestep $h_run:ident;
-     -- obtain ⟨$sn:ident, ⟨$h_step:ident, $h_run:ident⟩⟩ := $h_run:ident
      clear $h_run:ident; rename_i $h_run:ident
      simp (config := {ground := true, failIfUnchanged := false}) only
         at $h_run:ident))
