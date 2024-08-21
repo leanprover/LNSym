@@ -113,7 +113,7 @@ private def findFromUserName (name : Name) : MetaM LocalDecl := do
   return decl
 
 def stateExpr : MetaM Expr :=
-  (Expr.fvar ·.fvarId) <$> findFromUserName c.state
+  (·.toExpr) <$> findFromUserName c.state
 
 -- (FIXME) I'm not sure what naming convention to use here:
 -- conventional Lean (or at least, Matlib) style mandates `lowerCamelCase`,
