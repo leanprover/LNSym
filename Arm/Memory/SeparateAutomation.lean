@@ -112,15 +112,6 @@ def WithWitness.e {α : Type} {e : α} (p : WithWitness α e) : α := e
 instance [ToMessageData α] : ToMessageData (WithWitness α e) where
   toMessageData proof := m! "{proof.h}: {e}"
 
-  /--
-  Given a `a : α` (for example, `(a = legal) : (α = mem_legal)`),
-  produce an `Expr` whose type is `<omega fact> → α`.
-  For example, `mem_legal.of_omega` is a function of type:
-    `(h : a.toNat + n ≤ 2 ^ 64) → mem_legal a n`.
-  -/
-class OmegaReducible (α : Type) where
-  reduceToOmega : α → Expr
-
 structure MemSpanExpr where
   base : Expr
   n : Expr
@@ -296,6 +287,29 @@ def consumeRewriteFuel : SimpMemM Unit :=
 
 def outofRewriteFuel? : SimpMemM Bool := do
   return (← get).rewriteFuel == 0
+/-
+Introduce a new definition into the local context,
+and return the FVarId of the new definition in the goal.
+-/
+def introDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
+  SimpMemM.withMainContext do
+    let name ← mkFreshUserName <| .mkSimple name
+    let goal ← getMainGoal
+    let hdefTy ← inferType hdefVal
+    let goal ← goal.define name hdefTy hdefVal
+    let (fvar, goal) ← goal.intro1P
+    replaceMainGoal [goal]
+    return fvar
+
+/-- SimpMemM's omega invoker -/
+def omega : SimpMemM Unit := do
+  -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
+  -- @bollu: TODO: understand what precisely we are recovering from.
+  withoutRecover do
+    evalTactic (← `(tactic| bv_omega'))
+
+section Hypotheses
+
 
 /--
 info: mem_separate'.ha {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_separate' a an b bn) :
@@ -366,7 +380,7 @@ def MemSeparateExpr.ofExpr? (e : Expr) : Option MemSeparateExpr :=
   | _ => none
 
 /-- Match an expression `h` to see if it's a useful hypothesis. -/
-def processHypothesis (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothesis) := do
+def hypothesisOfExpr (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothesis) := do
   let ht ← inferType h
   trace[simp_mem.info] "{processingEmoji} Processing '{h}' : '{toString ht}'"
   if let .some sep := MemSeparateExpr.ofExpr? ht then
@@ -392,30 +406,6 @@ def processHypothesis (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypoth
       hyps := hyps.push proof
     return hyps
 
-/-
-Introduce a new definition into the local context,
-and return the FVarId of the new definition in the goal.
--/
-def introDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
-  SimpMemM.withMainContext do
-    let name ← mkFreshUserName <| .mkSimple name
-    let goal ← getMainGoal
-    let hdefTy ← inferType hdefVal
-    let goal ← goal.define name hdefTy hdefVal
-    let (fvar, goal) ← goal.intro1P
-    replaceMainGoal [goal]
-    return fvar
-
-/-- SimpMemM's omega invoker -/
-def omega : SimpMemM Unit := do
-  -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
-  -- @bollu: TODO: understand what precisely we are recovering from.
-  withoutRecover do
-    evalTactic (← `(tactic| bv_omega'))
-
-
-section MemLegal
-
 /--
 info: mem_legal'.omega_def {a : BitVec 64} {n : Nat} (h : mem_legal' a n) : a.toNat + n ≤ 2 ^ 64
 -/
@@ -433,8 +423,6 @@ def MemLegalProof.addOmegaFacts (h : MemLegalProof e) (args : Array Expr) :
     let fvar ← introDef "hmemLegal_omega" h.omega_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
     return args.push (Expr.fvar fvar)
-
-end MemLegal
 
 /--
 info: mem_subset'.omega_def {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (h : mem_subset' a an b bn) :
@@ -495,14 +483,63 @@ def Hypothesis.addOmegaFactsOfHyps (hs : List Hypothesis) (args : Array Expr)
       args ← h.addOmegaFactsOfHyp args
     return args
 
+end Hypotheses
+
+section ReductionToOmega
+
+/--
+Given a `a : α` (for example, `(a = legal) : (α = mem_legal)`),
+produce an `Expr` whose type is `<omega fact> → α`.
+For example, `mem_legal.of_omega` is a function of type:
+  `(h : a.toNat + n ≤ 2 ^ 64) → mem_legal a n`.
+-/
+class OmegaReducible (α : Type) where
+  reduceToOmega : α → Expr
+
+
 /--
 info: mem_legal'.of_omega {n : Nat} {a : BitVec 64} (h : a.toNat + n ≤ 2 ^ 64) : mem_legal' a n
 -/
 #guard_msgs in #check mem_legal'.of_omega
 
+instance : OmegaReducible MemLegalExpr where
+  reduceToOmega legal :=
+    let a := legal.span.base
+    let n := legal.span.n
+    mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a]
 
 /--
-`omegaToFactVal` is a value whose type is `omegaFact → desiredFact`.
+info: mem_subset'.of_omega {an bn : Nat} {a b : BitVec 64}
+  (h : a.toNat + an ≤ 2 ^ 64 ∧ b.toNat + bn ≤ 2 ^ 64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn) :
+  mem_subset' a an b bn
+-/
+#guard_msgs in #check mem_subset'.of_omega
+
+instance : OmegaReducible MemSubsetExpr where
+  reduceToOmega subset :=
+  let a := subset.sa.base
+  let an := subset.sa.n
+  let b := subset.sb.base
+  let bn := subset.sb.n
+  mkAppN (Expr.const ``mem_subset'.of_omega []) #[an, bn, a, b]
+
+/--
+info: mem_subset'.of_omega {an bn : Nat} {a b : BitVec 64}
+  (h : a.toNat + an ≤ 2 ^ 64 ∧ b.toNat + bn ≤ 2 ^ 64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn) :
+  mem_subset' a an b bn
+-/
+#guard_msgs in #check mem_subset'.of_omega
+
+instance : OmegaReducible MemSeparateExpr where
+  reduceToOmega separate :=
+    let a := separate.sa.base
+    let an := separate.sa.n
+    let b := separate.sb.base
+    let bn := separate.sb.n
+    mkAppN (Expr.const ``mem_separate'.of_omega []) #[an, bn, a, b]
+
+/--
+`OmegaReducible` is a value whose type is `omegaFact → desiredFact`.
 An example is `mem_lega'.of_omega n a`, which has type:
   `(h : a.toNat + n ≤ 2 ^ 64) → mem_legal' a n`.
 
@@ -538,49 +575,9 @@ def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
     trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
     setGoals oldGoals
     return none
+  end ReductionToOmega
 
-instance : OmegaReducible MemLegalExpr where
-  reduceToOmega legal :=
-    let a := legal.span.base
-    let n := legal.span.n
-    mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a]
-
-section MemSubset
-
-/--
-info: mem_subset'.of_omega {an bn : Nat} {a b : BitVec 64}
-  (h : a.toNat + an ≤ 2 ^ 64 ∧ b.toNat + bn ≤ 2 ^ 64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn) :
-  mem_subset' a an b bn
--/
-#guard_msgs in #check mem_subset'.of_omega
-
-instance : OmegaReducible MemSubsetExpr where
-  reduceToOmega subset :=
-  let a := subset.sa.base
-  let an := subset.sa.n
-  let b := subset.sb.base
-  let bn := subset.sb.n
-  mkAppN (Expr.const ``mem_subset'.of_omega []) #[an, bn, a, b]
-
-end MemSubset
-section MemSeparate
-
-/--
-info: mem_subset'.of_omega {an bn : Nat} {a b : BitVec 64}
-  (h : a.toNat + an ≤ 2 ^ 64 ∧ b.toNat + bn ≤ 2 ^ 64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn) :
-  mem_subset' a an b bn
--/
-#guard_msgs in #check mem_subset'.of_omega
-
-instance : OmegaReducible MemSeparateExpr where
-  reduceToOmega separate :=
-    let a := separate.sa.base
-    let an := separate.sa.n
-    let b := separate.sb.base
-    let bn := separate.sb.n
-    mkAppN (Expr.const ``mem_separate'.of_omega []) #[an, bn, a, b]
-
-end MemSeparate
+section Simplify
 
 def SimpMemM.rewriteWithEquality (rw : Expr) (msg : MessageData) : SimpMemM Unit := do
   withTraceNode msg do
@@ -655,7 +652,7 @@ def SimpMemM.rewriteReadOfSubsetWrite
 
 mutual
 
-partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM Unit := do
+partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM Unit := do
   consumeRewriteFuel
   if ← outofRewriteFuel? then
     trace[simp_mem.info] "out of fuel for rewriting, stopping."
@@ -704,35 +701,31 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
               return ()
             else
               trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
-      -- trace[simp_mem.info] "{crossEmoji} {er.span} ⊊ any read."
   else
     if e.isForall then
       Lean.Meta.forallTelescope e fun xs b => do
         for x in xs do
-          improveExpr x hyps
+          SimpMemM.simplifyExpr x hyps
           -- we may have a hypothesis like
           -- ∀ (x : read_mem (read_mem_bytes ...) ... = out).
           -- we want to simplify the *type* of x.
-          improveExpr (← inferType x) hyps
-        improveExpr b hyps
+          SimpMemM.simplifyExpr (← inferType x) hyps
+        SimpMemM.simplifyExpr b hyps
     else if e.isLambda then
       Lean.Meta.lambdaTelescope e fun xs b => do
         for x in xs do
-          improveExpr x hyps
-          improveExpr (← inferType x) hyps
-        improveExpr b hyps
+          SimpMemM.simplifyExpr x hyps
+          SimpMemM.simplifyExpr (← inferType x) hyps
+        SimpMemM.simplifyExpr b hyps
     else
       -- check if we have expressions.
       match e with
       | .app f x =>
-        improveExpr f hyps
-        improveExpr x hyps
+        SimpMemM.simplifyExpr f hyps
+        SimpMemM.simplifyExpr x hyps
       | _ => return ()
 
--- /-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
--- #guard_msgs in #check mem_legal'
-
-partial def SimpMemM.improveGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM Unit := do
+partial def SimpMemM.simplifyGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM Unit := do
   SimpMemM.withMainContext do
     trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
     let gt ← g.getType
@@ -749,32 +742,35 @@ partial def SimpMemM.improveGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMe
       if let .some proof ←  proveWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
     withTraceNode "Simplifying goal." do
-      improveExpr (← whnf gt) hyps
+      SimpMemM.simplifyExpr (← whnf gt) hyps
 
 end
 
-def SimpMemM.analyzeLoop : SimpMemM Unit := do
+def SimpMemM.simplifyLoop : SimpMemM Unit := do
     (← getMainGoal).withContext do
       let hyps := (← getLocalHyps)
       -- trace[simp_mem] "analyzing {hyps.size} hypotheses:\n{← hyps.mapM (liftMetaM ∘ inferType)}"
       let foundHyps ← withTraceNode m!"Searching for Hypotheses" do
         let mut foundHyps : Array Hypothesis := #[]
         for h in hyps do
-          foundHyps ← processHypothesis h foundHyps
+          foundHyps ← hypothesisOfExpr h foundHyps
         pure foundHyps
       withTraceNode m!"Summary: Found {foundHyps.size} hypotheses" do
         for (i, h) in foundHyps.toList.enum do
           trace[simp_mem.info] m!"{i+1}) {h}"
 
       withTraceNode m!"Performing Rewrite At Main Goal" do
-        SimpMemM.improveGoal (← getMainGoal) foundHyps
+        SimpMemM.simplifyGoal (← getMainGoal) foundHyps
+
+end Simplify
+
 /--
 Given a collection of facts, try prove `False` using the omega algorithm,
 and close the goal using that.
 -/
 def simpMem (cfg : SimpMemConfig := {}) : TacticM Unit := do
   -- evalTactic (← `(simp (config := {failIfUnchanged := false}) only [memory_rules]))
-  SimpMemM.run SimpMemM.analyzeLoop cfg
+  SimpMemM.run SimpMemM.simplifyLoop cfg
 
 
 /-- The `simp_mem` tactic, for simplifying away statements about memory. -/
