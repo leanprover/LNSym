@@ -23,7 +23,7 @@ def introFetchDecodeLemmas (goal : MVarId) (hStep : Expr) (hProgram : Expr)
   let matching_decls := filterDeclsWithPrefix lctx hyp_prefix.toName
   -- logInfo m!"matching_decls: {matching_decls[0]!.userName}"
   let (ctx, simprocs) ←
-    LNSymSimpContext (config := {decide := true})
+    LNSymSimpContext (config := {decide := true, failIfUnchanged := false})
                      (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules])
                      -- Is it necessary to have CheckSPAlignment here?
                      (decls_to_unfold := #[])
@@ -80,6 +80,9 @@ def introFetchDecodeLemmas (goal : MVarId) (hStep : Expr) (hProgram : Expr)
       ctx simprocs
 
   let other_unsolved_goals := optionListtoList [maybe_err_goal, maybe_pc_goal, maybe_sp_aligned_goal, maybe_prog_goal]
+  if !other_unsolved_goals.isEmpty then
+    trace[Tactic.sym] "failed to solve goals: {other_unsolved_goals}"
+
   replaceMainGoal (goal' :: other_unsolved_goals)
   return true
 
