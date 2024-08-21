@@ -652,14 +652,16 @@ def SimpMemM.rewriteReadOfSubsetWrite
 
 mutual
 
+/--
+Pattern match for memory patterns, and simplify them.
+Close memory side conditions with `simplifyGoal`.
+-/
 partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM Unit := do
   consumeRewriteFuel
   if ← outofRewriteFuel? then
     trace[simp_mem.info] "out of fuel for rewriting, stopping."
     return ()
-  -- withTraceNode `simp_mem.info (fun _ => return "improving expression (NOTE: can be large)") do
-  --   trace[simp_mem.info] "{e}"
-  --   if e.isSort then trace[simp_mem.info] "{crossEmoji} skipping sorts."
+
   if e.isSort then
     trace[simp_mem.info] "skipping sort '{e}'."
     return ()
@@ -725,6 +727,10 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
         SimpMemM.simplifyExpr x hyps
       | _ => return ()
 
+/--
+simplify the goal state, closing legality, subset, and separation goals,
+and simplifying all other expressions.
+-/
 partial def SimpMemM.simplifyGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM Unit := do
   SimpMemM.withMainContext do
     trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
@@ -746,10 +752,13 @@ partial def SimpMemM.simplifyGoal (g : MVarId) (hyps : Array Hypothesis) : SimpM
 
 end
 
+/--
+The core simplification loop.
+We look for appropriate hypotheses, and simplify (often closing) the main goal using them.
+-/
 def SimpMemM.simplifyLoop : SimpMemM Unit := do
     (← getMainGoal).withContext do
       let hyps := (← getLocalHyps)
-      -- trace[simp_mem] "analyzing {hyps.size} hypotheses:\n{← hyps.mapM (liftMetaM ∘ inferType)}"
       let foundHyps ← withTraceNode m!"Searching for Hypotheses" do
         let mut foundHyps : Array Hypothesis := #[]
         for h in hyps do
