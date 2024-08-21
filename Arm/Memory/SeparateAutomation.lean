@@ -112,6 +112,14 @@ def WithWitness.e {α : Type} {e : α} (p : WithWitness α e) : α := e
 instance [ToMessageData α] : ToMessageData (WithWitness α e) where
   toMessageData proof := m! "{proof.h}: {e}"
 
+  /--
+  Given a `a : α` (for example, `(a = legal) : (α = mem_legal)`),
+  produce an `Expr` whose type is `<omega fact> → α`.
+  For example, `mem_legal.of_omega` is a function of type:
+    `(h : a.toNat + n ≤ 2 ^ 64) → mem_legal a n`.
+  -/
+class OmegaReducible (α : Type) where
+  reduceToOmega : α → Expr
 
 structure MemSpanExpr where
   base : Expr
@@ -195,8 +203,6 @@ structure WriteBytesExpr where
 instance : ToMessageData WriteBytesExpr where
   toMessageData e := m!"{e.mem}[{e.span} := {e.val}]"
 
-
-
 def WriteBytesExpr.ofExpr? (e : Expr) : Option WriteBytesExpr :=
   match_expr e with
   | Memory.write_bytes n addr val m =>
@@ -275,6 +281,13 @@ def SimpMemM.addHypothesis (h : Hypothesis) : SimpMemM Unit :=
 
 def SimpMemM.withMainContext (ma : SimpMemM α) : SimpMemM α := do
   (← getMainGoal).withContext ma
+
+/-- create a trace node in trace class (i.e. `set_option traceClass true`),
+with header `header`, whose default collapsed state is `collapsed`. -/
+def SimpMemM.withTraceNode (header : MessageData) (k : SimpMemM α)
+    (collapsed : Bool := true)
+    (traceClass : Name := `simp_mem.info) : SimpMemM α :=
+  Lean.withTraceNode traceClass (fun _ => return header) k (collapsed := collapsed)
 
 def processingEmoji : String := "⚙️"
 
@@ -421,6 +434,8 @@ def MemLegalProof.addOmegaFacts (h : MemLegalProof e) (args : Array Expr) :
     trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
     return args.push (Expr.fvar fvar)
 
+end MemLegal
+
 /--
 info: mem_subset'.omega_def {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (h : mem_subset' a an b bn) :
   a.toNat + an ≤ 2 ^ 64 ∧ b.toNat + bn ≤ 2 ^ 64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn
@@ -474,7 +489,7 @@ Accumulate all omega defs in `args`.
 -/
 def Hypothesis.addOmegaFactsOfHyps (hs : List Hypothesis) (args : Array Expr)
     : SimpMemM (Array Expr) := do
-  withTraceNode `simp_mem.info (fun _ => return m!"Adding omega facts from hypotheses") do
+  SimpMemM.withTraceNode m!"Adding omega facts from hypotheses" do
     let mut args := args
     for h in hs do
       args ← h.addOmegaFactsOfHyp args
@@ -487,44 +502,48 @@ info: mem_legal'.of_omega {n : Nat} {a : BitVec 64} (h : a.toNat + n ≤ 2 ^ 64)
 
 
 /--
-Try to prove that the memory access is legal by reducing the problem to `omega`.
-Eventually, this will be supplemented by heuristics.
+`omegaToFactVal` is a value whose type is `omegaFact → desiredFact`.
+An example is `mem_lega'.of_omega n a`, which has type:
+  `(h : a.toNat + n ≤ 2 ^ 64) → mem_legal' a n`.
+
+@bollu: TODO: this can be generalized further, what we actually need is
+  a way to convert `e : α` into the `omegaToDesiredFactFnVal`.
 -/
-def proveMemLegalWithOmega? (legal : MemLegalExpr)
-    (hyps : Array Hypothesis) : SimpMemM (Option (MemLegalProof legal)) := do
-  -- [a..n)
-  withTraceNode `simp_mem.info (fun _ => return m!"proving {legal}") do
-  let a := legal.span.base
-  let n := legal.span.n
+def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
+    (hyps : Array Hypothesis) : SimpMemM (Option (WithWitness α e)) := do
+  let proofFromOmegaVal := (OmegaReducible.reduceToOmega e)
   -- (h : a.toNat + n ≤ 2 ^ 64) → mem_legal' a n
-  let legalOfOmegaVal := mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a]
-  let legalOfOmegaTy ← inferType legalOfOmegaVal
-  -- trace[simp_mem.info] "partially applied: '{legalOfOmegaVal} : {legalOfOmegaTy}'"
+  let proofFromOmegaTy ← inferType (OmegaReducible.reduceToOmega e)
+  -- trace[simp_mem.info] "partially applied: '{proofFromOmegaVal} : {proofFromOmegaTy}'"
   let omegaObligationTy ← do -- (h : a.toNat + n ≤ 2 ^ 64)
-    match legalOfOmegaTy with
+    match proofFromOmegaTy with
     | Expr.forallE _argName argTy _body _binderInfo => pure argTy
-    | _ => throwError "expected '{legalOfOmegaTy}' to a ∀"
+    | _ => throwError "expected '{proofFromOmegaTy}' to a ∀"
   trace[simp_mem.info] "omega obligation '{omegaObligationTy}'"
-  let omegaGoal ← mkFreshExprMVar (type? := omegaObligationTy)
-  let legalOfOmegaVal := mkAppN legalOfOmegaVal #[omegaGoal]
+  let omegaObligationVal ← mkFreshExprMVar (type? := omegaObligationTy)
+  let FactVal := mkAppN proofFromOmegaVal #[omegaObligationVal]
   let oldGoals := (← getGoals)
 
   try
-    setGoals (omegaGoal.mvarId! :: (← getGoals))
+    setGoals (omegaObligationVal.mvarId! :: (← getGoals))
     SimpMemM.withMainContext do
     let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
-    trace[simp_mem.info] "Executing `omega` to close {legal}"
-    withTraceNode `simp_mem.info (fun _ => return m!"goal (Note: can be large)") do
+    trace[simp_mem.info] "Executing `omega` to close {e}"
+    SimpMemM.withTraceNode m!"goal (Note: can be large)" do
       trace[simp_mem.info] "{← getMainGoal}"
     omega
     trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
-    return (.some <| MemLegalProof.mk (← instantiateMVars legalOfOmegaVal))
+    return (.some <| WithWitness.mk (← instantiateMVars FactVal))
   catch e =>
     trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
     setGoals oldGoals
     return none
-end MemLegal
 
+instance : OmegaReducible MemLegalExpr where
+  reduceToOmega legal :=
+    let a := legal.span.base
+    let n := legal.span.n
+    mkAppN (Expr.const ``mem_legal'.of_omega []) #[n, a]
 
 section MemSubset
 
@@ -535,49 +554,15 @@ info: mem_subset'.of_omega {an bn : Nat} {a b : BitVec 64}
 -/
 #guard_msgs in #check mem_subset'.of_omega
 
-
-/--
-Try to prove that the memory subset is legal by reducing the problem to `omega`.
-Eventually, this will be supplemented by heuristics.
--- @bollu: TODO: move error recovery code into the other proveMemSeparateWithOmega? also.
--/
-def proveMemSubsetWithOmega? (subset : MemSubsetExpr)
-    (hyps : Array Hypothesis) : SimpMemM (Option (MemSubsetProof subset)) := do
-  -- [a..n)
-  withTraceNode `simp_mem.info (fun _ => return m!"proving {subset}") do
+instance : OmegaReducible MemSubsetExpr where
+  reduceToOmega subset :=
   let a := subset.sa.base
   let an := subset.sa.n
   let b := subset.sb.base
   let bn := subset.sb.n
-  let ofOmegaVal := mkAppN (Expr.const ``mem_subset'.of_omega []) #[an, bn, a, b]
-  let ofOmegaTy ← inferType ofOmegaVal
-  -- trace[simp_mem.info] "partially applied: '{ofOmegaVal} : {ofOmegaTy}'"
-  let omegaObligationTy ← do
-    match ofOmegaTy with
-    | Expr.forallE _argName argTy _body _binderInfo => pure argTy
-    | _ => throwError "expected '{ofOmegaTy}' to a ∀"
-  trace[simp_mem.info] "omega obligation '{omegaObligationTy}'"
-  let omegaGoal ← mkFreshExprMVar (type? := omegaObligationTy)
-  let ofOmegaVal := mkAppN ofOmegaVal #[omegaGoal]
-  let oldGoals := (← getGoals)
-  try
-    setGoals (omegaGoal.mvarId! :: (← getGoals))
-    SimpMemM.withMainContext do
-    let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
-    trace[simp_mem.info] "Executing `omega` to close {subset}"
-    withTraceNode `simp_mem.info (fun _ => return m!"goal (Note: can be large)") do
-      trace[simp_mem.info] "{← getMainGoal}"
-    omega
-    trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
-    return (.some <| MemSubsetProof.mk (← instantiateMVars ofOmegaVal))
-  catch e =>
-    -- | TODO: raise `e`.
-    trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
-    setGoals oldGoals
-    return none
+  mkAppN (Expr.const ``mem_subset'.of_omega []) #[an, bn, a, b]
 
 end MemSubset
-
 section MemSeparate
 
 /--
@@ -587,46 +572,28 @@ info: mem_subset'.of_omega {an bn : Nat} {a b : BitVec 64}
 -/
 #guard_msgs in #check mem_subset'.of_omega
 
-
-/--
-Try to prove that the memory subset is legal by reducing the problem to `omega`.
-Eventually, this will be supplemented by heuristics.
--/
-def proveMemSeparateWithOmega? (e : MemSeparateExpr)
-    (hyps : Array Hypothesis) : SimpMemM (Option (MemSeparateProof e)) := do
-  withTraceNode `simp_mem.info (fun _ => return m!"proving {e}") do
-    -- [a..n)
-    let a := e.sa.base
-    let an := e.sa.n
-    let b := e.sb.base
-    let bn := e.sb.n
-    let ofOmegaVal := mkAppN (Expr.const ``mem_separate'.of_omega []) #[an, bn, a, b]
-    let ofOmegaTy ← inferType ofOmegaVal
-    -- trace[simp_mem.info] "partially applied: '{ofOmegaVal} : {ofOmegaTy}'"
-    let omegaObligationTy ← do
-      match ofOmegaTy with
-      | Expr.forallE _argName argTy _body _binderInfo => pure argTy
-      | _ => throwError "expected '{ofOmegaTy}' to a ∀"
-    trace[simp_mem.info] "omega obligation '{omegaObligationTy}'"
-    let omegaGoal ← mkFreshExprMVar (type? := omegaObligationTy)
-    let ofOmegaVal := mkAppN ofOmegaVal #[omegaGoal]
-    let oldGoals := (← getGoals)
-    try
-      setGoals (omegaGoal.mvarId! :: (← getGoals))
-      SimpMemM.withMainContext do
-      let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
-      trace[simp_mem.info] "Executing `omega` to close {e}"
-      withTraceNode `simp_mem.info (fun _ => return m!"goal (Note: can be large)") do
-        trace[simp_mem.info] "{← getMainGoal}"
-      omega
-      trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
-      return (.some <| MemSeparateProof.mk (← instantiateMVars ofOmegaVal))
-    catch e =>
-      trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
-      setGoals oldGoals
-      return none
+instance : OmegaReducible MemSeparateExpr where
+  reduceToOmega separate :=
+    let a := separate.sa.base
+    let an := separate.sa.n
+    let b := separate.sb.base
+    let bn := separate.sb.n
+    mkAppN (Expr.const ``mem_separate'.of_omega []) #[an, bn, a, b]
 
 end MemSeparate
+
+def SimpMemM.rewriteWithEquality (rw : Expr) (msg : MessageData) : SimpMemM Unit := do
+  withTraceNode msg do
+    withMainContext do
+      withTraceNode m!"rewrite (Note: can be large)" do
+        trace[simp_mem.info] "{← inferType rw}"
+      let goal ← getMainGoal
+      let result ← goal.rewrite (← getMainTarget) rw
+      let mvarId' ← (← getMainGoal).replaceTargetEq result.eNew result.eqProof
+      trace[simp_mem.info] "{checkEmoji} rewritten goal {mvarId'}"
+      unless result.mvarIds == [] do
+        throwError m!"{crossEmoji} internal error: expected rewrite to produce no side conditions. Produced {result.mvarIds}"
+      replaceMainGoal [mvarId']
 
 /--
 info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat}
@@ -636,29 +603,17 @@ info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {x : BitVec 6
 #guard_msgs in #check Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
 
 /-- given that `e` is a read of the write, perform a rewrite. using -/
-def SimpMemM.rewriteReadOfSeparatedWrite (e : Expr) (hyps : Array Hypothesis)
+def SimpMemM.rewriteReadOfSeparatedWrite
     (er : ReadBytesExpr) (ew : WriteBytesExpr)
     (separate : MemSeparateProof { sa := er.span, sb := ew.span }) : SimpMemM Unit := do
-  withTraceNode `simp_mem.info (fun _ => return m!"rewriting read({er})⟂write({ew})") do
-  withMainContext do
-    let call :=
-      mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' [])
-        #[er.span.base, er.span.n,
-          ew.span.base, ew.span.n,
-          ew.mem,
-          separate.h,
-          ew.val]
-    -- stolen from Lean/Elab/Tactic/Rewrite
-    let goal ← getMainGoal
-    let result ← goal.rewrite (← getMainTarget) call
-    let mvarId' ← (← getMainGoal).replaceTargetEq result.eNew result.eqProof
-    trace[simp_mem.info] "{checkEmoji} rewritten goal {mvarId'}"
-    unless result.mvarIds == [] do
-      throwError m!"{crossEmoji} internal error: expected rewrite to produce no side conditions. Produced {result.mvarIds}"
-    -- trace[simp_mem.info] "{processingEmoji} closing rewrite side condition '{goal}'."
-    -- replaceMainGoal [goal]
-    -- improveGoal goal hyps
-    replaceMainGoal [mvarId']
+  let call :=
+    mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' [])
+      #[er.span.base, er.span.n,
+        ew.span.base, ew.span.n,
+        ew.mem,
+        separate.h,
+        ew.val]
+  SimpMemM.rewriteWithEquality call m!"rewriting read({er})⟂write({ew})"
 
 /--
 info: Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' {bn : Nat} {b : BitVec 64} {val : BitVec (bn * 8)}
@@ -668,7 +623,6 @@ info: Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' {bn : Nat} {b : Bit
 #guard_msgs in #check Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
 
 def SimpMemM.rewriteReadOfSubsetRead
-    (e : Expr) (hyps : Array Hypothesis)
     (er : ReadBytesExpr)
     (hread : ReadBytesEqProof)
     (hsubset : MemSubsetProof { sa := er.span, sb := hread.read.span })
@@ -680,16 +634,7 @@ def SimpMemM.rewriteReadOfSubsetRead
       er.mem,
       hread.h,
       hsubset.h]
-  withTraceNode `simp_mem.info (fun _ => return m!"rewriting read({er})⊆read({hread.read})") do
-    withMainContext do
-      let goal ← getMainGoal
-      let result ← goal.rewrite (← getMainTarget) call
-      let mvarId' ← (← getMainGoal).replaceTargetEq result.eNew result.eqProof
-      trace[simp_mem.info] "{checkEmoji} rewritten goal {mvarId'}"
-      unless result.mvarIds == [] do
-        throwError m!"{crossEmoji} internal error: expected rewrite to produce no side conditions. Produced {result.mvarIds}"
-      replaceMainGoal [mvarId']
-
+  SimpMemM.rewriteWithEquality call m!"rewriting read({er})⊆read({hread.read})"
 
 /--
 info: Memory.read_bytes_write_bytes_eq_of_mem_subset' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat} {mem : Memory}
@@ -698,7 +643,7 @@ info: Memory.read_bytes_write_bytes_eq_of_mem_subset' {x : BitVec 64} {xn : Nat}
 -/
 #guard_msgs in #check Memory.read_bytes_write_bytes_eq_of_mem_subset'
 
-def SimpMemM.rewriteReadOfSubsetWrite (e : Expr) (hyps : Array Hypothesis)
+def SimpMemM.rewriteReadOfSubsetWrite
     (er : ReadBytesExpr) (ew : WriteBytesExpr) (hsubset : MemSubsetProof { sa := er.span, sb := ew.span }) : SimpMemM Unit := do
   let call := mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_of_mem_subset' [])
     #[er.span.base, er.span.n,
@@ -706,24 +651,9 @@ def SimpMemM.rewriteReadOfSubsetWrite (e : Expr) (hyps : Array Hypothesis)
       ew.mem,
       hsubset.h,
       ew.val]
-  withTraceNode `simp_mem.info (fun _ => return m!"rewriting read({er})⊆write({ew})") do
-    withMainContext do
-      withTraceNode `simp_mem.info (fun _ => return m!"rewrite (Note: can be large)") do
-        trace[simp_mem.info] "{← inferType call}"
-      let goal ← getMainGoal
-      let result ← goal.rewrite (← getMainTarget) call
-      let mvarId' ← (← getMainGoal).replaceTargetEq result.eNew result.eqProof
-      trace[simp_mem.info] "{checkEmoji} rewritten goal {mvarId'}"
-      unless result.mvarIds == [] do
-        throwError m!"{crossEmoji} internal error: expected rewrite to produce no side conditions. Produced {result.mvarIds}"
-      replaceMainGoal [mvarId']
+  SimpMemM.rewriteWithEquality call m!"rewriting read({er})⊆write({ew})"
 
-
-/-
-TODO: add fuel to make sure we don't fuck up and create an infinite loop:
--/
 mutual
-
 
 partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM Unit := do
   consumeRewriteFuel
@@ -746,13 +676,13 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
 
       let separate := MemSeparateExpr.mk er.span ew.span
       let subset := MemSubsetExpr.mk er.span ew.span
-      if let .some separateProof ← proveMemSeparateWithOmega? separate hyps then do
+      if let .some separateProof ← proveWithOmega? separate hyps then do
         trace[simp_mem.info] "{checkEmoji} {separate}"
-        rewriteReadOfSeparatedWrite e hyps er ew separateProof
+        rewriteReadOfSeparatedWrite er ew separateProof
         return ()
-      else if let .some subsetProof ← proveMemSubsetWithOmega? subset hyps then do
+      else if let .some subsetProof ← proveWithOmega? subset hyps then do
         trace[simp_mem.info] "{checkEmoji} {subset}"
-        rewriteReadOfSubsetWrite e hyps er ew subsetProof
+        rewriteReadOfSubsetWrite er ew subsetProof
       else
         trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
         return ()
@@ -762,15 +692,15 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
       -- TODO: we don't need a separate `subset` branch for the writes: instead, for the write,
       -- we can add the theorem that `(write region).read = write val`.
       -- Then this generic theory will take care of it.
-      withTraceNode `simp_mem.info (fun _ => return m!"Searching for overlapping read {er.span}.") do
+      withTraceNode m!"Searching for overlapping read {er.span}." do
         for hyp in hyps do
           if let Hypothesis.read_eq hReadEq := hyp then do
-            withTraceNode `simp_mem.info (fun _ => return m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? ") do
+            withTraceNode m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? " do
             -- the read we are analyzing should be a subset of the hypothesis
             let subset := (MemSubsetExpr.mk er.span hReadEq.read.span)
-            if let some hSubsetProof ← proveMemSubsetWithOmega? subset hyps then
+            if let some hSubsetProof ← proveWithOmega? subset hyps then
               trace[simp_mem.info] "{checkEmoji}  ... ⊆ {hReadEq.read.span}"
-              rewriteReadOfSubsetRead e hyps er hReadEq hSubsetProof
+              rewriteReadOfSubsetRead er hReadEq hSubsetProof
               return ()
             else
               trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
@@ -798,6 +728,7 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
         improveExpr f hyps
         improveExpr x hyps
       | _ => return ()
+
 -- /-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
 -- #guard_msgs in #check mem_legal'
 
@@ -806,18 +737,18 @@ partial def SimpMemM.improveGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMe
     trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
     let gt ← g.getType
     if let .some e := MemLegalExpr.ofExpr? gt then do
-      withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {e}. Proving...") do
-      if let .some proof ←  proveMemLegalWithOmega? e hyps then do
+      withTraceNode "Matched on ⊢ {e}. Proving..." do
+      if let .some proof ← proveWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
     if let .some e := MemSubsetExpr.ofExpr? gt then do
-      withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {e}. Proving...") do
-      if let .some proof ←  proveMemSubsetWithOmega? e hyps then do
+      withTraceNode "Matched on ⊢ {e}. Proving..." do
+      if let .some proof ←  proveWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
     if let .some e := MemSeparateExpr.ofExpr? gt then do
-      withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {e}. Proving...") do
-      if let .some proof ←  proveMemSeparateWithOmega? e hyps then do
+      withTraceNode "Matched on ⊢ {e}. Proving..." do
+      if let .some proof ←  proveWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
-    withTraceNode `simp_mem.info (fun _ => return m!"Simplifying goal.") do
+    withTraceNode "Simplifying goal." do
       improveExpr (← whnf gt) hyps
 
 end
@@ -826,16 +757,16 @@ def SimpMemM.analyzeLoop : SimpMemM Unit := do
     (← getMainGoal).withContext do
       let hyps := (← getLocalHyps)
       -- trace[simp_mem] "analyzing {hyps.size} hypotheses:\n{← hyps.mapM (liftMetaM ∘ inferType)}"
-      let foundHyps ← withTraceNode `simp_mem.info (fun _ => return m!"Searching for Hypotheses") do
+      let foundHyps ← withTraceNode m!"Searching for Hypotheses" do
         let mut foundHyps : Array Hypothesis := #[]
         for h in hyps do
           foundHyps ← processHypothesis h foundHyps
         pure foundHyps
-      withTraceNode `simp_mem.info (fun _ => return m!"Summary: Found {foundHyps.size} hypotheses") do
+      withTraceNode m!"Summary: Found {foundHyps.size} hypotheses" do
         for (i, h) in foundHyps.toList.enum do
           trace[simp_mem.info] m!"{i+1}) {h}"
 
-      withTraceNode `simp_mem.info (fun _ => return m!"Performing Rewrite At Main Goal") do
+      withTraceNode m!"Performing Rewrite At Main Goal" do
         SimpMemM.improveGoal (← getMainGoal) foundHyps
 /--
 Given a collection of facts, try prove `False` using the omega algorithm,
