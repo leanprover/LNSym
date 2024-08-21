@@ -24,8 +24,6 @@ def program : Program :=
     (0x4005dc#64, 0x4a000020#32), --  eor w0, w1, w0
     (0x4005e0#64, 0xd65f03c0#32)] --  ret
 
-#genStepEqTheorems program
-
 /-- Precondition for the correctness of the `Abs` program. -/
 def abs_pre (s : ArmState) : Prop :=
   read_pc s = 0x4005d0#64 ∧
