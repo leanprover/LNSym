@@ -39,7 +39,9 @@ Our conformance testing framework is parallelized -- we spawn a task
 for each random test. This is why we cannot expect the contents of
 `x18` to be preserved -- `x18` is reserved on Apple's Arm machines and
 probably carries thread context (though we haven't actually found a
-reference for the latter).
+reference for the latter). See
+https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Respect-the-purpose-of-specific-CPU-registers
+for details.
 
 As such, when we check whether our model's state matches the machine
 after every instruction test, we ignore the contents of `x18` only on
@@ -263,7 +265,7 @@ def regStates_match (uniqueBaseName : String) (input o1 o2 : regState) :
     let isDarwin := (darwin_check.exitCode == 1)
      let gpr_mismatch ← gpr_mismatch isDarwin o1.gpr o2.gpr
      let nzcv_mismatch ← nzcv_mismatch o1.nzcv o2.nzcv
-     let sfp_mismatch  ← sfp_mismatch o1.sfp o2.sfp     
+     let sfp_mismatch  ← sfp_mismatch o1.sfp o2.sfp
      if gpr_mismatch.isEmpty &&
         nzcv_mismatch.isEmpty &&
         sfp_mismatch.isEmpty then

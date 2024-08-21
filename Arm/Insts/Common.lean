@@ -18,32 +18,10 @@ open BitVec
 `GPRIndex.rand` picks a safe GPR index for Arm-based Apple platforms
 i.e., one not reserved on them. Use this function instead of
 `BitVec.rand` to pick an appropriate random index for a source and
-destination GPR during cosimulations.
+destination GPR during cosimulations. 
 
-Here is a relevant quote from "Procedure Call Standard for the Arm
-64-bit Architecture"; the latest version is available at
-https://github.com/ARM-software/abi-aa/releases
-
-"The role of register r18 is platform specific. If a platform ABI has
-need of a dedicated general-purpose register to carry inter-procedural
-state (for example, the thread context) then it should use this
-register for that purpose. If the platform ABI has no such
-requirements, then it should use r18 as an additional temporary
-register. The platform ABI specification must document the usage for
-this register...
-
-Software developers creating platform-independent code are advised to
-avoid using r18 if at all possible. Most compilers provide a mechanism
-to prevent specific registers from being used for general allocation;
-portable hand-coded assembler should avoid it entirely...
-
-It should not be assumed that treating the register as callee-saved
-will be sufficient to satisfy the requirements of the platform."
-
-Arm-based Apple machines do reserve `x18` and `x29`; see the following
-link for details:
-https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Respect-the-purpose-of-specific-CPU-registers
-
+See "NOTE: Considerations for running cosimulations on Arm-based Apple
+platforms" in Arm/Cosim.lean for details.
 -/
 partial def GPRIndex.rand (lo := 0) (hi := 31) :
   IO (BitVec 5) := do
