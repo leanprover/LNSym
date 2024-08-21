@@ -14,13 +14,10 @@ MICRO_ARCH="neoverse-n1"
 TARGET="aarch64-unknown-linux-gnu"
 export LDFLAGS="-fuse-ld=lld"
 
-# Install dependencies
-sudo apt-get update
-sudo apt-get install -y git cmake clang ninja-build lld g++-aarch64-linux-gnu
-
 # Fetching AWS-LC
 git clone https://github.com/aws/aws-lc.git $HOME/aws-lc --depth 1
 cd $HOME/aws-lc
+
 # Build AWS-LC
 mkdir aws-lc-build; cd aws-lc-build
 cmake -GNinja \
@@ -36,5 +33,5 @@ cmake -GNinja \
       ../
 ninja
 
-# Move crypto_test to LNSym
+# Move aws-lc-build to LNSym
 cp -rf ../aws-lc-build ${LNSym_DIR}/Tests/ELFParser/Data/aws-lc-build
