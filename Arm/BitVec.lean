@@ -943,9 +943,11 @@ theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
 theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
     (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
   apply BitVec.eq_of_getLsb_eq
-  simp
+  simp only [getLsb_extract, getLsb_or]
   intros i
-  by_cases h : (i : Nat) ≤ n - lo <;> simp [h]
+  by_cases h : (i : Nat) ≤ n - lo
+  · simp only [h, decide_True, Bool.true_and]
+  · simp only [h, decide_False, Bool.false_and, Bool.or_self]
 
 theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
   simp only [extractLsByte, BitVec.extractLsb_ofNat, Nat.zero_mod, Nat.zero_shiftRight, cast_ofNat]
