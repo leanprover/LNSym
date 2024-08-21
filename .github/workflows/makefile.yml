@@ -29,6 +29,7 @@ jobs:
 
     - uses: leanprover/lean-action@v1
       with:
+        auto-config: false
         use-mathlib-cache: false
         use-github-cache: true
 
