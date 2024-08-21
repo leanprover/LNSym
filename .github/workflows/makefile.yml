@@ -51,11 +51,6 @@ jobs:
       run: |
           ./scripts/build_awslc.sh
 
-    # - name: Run ELFLoader Tests for AWS-LC (MacOS)
-    #   if : ${{ runner.os == 'macOS' }}
-    #   run: |
-    #       make awslc_elftests
-
     - name: Run LNSym Makefile (Ubuntu)
       if : ${{ runner.os != 'macOS' }}
       run: |
