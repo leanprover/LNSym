@@ -940,7 +940,7 @@ theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
 
 /--
 Definition to extract the `n`th least significant *Byte* from a bitvector.
-TODO: this should be named `getLsByte`.
+TODO: this should be named `getLsbByte`.
 -/
 def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
   val.extractLsb ((n + 1) * 8 - 1) (n * 8) |> .cast (by omega)
@@ -948,6 +948,7 @@ def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
 theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
     val.extractLsByte n = (val.extractLsb ((n + 1)*8 - 1) (n * 8) |>.cast (by omega)) := rfl
 
+-- TODO: upstream
 theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
     (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
   apply BitVec.eq_of_getLsb_eq
@@ -970,7 +971,7 @@ theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
   apply BitVec.getLsb_ge
   omega
 
-@[simp]
+@[bitvec_rules]
 theorem getLsb_extractLsByte (val : BitVec w₁) :
     ((BitVec.extractLsByte val n).getLsb i) =
     (decide (i ≤ 7) && val.getLsb (n * 8 + i)) := by
@@ -1006,7 +1007,7 @@ def extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
   | 0 => 0#0
   | x + 1 => val.extractLsb (base * 8 + n * 8 - 1) (base * 8) |>.cast (by omega)
 
-@[simp]
+@[bitvec_rules]
 theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
     (BitVec.extractLsBytes val base n).getLsb i =
       ((decide (i < n * 8) &&
@@ -1043,7 +1044,7 @@ theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i 
     omega
 
 /-- Extracting out bytes from the zero bitvector is equal to the zero bitvector. -/
-@[simp]
+@[bitvec_rules]
 theorem extractLsBytes_zero {w : Nat} (base : Nat) :
     (0#w).extractLsBytes base n = 0#(n*8) := by
   apply BitVec.eq_of_getLsb_eq
@@ -1051,7 +1052,7 @@ theorem extractLsBytes_zero {w : Nat} (base : Nat) :
     implies_true]
 
 /-- Extracting out all the bytes is equal to the bitvector. -/
-@[simp]
+@[bitvec_rules]
 theorem extractLsBytes_eq_self {n : Nat} (x : BitVec (n * 8)) :
     x.extractLsBytes 0 n = x := by
   apply BitVec.eq_of_getLsb_eq
