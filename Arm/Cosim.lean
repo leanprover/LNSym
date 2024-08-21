@@ -205,13 +205,15 @@ def nzcv_mismatch (x1 x2 : BitVec 4) : IO String := do
       acc := acc ++ s!"Flag{flag} machine {f1} model {f2}"
   pure acc
 
-def regStates_match (input o1 o2 : regState) : IO Bool := do
+def regStates_match (uniqueBaseName : String) (input o1 o2 : regState) : 
+  IO Bool := do
   if o1 == o2 then
      pure true
   else
      let gpr_mismatch ← gpr_mismatch o1.gpr o2.gpr
      let nzcv_mismatch ← nzcv_mismatch o1.nzcv o2.nzcv
      let sfp_mismatch  ← sfp_mismatch o1.sfp o2.sfp
+     IO.println s!"ID: {uniqueBaseName}"
      IO.println s!"Instruction: {decode_raw_inst input.inst}"
      IO.println s!"input: {toString input}"
      IO.println s!"Mismatch found: {gpr_mismatch} {nzcv_mismatch} {sfp_mismatch}"
@@ -224,7 +226,7 @@ def one_test (inst : BitVec 32) (uniqueBaseName : String) : IO Bool := do
   let machine_st := machine_to_regState inst machine
   let model      := run 1 (regState_to_armState input)
   let model_st := model_to_regState inst model
-  regStates_match input machine_st model_st
+  regStates_match uniqueBaseName input machine_st model_st
 
 /--
 Make a task for running a single test.
@@ -274,7 +276,7 @@ def run_all_tests (verbose : Bool) (n : Nat) : IO UInt32 := do
     { cmd  := "Arm/Insts/Cosim/platform_check.sh",
       args := #["-m"] }
   let mut tasks := #[]
-  if machine_check.exitCode == 0 then
+  if machine_check.exitCode == 1 then
     -- We are on an Aarch64 machine.
     -- Insts.rand is a list of functions of each class of instructions
     -- that generate legal, random 32-bit instructions.

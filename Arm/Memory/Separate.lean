@@ -477,30 +477,66 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
     (val : BitVec (yn * 8)) :
     Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
       val.extractLsBytes (x.toNat - y.toNat) xn := by
-    obtain := hsep.omega_def
-    have ⟨h1, h2, h3, h4⟩ := hsep.omega_def
-    apply BitVec.eq_of_extractLsByte_eq
-    intros i
-    rw [extractLsByte_read_bytes (by bv_omega)]
-    rw [BitVec.extractLsByte_extractLsBytes]
-    by_cases h : i < xn
-    · simp [h]
-      apply BitVec.eq_of_getLsb_eq
-      intros j
-      rw [getLsb_read, getLsb_write_bytes (by bv_omega),
-        BitVec.getLsb_extractLsByte]
-      simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
-      simp only [show ¬ (x + BitVec.ofNat 64 i < y) by bv_omega, if_false]
-      have : (x + BitVec.ofNat 64 i).toNat = x.toNat + (BitVec.ofNat 64 i).toNat := by
-        apply BitVec.toNat_add_eq_toNat_add_toNat
-        bv_omega
-      rw [this]
-      simp only [show ¬ x.toNat + (BitVec.ofNat 64 i).toNat ≥ y.toNat + yn by bv_omega, if_false]
-      rw [BitVec.getLsb_extractLsByte]
-      simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
-      congr 1
-      bv_omega
-    · simp[h]
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  obtain ⟨hx, hy, hstart, hend⟩ := hsep
+
+  obtain hx' := hx.size_le_two_pow
+  obtain hy' := mem_legal'_def hy
+
+  rw [Memory.getLsb_read_bytes (by omega)]
+  rw [Memory.getLsb_write_bytes (by omega)]
+  rw [BitVec.getLsb_extractLsByte]
+  rw [BitVec.getLsb_extractLsBytes]
+  by_cases hxn : xn = 0
+  · subst hxn
+    exfalso
+    have h := i.isLt
+    simp at h
+  · by_cases h₁ : ↑i < xn * 8
+    · simp only [h₁]
+      simp only [decide_True, Bool.true_and]
+      obtain ⟨i, hi⟩ := i
+      simp only at h₁
+      simp only []
+      have h₁' : (BitVec.ofNat 64 (i / 8)).toNat = (i / 8) := by
+        apply BitVec.toNat_ofNat_lt
+        omega
+      have hadd : (x + BitVec.ofNat 64 (↑i / 8)).toNat = x.toNat + (i / 8) := by
+        rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+        rw [BitVec.toNat_ofNat_lt (by omega)]
+      simp only [BitVec.lt_def]
+      simp only [hadd]
+      by_cases h₂ : (x.toNat + i/ 8) < y.toNat
+      · -- contradiction
+        exfalso
+        rw [BitVec.le_def] at hstart
+        omega
+      · simp only [h₂, if_false]
+        by_cases h₃ : x.toNat + i / 8 ≥ y.toNat + yn
+        · rw [BitVec.le_def] at hstart
+          omega
+        · simp only [h₃, if_false]
+          simp only [show i % 8 ≤ 7 by omega]
+          simp only [decide_True, Bool.true_and]
+          -- ⊢ val.getLsb ((x + BitVec.ofNat 64 (i / 8) - y).toNat * 8 + i % 8) = val.getLsb ((y.toNat - x.toNat) * 8 + i)
+          /-
+          This is clearly true, it simplifes to (x.toNat - y.toNat) * 8 + (i/8)*8 + i % 8.
+          which equals (x.toNat - y.toNat + i)
+          -/
+          congr 1
+          rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+          rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+          rw [BitVec.toNat_ofNat_lt (by omega)]
+          have himod : (i / 8) * 8 + (i % 8) = i := by omega
+          rw [Nat.mul_sub_right_distrib, Nat.mul_sub_right_distrib,
+            Nat.add_mul]
+          conv =>
+            rhs
+            rw [← himod]
+          rw [BitVec.le_def] at hstart
+          omega
+    · simp only [h₁, bitvec_rules, minimal_theory]
 
 /- value of read_mem_bytes when subset of another *read*. -/
 theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'

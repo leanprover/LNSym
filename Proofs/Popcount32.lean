@@ -66,14 +66,7 @@ def popcount32_program : Program :=
    (0x40061c#64 , 0xd65f03c0#32)] -- ret
 
 
-#genStepTheorems popcount32_program thmType:="fetch"
-
--- #guard_msgs in
--- #check popcount32_fetch_0x4005b4
-
-#genStepTheorems popcount32_program thmType:="decodeExec"
-
-#genStepTheorems popcount32_program thmType:="step" `state_simp_rules
+#genStepEqTheorems popcount32_program
 
 theorem popcount32_sym_no_error (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x4005b4#64)
@@ -85,7 +78,7 @@ theorem popcount32_sym_no_error (s0 s_final : ArmState)
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation
-  sym1_n 27
+  sym_n 27
   try (clear h_step_1 h_step_2 h_step_3 h_step_4;
        clear h_step_5 h_step_6 h_step_7 h_step_8;
        clear h_step_9 h_step_10;
@@ -111,7 +104,7 @@ theorem popcount32_sym_no_error (s0 s_final : ArmState)
 --   -- Prelude
 --   simp_all only [state_simp_rules, -h_run]
 --   -- Symbolic Simulation
---   sym1_n 27
+--   sym_n 27
 --   try (clear h_step_1 h_step_2 h_step_3 h_step_4;
 --        clear h_step_5 h_step_6 h_step_7 h_step_8;
 --        clear h_step_9 h_step_10;
@@ -130,16 +123,15 @@ theorem popcount32_sym_no_error (s0 s_final : ArmState)
 section Tests
 
 /--
-info: popcount32_program.stepi_0x4005c0 (s sn : ArmState) (h_program : s.program = popcount32_program)
+info: popcount32_program.stepi_eq_0x4005c0 {s : ArmState} (h_program : s.program = popcount32_program)
   (h_pc : r StateField.PC s = 4195776#64) (h_err : r StateField.ERR s = StateError.None) :
-  (sn = stepi s) =
-    (sn =
-      w StateField.PC (4195780#64)
-        (w (StateField.GPR 0#5)
-          (zeroExtend 64 ((zeroExtend 32 (r (StateField.GPR 0#5) s)).rotateRight 1) &&& 4294967295#64 &&& 2147483647#64)
-          s))
+  stepi s =
+    w StateField.PC (4195780#64)
+      (w (StateField.GPR 0#5)
+        (zeroExtend 64 ((zeroExtend 32 (r (StateField.GPR 0#5) s)).rotateRight 1) &&& 4294967295#64 &&& 2147483647#64)
+        s)
 -/
-#guard_msgs in #check popcount32_program.stepi_0x4005c0
+#guard_msgs in #check popcount32_program.stepi_eq_0x4005c0
 
 end Tests
 

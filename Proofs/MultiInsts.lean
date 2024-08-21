@@ -6,6 +6,7 @@ Author(s): Shilpi Goel
 import Arm.Exec
 import Arm.Util
 import Tactics.Sym
+import Tactics.StepThms
 
 namespace multi_insts_proofs
 
@@ -18,6 +19,8 @@ def test_program : Program :=
     (0x126514#64 , 0x4ea21c5c#32),      --  mov     v28.16b, v2.16b
     (0x126518#64 , 0x4ea31c7d#32)]      --  mov     v29.16b, v3.16b
 
+#genStepEqTheorems test_program
+
 theorem small_asm_snippet_sym_experiment_1 (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x12650c#64)
   (h_s0_program : s0.program = test_program)
@@ -29,11 +32,11 @@ theorem small_asm_snippet_sym_experiment_1 (s0 s_final : ArmState)
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation
-  sym_i_n 0 4
+  sym_n 4
   -- Final Steps
   unfold run at h_run
   subst s_final
-  simp_all (config := {decide := true}) only [@zeroExtend_eq 128, state_simp_rules, minimal_theory, bitvec_rules]  
+  simp_all (config := {decide := true}) only [@zeroExtend_eq 128, state_simp_rules, minimal_theory, bitvec_rules]
   done
 
 /-

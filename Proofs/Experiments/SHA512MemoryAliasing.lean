@@ -9,7 +9,7 @@ import Specs.SHA512
 import Arm.Memory.SeparateAutomation
 
 -- import Tactics.Sym
--- import Proofs.SHA512.Sha512StepLemmas
+-- import Proofs.SHA512.SHA512StepLemmas
 open BitVec
 
 /- The memory aliasing proof obligations in

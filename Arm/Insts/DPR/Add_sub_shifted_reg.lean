@@ -55,7 +55,7 @@ partial def Add_sub_shifted_reg_cls.rand : IO (Option (BitVec 32)) := do
         Rm    := ← BitVec.rand 5,
         imm6  := imm6,
         Rn    := ← BitVec.rand 5,
-        Rd    := ← BitVec.rand 5 }
+        Rd    := ← GPRIndex.rand }
     pure (some (inst.toBitVec32))
 
 ----------------------------------------------------------------------

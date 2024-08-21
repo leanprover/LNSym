@@ -40,7 +40,7 @@ def Add_sub_carry_cls.rand : IO (Option (BitVec 32)) := do
       S     := ← BitVec.rand 1,
       Rm    := ← BitVec.rand 5,
       Rn    := ← BitVec.rand 5,
-      Rd    := ← BitVec.rand 5 }
+      Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))
 
 ----------------------------------------------------------------------
