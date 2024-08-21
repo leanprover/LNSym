@@ -232,7 +232,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
   Lean.Elab.Tactic.withMainContext <| do
     let mut c ← SymContext.fromLocalContext s
     c ← c.addGoalsForMissingHypotheses
-    -- c.canonicalizeHypothesisTypes
+    c.canonicalizeHypothesisTypes
 
     -- Check that we are not asked to simulate more steps than available
     let n ← do
