@@ -121,8 +121,10 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
           mkApp3 (.const ``Eq [1]) (mkConst ``Nat) runSteps subGoalTyRhs
         let subGoal ← mkFreshMVarId
         let _ ← mkFreshExprMVarWithId subGoal subGoalTy
-        trace[Tactic.sym] "attempt to prove that {subGoalTy}"
-        subGoal.withContext <|
+
+        let msg := m!"runSteps is not statically known, so attempt to prove:\
+          {subGoal}"
+        withTraceNode `Tactic.sym (fun _ => pure msg) <| subGoal.withContext <|
           setGoals [subGoal]
           let () ← whileTac () -- run `whileTac` to attempt to close `subGoal`
 
@@ -167,7 +169,7 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
 
     let h_step_n' := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
 
-    unfoldRun c (fun _ => evalTactic whileTac)
+    unfoldRun c (fun _ => evalTacticAndTrace whileTac)
     -- Add new state to local context
     evalTacticAndTrace <|← `(tactic|
       init_next_step $c.h_run_ident:ident $h_step_n':ident $c.next_state_ident:ident
@@ -224,8 +226,8 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
   let whileTac ← match whileTac? with
     | some t => pure t
     | none   => `(tactic|( -- the default `whileTac` is a wrapper around `omega`
-        show ?x = (?x - 1) + 1; -- force the meta-variable to be assigned
-        apply Nat.succ_pred;
+        -- show ?x = (?x - 1) + 1; -- force the meta-variable to be assigned
+        apply Eq.symm (Nat.succ_pred ?_);
         omega;
         ))
 
