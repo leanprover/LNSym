@@ -82,9 +82,9 @@ partial def Logical_shifted_reg_cls.rand : IO (Option (BitVec 32)) := do
         opc   := ← BitVec.rand 2,
         shift := ← BitVec.rand 2,
         N     := ← BitVec.rand 1,
-        Rm    := ← BitVec.rand 5,
+        Rm    := ← GPRIndex.rand,
         imm6  := imm6,
-        Rn    := ← BitVec.rand 5,
+        Rn    := ← GPRIndex.rand,
         Rd    := ← GPRIndex.rand }
     pure (some (inst.toBitVec32))
 
