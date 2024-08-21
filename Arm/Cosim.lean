@@ -7,6 +7,48 @@ import Arm.Exec
 
 namespace Cosim
 
+/-
+NOTE: Considerations for running cosimulations on Arm-based Apple platforms:
+
+On Arm-based Apple platforms, we completely avoid using the register
+`x18`. It is not allowed to be a source or a destination operand --
+see `GPRIndex.rand`. Even with these restrictions, we cannot expect
+the value of `x18` to be preserved, even though it is callee-saved --
+see Arm/Insts/Cosim/template.S. Here's a quote from "Procedure Call
+Standard for the Arm 64-bit Architecture" (the latest version is
+available at https://github.com/ARM-software/abi-aa/releases) that
+informs this choice:
+
+"The role of register r18 is platform specific. If a platform ABI has
+need of a dedicated general-purpose register to carry inter-procedural
+state (for example, the thread context) then it should use this
+register for that purpose. If the platform ABI has no such
+requirements, then it should use r18 as an additional temporary
+register. The platform ABI specification must document the usage for
+this register...
+
+Software developers creating platform-independent code are advised to
+avoid using r18 if at all possible. Most compilers provide a mechanism
+to prevent specific registers from being used for general allocation;
+portable hand-coded assembler should avoid it entirely...
+
+It should not be assumed that treating the register as callee-saved
+will be sufficient to satisfy the requirements of the platform."
+
+Our conformance testing framework is parallelized -- we spawn a task
+for each random test. This is why we cannot expect the contents of
+`x18` to be preserved -- `x18` is reserved on Apple's Arm machines and
+probably carries thread context (though we haven't actually found a
+reference for the latter). See
+https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Respect-the-purpose-of-specific-CPU-registers
+for details.
+
+As such, when we check whether our model's state matches the machine
+after every instruction test, we ignore the contents of `x18` only on
+Arm-based Apple machines -- `x18` is still checked on other Arm
+machines. See `gpr_mismatch` and `regStates_match` for details.
+-/
+
 open BitVec
 
 /-- A default concrete state to begin co-simulations. -/
@@ -173,10 +215,16 @@ def model_to_regState (inst : BitVec 32) (s : ArmState) : regState :=
     nzcv := nzcv s,
     sfp  := sfp_list s }
 
-def gpr_mismatch (x1 x2 : List (BitVec 64)) : IO String := do
+/-- Check whether the machine and model GPRs match. We ignore register
+`x18` on Arm-based Apple platforms because `x18` cannot be guaranteed
+to be preserved there. -/
+def gpr_mismatch (isDarwin : Bool) (x1 x2 : List (BitVec 64)) : IO String := do
   let mut acc := ""
   for i in [0:31] do
-    if x1[i]! == x2[i]! then
+    if isDarwin && i == 18 then
+      -- Ignore x18 contents.
+      continue
+    else if x1[i]! == x2[i]! then
       continue
     else
       acc := acc ++ s!"GPR{i} machine {x1[i]!} model {x2[i]!}"
@@ -205,17 +253,34 @@ def nzcv_mismatch (x1 x2 : BitVec 4) : IO String := do
       acc := acc ++ s!"Flag{flag} machine {f1} model {f2}"
   pure acc
 
-def regStates_match (input o1 o2 : regState) : IO Bool := do
+def regStates_match (uniqueBaseName : String) (input o1 o2 : regState) :
+  IO Bool := do
   if o1 == o2 then
-     pure true
+      pure true
   else
-     let gpr_mismatch ← gpr_mismatch o1.gpr o2.gpr
+    let darwin_check ←
+    IO.Process.output
+      { cmd  := "Arm/Insts/Cosim/platform_check.sh",
+        args := #["-d"] }
+    let isDarwin := (darwin_check.exitCode == 1)
+     let gpr_mismatch ← gpr_mismatch isDarwin o1.gpr o2.gpr
      let nzcv_mismatch ← nzcv_mismatch o1.nzcv o2.nzcv
      let sfp_mismatch  ← sfp_mismatch o1.sfp o2.sfp
-     IO.println s!"Instruction: {decode_raw_inst input.inst}"
-     IO.println s!"input: {toString input}"
-     IO.println s!"Mismatch found: {gpr_mismatch} {nzcv_mismatch} {sfp_mismatch}"
-     pure false
+     if gpr_mismatch.isEmpty &&
+        nzcv_mismatch.isEmpty &&
+        sfp_mismatch.isEmpty then
+        -- If we are on an Arm-based Apple platform where only the
+        -- value of `x18` differs between the model and the machine,
+        -- then we don't flag a mismatch. This register is not
+        -- expected to be preserved on this platform.
+        pure true
+     else
+       -- TODO: also print the instruction class and sample.
+       IO.println s!"ID: {uniqueBaseName}"
+       IO.println s!"Instruction: {decode_raw_inst input.inst}"
+       IO.println s!"input: {toString input}"
+       IO.println s!"Mismatch found: {gpr_mismatch} {nzcv_mismatch} {sfp_mismatch}"
+       pure false
 
 /-- Run one random test for the instruction `inst`. -/
 def one_test (inst : BitVec 32) (uniqueBaseName : String) : IO Bool := do
@@ -224,7 +289,7 @@ def one_test (inst : BitVec 32) (uniqueBaseName : String) : IO Bool := do
   let machine_st := machine_to_regState inst machine
   let model      := run 1 (regState_to_armState input)
   let model_st := model_to_regState inst model
-  regStates_match input machine_st model_st
+  regStates_match uniqueBaseName input machine_st model_st
 
 /--
 Make a task for running a single test.
