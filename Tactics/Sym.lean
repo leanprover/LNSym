@@ -16,11 +16,12 @@ open BitVec
 open Lean Meta
 open Lean.Elab.Tactic
 
-/-- A wrapper around `evalTactic` that traces the passed tactic script and
-then executes those tactics -/
-private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit := do
-  trace[Tactic.sym] "running:\n{tactic}"
-  evalTactic tactic
+/-- A wrapper around `evalTactic` that traces the passed tactic script,
+executes those tactics, and then traces the new goal state -/
+private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
+  withTraceNode `Tactic.sym (fun _ => pure m!"running: {tactic}") <| do
+    evalTactic tactic
+    trace[Tactic.sym] "new goal state:\n{← getGoals}"
 
 /-- `init_next_step h_run` splits the hypothesis
 
@@ -161,7 +162,8 @@ context `c`, returning the context for the next step in simulation. -/
 def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
   let msg := m!"(sym1): simulating step {c.curr_state_number}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
-    trace[Tactic.sym] "SymContext: {repr c}"
+    trace[Tactic.sym] "SymContext:\n{← c.toMessageData}"
+    trace[Tactic.sym] "Goal state:\n {← getMainGoal}"
 
     let h_step_n' := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
 

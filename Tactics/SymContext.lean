@@ -123,6 +123,27 @@ def hRunDecl : MetaM LocalDecl := do
 
 end
 
+/-! ## `ToMessageData` instance -/
+
+/-- Convert a `SymContext` to `MessageData` for tracing.
+This is not a `ToMessageData` instance because we need access to `MetaM` -/
+def toMessageData (c : SymContext) : MetaM MessageData := do
+  let state ← c.stateExpr
+  let h_run ← userNameToMessageData c.h_run
+  let h_err? ← c.h_err?.mapM userNameToMessageData
+  let h_sp?  ← c.h_sp?.mapM userNameToMessageData
+
+  return m!"\{ state := {state},
+  finalState := {c.finalState},
+  runSteps? := {c.runSteps?},
+  h_run := {h_run},
+  program := {c.program},
+  pc := {c.pc},
+  h_err? := {h_err?},
+  h_sp? := {h_sp?},
+  state_prefix := {c.state_prefix},
+  curr_state_number := {c.curr_state_number} }"
+
 /-! ## Creating initial contexts -/
 
 /-- Infer `state_prefix` and `curr_state_number` from the `state` name
