@@ -938,14 +938,40 @@ theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
 
 /-! ### Least Significant Byte -/
 
-/-- Definition to extract the `n`th least significant *Byte* from a bitvector. -/
+/--
+Definition to extract the `n`th least significant *Byte* from a bitvector.
+TODO: this should be named `getLsbByte`.
+-/
 def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
   val.extractLsb ((n + 1) * 8 - 1) (n * 8) |> .cast (by omega)
 
 theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
     val.extractLsByte n = (val.extractLsb ((n + 1)*8 - 1) (n * 8) |>.cast (by omega)) := rfl
 
-@[simp]
+-- TODO: upstream
+theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
+    (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
+  apply BitVec.eq_of_getLsb_eq
+  simp only [getLsb_extract, getLsb_or]
+  intros i
+  by_cases h : (i : Nat) ≤ n - lo
+  · simp only [h, decide_True, Bool.true_and]
+  · simp only [h, decide_False, Bool.false_and, Bool.or_self]
+
+theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
+  simp only [extractLsByte, BitVec.extractLsb_ofNat, Nat.zero_mod, Nat.zero_shiftRight, cast_ofNat]
+
+theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
+  x.extractLsByte a = 0#8 := by
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  simp only [getLsb_zero, extractLsByte_def,
+    getLsb_cast, getLsb_extract, Bool.and_eq_false_imp, decide_eq_true_eq]
+  intros _
+  apply BitVec.getLsb_ge
+  omega
+
+@[bitvec_rules]
 theorem getLsb_extractLsByte (val : BitVec w₁) :
     ((BitVec.extractLsByte val n).getLsb i) =
     (decide (i ≤ 7) && val.getLsb (n * 8 + i)) := by
@@ -954,6 +980,22 @@ theorem getLsb_extractLsByte (val : BitVec w₁) :
   simp only [Nat.add_one_sub_one,
     Nat.add_sub_cancel_left]
 
+
+/--
+Two bitvectors of length `n*8` are equal if all their bytes are equal.
+This theorem can be strengthened to take `(i : Fin n)`.
+-/
+theorem eq_of_extractLsByte_eq (x y : BitVec (n * 8))
+    (h : ∀ (i : Nat), x.extractLsByte i = y.extractLsByte i) : x = y := by
+  apply eq_of_getLsb_eq
+  intros j
+  obtain ⟨j, hj⟩ := j
+  specialize h (j / 8)
+  have hx := x.getLsb_extractLsByte (n := j / 8) (i := j % 8)
+  have hy := y.getLsb_extractLsByte (n := j / 8) (i := j % 8)
+  simp only [show j % 8 ≤ 7 by omega, decide_True, Bool.true_and] at hx hy
+  simp only [show j / 8 * 8 + j % 8 = j by omega] at hx hy
+  simp only [← hx, ← hy, h]
 
 /-! ### Least Significant Byte range -/
 
@@ -965,16 +1007,66 @@ def extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
   | 0 => 0#0
   | x + 1 => val.extractLsb (base * 8 + n * 8 - 1) (base * 8) |>.cast (by omega)
 
-@[simp]
+@[bitvec_rules]
 theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
     (BitVec.extractLsBytes val base n).getLsb i =
-      (decide (0 < n) && (decide (i ≤ base * 8 + (n) * 8 - 1 - base * 8) &&
+      ((decide (i < n * 8) &&
       val.getLsb (base * 8 + i))) := by
   rcases n with rfl | n
   · simp only [Nat.reduceMul, Nat.zero_le, getLsb_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
     Nat.add_zero, Bool.false_and]
+    simp only [show ¬i < 0 by omega, decide_False, Bool.false_and]
   · simp only [extractLsBytes, getLsb_cast, getLsb_extract, Nat.zero_lt_succ, decide_True,
     Bool.true_and]
+    simp only [show base * 8 + (n + 1) * 8 - 1 - base * 8 = (n + 1) * 8 - 1 by omega]
+    by_cases h : i < (n + 1) * 8
+    · simp only [show i ≤ (n + 1) * 8 - 1 by omega, decide_True, Bool.true_and, h]
+    · simp only [show ¬(i ≤ (n + 1) * 8 - 1) by omega, decide_False, Bool.false_and, h]
+
+theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
+    (BitVec.extractLsBytes val base n).extractLsByte i =
+    if (i < n) then val.extractLsByte (base + i) else (0#8) := by
+  apply BitVec.eq_of_getLsb_eq
+  simp only [getLsb_extractLsByte, getLsb_extractLsBytes]
+  intros j
+  simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
+  by_cases hn : i < n
+  · simp only [hn, ↓reduceIte, getLsb_extractLsByte,
+      show (j : Nat) ≤ 7 by omega]
+    by_cases h : (i * 8 + (j : Nat) < n * 8)
+    · simp only [h, decide_True, Bool.true_and]
+      congr 1
+      omega
+    · simp only [h, decide_False, Bool.false_and, decide_True, Bool.true_and, Bool.false_eq]
+      apply BitVec.getLsb_ge
+      omega
+  · simp only [hn, ↓reduceIte, getLsb_zero, Bool.and_eq_false_imp, decide_eq_true_eq]
+    omega
+
+/-- Extracting out bytes from the zero bitvector is equal to the zero bitvector. -/
+@[bitvec_rules]
+theorem extractLsBytes_zero {w : Nat} (base : Nat) :
+    (0#w).extractLsBytes base n = 0#(n*8) := by
+  apply BitVec.eq_of_getLsb_eq
+  simp only [getLsb_extractLsBytes, Fin.is_lt, decide_True, getLsb_zero, Bool.and_false,
+    implies_true]
+
+/-- Extracting out all the bytes is equal to the bitvector. -/
+@[bitvec_rules]
+theorem extractLsBytes_eq_self {n : Nat} (x : BitVec (n * 8)) :
+    x.extractLsBytes 0 n = x := by
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  simp only [getLsb_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero]
+  simp [show (i : Nat) ≤ n * 8 - 1 by omega]
+
+theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
+  x.extractLsBytes a n = 0#(n*8) := by
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  simp only [getLsb_extractLsBytes, Fin.is_lt, decide_True, Bool.true_and, getLsb_zero]
+  apply BitVec.getLsb_ge
+  omega
 
 /-! ## `Quote` instance -/
 
