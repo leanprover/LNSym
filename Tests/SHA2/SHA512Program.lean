@@ -1,11 +1,19 @@
+/-
+Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author(s): Shilpi Goel
+-/
 import Arm.State
+
+namespace SHA512
 
 open BitVec
 
-def sha512_program : Program :=
+-- sha512_block_armv8
+-- Source: https://github.com/aws/aws-lc/blob/main/crypto/fipsmodule/sha/asm/sha512-armv8.pl#L454
+def program : Program :=
   def_program
-   [
-    -- (0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
+  [(0x1264c0#64 , 0xa9bf7bfd#32),      --  stp     x29, x30, [sp, #-16]!
     (0x1264c4#64 , 0x910003fd#32),      --  mov     x29, sp
     (0x1264c8#64 , 0x4cdf2030#32),      --  ld1     {v16.16b-v19.16b}, [x1], #64
     (0x1264cc#64 , 0x4cdf2034#32),      --  ld1     {v20.16b-v23.16b}, [x1], #64
@@ -507,6 +515,7 @@ def sha512_program : Program :=
     (0x126c8c#64 , 0x4efd8463#32),      --  add     v3.2d, v3.2d, v29.2d
     (0x126c90#64 , 0xb5ffc382#32),      --  cbnz    x2, 126500 <sha512_block_armv8+0x40>
     (0x126c94#64 , 0x4c002c00#32),      --  st1     {v0.2d-v3.2d}, [x0]
-    -- (0x126c98#64 , 0xf84107fd#32),      --  ldr     x29, [sp], #16
-    -- (0x126c9c#64 , 0xd65f03c0#32)       --  ret
-    ]
+    (0x126c98#64 , 0xf84107fd#32),      --  ldr     x29, [sp], #16
+    (0x126c9c#64 , 0xd65f03c0#32)]      --  ret
+
+end SHA512

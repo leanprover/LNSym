@@ -582,7 +582,7 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
           rw [BitVec.le_def] at hstart
           omega
     · simp only [h₁, bitvec_rules, minimal_theory]
-      intros h
+      intros 
       apply BitVec.getLsb_ge
       omega
 
