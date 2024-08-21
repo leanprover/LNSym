@@ -216,14 +216,10 @@ def model_to_regState (inst : BitVec 32) (s : ArmState) : regState :=
 /-- Check whether the machine and model GPRs match. We ignore register
 `x18` on Arm-based Apple platforms because `x18` cannot be guaranteed
 to be preserved there. -/
-def gpr_mismatch (x1 x2 : List (BitVec 64)) : IO String := do
-  let darwin_check ←
-  IO.Process.output
-      { cmd  := "Arm/Insts/Cosim/platform_check.sh",
-        args := #["-d"] }
+def gpr_mismatch (isDarwin : Bool) (x1 x2 : List (BitVec 64)) : IO String := do
   let mut acc := ""
   for i in [0:31] do
-    if i == 18 && darwin_check.exitCode == 1 then
+    if isDarwin && i == 18 then
       -- Ignore x18 contents.
       continue
     else if x1[i]! == x2[i]! then
@@ -264,11 +260,11 @@ def regStates_match (uniqueBaseName : String) (input o1 o2 : regState) :
     IO.Process.output
       { cmd  := "Arm/Insts/Cosim/platform_check.sh",
         args := #["-d"] }
-     let gpr_mismatch ← gpr_mismatch o1.gpr o2.gpr
+    let isDarwin := (darwin_check.exitCode == 1)
+     let gpr_mismatch ← gpr_mismatch isDarwin o1.gpr o2.gpr
      let nzcv_mismatch ← nzcv_mismatch o1.nzcv o2.nzcv
      let sfp_mismatch  ← sfp_mismatch o1.sfp o2.sfp     
-     if darwin_check.exitCode == 1 &&
-        gpr_mismatch.isEmpty &&
+     if gpr_mismatch.isEmpty &&
         nzcv_mismatch.isEmpty &&
         sfp_mismatch.isEmpty then
         -- If we are on an Arm-based Apple platform where only the
