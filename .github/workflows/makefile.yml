@@ -43,11 +43,10 @@ jobs:
         path: .lake
         key: ${{ runner.os }}-lake
 
-    - name: Setup Go
-      # if: ${{ runner.os == 'macOS' }}
-      uses: actions/setup-go@v4
-      with:
-          go-version: '>=1.18'
+    - name: Run AWS-LC tests (Ubuntu + MacOS)
+      run : |
+          ./scripts/build_awslc.sh
+          lake build AWSLCELFTests
 
     - name: Run LNSym Makefile (Ubuntu)
       if : ${{ runner.os != 'macOS' }}
@@ -58,7 +57,3 @@ jobs:
       if : ${{ runner.os == 'macOS' }}
       run: |
           make cosim NUM_TESTS=100 
-    - name: Run AWS-LC tests (Ubuntu + MacOS)
-      run : |
-          ./scripts/build_awslc.sh
-          lake build AWSLCELFTests
