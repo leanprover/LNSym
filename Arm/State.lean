@@ -809,8 +809,6 @@ theorem getLsb_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
 
 /--
 The describes the behaviour of `m.read_bytes` at a byte level granularity.
-@bollu: TODO before merge: prove theorems `extractLsByte_append`,
-`extractLsByte_read_bytes`.
 -/
 @[memory_rules]
 theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h : addr.toNat + n ≤ 2^64) :
@@ -966,49 +964,25 @@ theorem write_bytes_eq_extractLsByte {ix base : BitVec 64} {m : Memory}
   case succ n ih =>
     simp only [write_bytes]
     by_cases hix : ix.toNat = base.toNat
-    · obtain hix : ix = base := by
-        apply BitVec.eq_of_toNat_eq hix
+    · obtain hix : ix = base := by apply BitVec.eq_of_toNat_eq hix
       subst hix
       simp only [BitVec.sub_self, BitVec.toNat_ofNat, Nat.reducePow, Nat.zero_mod]
       rcases n with rfl | n
-      · simp only [Nat.reduceAdd, Nat.reduceMul, write_bytes_zero]
-        rw [write_of_eq (ix := ix) rfl]
+      · simp only [Nat.reduceAdd, Nat.reduceMul, write_bytes_zero,
+          write_of_eq (ix := ix) rfl]
         rfl
-      · rw [write_bytes_eq_of_le]
-        · simp only [write_of_eq rfl, BitVec.extractLsByte_def, Nat.reduceAdd, Nat.reduceMul,
-            Nat.add_one_sub_one, Nat.sub_zero, BitVec.cast_eq]
-        · rw [BitVec.toNat_add_eq_toNat_add_toNat]
-          · simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod, Nat.lt_add_one]
-          · simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
-        · rw [BitVec.toNat_add_eq_toNat_add_toNat
-            (by simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega)]
-          simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
-    · rw [ih]
-      -- | TODO: make these into some kind of proof automation.
-      · have h_base_plus_1 : (base + 1#64).toNat = base.toNat + 1 := by
-          simp only [BitVec.toNat_add, BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]
-          rw [Nat.mod_eq_of_lt (by omega)]
-        have h_ix_sub_base_plus_1 : (ix - (base + 1#64)).toNat = ix.toNat - (base + 1#64).toNat := by
-          rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le]
-          simp only [BitVec.le_def, BitVec.toNat_add, BitVec.toNat_ofNat, Nat.reducePow,
-            Nat.reduceMod]; omega
-        have h_ix_sub_base : (ix - base).toNat = ix.toNat - base.toNat := by
-          rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le]
-          rw [BitVec.le_def]
-          omega
-        rw [h_ix_sub_base_plus_1, h_base_plus_1, h_ix_sub_base, Nat.sub_add_eq,
-          show ix.toNat - base.toNat - 1 = (ix.toNat - base.toNat) - 1 by omega]
-        apply extractLsByte_zeroExtend_shiftLeft
-        omega
-      · rw [BitVec.toNat_add_eq_toNat_add_toNat
-          (by simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega)]
-        simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod, ge_iff_le]; omega
-      · rw [BitVec.toNat_add_eq_toNat_add_toNat
-          (by simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega)]
-        simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
-      · rw [BitVec.toNat_add_eq_toNat_add_toNat
-          (by simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega)]
-        simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
+      · rw [write_bytes_eq_of_le (by bv_omega) (by bv_omega)]
+        simp only [write_of_eq rfl, BitVec.extractLsByte_def, Nat.reduceAdd, Nat.reduceMul,
+          Nat.add_one_sub_one, Nat.sub_zero, BitVec.cast_eq]
+    · rw [ih (by bv_omega) (by bv_omega) (by bv_omega)]
+      rw [show (ix - (base + 1#64)).toNat = ix.toNat - (base + 1#64).toNat by
+        bv_omega]
+      rw [show (base + 1#64).toNat = base.toNat + 1 by bv_omega]
+      rw [show (ix - base).toNat = ix.toNat - base.toNat by bv_omega]
+      rw [Nat.sub_add_eq,
+        show ix.toNat - base.toNat - 1 = (ix.toNat - base.toNat) - 1 by omega]
+      apply extractLsByte_zeroExtend_shiftLeft
+      omega
 
 /--
 This is a low level theorem.
