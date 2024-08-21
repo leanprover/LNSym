@@ -808,7 +808,7 @@ theorem getLsb_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
       · omega
 
 /--
-The describes the behaviour of `m.read_bytes` at a byte level granularity.
+Describe the behaviour of `m.read_bytes` at a byte level granularity.
 -/
 @[memory_rules]
 theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h : addr.toNat + n ≤ 2^64) :
