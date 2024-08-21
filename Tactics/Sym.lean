@@ -124,9 +124,9 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
 
         let msg := m!"runSteps is not statically known, so attempt to prove:\
           {subGoal}"
-        withTraceNode `Tactic.sym (fun _ => pure msg) <| subGoal.withContext <|
+        withTraceNode `Tactic.sym (fun _ => pure msg) <| subGoal.withContext <| do
           setGoals [subGoal]
-          let () ← whileTac () -- run `whileTac` to attempt to close `subGoal`
+          whileTac () -- run `whileTac` to attempt to close `subGoal`
 
         -- Ensure `runStepsPred` is assigned, by giving it a default value
         -- This is important because of the use of `replaceLocalDecl` below
