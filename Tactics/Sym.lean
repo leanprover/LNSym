@@ -34,11 +34,8 @@ The new state variable and the hypotheses are not named yet.
 -/
 macro "init_next_step" h_run:ident h_step:ident sn:ident : tactic =>
   `(tactic|
-    (rw [run_onestep _ _ _ (by omega)] at $h_run:ident
-    -- I prefer using let instead of obtain because obtain names
-    -- the unsolved goal `case intro`. Then we get `.intro` suffixes
-    -- there every time we run this tactic.
-     let ⟨$sn:ident, ⟨$h_step:ident, _⟩⟩ := $h_run:ident;
+    (-- use `let` over `obtain` to prevent `.intro` goal tags
+     let ⟨$sn:ident, ⟨$h_step:ident, _⟩⟩ := run_onestep $h_run:ident;
      -- obtain ⟨$sn:ident, ⟨$h_step:ident, $h_run:ident⟩⟩ := $h_run:ident
      clear $h_run:ident; rename_i $h_run:ident
      simp (config := {ground := true, failIfUnchanged := false}) only
@@ -225,7 +222,11 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
     | _ => Lean.Elab.throwUnsupportedSyntax
   let whileTac ← match whileTac? with
     | some t => pure t
-    | none   => `(tactic| omega) -- the default `whileTac` is `omega`
+    | none   => `(tactic|( -- the default `whileTac` is a wrapper around `omega`
+        show ?x = (?x - 1) + 1; -- force the meta-variable to be assigned
+        apply Nat.succ_pred;
+        omega;
+        ))
 
   Lean.Elab.Tactic.withMainContext <| do
     let mut c ← SymContext.fromLocalContext s
