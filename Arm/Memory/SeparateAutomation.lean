@@ -172,7 +172,7 @@ structure ReadBytesExpr where
   mem : Expr
 
 /-- match an expression `e` to `Memory.read_bytes`. -/
-def ReadBytesExpr.match? (e : Expr) : Option (ReadBytesExpr) :=
+def ReadBytesExpr.ofExpr? (e : Expr) : Option (ReadBytesExpr) :=
   match_expr e with
   | Memory.read_bytes n addr m =>
     some { span := { base := addr, n := n }, mem := m }
@@ -197,11 +197,12 @@ instance : ToMessageData WriteBytesExpr where
 
 
 
-def WriteBytesExpr.match? (e : Expr) : Option WriteBytesExpr :=
+def WriteBytesExpr.ofExpr? (e : Expr) : Option WriteBytesExpr :=
   match_expr e with
   | Memory.write_bytes n addr val m =>
     some { span := { base := addr, n := n }, val := val, mem := m }
   | _ => none
+
 
 /--
 A proof of the form `h : val = Mem.read_bytes ...`.
@@ -224,15 +225,15 @@ we can have some kind of funny situation where both LHS and RHS are ReadBytes.
 For example, `mem1.read base1 n = mem2.read base2 n`.
 In such a scenario, we should record both reads.
 -/
-def ReadBytesEqProof.match? (eval : Expr) (etype : Expr) :  Array ReadBytesEqProof := Id.run do
+def ReadBytesEqProof.ofExpr? (eval : Expr) (etype : Expr) :  Array ReadBytesEqProof := Id.run do
   let mut out := #[]
   if let .some ⟨_ty, lhs, rhs⟩ := etype.eq? then do
     let lhs := lhs
     let rhs := rhs
-    if let .some read := ReadBytesExpr.match? lhs then
+    if let .some read := ReadBytesExpr.ofExpr? lhs then
       out := out.push { val := rhs, read := read, h := eval }
 
-    if let .some read := ReadBytesExpr.match? rhs then
+    if let .some read := ReadBytesExpr.ofExpr? rhs then
       out:= out.push { val := lhs, read := read, h := eval }
   return out
 
@@ -328,13 +329,13 @@ def MemSubsetProof.mem_subset'_hb (self : MemSubsetProof sub) :
   MemLegalProof.mk h
 
 /-- match an expression `e` to a `mem_legal'`. -/
-def MemLegalExpr.match? (e : Expr) : Option (MemLegalExpr) :=
+def MemLegalExpr.ofExpr? (e : Expr) : Option (MemLegalExpr) :=
   match_expr e with
   | mem_legal' a n => .some { span := { base := a, n := n } }
   | _ => none
 
 /-- match an expression `e` to a `mem_subset'`. -/
-def MemSubsetExpr.match? (e : Expr) : Option (MemSubsetExpr) :=
+def MemSubsetExpr.ofExpr? (e : Expr) : Option (MemSubsetExpr) :=
   match_expr e with
   | mem_subset' a na b nb =>
     let sa : MemSpanExpr := { base := a, n := na }
@@ -343,7 +344,7 @@ def MemSubsetExpr.match? (e : Expr) : Option (MemSubsetExpr) :=
   | _ => none
 
 /-- match an expression `e` to a `mem_separate'`. -/
-def MemSeparateExpr.match? (e : Expr) : Option MemSeparateExpr :=
+def MemSeparateExpr.ofExpr? (e : Expr) : Option MemSeparateExpr :=
   match_expr e with
   | mem_separate' a na b nb =>
     let sa : MemSpanExpr := ⟨a, na⟩
@@ -355,29 +356,28 @@ def MemSeparateExpr.match? (e : Expr) : Option MemSeparateExpr :=
 def processHypothesis (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothesis) := do
   let ht ← inferType h
   trace[simp_mem.info] "{processingEmoji} Processing '{h}' : '{toString ht}'"
-  if let .some sep := MemSeparateExpr.match? ht then
+  if let .some sep := MemSeparateExpr.ofExpr? ht then
     let proof : MemSeparateProof sep := ⟨h⟩
     let hyps := hyps.push (.separate proof)
     let hyps := hyps.push (.legal proof.mem_separate'_ha)
     let hyps := hyps.push (.legal proof.mem_separate'_hb)
     return hyps
-  else if let .some sub := MemSubsetExpr.match? ht then
+  else if let .some sub := MemSubsetExpr.ofExpr? ht then
     let proof : MemSubsetProof sub := ⟨h⟩
     let hyps := hyps.push (.subset proof)
     let hyps := hyps.push (.legal proof.mem_subset'_ha)
     let hyps := hyps.push (.legal proof.mem_subset'_hb)
     return hyps
-  else if let .some legal := MemLegalExpr.match? ht then
+  else if let .some legal := MemLegalExpr.ofExpr? ht then
     let proof : MemLegalProof legal := ⟨h⟩
     let hyps := hyps.push (.legal proof)
     return hyps
   else
     let mut hyps := hyps
-    for eqProof in ReadBytesEqProof.match? h ht do
+    for eqProof in ReadBytesEqProof.ofExpr? h ht do
       let proof : Hypothesis := .read_eq eqProof
       hyps := hyps.push proof
     return hyps
-
 
 /-
 Introduce a new definition into the local context,
@@ -737,8 +737,8 @@ partial def SimpMemM.improveExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM
     trace[simp_mem.info] "skipping sort '{e}'."
     return ()
 
-  if let .some er := ReadBytesExpr.match? e then
-    if let .some ew := WriteBytesExpr.match? er.mem then
+  if let .some er := ReadBytesExpr.ofExpr? e then
+    if let .some ew := WriteBytesExpr.ofExpr? er.mem then
       trace[simp_mem.info] "{checkEmoji} Found read of write."
       trace[simp_mem.info] "read: {er}"
       trace[simp_mem.info] "write: {ew}"
@@ -805,46 +805,20 @@ partial def SimpMemM.improveGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMe
   SimpMemM.withMainContext do
     trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
     let gt ← g.getType
-    if let .some e := MemLegalExpr.match? gt then do
+    if let .some e := MemLegalExpr.ofExpr? gt then do
       withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {e}. Proving...") do
       if let .some proof ←  proveMemLegalWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
-    if let .some e := MemSubsetExpr.match? gt then do
+    if let .some e := MemSubsetExpr.ofExpr? gt then do
       withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {e}. Proving...") do
       if let .some proof ←  proveMemSubsetWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
-    if let .some e := MemSeparateExpr.match? gt then do
+    if let .some e := MemSeparateExpr.ofExpr? gt then do
       withTraceNode `simp_mem.info (fun _ => return m!"Matched on ⊢ {e}. Proving...") do
       if let .some proof ←  proveMemSeparateWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
     withTraceNode `simp_mem.info (fun _ => return m!"Simplifying goal.") do
       improveExpr (← whnf gt) hyps
-    -- if let some (_, lhs, rhs) ← matchEq? gt then
-    --   withTraceNode `simp_mem.info (fun _ => return m!"Matched on equality. Simplifying") do
-    --     withTraceNode `simp_mem.info (fun _ => return m!"⊢ Simplifying LHS") do
-    --       improveExpr lhs hyps
-    --     withTraceNode `simp_mem.info (fun _ => return m!"⊢ Simplifying RHS") do
-    --       improveExpr rhs hyps
-    -- -- TODO: do this till fixpoint.
-    -- for h in (← get).hypotheses do
-    --   let x ← mkFreshExprMVar .none
-    --   let xn ← mkFreshExprMVar .none
-    --   let y ← mkFreshExprMVar .none
-    --   let yn ← mkFreshExprMVar .none
-    --   let state ← mkFreshExprMVar .none
-    --   let f := (Expr.const ``read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate' [])
-    --   let result : Option RewriteResult ←
-    --     try
-    --       pure <| some (← g.rewrite (← g.getType) (mkAppN f #[x, xn, y, yn, state, h.proof]) false)
-    --     catch _ =>
-    --       pure <| none
-    --   match result with
-    --   | .none =>
-    --     trace[simp_mem.info] "{crossEmoji} rewrite did not fire"
-    --   | .some r =>
-    --     let mvarId' ← g.replaceTargetEq r.eNew r.eqProof
-    --     -- | TODO: dispatch other goals that occur proof automation.
-    --     Tactic.setGoals <| mvarId' :: r.mvarIds
 
 end
 
@@ -857,11 +831,6 @@ def SimpMemM.analyzeLoop : SimpMemM Unit := do
         for h in hyps do
           foundHyps ← processHypothesis h foundHyps
         pure foundHyps
-        -- if let some hyp ← processHypothesis h then
-        --   trace[simp_mem.info] m!"{checkEmoji} Found '{h}'"
-        --   SimpMemM.addHypothesis hyp
-        -- else
-        --   trace[simp_mem.info] m!"{crossEmoji} Rejecting '{h}'"
       withTraceNode `simp_mem.info (fun _ => return m!"Summary: Found {foundHyps.size} hypotheses") do
         for (i, h) in foundHyps.toList.enum do
           trace[simp_mem.info] m!"{i+1}) {h}"
