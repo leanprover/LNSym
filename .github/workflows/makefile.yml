@@ -27,14 +27,11 @@ jobs:
 
     - uses: actions/checkout@v4
 
-    # We would like to use `leanprover/lean-action`, but it doesn't work on macOS just yet:
-    #   https://github.com/leanprover/lean-action/issues/83
-    - name: Install elan
-      run: |
-        set -o pipefail
-        curl https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh -sSf | sh -s -- --default-toolchain none -y
-        ~/.elan/bin/lean --version
-        echo "$HOME/.elan/bin" >> $GITHUB_PATH
+    - uses: leanprover/lean-action@v1
+      with:
+        auto-config: false
+        use-mathlib-cache: false
+        use-github-cache: true
 
     - name: Cache `.lake` folder
       id: cache-lake

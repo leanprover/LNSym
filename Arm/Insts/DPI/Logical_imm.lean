@@ -75,7 +75,7 @@ partial def Logical_imm_cls.inst.rand : IO (Option (BitVec 32)) := do
       N     := ← BitVec.rand 1,
       immr  := ← BitVec.rand 6,
       imms  := ← BitVec.rand 6,
-      Rn    := ← BitVec.rand 5 (lo := 0) (hi := hi),
+      Rn    := ← GPRIndex.rand (lo := 0) (hi := hi),
       Rd    := ← GPRIndex.rand (lo := 0) (hi := hi)
     }
   let datasize := 32 <<< inst.sf.toNat

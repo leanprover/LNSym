@@ -79,10 +79,10 @@ def Data_processing_three_source_cls.shift.rand
     { sf := sf,
       op54 := op54,
       op31 := op31,
-      Rm := ← BitVec.rand 5,
+      Rm := ← GPRIndex.rand,
       o0 := o0,
-      Ra := ← BitVec.rand 5,
-      Rn := ← BitVec.rand 5,
+      Ra := ← GPRIndex.rand,
+      Rn := ← GPRIndex.rand,
       Rd := ← GPRIndex.rand
     }
   pure (some inst.toBitVec32)
