@@ -49,16 +49,6 @@ jobs:
       with:
           go-version: '>=1.18'
 
-    - name: Build AWS-LC
-      if : ${{ runner.os != 'macOS' }}
-      run: |
-          ./scripts/build_awslc.sh
-
-    # - name: Run ELFLoader Tests for AWS-LC (MacOS)
-    #   if : ${{ runner.os == 'macOS' }}
-    #   run: |
-    #       make awslc_elftests
-
     - name: Run LNSym Makefile (Ubuntu)
       if : ${{ runner.os != 'macOS' }}
       run: |
@@ -68,3 +58,7 @@ jobs:
       if : ${{ runner.os == 'macOS' }}
       run: |
           make cosim NUM_TESTS=100 
+    - name: Run AWS-LC tests (Ubuntu + MacOS)
+      run : |
+          ./scripts/build_awslc.sh
+          lake build AWSLCELFTests
