@@ -273,6 +273,7 @@ def regStates_match (uniqueBaseName : String) (input o1 o2 : regState) :
         -- expected to be preserved on this platform.
         pure true
      else
+       -- TODO: also print the instruction class and sample.
        IO.println s!"ID: {uniqueBaseName}"
        IO.println s!"Instruction: {decode_raw_inst input.inst}"
        IO.println s!"input: {toString input}"
