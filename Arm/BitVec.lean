@@ -1051,12 +1051,11 @@ theorem extractLsBytes_eq_self {n : Nat} (x : BitVec (n * 8)) :
   simp only [getLsb_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero]
   simp [show (i : Nat) ≤ n * 8 - 1 by omega]
 
-/-- @bollu: what is the corresponding getLsb theorem? -/
 theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   x.extractLsBytes a n = 0#(n*8) := by
   apply BitVec.eq_of_getLsb_eq
   intros i
-  simp
+  simp only [getLsb_extractLsBytes, Fin.is_lt, decide_True, Bool.true_and, getLsb_zero]
   apply BitVec.getLsb_ge
   omega
 
