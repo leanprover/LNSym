@@ -46,9 +46,9 @@ def Data_processing_two_source_cls.shift.rand
   let (inst : Data_processing_two_source_cls) :=
     { sf := ← BitVec.rand 1,
       S := 0b0#1,
-      Rm := ← BitVec.rand 5,
+      Rm := ← GPRIndex.rand,
       opcode := opcode,
-      Rn := ← BitVec.rand 5,
+      Rn := ← GPRIndex.rand,
       Rd := ← GPRIndex.rand
     }
   pure (some inst.toBitVec32)

@@ -44,10 +44,10 @@ def Conditional_select_cls.rand : IO (Option (BitVec 32)) := do
     { sf    := ← BitVec.rand 1,
       op    := ← pure 0#1,
       S     := ← pure 0#1,
-      Rm    := ← BitVec.rand 5,
+      Rm    := ← GPRIndex.rand,
       cond  := ← BitVec.rand 4,
       op2   := ← pure 0b00#2,
-      Rn    := ← BitVec.rand 5,
+      Rn    := ← GPRIndex.rand,
       Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))
 
