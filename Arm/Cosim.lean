@@ -8,7 +8,7 @@ import Arm.Exec
 namespace Cosim
 
 /-
-Considerations for running cosimulations on Arm-based Apple platforms:
+NOTE: Considerations for running cosimulations on Arm-based Apple platforms:
 
 On Arm-based Apple platforms, we completely avoid using the register
 `x18`. It is not allowed to be a source or a destination operand --
