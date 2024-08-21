@@ -89,6 +89,8 @@ Finally, we use this proof to change the type of `h_run` accordingly.
 -/
 def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
     TacticM Unit :=
+  let msg := m!"unfoldRun (runSteps? := {c.runSteps?})"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <|
   match c.runSteps? with
     | some (_ + 1) => return
     | some 0 =>
@@ -129,7 +131,7 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
 
         -- Change the type of `h_run`
         let typeNew ← do
-          let rhs := (mkApp2 (mkConst ``_root_.run) subGoalTyRhs (←c.stateExpr))
+          let rhs := mkApp2 (mkConst ``_root_.run) subGoalTyRhs (←c.stateExpr)
           mkEq c.finalState rhs
         let eqProof ← do
           let f := -- `fun s => <finalState> = s`
