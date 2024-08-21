@@ -176,9 +176,16 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let h_run ← findLocalDeclUsernameOfTypeOrError h_run_type
 
   -- Unwrap and reflect `runSteps`
-  let runSteps? ←
-    try some <$> reflectNatLiteral runSteps
-    catch _ => pure none
+  let runSteps? ← do
+    let msg := m!"Reflecting: {runSteps}"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      try
+        let runSteps ← reflectNatLiteral runSteps
+        trace[Tactic.sym] "got: {runSteps}"
+        pure (some runSteps)
+      catch err =>
+        trace[Tactic.sym] "error: {err.toMessageData}"
+        pure none
   let finalState ← instantiateMVars finalState
 
   -- At this point, `stateExpr` should have been assigned (if it was an mvar),
