@@ -93,7 +93,10 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
   let msg := m!"unfoldRun (runSteps? := {c.runSteps?})"
   withTraceNode `Tactic.sym (fun _ => pure msg) <|
   match c.runSteps? with
-    | some (_ + 1) => return
+    | some (_ + 1) => do
+        trace[Tactic.sym] "runSteps is statically known to be non-zero, \
+        no further action required"
+        return
     | some 0 =>
         throwError "No more steps available to symbolically simulate!"
         -- NOTE: this error shouldn't occur, as we should have checked in
@@ -121,6 +124,7 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
           mkApp3 (.const ``Eq [1]) (mkConst ``Nat) runSteps subGoalTyRhs
         let subGoal ← mkFreshMVarId
         let _ ← mkFreshExprMVarWithId subGoal subGoalTy
+        trace[Tactic.sym] "attempt to prove that {subGoalTy}"
         subGoal.withContext <|
           setGoals [subGoal]
           let () ← whileTac () -- run `whileTac` to attempt to close `subGoal`
@@ -128,7 +132,10 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
         -- Ensure `runStepsPred` is assigned, by giving it a default value
         -- This is important because of the use of `replaceLocalDecl` below
         if !(← runStepsPredId.isAssigned) then
-          runStepsPredId.assign <| mkApp (mkConst ``Nat.pred) runSteps
+          let default := mkApp (mkConst ``Nat.pred) runSteps
+          trace[Tactic.sym] "{runStepsPred} is unassigned, \
+          so we assign to the default value ({default})"
+          runStepsPredId.assign default
 
         -- Change the type of `h_run`
         let typeNew ← do
@@ -147,6 +154,8 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
 
         -- Restore goal state
         if !(←subGoal.isAssigned) then
+          trace[Tactic.sym] "Subgoal {subGoal} was not closed yet, \
+          so add it as a goal for the user to solve"
           originalGoals := originalGoals.concat subGoal
         setGoals (res.mvarId :: originalGoals)
 
@@ -154,8 +163,10 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
 def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
-  withMainContext do
-    trace[Tactic.sym] "(sym1): simulating step {c.curr_state_number}:\n{repr c}"
+  let msg := m!"(sym1): simulating step {c.curr_state_number}"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
+    trace[Tactic.sym] "SymContext: {repr c}"
+
     let h_step_n' := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
 
     unfoldRun c (fun _ => evalTactic whileTac)

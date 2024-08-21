@@ -258,7 +258,8 @@ where
 add new goals of the expected types,
 and use these to add `h_sp` and `h_err` to the main goal context -/
 def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
-  withMainContext do
+  let msg := "Adding goals for missing hypotheses"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
     let mut ctx := ctx
     let mut goal ← getMainGoal
     let mut newGoals := []
@@ -267,33 +268,45 @@ def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
       (Expr.fvar ·.fvarId) <$> lCtx.findFromUserName? ctx.state
       | throwError "Could not find '{ctx.state}' in the local context"
 
-    if ctx.h_err?.isNone then
-      let h_err? := Name.mkSimple s!"h_{ctx.state}_run"
-      let newGoal ← mkFreshMVarId
+    match ctx.h_err? with
+      | none =>
+          trace[Tactic.sym] "h_err? is none, adding a new goal"
 
-      goal := ← do
-        let goalType := h_err_type stateExpr
-        let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
-        let goal' ← goal.assert h_err? goalType newGoalExpr
-        let ⟨_, goal'⟩ ← goal'.intro1P
-        return goal'
+          let h_err? := Name.mkSimple s!"h_{ctx.state}_run"
+          let newGoal ← mkFreshMVarId
 
-      newGoals := newGoal :: newGoals
-      ctx := { ctx with h_err? }
+          goal := ← do
+            let goalType := h_err_type stateExpr
+            let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
+            let goal' ← goal.assert h_err? goalType newGoalExpr
+            let ⟨_, goal'⟩ ← goal'.intro1P
+            return goal'
 
-    if ctx.h_sp?.isNone then
-      let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
-      let newGoal ← mkFreshMVarId
+          newGoals := newGoal :: newGoals
+          ctx := { ctx with h_err? }
+      | some h_err =>
+          let h_err ← userNameToMessageData h_err
+          trace[Tactic.sym] "h_err? is {h_err}, no new goal needed"
 
-      goal := ← do
-        let h_sp_type := h_sp_type stateExpr
-        let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
-        let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
-        let ⟨_, goal'⟩ ← goal'.intro1P
-        return goal'
+    match ctx.h_sp? with
+      | none =>
+          trace[Tactic.sym] "h_sp? is none, adding a new goal"
 
-      newGoals := newGoal :: newGoals
-      ctx := { ctx with h_sp? }
+          let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
+          let newGoal ← mkFreshMVarId
+
+          goal := ← do
+            let h_sp_type := h_sp_type stateExpr
+            let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
+            let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
+            let ⟨_, goal'⟩ ← goal'.intro1P
+            return goal'
+
+          newGoals := newGoal :: newGoals
+          ctx := { ctx with h_sp? }
+      | some h_sp =>
+          let h_sp ← userNameToMessageData h_sp
+          trace[Tactic.sym] "h_sp? is {h_sp}, no new goal needed"
 
     replaceMainGoal (goal :: newGoals)
     return ctx
