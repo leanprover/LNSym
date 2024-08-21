@@ -1050,7 +1050,7 @@ theorem extractLsBytes_zero {w : Nat} (base : Nat) :
   simp only [getLsb_extractLsBytes, Fin.is_lt, decide_True, getLsb_zero, Bool.and_false,
     implies_true]
 
-/-- Extracing out all the bytes is equal to the bitvector. -/
+/-- Extracting out all the bytes is equal to the bitvector. -/
 @[simp]
 theorem extractLsBytes_eq_self {n : Nat} (x : BitVec (n * 8)) :
     x.extractLsBytes 0 n = x := by
