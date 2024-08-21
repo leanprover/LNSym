@@ -12,7 +12,7 @@ import Proofs.SHA512.SHA512StepLemmas
 import Lean
 open BitVec
 
-/-
+/-! ### Symbolic Simulation for SHA512 (1 message block)
 In this experiment, we fix the number of blocks to be hashed (in
 register `x2`) to `1`, which essentially transforms the SHA512 program
 into a straight-line one.
@@ -59,6 +59,7 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
   (_h_s0_ctx : read_mem_bytes 64 (ctx_addr s0) s0 = SHA2.h0_512.toBitVec)
   (_h_s0_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s0 = BitVec.flatten SHA2.k_512)
   -- (FIXME) Add separateness invariants for the stack's memory region.
+  -- (FIXME @bollu): State the separate assumptions in terms of `List.Pairwise mem_separate ...` to ensure linear number of `mem_separate` hypotheses.
   (_h_s0_ctx_input_separate :
     mem_separate' (ctx_addr s0)   64
                  (input_addr s0) ((num_blocks s0).toNat * 128))
@@ -75,7 +76,7 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
   r StateField.ERR sf = StateError.None := by
   sym_n 20
   /-
-  (FIXME) cse fails with the following message:
+  (FIXME @bollu) cse fails with the following message:
   no goals to be solved
   -/
   -- cse (config := { processHyps := .allHyps })
