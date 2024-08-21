@@ -75,7 +75,7 @@ by ensuring that `h_run`'s type is def-eq to:
 
 If the number of steps is statically tracked in `runSteps?`,
 (i.e., it is a literal that we managed to reflect)
-we check that this number is non-zero.
+we check that this number is non-zero, and leave the type of `h_run` unchanged.
 This means we trust that the reflected value is accurate
 w.r.t. to the current goal state.
 
