@@ -5,7 +5,10 @@ Author(s): Shilpi Goel
 -/
 import Tests.ELFParser.SymbolContents
 
-def CryptoELF := (getELFFile (System.mkFilePath ["Tests", "ELFParser", "Data", "crypto_test"]))
+def CryptoELF :=
+  (getELFFile (System.mkFilePath
+    ["Tests", "ELFParser", "Data",
+     "aws-lc-build", "crypto", "crypto_test"]))
 
 /--
 info: true -/

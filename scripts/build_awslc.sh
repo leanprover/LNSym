@@ -37,4 +37,4 @@ cmake -GNinja \
 ninja
 
 # Move crypto_test to LNSym
-cp -f crypto/crypto_test ${LNSym_DIR}/Tests/ELFParser/Data/crypto_test
+cp -rf ../aws-lc-build ${LNSym_DIR}/Tests/ELFParser/Data/aws-lc-build

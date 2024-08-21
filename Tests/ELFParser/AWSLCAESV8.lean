@@ -5,6 +5,16 @@ Author(s): Yan Peng
 -/
 import Tests.ELFParser.AWSLCCrypto
 
+-- Importing just the aesv8-armx.S.o file to avoid ADRP issue.
+-- Details: PC relative addressing are used for locating constants
+-- The address changes every time linking happens.
+-- We use the .o files to avoid having to deal with address change.
+def AESV8ELF :=
+  (getELFFile (System.mkFilePath
+    ["Tests", "ELFParser", "Data", "aws-lc-build", "crypto",
+    "fipsmodule", "CMakeFiles", "fipsmodule.dir",
+    "aesv8-armx.S.o"]))
+
 /--
 info: [0xa9bf7bfd#32,
  0x910003fd#32,
@@ -20,8 +30,8 @@ info: [0xa9bf7bfd#32,
  0x54000e8c#32,
  0x7200143f#32,
  0x54000e41#32,
- 0xf0ffdbc3#32,
- 0x91008063#32,
+ 0x90000003#32,
+ 0x91000063#32,
  0x7103003f#32,
  0x6e201c00#32,
  0x4cdf7003#32,
@@ -138,7 +148,7 @@ info: [0xa9bf7bfd#32,
  0xd65f03c0#32]
 -/
 #guard_msgs in
-#eval do (getSymbolInsts "aes_hw_set_encrypt_key" (← CryptoELF))
+#eval do (getSymbolInsts "aes_hw_set_encrypt_key" (← AESV8ELF))
 
 /--
 info: [0x00000001#32,

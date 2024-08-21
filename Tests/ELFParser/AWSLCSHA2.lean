@@ -5,14 +5,24 @@ Author(s): Shilpi Goel
 -/
 import Tests.ELFParser.AWSLCCrypto
 
+-- Importing just the sha512-armv8.S.o file to avoid ADRP issue.
+-- Details: PC relative addressing are used for locating constants
+-- The address changes every time linking happens.
+-- We use the .o files to avoid having to deal with address change.
+def SHA512ELF :=
+  (getELFFile (System.mkFilePath
+    ["Tests", "ELFParser", "Data", "aws-lc-build", "crypto",
+    "fipsmodule", "CMakeFiles", "fipsmodule.dir",
+    "sha512-armv8.S.o"]))
+
 /--
 info: [0xa9bf7bfd#32,
  0x910003fd#32,
  0x4cdf2030#32,
  0x4cdf2034#32,
  0x4c402c00#32,
- 0xd0ffdb43#32,
- 0x91100063#32,
+ 0x90000003#32,
+ 0x91000063#32,
  0x4e200a10#32,
  0x4e200a31#32,
  0x4e200a52#32,
@@ -509,9 +519,10 @@ info: [0xa9bf7bfd#32,
  0xb5ffc382#32,
  0x4c002c00#32,
  0xf84107fd#32,
- 0xd65f03c0#32]-/
+ 0xd65f03c0#32]
+-/
 #guard_msgs in
-#eval do (getSymbolInsts "sha512_block_data_order_hw" (← CryptoELF))
+#eval do (getSymbolInsts "sha512_block_data_order_hw" (← SHA512ELF))
 
 /--
 info: [0xd728ae22#32,
