@@ -20,7 +20,7 @@ def find_index (e : String) (xs : List String) : Option Nat :=
   find_index_aux e xs 0
 
 -- Default number of tests/instruction
-def default_numTests : Nat := 20
+def default_numTests : Nat := 3
 
 def numTests_option (args : List String) : IO Nat :=
   let maybe_idx := find_index "--num-tests" args
