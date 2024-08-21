@@ -240,7 +240,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
     let n ← do
       let n := n.getNat
       match c.runSteps? with
-        | none => pure n -- Just assume the number makes sense
+        | none => pure n
         | some runSteps =>
             if n ≤ runSteps then
               pure n
