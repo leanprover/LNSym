@@ -77,6 +77,12 @@ The tactic shall be implemented as follows:
 
 -  If any non-primed separate/subset assumptions are detected,
   error out to tell the user that no automation is supported in this case.
+
+##### Future Work
+
+- Add support for disjoint constraints amongst $n$ memory regions.
+  This will perform proof search for `List.pairwise ⟂ mems`.
+- Create a new concept, `MemRegion`, which we currently call `MemSpan`.
 -/
 
 section BvOmega
@@ -309,7 +315,6 @@ def omega : SimpMemM Unit := do
     evalTactic (← `(tactic| bv_omega'))
 
 section Hypotheses
-
 
 /--
 info: mem_separate'.ha {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_separate' a an b bn) :
