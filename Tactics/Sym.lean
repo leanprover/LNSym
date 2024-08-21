@@ -41,7 +41,8 @@ macro "init_next_step" h_run:ident h_step:ident sn:ident : tactic =>
      let ⟨$sn:ident, ⟨$h_step:ident, _⟩⟩ := $h_run:ident;
      -- obtain ⟨$sn:ident, ⟨$h_step:ident, $h_run:ident⟩⟩ := $h_run:ident
      clear $h_run:ident; rename_i $h_run:ident
-     simp (config := {ground := true}) only at $h_run:ident))
+     simp (config := {ground := true, failIfUnchanged := false}) only
+        at $h_run:ident))
 
 section stepiTac
 
