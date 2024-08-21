@@ -135,7 +135,7 @@ structure ArmState where
   /-- PState -/
   private pstate     : PState
   /-- Memory: maps 64-bit addresses to bytes -/
-  private mem        : Memory
+  mem        : Memory
   /--
   Program: maps 64-bit addresses to 32-bit instructions.
   Note that we have the following assumption baked into our machine model:
@@ -700,6 +700,28 @@ A variant of `read_mem` that directly talks about writes to memory, instead of o
 def Memory.read (addr : BitVec 64) (m : Memory) : BitVec 8 :=
   read_store addr m
 
+/--
+Extracting a byte out of a byte returns the value if `i = 0`, and `0#8`
+otherwise.
+-/
+@[memory_rules]
+theorem Memory.extractLsByte_read (m : Memory) :
+    (m.read addr).extractLsByte i = if i = 0 then m.read addr else 0#8 := by
+  rw [BitVec.extractLsByte_def]
+  by_cases hi : i = 0
+  · subst hi
+    simp only [bitvec_rules, minimal_theory]
+    apply BitVec.eq_of_getLsb_eq
+    simp
+    omega
+  · simp only [hi, ↓reduceIte]
+    apply BitVec.eq_of_getLsb_eq
+    intros j
+    simp only [bitvec_rules, minimal_theory]
+    intros _hj
+    apply BitVec.getLsb_ge
+    omega
+
 theorem ArmState.read_mem_eq_mem_read : read_mem addr s = s.mem.read addr := rfl
 
 /--
@@ -785,6 +807,27 @@ theorem getLsb_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
         omega
       · omega
 
+/--
+The describes the behaviour of `m.read_bytes` at a byte level granularity.
+-/
+@[memory_rules]
+theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h : addr.toNat + n ≤ 2^64) :
+    (m.read_bytes n addr).extractLsByte i =
+      if i < n then m.read (addr + (BitVec.ofNat 64 i)) else 0#8 := by
+  apply BitVec.eq_of_getLsb_eq
+  simp only [BitVec.getLsb_extractLsByte]
+  intros j
+  simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
+  rw [getLsb_read_bytes]
+  by_cases h₁ : i * 8 + ↑j < n * 8
+  · simp only [h₁, decide_True, Bool.true_and]
+    simp only [show (i < n) by omega, ↓reduceIte]
+    simp only [show (i * 8 + ↑j) / 8 = i by omega]
+    simp only [show (i * 8 + ↑j) % 8 = j by omega]
+    rfl
+  · simp only [h₁, decide_False, Bool.false_and, Bool.false_eq]
+    simp only [show ¬(i < n) by omega, ↓reduceIte, BitVec.getLsb_zero]
+  · omega
 
 /--
 This is a low level theorem.
@@ -921,49 +964,25 @@ theorem write_bytes_eq_extractLsByte {ix base : BitVec 64} {m : Memory}
   case succ n ih =>
     simp only [write_bytes]
     by_cases hix : ix.toNat = base.toNat
-    · obtain hix : ix = base := by
-        apply BitVec.eq_of_toNat_eq hix
+    · obtain hix : ix = base := by apply BitVec.eq_of_toNat_eq hix
       subst hix
       simp only [BitVec.sub_self, BitVec.toNat_ofNat, Nat.reducePow, Nat.zero_mod]
       rcases n with rfl | n
-      · simp only [Nat.reduceAdd, Nat.reduceMul, write_bytes_zero]
-        rw [write_of_eq (ix := ix) rfl]
+      · simp only [Nat.reduceAdd, Nat.reduceMul, write_bytes_zero,
+          write_of_eq (ix := ix) rfl]
         rfl
-      · rw [write_bytes_eq_of_le]
-        · simp only [write_of_eq rfl, BitVec.extractLsByte_def, Nat.reduceAdd, Nat.reduceMul,
-            Nat.add_one_sub_one, Nat.sub_zero, BitVec.cast_eq]
-        · rw [BitVec.toNat_add_eq_toNat_add_toNat]
-          · simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod, Nat.lt_add_one]
-          · simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
-        · rw [BitVec.toNat_add_eq_toNat_add_toNat
-            (by simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega)]
-          simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
-    · rw [ih]
-      -- | TODO: make these into some kind of proof automation.
-      · have h_base_plus_1 : (base + 1#64).toNat = base.toNat + 1 := by
-          simp only [BitVec.toNat_add, BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]
-          rw [Nat.mod_eq_of_lt (by omega)]
-        have h_ix_sub_base_plus_1 : (ix - (base + 1#64)).toNat = ix.toNat - (base + 1#64).toNat := by
-          rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le]
-          simp only [BitVec.le_def, BitVec.toNat_add, BitVec.toNat_ofNat, Nat.reducePow,
-            Nat.reduceMod]; omega
-        have h_ix_sub_base : (ix - base).toNat = ix.toNat - base.toNat := by
-          rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le]
-          rw [BitVec.le_def]
-          omega
-        rw [h_ix_sub_base_plus_1, h_base_plus_1, h_ix_sub_base, Nat.sub_add_eq,
-          show ix.toNat - base.toNat - 1 = (ix.toNat - base.toNat) - 1 by omega]
-        apply extractLsByte_zeroExtend_shiftLeft
-        omega
-      · rw [BitVec.toNat_add_eq_toNat_add_toNat
-          (by simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega)]
-        simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod, ge_iff_le]; omega
-      · rw [BitVec.toNat_add_eq_toNat_add_toNat
-          (by simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega)]
-        simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
-      · rw [BitVec.toNat_add_eq_toNat_add_toNat
-          (by simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega)]
-        simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
+      · rw [write_bytes_eq_of_le (by bv_omega) (by bv_omega)]
+        simp only [write_of_eq rfl, BitVec.extractLsByte_def, Nat.reduceAdd, Nat.reduceMul,
+          Nat.add_one_sub_one, Nat.sub_zero, BitVec.cast_eq]
+    · rw [ih (by bv_omega) (by bv_omega) (by bv_omega)]
+      rw [show (ix - (base + 1#64)).toNat = ix.toNat - (base + 1#64).toNat by
+        bv_omega]
+      rw [show (base + 1#64).toNat = base.toNat + 1 by bv_omega]
+      rw [show (ix - base).toNat = ix.toNat - base.toNat by bv_omega]
+      rw [Nat.sub_add_eq,
+        show ix.toNat - base.toNat - 1 = (ix.toNat - base.toNat) - 1 by omega]
+      apply extractLsByte_zeroExtend_shiftLeft
+      omega
 
 /--
 This is a low level theorem.
