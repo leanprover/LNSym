@@ -104,6 +104,8 @@ structure CSEConfig where
   minOccsToCSE : Nat := 2
   /-- Whether the tactic should throw an error if no CSEable subterms were found. -/
   failIfUnchanged : Bool := true
+  /-- Number of steps the tactic should run for. -/
+  fuel : Nat := 1000
 
 structure ExprData where
   /-- Number of references to this expression -/
@@ -125,6 +127,10 @@ structure State where
   a counter to generate new names.
   -/
   gensymCount : Nat := 1
+  /--
+  Fuel to control how many steps the tactic run.
+  -/
+  currentFuel : Nat
 
 instance : ToMessageData State where
   toMessageData s := Id.run do
@@ -144,8 +150,18 @@ def getState : CSEM State := get
 /-- Get the mutable state. -/
 def setState : State → CSEM Unit := set
 
+def State.ofConfig (cfg : CSEConfig) : State := {
+  currentFuel := cfg.fuel
+}
+
 def CSEM.run (val : CSEM α) (config : CSEConfig) : TacticM α :=
-   val.run' {} |>.run config
+   val.run' { currentFuel := config.fuel } |>.run config
+
+def CSEM.hasFuel? : CSEM Bool := do
+  return (← getState).currentFuel > 0
+
+def CSEM.consumeFuel : CSEM Unit :=
+  modify fun s => { s with currentFuel := s.currentFuel - 1 }
 
 -- @bollu: Surely we must have an implementation of this.
 private def Array.replicate (n : Nat) (v : α) : Array α := List.replicate n v |>.toArray
@@ -159,6 +175,11 @@ The function is partial because of the call to `tryAddExpr` that
 Lean does not infer is smaller in `e`.
 -/
 partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
+  consumeFuel
+  unless (← hasFuel?) do
+    throwError "CSE ran out of fuel. Increase `fuel` in CSEConfig."
+    return .none
+
   let t ← inferType e
   -- for now, we ignore function terms.
   let relevant? := !t.isArrow && !t.isSort && !t.isForall
@@ -218,6 +239,11 @@ partial def CSEM.planCSE (e : Expr): CSEM GeneralizeArg := do
 Plan to perform a CSE for this expression, by building a 'GeneralizeArg'.
 -/
 def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
+  consumeFuel
+  unless (← hasFuel?) do
+    throwError "CSE ran out of fuel. Increase `fuel` in CSEConfig."
+    return false
+
   let hname := arg.hName?.getD .anonymous
   let xname := arg.xName?.getD .anonymous
   let e := arg.expr
