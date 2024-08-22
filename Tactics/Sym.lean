@@ -33,10 +33,10 @@ The names are obtained from the respectively named arguments to the tactic -/
 macro "init_next_step" h_run:ident stepi_eq:ident sn:ident : tactic =>
   `(tactic|
     (-- use `let` over `obtain` to prevent `.intro` goal tags
-     let ⟨$sn:ident, ⟨$stepi_eq:ident, _⟩⟩ := run_onestep $h_run:ident;
-     clear $h_run:ident; rename_i $h_run:ident
-     simp (config := {ground := true, failIfUnchanged := false}) only
-        at $h_run:ident))
+     let ⟨$sn:ident, ⟨$stepi_eq:ident, h_run_new⟩⟩ := run_onestep $h_run:ident
+     replace $h_run:ident := h_run_new
+     clear h_run_new
+    ))
 
 section stepiTac
 
