@@ -43,7 +43,7 @@ native-code programs of interest.
 
 `cosim`: [run under `all`] perform conformance testing.
 
-`awslc_elf`: perform ELF loading tests for AWS-LC. Requires running scripts/top.sh first to build AWS-LC.
+`awslc_elf`: perform ELF loading tests for AWS-LC. Prerequisites: run scripts/ci_ubuntu_build_awslc.sh to build AWS-LC.
 
 ### Makefile variables that can be passed in at the command line
 
