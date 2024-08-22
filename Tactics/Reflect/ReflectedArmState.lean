@@ -155,7 +155,6 @@ def hideCurrentStateType (eff : ReflectedStateEffects) (e : Expr) :
     | none    => return e
     | some eq => rewriteType e eq
 
-
 def getField (eff : ReflectedStateEffects) (fld : StateField) : MetaM Field :=
   let msg := "getField _ {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -214,8 +213,9 @@ private def update_write_mem (eff : ReflectedStateEffects) (n addr val : Expr) :
 
   -- Update the memory effects proof
   let memoryEffectProof :=
-    mkApp4 (mkConst ``read_mem_bytes_write_mem_bytes_of_read_mem_eq)
-      eff.memoryEffectProof n addr val
+    mkAppN (mkConst ``read_mem_bytes_write_mem_bytes_of_read_mem_eq)
+      #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, n, addr, val]
+
 
   -- Assemble the result
   let addWrite (e : Expr) := mkApp4 (mkConst ``write_mem_bytes) n addr val e
