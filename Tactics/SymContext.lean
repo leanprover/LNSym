@@ -107,17 +107,19 @@ def h_pc_ident        : Ident := mkIdent c.h_pc
 def h_err_ident       : Ident := mkIdent c.h_err
 def h_sp_ident        : Ident := mkIdent c.h_sp
 
+/-- Find the local declaration that corresponds to a given name,
+or throw an error if no local variable of that name exists -/
 private def findFromUserName (name : Name) : MetaM LocalDecl := do
   let some decl := (← getLCtx).findFromUserName? name
     | throwError "Unknown local variable `{name}`"
   return decl
 
+/-- Return an expression for `c.state` -/
 def stateExpr : MetaM Expr :=
   (·.toExpr) <$> findFromUserName c.state
 
--- (FIXME) I'm not sure what naming convention to use here:
--- conventional Lean (or at least, Matlib) style mandates `lowerCamelCase`,
--- but we've also been using `snake_case` for similar defs in this file
+/-- Find the local declaration that corresponds to `c.h_run`,
+or throw an error if no local variable of that name exists -/
 def hRunDecl : MetaM LocalDecl := do
   findFromUserName c.h_run
 
