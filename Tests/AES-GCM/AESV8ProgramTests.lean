@@ -308,7 +308,7 @@ def aes_hw_ctr32_encrypt_blocks_test (n : Nat)
         | _ => 0#64
     let s := { gpr := init_gpr,
                sfp := (fun (_ : BitVec 5) => 0#128),
-               pc := 0x7d2680#64,
+               pc := 0x7dfe20#64,
                pstate := PState.zero,
                mem := (fun (_ :BitVec 64) => 0#8),
                program := AESHWCtr32EncryptBlocksProgram.aes_hw_ctr32_encrypt_blocks_program,
@@ -351,7 +351,7 @@ def buf_res_128 : List (BitVec 8) :=
 
 -- len = 0
 def final_state0 : ArmState :=
-  aes_hw_ctr32_encrypt_blocks_test 30 0 in_block rounds key_schedule ivec
+  aes_hw_ctr32_encrypt_blocks_test 28 0 in_block rounds key_schedule ivec
 def final_buf0 : BitVec 640 := read_mem_bytes 80 out_address final_state0
 example : read_err final_state0 = StateError.None := by native_decide
 example: final_buf0 = BitVec.zero 640 := by native_decide
