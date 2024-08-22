@@ -535,11 +535,8 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
     exfalso
     have h := i.isLt
     simp at h
-  · simp only [show (0 < xn) by omega]
-    simp only [show ((x.toNat - y.toNat) * 8 + xn * 8 - 1 - (x.toNat - y.toNat) * 8) = xn * 8 - 1 by omega]
-    by_cases h₁ : ↑i < xn * 8
+  · by_cases h₁ : ↑i < xn * 8
     · simp only [h₁]
-      simp only [show (i ≤ xn * 8 - 1) by omega]
       simp only [decide_True, Bool.true_and]
       obtain ⟨i, hi⟩ := i
       simp only at h₁
@@ -582,9 +579,6 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
           rw [BitVec.le_def] at hstart
           omega
     · simp only [h₁, bitvec_rules, minimal_theory]
-      intros 
-      apply BitVec.getLsb_ge
-      omega
 
 /--
 info: 'read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset' depends on axioms: [propext, Classical.choice, Quot.sound]
