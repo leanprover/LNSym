@@ -479,6 +479,62 @@ def write_err (v : StateError) (s : ArmState) : ArmState :=
 end Accessor_updater_functions
 
 ----------------------------------------------------------------------
+---- `StateField` is equivalent to `Fin (32 + 32 + 1 + 4 + 1)` -------
+
+namespace StateField
+
+def toFin : StateField → Fin 70
+  | .GPR x    => x.toFin.castAdd 38
+  | .SFP x    => (x.toFin.addNat 32).castAdd 6
+  | .PC       => 64
+  | .FLAG .N  => 65
+  | .FLAG .Z  => 66
+  | .FLAG .C  => 67
+  | .FLAG .V  => 68
+  | .ERR      => 69
+
+def ofFin (i : Fin 70) : StateField :=
+  if h : i.val < 32 then
+    .GPR ⟨_, h⟩
+  else if h : (i.val - 32) < 32 then
+    .SFP ⟨_, h⟩
+  else
+    match i.subNat 64 (by omega) with
+      | 0 => .PC
+      | 1 => .FLAG .N
+      | 2 => .FLAG .Z
+      | 3 => .FLAG .C
+      | 4 => .FLAG .V
+      | 5 => .ERR
+
+theorem toFin_ofFin (i : Fin 70) : toFin (ofFin i) = i := by
+  simp only [toFin, ofFin, Nat.reducePow, Nat.reduceAdd, Fin.isValue]
+  by_cases h₁ : i.val < 32
+  <;> simp only [↓reduceDIte, Fin.castAdd_mk, Nat.reduceAdd, Fin.eta, h₁]
+  by_cases h₂ : i.val - 32 < 32
+  <;> simp only [↓reduceDIte, Fin.addNat_mk, Nat.reduceAdd, Fin.castAdd_mk, h₂]
+  · congr; omega
+  match h₃ : i.subNat 64 (by omega) with
+    | 0 | 1 | 2 | 3 | 4 | 5 =>
+      have : i.val - 64 = ?_ := by
+        simpa [Fin.subNat] using Fin.val_eq_of_eq h₃
+      simp only [Fin.isValue]
+      omega
+
+theorem ofFin_toFin (x : StateField) : ofFin (toFin x) = x := by
+  simp [ofFin, toFin]
+  rcases x with ⟨x, h⟩|⟨x, h⟩|_|(_|_|_|_)|_
+  <;> simp [*, Fin.subNat,
+        show @Fin.val 70 64 = 64 from rfl,
+        show @Fin.val 70 65 = 65 from rfl,
+        show @Fin.val 70 66 = 66 from rfl,
+        show @Fin.val 70 67 = 67 from rfl,
+        show @Fin.val 70 68 = 68 from rfl,
+        show @Fin.val 70 69 = 69 from rfl]
+  done
+
+
+----------------------------------------------------------------------
 
 section Load_program_and_fetch_inst
 
