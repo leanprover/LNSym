@@ -577,7 +577,7 @@ def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
     | _ => throwError "expected '{proofFromOmegaTy}' to a ∀"
   trace[simp_mem.info] "omega obligation '{omegaObligationTy}'"
   let omegaObligationVal ← mkFreshExprMVar (type? := omegaObligationTy)
-  let FactVal := mkAppN proofFromOmegaVal #[omegaObligationVal]
+  let factProof := mkAppN proofFromOmegaVal #[omegaObligationVal]
   let oldGoals := (← getGoals)
 
   try
@@ -589,7 +589,7 @@ def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
       trace[simp_mem.info] "{← getMainGoal}"
     omega
     trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
-    return (.some <| Proof.mk (← instantiateMVars FactVal))
+    return (.some <| Proof.mk (← instantiateMVars factProof))
   catch e =>
     trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
     setGoals oldGoals
