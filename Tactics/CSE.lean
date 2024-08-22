@@ -237,7 +237,7 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
     match s.canon2data.find? e with
     | .some data => do
       let data := data.incrRef
-      traceLargeMsg "updated expr (...) with info ({repr data})" "{e}"
+      traceLargeMsg m!"updated expr (...) with info ({repr data})" m!"{e}"
       setState { s with canon2data := s.canon2data.insert e data }
       return .some data
     | .none =>
@@ -246,7 +246,7 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
         s with
         canon2data := s.canon2data.insert e data,
       }
-      traceLargeMsg "Added new expr (...) with info ({repr data})" "{e}"
+      traceLargeMsg m!"Added new expr (...) with info ({repr data})" m!"{e}"
       return .some data
 
 /-- Execute `x` using the main goal local context. -/
@@ -268,7 +268,6 @@ partial def CSEM.planCSE (e : Expr): CSEM GeneralizeArg := do
   then planCSE e
   else return { expr := e, hName? := hname, xName? := xname }
 
-
 /--
 Plan to perform a CSE for this expression, by building a 'GeneralizeArg'.
 -/
@@ -286,6 +285,7 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
   mvarId.withContext do
     -- implementation modeled after `Lean.Elab.Tactic.evalGeneralize`.
     traceLargeMsg m!"{tryEmoji} Generalizing {hname}: {xname} = ..."  m!"{e}"
+    let checkpoint ← Tactic.saveState
     try
       if ! (← isDryRun?) then
         -- Implementation modeled after `Lean.MVarId.generalizeHyp`.
@@ -307,7 +307,8 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
       traceLargeMsg m!"{checkEmoji} succeeded in generalizing {hname}." m!"{← getMainGoal}"
       return true
     catch e =>
-      trace[Tactic.cse.summary] "{bombEmoji} failed to generalize {hname}"
+      checkpoint.restore
+      traceLargeMsg m!"{bombEmoji} failed to generalize {hname}" m!"{e.toMessageData}"
       return false
 
 def CSEM.cseImpl : CSEM Unit := do

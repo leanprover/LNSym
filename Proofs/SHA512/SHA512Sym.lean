@@ -80,7 +80,7 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
   (FIXME @bollu) cse fails with the following message:
   no goals to be solved
   -/
-  cse (config := { processHyps := .allHyps, fuelEliminate := 5, dryRun? := false})
+  cse (config := { processHyps := .allHyps })
   -- Final Steps
   unfold run at h_run
   subst sf
