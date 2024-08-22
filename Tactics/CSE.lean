@@ -223,6 +223,7 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
   let e := arg.expr
 
   let mvarId ← getMainGoal
+  let checkpoint ← Tactic.saveState
   mvarId.withContext do
     -- implementation modeled after `Lean.Elab.Tactic.evalGeneralize`.
     trace[Tactic.cse.generalize] "{tryEmoji} Generalizing {hname} : {e} = {xname}"
@@ -246,6 +247,7 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
       trace[Tactic.cse.generalize] "{checkEmoji} succeeded in generalizing {hname}. ({← getMainGoal})"
       return true
     catch e =>
+      checkpoint.restore
       trace[Tactic.cse.generalize] "{bombEmoji} failed to generalize {hname}"
       return false
 
