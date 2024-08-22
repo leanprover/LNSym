@@ -15,6 +15,9 @@ lean_lib «Specs» where
 lean_lib «Tests» where
   -- add library configuration options here
 
+lean_lib «AWSLCELFTests» where
+  -- add library configuration options here
+
 lean_lib «Proofs» where
   -- add library configuration options here
 
