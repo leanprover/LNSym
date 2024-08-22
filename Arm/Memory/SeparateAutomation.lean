@@ -109,13 +109,14 @@ structure Context where
 def Context.init (cfg : SimpMemConfig) : Context where
   cfg := cfg
 
-structure WithWitness (α : Type) (e : α) where
+/-- a Proof of `e : α`, where `α` is a type such as `MemLegalExpr`. -/
+structure Proof (α : Type) (e : α) where
   /-- `h` is an expression of type `e`. -/
   h : Expr
 
-def WithWitness.e {α : Type} {e : α} (p : WithWitness α e) : α := e
+def WithWitness.e {α : Type} {e : α} (p : Proof α e) : α := e
 
-instance [ToMessageData α] : ToMessageData (WithWitness α e) where
+instance [ToMessageData α] : ToMessageData (Proof α e) where
   toMessageData proof := m! "{proof.h}: {e}"
 
 structure MemSpanExpr where
@@ -155,7 +156,7 @@ structure MemSubsetExpr where
 instance : ToMessageData MemSubsetExpr where
   toMessageData e := m!"{e.sa}⊆{e.sb}"
 
-abbrev MemSubsetProof := WithWitness MemSubsetExpr
+abbrev MemSubsetProof := Proof MemSubsetExpr
 
 def MemSubsetProof.mk {e : MemSubsetExpr} (h : Expr) : MemSubsetProof e :=
   { h }
@@ -170,12 +171,12 @@ structure MemSeparateExpr where
 instance : ToMessageData MemSeparateExpr where
   toMessageData e := m!"{e.sa}⟂{e.sb}"
 
-abbrev MemSeparateProof := WithWitness MemSeparateExpr
+abbrev MemSeparateProof := Proof MemSeparateExpr
 
 def MemSeparateProof.mk {e : MemSeparateExpr} (h : Expr) : MemSeparateProof e :=
   { h }
 
-abbrev MemLegalProof := WithWitness MemLegalExpr
+abbrev MemLegalProof := Proof MemLegalExpr
 
 def MemLegalProof.mk {e : MemLegalExpr} (h : Expr) : MemLegalProof e :=
   { h }
@@ -564,7 +565,7 @@ An example is `mem_lega'.of_omega n a`, which has type:
   a way to convert `e : α` into the `omegaToDesiredFactFnVal`.
 -/
 def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
-    (hyps : Array Hypothesis) : SimpMemM (Option (WithWitness α e)) := do
+    (hyps : Array Hypothesis) : SimpMemM (Option (Proof α e)) := do
   let proofFromOmegaVal := (OmegaReducible.reduceToOmega e)
   -- (h : a.toNat + n ≤ 2 ^ 64) → mem_legal' a n
   let proofFromOmegaTy ← inferType (OmegaReducible.reduceToOmega e)
