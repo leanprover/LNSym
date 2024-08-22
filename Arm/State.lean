@@ -701,6 +701,20 @@ theorem read_mem_bytes_of_w :
     rw [n_ih]
   done
 
+theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq
+    (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
+    (n₂ addr₂ val n₁ addr₁) :
+    read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₁)
+    = read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₂) := by
+  sorry
+
+theorem read_mem_bytes_w_of_read_mem_eq
+    (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
+    (fld val n₁ addr₁) :
+    read_mem_bytes n₁ addr₁ (w fld val s₁)
+    = read_mem_bytes n₁ addr₁ (w fld val s₂) := by
+  simp only [read_mem_bytes_of_w, h]
+
 @[state_simp_rules]
 theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n * 8)):
     (write_mem_bytes n addr bytes s).program = s.program := by
