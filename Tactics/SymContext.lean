@@ -36,16 +36,20 @@ structure SymContext where
   state : Name
   /-- `finalState` is an expression of type `ArmState` -/
   finalState : Expr
-  /-- `runSteps` is the number of steps that we can *maximally* simulate,
-  because of the way it occurs in `h_run`.
-  Note that `runSteps` is a meta-level natural number, reflecting the fact that
-  we expect the number of steps in `h_run` to be expressed as a concrete literal
-  -/
+  /-- `runSteps?` stores the number of steps that we can *maximally* simulate,
+  if known.
+
+  If `runSteps?` is `some n`, where `n` is a meta-level `Nat`,
+  then we expect that `<runSteps>` in type of `h_run` is the literal `n`.
+  Otherwise, if `runSteps?` is `none`,
+  then `<runSteps>` is allowed to be anything, even a symbolic value.
+
+  See also `SymContext.h_run` -/
   runSteps? : Option Nat
   /-- `h_run` is a local hypothesis of the form
     `finalState = run <runSteps> state`
-  Note that `runSteps` is allowed to be a symbolic value, in which case
-  the `runSteps?` field will be `none` -/
+
+  See also `SymContext.runSteps?` -/
   h_run : Name
   /-- `program` is a *constant* which represents the program being evaluated -/
   program : Name
@@ -114,7 +118,8 @@ private def findFromUserName (name : Name) : MetaM LocalDecl := do
     | throwError "Unknown local variable `{name}`"
   return decl
 
-/-- Return an expression for `c.state` -/
+/-- Return an expression for `c.state`,
+or throw an error if no local variable of that name exists -/
 def stateExpr : MetaM Expr :=
   (·.toExpr) <$> findFromUserName c.state
 
