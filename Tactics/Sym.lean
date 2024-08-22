@@ -33,39 +33,35 @@ introduces a new state variable, say `s_next` and two new hypotheses:
 
 The new state variable and the hypotheses are not named yet.
 -/
-macro "init_next_step" h_run:ident h_step:ident sn:ident : tactic =>
+macro "init_next_step" h_run:ident stepi_eq:ident sn:ident : tactic =>
   `(tactic|
     (-- use `let` over `obtain` to prevent `.intro` goal tags
-     let ⟨$sn:ident, ⟨$h_step:ident, _⟩⟩ := run_onestep $h_run:ident;
+     let ⟨$sn:ident, ⟨$stepi_eq:ident, _⟩⟩ := run_onestep $h_run:ident;
      clear $h_run:ident; rename_i $h_run:ident
      simp (config := {ground := true, failIfUnchanged := false}) only
         at $h_run:ident))
 
 section stepiTac
 
-/-- Apply the relevant pre-generated stepi lemma to replace a local hypothesis
-  `h_step : ?s' = stepi ?s`
-with an hypothesis in terms of `w` and `write_mem`
+/-- Apply the relevant pre-generated stepi lemma to a local hypothesis
+  `stepi_eq : ?s' = stepi ?s`
+to obtain a new local hypothesis in terms of `w` and `write_mem`
   `h_step : ?s' = w _ _ (w _ _ (... ?s))`
 -/
-def stepiTac (h_step : Ident) (ctx : SymContext)
+def stepiTac (stepi_eq h_step : Ident) (ctx : SymContext)
   : TacticM Unit := withMainContext do
   let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
   --  ^^ The PC in hex
   let step_lemma := mkIdent <| Name.str ctx.program s!"stepi_eq_0x{pc}"
 
   evalTacticAndTrace <|← `(tactic| (
-    replace $h_step :=
-      _root_.Eq.trans $h_step
+    have $h_step :=
+      _root_.Eq.trans (Eq.symm $stepi_eq)
         ($step_lemma:ident
           $ctx.h_program_ident:ident
           $ctx.h_pc_ident:ident
           $ctx.h_err_ident:ident)
   ))
-
-elab "stepi_tac" h_step:ident : tactic => do
-  let c ← SymContext.fromLocalContext none
-  stepiTac (h_step) c
 
 end stepiTac
 
@@ -158,31 +154,63 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
           originalGoals := originalGoals.concat subGoal
         setGoals (res.mvarId :: originalGoals)
 
+/-- `withoutHyp h` will remove `h` from the main goals context,
+run the continuation `k`,
+and finally, attempt to re-add the hypothesis `h` to the new main goal.
+
+This is a work-around for `intro_fetch_decode` behaving badly when we have
+`stepi s0 = s1` in the local context.
+
+Returns the fvarid of `h` in the new context.
+If `h` could not be found, execute `k` anyway (with an unmodified context),
+and return none -/
+def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
+  withMainContext do
+    let goal ← getMainGoal
+    let lctx ← getLCtx
+    match lctx.findFromUserName? hyp with
+      | none =>
+          k
+          return none
+      | some hypDecl =>
+          replaceMainGoal [← goal.clear hypDecl.fvarId]
+          k -- run the continuation
+          -- Attempt to re-add `hyp`
+          let newGoal ← getMainGoal -- `k` might have changed the goal
+          let ⟨newHyp, newGoal⟩ ←
+            newGoal.note hypDecl.userName hypDecl.toExpr hypDecl.type
+          replaceMainGoal [newGoal]
+          return newHyp
+
 /--
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
 def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
   let msg := m!"(sym1): simulating step {c.curr_state_number}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
-    trace[Tactic.sym] "SymContext:\n{← c.toMessageData}"
-    trace[Tactic.sym] "Goal state:\n {← getMainGoal}"
+    withTraceNode `Tactic.sym (fun _ => pure "verbose context") <| do
+      trace[Tactic.sym] "SymContext:\n{← c.toMessageData}"
+      trace[Tactic.sym] "Goal state:\n {← getMainGoal}"
 
-    let h_step_n' := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
+    let stepi_eq := Lean.mkIdent (.mkSimple s!"stepi_{c.state}")
+    let h_step   := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
+    -- let stepi_eq := h_step
 
     unfoldRun c (fun _ => evalTacticAndTrace whileTac)
     -- Add new state to local context
     evalTacticAndTrace <|← `(tactic|
-      init_next_step $c.h_run_ident:ident $h_step_n':ident $c.next_state_ident:ident
+      init_next_step $c.h_run_ident:ident $stepi_eq:ident $c.next_state_ident:ident
     )
 
     -- Apply relevant pre-generated `stepi` lemma
-    stepiTac h_step_n' c
+    stepiTac stepi_eq h_step c
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
     let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
-    evalTacticAndTrace <|← `(tactic|
+    -- Ensure we run `intro_fetch_decode_lemmas` without `stepi_eq`
+    let _ ← withoutHyp stepi_eq.getId <| evalTacticAndTrace <|← `(tactic|
       intro_fetch_decode_lemmas
-        $h_step_n':ident $c.h_program_ident:ident $h_st_prefix:str
+        $h_step:ident $c.h_program_ident:ident $h_st_prefix:str
     )
     return c.next
 
