@@ -23,16 +23,13 @@ private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
     evalTactic tactic
     trace[Tactic.sym] "new goal state:\n{← getGoals}"
 
-/-- `init_next_step h_run` splits the hypothesis
-
-`h_run: s_final = run n s`
-
-introduces a new state variable, say `s_next` and two new hypotheses:
-`h_step: s_next = stepi s`
-`h_run': s_final = run (n-1) s_next`
-
-The new state variable and the hypotheses are not named yet.
--/
+/-- `init_next_step h_run stepi_eq sn` splits the hypothesis
+  `h_run: s_final = run (n+1) s`
+by adding a new state variable, `sn`, and two new hypotheses:
+  `stepi_eq : stepi s = s_next`
+  `h_run'   : s_final = run n s_next`
+to the local context of the main goal.
+The names are obtained from the respectively named arguments to the tactic s-/
 macro "init_next_step" h_run:ident stepi_eq:ident sn:ident : tactic =>
   `(tactic|
     (-- use `let` over `obtain` to prevent `.intro` goal tags
