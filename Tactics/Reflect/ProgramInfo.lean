@@ -63,6 +63,13 @@ structure ProgramInfo where
   name : Name
   instructions : HashMap (BitVec 64) InstInfo
 
+/-
+TODO: add a `breakpoints` fields, which is a HashSet of PC addresses,
+pre-computed by `persistToEnv` according to a list of branch-y instructions.
+We can then query this `breakpoints` field to know when the PC might've done
+something more interesting than just increment, so we know when to reflect the
+value again -/
+
 --------------------------------------------------------------------------------
 
 /-! ## InstInfoT -/
