@@ -700,28 +700,6 @@ A variant of `read_mem` that directly talks about writes to memory, instead of o
 def Memory.read (addr : BitVec 64) (m : Memory) : BitVec 8 :=
   read_store addr m
 
-/--
-Extracting a byte out of a byte returns the value if `i = 0`, and `0#8`
-otherwise.
--/
-@[memory_rules]
-theorem Memory.extractLsByte_read (m : Memory) :
-    (m.read addr).extractLsByte i = if i = 0 then m.read addr else 0#8 := by
-  rw [BitVec.extractLsByte_def]
-  by_cases hi : i = 0
-  · subst hi
-    simp only [bitvec_rules, minimal_theory]
-    apply BitVec.eq_of_getLsb_eq
-    simp
-    omega
-  · simp only [hi, ↓reduceIte]
-    apply BitVec.eq_of_getLsb_eq
-    intros j
-    simp only [bitvec_rules, minimal_theory]
-    intros _hj
-    apply BitVec.getLsb_ge
-    omega
-
 theorem ArmState.read_mem_eq_mem_read : read_mem addr s = s.mem.read addr := rfl
 
 /--
