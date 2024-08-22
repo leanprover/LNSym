@@ -104,8 +104,13 @@ structure CSEConfig where
   minOccsToCSE : Nat := 2
   /-- Whether the tactic should throw an error if no CSEable subterms were found. -/
   failIfUnchanged : Bool := true
-  /-- Number of steps the tactic should run for. -/
-  fuel : Nat := 1000
+  /-- Number of steps the tactic should spend searching for subterms to gather information. -/
+  fuelSearch : Nat := 1000
+  /-- Number of steps the tactic should spend performing subexpression elimination. -/
+  fuelEliminate : Nat := 1000
+  /-- Whether we are performing a dry run, where we will identify repeated
+      subterms, and simulate the sharing algorithm, but perform no actual sharing. -/
+  dryRun? : Bool := false
 
 structure ExprData where
   /-- Number of references to this expression -/
@@ -127,17 +132,10 @@ structure State where
   a counter to generate new names.
   -/
   gensymCount : Nat := 1
-  /--
-  Fuel to control how many steps the tactic run.
-  -/
-  currentFuel : Nat
-
-instance : ToMessageData State where
-  toMessageData s := Id.run do
-    let mut msg := m!""
-    for (k, v) in s.canon2data.toArray do
-      msg := msg ++ Format.line ++ m!"{k} := {repr v}"
-    msg
+  /-- Number of steps the tactic should spend searching for subterms to gather information. -/
+  currentFuelSearch : Nat
+  /-- Number of steps the tactic should spend performing subexpression elimination. -/
+  currentFuelEliminate : Nat
 
 abbrev CSEM := StateRefT State (ReaderT CSEConfig TacticM)
 
@@ -151,17 +149,42 @@ def getState : CSEM State := get
 def setState : State → CSEM Unit := set
 
 def State.ofConfig (cfg : CSEConfig) : State := {
-  currentFuel := cfg.fuel
+  currentFuelSearch := cfg.fuelSearch,
+  currentFuelEliminate := cfg.fuelEliminate,
 }
 
 def CSEM.run (val : CSEM α) (config : CSEConfig) : TacticM α :=
-   val.run' { currentFuel := config.fuel } |>.run config
+   val.run' (State.ofConfig config) |>.run config
 
-def CSEM.hasFuel? : CSEM Bool := do
-  return (← getState).currentFuel > 0
+def CSEM.hasFuelSearch? : CSEM Bool := do
+  return (← getState).currentFuelSearch > 0
 
-def CSEM.consumeFuel : CSEM Unit :=
-  modify fun s => { s with currentFuel := s.currentFuel - 1 }
+def CSEM.consumeFuelSearch : CSEM Unit :=
+  modify fun s => { s with currentFuelSearch := s.currentFuelSearch - 1 }
+
+def CSEM.hasFuelEliminate? : CSEM Bool := do
+  return (← getState).currentFuelEliminate > 0
+
+def CSEM.consumeFuelEliminate : CSEM Unit :=
+  modify fun s => { s with currentFuelEliminate := s.currentFuelEliminate - 1 }
+
+
+def CSEM.isDryRun? : CSEM Bool := do
+  return (← getConfig).dryRun?
+
+/-- create a trace node in trace class (i.e. `set_option traceClass true`),
+with header `header`, whose default collapsed state is `collapsed`. -/
+def CSEM.withTraceNode (header : MessageData) (k : CSEM α)
+    (collapsed : Bool := true)
+    (traceClass : Name := `Tactic.cse.summary) : CSEM α :=
+  Lean.withTraceNode traceClass (fun _ => return header) k (collapsed := collapsed)
+
+/-- Create a trace note that folds `header` with `(NOTE: can be large)`,
+and prints `msg` under such a trace node.
+-/
+def CSEM.traceLargeMsg (header : MessageData) (msg : MessageData) : CSEM Unit :=
+    withTraceNode m!"{header} (NOTE: can be large)" do
+      trace[Tactic.cse.summary] msg
 
 -- @bollu: Surely we must have an implementation of this.
 private def Array.replicate (n : Nat) (v : α) : Array α := List.replicate n v |>.toArray
@@ -170,51 +193,61 @@ private def Array.replicate (n : Nat) (v : α) : Array α := List.replicate n v 
 def ExprData.isProfitable? (data : ExprData) : CSEM Bool :=
   return data.size > 1 && data.occs >= (← getConfig).minOccsToCSE
 
+/-- Check if an expression is a nat literal, or a `OfNat.ofNat` of a nat literal.
+This lets us avoid CSEing over nat literals, which are already in canonical form.
+-/
+def CSEM.isNatLit (e : Expr) : Bool :=
+  if e.isRawNatLit then true
+  else
+  match_expr e with
+  | OfNat.ofNat _α x _inst  => x.isRawNatLit -- @OfNat.ofNat Nat 1 (instOfNatNat 1)
+  | _ => false
+
 /--
 The function is partial because of the call to `tryAddExpr` that
 Lean does not infer is smaller in `e`.
 -/
 partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
-  consumeFuel
-  unless (← hasFuel?) do
-    throwError "CSE ran out of fuel. Increase `fuel` in CSEConfig."
+  consumeFuelSearch
+  unless (← hasFuelSearch?) do
+    trace[Tactics.cse.summary] "⏸️ CSE ran out of fuel while looking for subexpressions. Increase `fuelSearch` in CSEConfig."
     return .none
 
   let t ← inferType e
   -- for now, we ignore function terms.
-  let relevant? := !t.isArrow && !t.isSort && !t.isForall
-  trace[Tactic.cse.collection] m!"{if relevant? then checkEmoji else crossEmoji} ({e}):({t})"
-  /-
-  If we have an application, then only add its children
-  that are explicit.
-  -/
-  let mut size := 1
-  if e.isApp then
-    let (fn, args) := (e.getAppFn, e.getAppArgs)
-    let paramInfos := (← getFunInfo fn).paramInfo
-    for i in [0 : args.size] do
-      let arg := args[i]!
-      let shouldCount := paramInfos[i]!.isExplicit
-      if shouldCount then
-        if let .some data ← tryAddExpr arg then
-          size := size + data.size
-  -- the current argument itself was irrelevant, so don't bother adding it.
-  if !relevant? then return .none
-  let s ← getState
-  match s.canon2data.find? e with
-  | .some data => do
-    let data := data.incrRef
-    trace[Tactic.cse.collection] m!"updated '{e}' with info '{repr data}'" -- TODO: make this a trace node child.
-    setState { s with canon2data := s.canon2data.insert e data }
-    return .some data
-  | .none =>
-    let data := { occs := 1, size : ExprData }
-    setState {
-      s with
-      canon2data := s.canon2data.insert e data,
-    }
-    trace[Tactic.cse.collection] m!"added new '{e}' with info '{repr data}'" -- TODO: make this a trace node child.
-    return .some data
+  let relevant? := !t.isArrow && !t.isSort && !t.isForall && !isNatLit e
+  withTraceNode m!"({e}):({t}) [relevant? {if relevant? then checkEmoji else crossEmoji}] (unfold for subexpressions...)" do
+    /-
+    If we have an application, then only add its children
+    that are explicit.
+    -/
+    let mut size := 1
+    if e.isApp then
+      let (fn, args) := (e.getAppFn, e.getAppArgs)
+      let paramInfos := (← getFunInfo fn).paramInfo
+      for i in [0 : args.size] do
+        let arg := args[i]!
+        let shouldCount := paramInfos[i]!.isExplicit
+        if shouldCount then
+          if let .some data ← tryAddExpr arg then
+            size := size + data.size
+    -- the current argument itself was irrelevant, so don't bother adding it.
+    if !relevant? then return .none
+    let s ← getState
+    match s.canon2data.find? e with
+    | .some data => do
+      let data := data.incrRef
+      traceLargeMsg "updated expr (...) with info ({repr data})" "{e}"
+      setState { s with canon2data := s.canon2data.insert e data }
+      return .some data
+    | .none =>
+      let data := { occs := 1, size : ExprData }
+      setState {
+        s with
+        canon2data := s.canon2data.insert e data,
+      }
+      traceLargeMsg "Added new expr (...) with info ({repr data})" "{e}"
+      return .some data
 
 /-- Execute `x` using the main goal local context. -/
 def CSEM.withMainContext (x : CSEM α) : CSEM α := do
@@ -235,13 +268,14 @@ partial def CSEM.planCSE (e : Expr): CSEM GeneralizeArg := do
   then planCSE e
   else return { expr := e, hName? := hname, xName? := xname }
 
+
 /--
 Plan to perform a CSE for this expression, by building a 'GeneralizeArg'.
 -/
 def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
-  consumeFuel
-  unless (← hasFuel?) do
-    throwError "CSE ran out of fuel. Increase `fuel` in CSEConfig."
+  consumeFuelEliminate
+  unless (← hasFuelEliminate?) do
+    trace[Tactics.cse.summary] "⏸️ CSE ran out of fuel while performing subexpression elimination. increase `fuelEliminate`."
     return false
 
   let hname := arg.hName?.getD .anonymous
@@ -251,49 +285,67 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
   let mvarId ← getMainGoal
   mvarId.withContext do
     -- implementation modeled after `Lean.Elab.Tactic.evalGeneralize`.
-    trace[Tactic.cse.generalize] "{tryEmoji} Generalizing {hname} : {e} = {xname}"
+    traceLargeMsg m!"{tryEmoji} Generalizing {hname}: {xname} = ..."  m!"{e}"
     try
-      -- Implementation modeled after `Lean.MVarId.generalizeHyp`.
-      let e ← instantiateMVars e
-      let hyps := ((← getLCtx).getFVarIds)
-      let transparency := TransparencyMode.reducible
-      let hyps ← hyps.filterM fun h => do
-        let type ← instantiateMVars (← h.getType)
-        return (← withTransparency transparency <| kabstract type arg.expr).hasLooseBVars
-      let (reverted, mvarId) ← mvarId.revert hyps true
-      let (_newVars, mvarId) ← mvarId.generalize #[arg] transparency
-      let (reintros, mvarId) ← mvarId.introNP reverted.size
-      let _fvarSubst := Id.run do
-        let mut subst : FVarSubst := {}
-        for h in reverted, reintro in reintros do
-          subst := subst.insert h (mkFVar reintro)
-        pure subst
-      replaceMainGoal [mvarId]
-      trace[Tactic.cse.generalize] "{checkEmoji} succeeded in generalizing {hname}. ({← getMainGoal})"
+      if ! (← isDryRun?) then
+        -- Implementation modeled after `Lean.MVarId.generalizeHyp`.
+        let e ← instantiateMVars e
+        let hyps := ((← getLCtx).getFVarIds)
+        let transparency := TransparencyMode.reducible
+        let hyps ← hyps.filterM fun h => do
+          let type ← instantiateMVars (← h.getType)
+          return (← withTransparency transparency <| kabstract type arg.expr).hasLooseBVars
+        let (reverted, mvarId) ← mvarId.revert hyps true
+        let (_newVars, mvarId) ← mvarId.generalize #[arg] transparency
+        let (reintros, mvarId) ← mvarId.introNP reverted.size
+        let _fvarSubst := Id.run do
+          let mut subst : FVarSubst := {}
+          for h in reverted, reintro in reintros do
+            subst := subst.insert h (mkFVar reintro)
+          pure subst
+        replaceMainGoal [mvarId]
+      traceLargeMsg m!"{checkEmoji} succeeded in generalizing {hname}." m!"{← getMainGoal}"
       return true
     catch e =>
-      trace[Tactic.cse.generalize] "{bombEmoji} failed to generalize {hname}"
+      trace[Tactic.cse.summary] "{bombEmoji} failed to generalize {hname}"
       return false
 
 def CSEM.cseImpl : CSEM Unit := do
   withMainContext do
-    let _ ← tryAddExpr (← getMainTarget)
-    /- If we should perform CSE on hypotheses as well. -/
-    if (← getConfig).processHyps = .allHyps then
-      for hyp in (← getLocalHyps) do
-        let _ ← tryAddExpr (← inferType hyp)
-    trace[Tactic.cse.summary] m!"CSE collected expressions: {(← getState)}"
+    withTraceNode m!"CSE collecting hypotheses:" do
+      let _ ← tryAddExpr (← getMainTarget)
+      /- If we should perform CSE on hypotheses as well. -/
+      if (← getConfig).processHyps = .allHyps then
+        for hyp in (← getLocalHyps) do
+          let _ ← tryAddExpr (← inferType hyp)
 
-    let mut madeProgress := false
-    for (e, data) in (← getState).canon2data.toArray.qsort (fun kv kv' => kv.2.size > kv'.2.size) do
-        if !(← data.isProfitable?) then
-          trace[Tactic.cse.generalize] "⏭️ Skipping {e}: Unprofitable {repr data} ."
-        else
+    let newCanon2Data : HashMap Expr ExprData ←
+      withTraceNode m!"⏭️ CSE eliminiating unprofitable expressions (#expressions:{(← getState).canon2data.size}):" do
+        let mut newCanon2Data := {}
+        for (e, data) in (← getState).canon2data.toArray.qsort (fun kv kv' => kv.2.occs > kv'.2.occs) do
+          if !(← data.isProfitable?) then
+            traceLargeMsg m!"⏭️ Unprofitable {repr data} ." m!"expr: {e}"
+          else
+            newCanon2Data := newCanon2Data.insert e data
+        return newCanon2Data
+
+    withTraceNode m!"CSE summary of profitable expressions (#expressions:{(newCanon2Data).size}):" <| do
+      let mut i : Nat := 1
+      /- sort to show most numerous first follows by smallest. -/
+      for (e, data) in newCanon2Data.toArray.qsort (fun kv kv' => kv.2.occs > kv'.2.occs) do
+        if !(← data.isProfitable?) then continue
+        traceLargeMsg m!"{i}) {repr data}" m!"{e}"
+        i := i + 1
+
+
+    withTraceNode m!"CSE rewriting (#expressions:{newCanon2Data.size}):" do
+      let mut madeProgress := false
+      for (e, _data) in newCanon2Data.toArray.qsort (fun kv kv' => kv.2.size > kv'.2.size) do
           let generalizeArg ← planCSE e
           madeProgress := madeProgress || (← generalize generalizeArg)
-    if !madeProgress && !(← getConfig).failIfUnchanged
-    then throwError "found no subterms to successfully CSE."
-    return ()
+      if !madeProgress && !(← getConfig).failIfUnchanged
+      then throwError "found no subterms to successfully CSE."
+      return ()
 
 open Lean Elab Tactic Parser.Tactic
 

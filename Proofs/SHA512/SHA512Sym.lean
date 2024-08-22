@@ -47,8 +47,6 @@ abbrev ktbl_addr : BitVec 64 := 0x1b4300#64
 -- set_option profiler true in
 -- set_option profiler.threshold 1 in
 -- set_option pp.deepTerms false in
-set_option trace.Tactic.cse.collection true in
-set_option trace.Tactic.cse.generalize true in
 set_option trace.Tactic.cse.summary true in
 theorem sha512_block_armv8_1block (s0 sf : ArmState)
   -- (FIXME) Ignore the `stp` instruction for now.
@@ -82,7 +80,7 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
   (FIXME @bollu) cse fails with the following message:
   no goals to be solved
   -/
-  -- cse (config := { processHyps := .allHyps, minOccsToCSE := 20, fuel := 5000 })
+  cse (config := { processHyps := .allHyps, fuelEliminate := 5, dryRun? := false})
   -- Final Steps
   unfold run at h_run
   subst sf
