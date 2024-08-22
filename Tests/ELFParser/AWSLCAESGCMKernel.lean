@@ -726,7 +726,7 @@ info: [0xa9b87bfd#32,
  0xd65f03c0#32]
 -/
 #guard_msgs in
-#eval do (getSymbolInsts "aes_gcm_enc_kernel" (← CryptoELF))
+#eval do (getSymbolWords "aes_gcm_enc_kernel" (← CryptoELF))
 
 /--
 info: [0xa9b87bfd#32,
@@ -1449,4 +1449,4 @@ info: [0xa9b87bfd#32,
  0xd65f03c0#32]
 -/
 #guard_msgs in
-#eval do (getSymbolInsts "aes_gcm_dec_kernel" (← CryptoELF))
+#eval do (getSymbolWords "aes_gcm_dec_kernel" (← CryptoELF))

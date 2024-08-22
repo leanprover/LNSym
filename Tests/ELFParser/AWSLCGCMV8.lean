@@ -35,7 +35,7 @@ info: [0x4c407c11#32,
  0xd65f03c0#32]
 -/
 #guard_msgs in
-#eval do (getSymbolInsts "gcm_gmult_v8" (← CryptoELF))
+#eval do (getSymbolWords "gcm_gmult_v8" (← CryptoELF))
 
 /--
 info: [0x4c407c31#32,
@@ -192,7 +192,7 @@ info: [0x4c407c31#32,
  0xd65f03c0#32]
 -/
 #guard_msgs in
-#eval do (getSymbolInsts "gcm_init_v8" (← CryptoELF))
+#eval do (getSymbolWords "gcm_init_v8" (← CryptoELF))
 
 /--
 info: [0xf101007f#32,
@@ -288,7 +288,7 @@ info: [0xf101007f#32,
  0xd65f03c0#32]
 -/
 #guard_msgs in
-#eval do (getSymbolInsts "gcm_ghash_v8" (← CryptoELF))
+#eval do (getSymbolWords "gcm_ghash_v8" (← CryptoELF))
 
 /--
 info: [0x4c407c00#32,
@@ -506,4 +506,4 @@ info: [0x4c407c00#32,
  0xd65f03c0#32]
 -/
 #guard_msgs in
-#eval do (getSymbolInsts "gcm_ghash_v8_4x" (← CryptoELF))
+#eval do (getSymbolWords "gcm_ghash_v8_4x" (← CryptoELF))

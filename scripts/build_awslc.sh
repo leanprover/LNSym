@@ -4,6 +4,13 @@
 # Released under Apache 2.0 license as described in the file LICENSE.
 # Author(s): Yan Peng
 
+# This script clones AWS-LC, builds it through cross-compilation, and copies the
+# build directory to the `Tests/ELFParser/Data` directory in LNSym where it is
+# parsed by ELFSage.
+
+# TODO: figure out if this file could be simplied by moving some of the options
+# in cmake to the toolchain file build_awslc.cmake.
+
 set -e
 set -o xtrace
 

@@ -5,10 +5,16 @@ Author(s): Shilpi Goel
 -/
 import Tests.ELFParser.AWSLCCrypto
 
--- Importing just the sha512-armv8.S.o file to avoid ADRP issue.
--- Details: PC relative addressing are used for locating constants
--- The address changes every time linking happens.
--- We use the .o files to avoid having to deal with address change.
+-- Importing just the aesv8-armx.S.o file to avoid relying on the
+-- linker-generated addresses.
+-- Details: PC-relative addressing is often used for locating constants.
+-- The addresses can change every time linking happens, which
+-- means that the 32-bit hex for instructions that use PC-relative offsets
+-- can change. This causes the values obtained by `getSymbolWords` to vary
+-- and causes `#guard_msgs` to fail.
+--
+-- We use the .o files to avoid having to deal with the repercussions of
+-- such potential address changes.
 def SHA512ELF :=
   (getELFFile (System.mkFilePath
     ["Tests", "ELFParser", "Data", "aws-lc-build", "crypto",
@@ -522,7 +528,7 @@ info: [0xa9bf7bfd#32,
  0xd65f03c0#32]
 -/
 #guard_msgs in
-#eval do (getSymbolInsts "sha512_block_data_order_hw" (← SHA512ELF))
+#eval do (getSymbolWords "sha512_block_data_order_hw" (← SHA512ELF))
 
 /--
 info: [0xd728ae22#32,
@@ -688,4 +694,4 @@ info: [0xd728ae22#32,
  0x00000000#32,
  0x00000000#32]-/
 #guard_msgs in
-#eval do (getSymbolInsts ".LK512" (← CryptoELF))
+#eval do (getSymbolWords ".LK512" (← CryptoELF))

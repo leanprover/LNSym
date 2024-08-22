@@ -59,8 +59,8 @@ def getSymbolMap (symbolname : String) (elffile : RawELFFile) : IO Program := do
                       insts
   return (BitVec.enumFrom (BitVec.ofNat 64 st_value) insts_bv)
 
-/- Get the instruction for symbol `symbolname` in the file `elffile`. -/
-def getSymbolInsts (symbolname : String) (elffile : RawELFFile) : IO (List (BitVec 32)) := do
+/- Get the 32-bit words content for symbol `symbolname` in the file `elffile`. -/
+def getSymbolWords (symbolname : String) (elffile : RawELFFile) : IO (List (BitVec 32)) := do
   let (_, bytes) ← getSymbolContentsTop symbolname elffile
   let insts ← bytes.toUInt32s elffile.isBigendian
   let insts_bv := List.map
