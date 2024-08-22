@@ -98,7 +98,7 @@ inductive PFlag where
   | Z : PFlag
   | C : PFlag
   | V : PFlag
-deriving DecidableEq, Repr
+deriving DecidableEq, Repr, Hashable
 
 instance : ToString PFlag :=
   ⟨fun p => match p with
@@ -255,7 +255,7 @@ inductive StateField where
   | PC     : StateField
   | FLAG   : PFlag → StateField
   | ERR    : StateField
-deriving DecidableEq, Repr
+deriving DecidableEq, Repr, Hashable
 
 instance : ToString StateField :=
   ⟨fun s => match s with
