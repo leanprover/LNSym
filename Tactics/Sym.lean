@@ -29,7 +29,7 @@ by adding a new state variable, `sn`, and two new hypotheses:
   `stepi_eq : stepi s = s_next`
   `h_run'   : s_final = run n s_next`
 to the local context of the main goal.
-The names are obtained from the respectively named arguments to the tactic s-/
+The names are obtained from the respectively named arguments to the tactic -/
 macro "init_next_step" h_run:ident stepi_eq:ident sn:ident : tactic =>
   `(tactic|
     (-- use `let` over `obtain` to prevent `.intro` goal tags
