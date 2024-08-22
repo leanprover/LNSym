@@ -289,3 +289,38 @@ theorem test_quantified_app_2 {val : BitVec (16 * 8)}
   rfl
 
 end ExprVisitor
+
+namespace MathProperties
+
+/-
+We stress the omega reduction, and indirectly, `omega` itself, by
+proving generic properties about our definitions of `mem_legal'`,
+`mem_separate'`, `mem_subset'`.
+-/
+
+/-! ### mem_subset is a partial order. -/
+theorem mem_subset_refl (h : mem_legal' a an) : mem_subset' a an a an := by simp_mem
+/-
+TODO(@bollu): In such a scenario, we should call `omega` directly on the goal,
+and see if it can solve it.
+theorem mem_subset_asymm (h : mem_subset' a an b bn) (h' : mem_subset' b bn a an) :
+  a = b ∧ an = bn := by
+  simp_mem
+-/
+theorem mem_subset_trans (h : mem_subset' a an b bn) (h' : mem_subset' b bn c cn) :
+  mem_subset' a an c cn := by simp_mem
+
+/-! ### mem_separate relationship to arithmetic -/
+
+theorem mem_separate_comm (h : mem_separate' a an b bn) : mem_separate' b bn a an := by simp_mem
+/-- if `[a..an)⟂[b..bn)`, then `[a+δ..an-δ)⟂[b..bn)`-/
+theorem mem_separate_of_lt_of_lt_sub (h : mem_separate' a an b bn) (hab : a < b)
+  (hδ : δ < b - a): mem_separate' (a + δ) (an - δ.toNat) b bn := by simp_mem
+/-- If `[a..an)⟂[b..bn)`, and `a ≤ b`, then `[a'..an+(a-a'))⟂[b..bn)`.
+This lets us increase the size of the left memory region.
+-/
+theorem mem_separate_move_of_lt_of_le  (h : mem_separate' a an b bn)
+  (hab : a < b)
+  (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a').toNat) b bn := by simp_mem
+
+end MathProperties

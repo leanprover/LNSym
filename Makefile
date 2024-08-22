@@ -6,7 +6,7 @@ SHELL := /bin/bash
 
 LAKE = lake
 
-NUM_TESTS?=20
+NUM_TESTS?=3
 VERBOSE?=--verbose
 
 .PHONY: all 

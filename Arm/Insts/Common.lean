@@ -13,18 +13,15 @@ section Common
 open BitVec
 
 ----------------------------------------------------------------------
-/-- `GPRIndex.rand` picks a safe GPR index (i.e., one not reserved on
-Apple platforms). Use this function instead of `BitVec.rand` to pick
-an appropriate random index for a destination GPR during
-cosimulations. We say "destination" because using reserved registers
-as source operands does not violate the Apple ABI.
 
-For details, see
-https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms#Respect-the-purpose-of-specific-CPU-registers
+/-- 
+`GPRIndex.rand` picks a safe GPR index for Arm-based Apple platforms
+i.e., one not reserved on them. Use this function instead of
+`BitVec.rand` to pick an appropriate random index for a source and
+destination GPR during cosimulations. 
 
-Also see "Procedure Call Standard for the Arm 64-bit Architecture";
-the latest version is available at
-https://github.com/ARM-software/abi-aa/releases
+See "NOTE: Considerations for running cosimulations on Arm-based Apple
+platforms" in Arm/Cosim.lean for details.
 -/
 partial def GPRIndex.rand (lo := 0) (hi := 31) :
   IO (BitVec 5) := do

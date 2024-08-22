@@ -757,6 +757,14 @@ theorem State.read_mem_bytes_eq_mem_read_bytes (s : ArmState) :
 theorem read_bytes_zero_eq (m : Memory) : m.read_bytes 0 addr = 0#0 :=
   rfl
 
+@[memory_rules]
+theorem read_bytes_one_eq (m : Memory) : m.read_bytes 1 addr = m.read addr := by
+  simp [read_bytes, read, bitvec_rules]
+  apply BitVec.eq_of_getLsb_eq
+  intros i
+  rw [BitVec.getLsb_append]
+  simp only [show (i : Nat) < 8 by omega, decide_True, Nat.zero_le, BitVec.getLsb_ge, cond_true]
+
 theorem read_bytes_succ_eq (m : Memory) :
   m.read_bytes (n' + 1) addr = (m.read_bytes n' (addr + 1) ++ m.read addr).cast (by omega) := rfl
 
@@ -793,22 +801,14 @@ theorem getLsb_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
         subst hi'
         simp only [Nat.add_sub_cancel, Nat.zero_lt_succ, Nat.add_div_right, Nat.add_mod_right]
         congr 2
-        rw [BitVec.add_assoc]
-        congr
-        rw [BitVec.add_def]
-        congr 1
-        simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]
-        rw [Nat.mod_eq_of_lt]
-        · omega
-        · omega
+        bv_omega
       · simp only [h₂, decide_False, Bool.false_and, Bool.false_eq, Bool.and_eq_false_imp,
           decide_eq_true_eq]
-        intros h₃
-        omega
+        bv_omega
       · omega
 
 /--
-The describes the behaviour of `m.read_bytes` at a byte level granularity.
+Describe the behaviour of `m.read_bytes` at a byte level granularity.
 -/
 @[memory_rules]
 theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h : addr.toNat + n ≤ 2^64) :
@@ -828,6 +828,20 @@ theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h 
   · simp only [h₁, decide_False, Bool.false_and, Bool.false_eq]
     simp only [show ¬(i < n) by omega, ↓reduceIte, BitVec.getLsb_zero]
   · omega
+
+/--
+Extracting a byte out of a byte returns the value if `i = 0`, and `0#8`
+otherwise.
+-/
+@[memory_rules]
+theorem Memory.extractLsByte_read (m : Memory) :
+    (m.read addr).extractLsByte i = if i = 0 then m.read addr else 0#8 := by
+  rw [← read_bytes_one_eq]
+  rw [extractLsByte_read_bytes (by omega)]
+  by_cases h : i = 0
+  · simp only [h, Nat.lt_add_one, ↓reduceIte, BitVec.add_zero, read_bytes_one_eq]
+  · simp only [h, ↓reduceIte, ite_eq_right_iff]
+    omega
 
 /--
 This is a low level theorem.
