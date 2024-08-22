@@ -126,6 +126,28 @@ def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
   else
     throwError "Expected a bitvector of width {w}, but\n\t{e}\nhas width {n}"
 
+def reflectPFLag (e : Expr) : MetaM PFlag :=
+  match_expr e with
+    | PFlag.N => pure .N
+    | PFlag.Z => pure .Z
+    | PFlag.C => pure .C
+    | PFlag.V => pure .V
+    | _ =>
+      let pflag := mkConst ``PFlag
+      throwError "Expected a `{pflag}` constructor, found:\n  {e}"
+
+/-- Reflect a concrete `StateField` -/
+def reflectStateField (e : Expr) : MetaM StateField :=
+  match_expr e with
+    | StateField.GPR x  => StateField.GPR <$> reflectBitVecLiteral _ x
+    | StateField.SFP x  => StateField.SFP <$> reflectBitVecLiteral _ x
+    | StateField.PC     => pure StateField.PC
+    | StateField.FLAG f => StateField.FLAG <$> reflectPFLag f
+    | StateField.ERR    => pure StateField.ERR
+    | _ =>
+      let sf := mkConst ``StateField
+      throwError "Expected a `{sf}` constructor, found:\n  {e}"
+
 /-! ## Hypothesis types -/
 namespace SymContext
 
