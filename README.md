@@ -43,6 +43,8 @@ native-code programs of interest.
 
 `cosim`: [run under `all`] perform conformance testing.
 
+`awslc_elf`: perform ELF loading tests for AWS-LC. Requires running scripts/top.sh first to build AWS-LC.
+
 ### Makefile variables that can be passed in at the command line
 
 `VERBOSE`: Verbose mode; prints disassembly of the instructions being

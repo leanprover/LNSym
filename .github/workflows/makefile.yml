@@ -40,10 +40,11 @@ jobs:
         path: .lake
         key: ${{ runner.os }}-lake
 
-    - name: Build AWS-LC (Ubuntu)
+    - name: Build AWS-LC and running ELFSage tests (Ubuntu)
       if : ${{ runner.os != 'macOS' }}
       run: |
         ./scripts/top.sh
+        make awslc_elf
 
     - name: Run LNSym Makefile (Ubuntu)
       if : ${{ runner.os != 'macOS' }}
