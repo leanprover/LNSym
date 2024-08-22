@@ -125,7 +125,10 @@ structure MemSpanExpr where
 instance : ToMessageData MemSpanExpr where
   toMessageData span := m! "[{span.base}..{span.n})"
 
-/-- a term of the form 'mem_legal a' -/
+/-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
+#guard_msgs in #check mem_legal'
+
+/-- a term of the form `mem_legal' a` -/
 structure MemLegalExpr  where
   span : MemSpanExpr
 
@@ -140,6 +143,11 @@ instance : ToMessageData MemLegalExpr where
 instance : Coe MemSpanExpr MemLegalExpr where
   coe := MemLegalExpr.mk
 
+
+/-- info: mem_subset' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Prop -/
+#guard_msgs in #check mem_subset'
+
+/-- a term of the form `mem_subset' a`. -/
 structure MemSubsetExpr where
   sa : MemSpanExpr
   sb : MemSpanExpr
@@ -151,6 +159,9 @@ abbrev MemSubsetProof := WithWitness MemSubsetExpr
 
 def MemSubsetProof.mk {e : MemSubsetExpr} (h : Expr) : MemSubsetProof e :=
   { h }
+
+/-- info: mem_separate' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Prop -/
+#guard_msgs in #check mem_separate'
 
 structure MemSeparateExpr where
   sa : MemSpanExpr
@@ -172,6 +183,7 @@ def MemLegalProof.mk {e : MemLegalExpr} (h : Expr) : MemLegalProof e :=
 /-- info: Memory.read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) -/
 #guard_msgs in #check Memory.read_bytes
 
+/-- an occurrence of `Memory.read_bytes`. -/
 structure ReadBytesExpr where
   span : MemSpanExpr
   mem : Expr
@@ -570,7 +582,7 @@ def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
     setGoals (omegaObligationVal.mvarId! :: (← getGoals))
     SimpMemM.withMainContext do
     let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
-    trace[simp_mem.info] "Executing `omega` to close {e}"
+    trace[simp_mem.info] m!"Executing `omega` to close {e}"
     SimpMemM.withTraceNode m!"goal (Note: can be large)" do
       trace[simp_mem.info] "{← getMainGoal}"
     omega
@@ -741,18 +753,18 @@ partial def SimpMemM.simplifyGoal (g : MVarId) (hyps : Array Hypothesis) : SimpM
     trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
     let gt ← g.getType
     if let .some e := MemLegalExpr.ofExpr? gt then do
-      withTraceNode "Matched on ⊢ {e}. Proving..." do
+      withTraceNode m!"Matched on ⊢ {e}. Proving..." do
       if let .some proof ← proveWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
     if let .some e := MemSubsetExpr.ofExpr? gt then do
-      withTraceNode "Matched on ⊢ {e}. Proving..." do
+      withTraceNode m!"Matched on ⊢ {e}. Proving..." do
       if let .some proof ←  proveWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
     if let .some e := MemSeparateExpr.ofExpr? gt then do
-      withTraceNode "Matched on ⊢ {e}. Proving..." do
+      withTraceNode m!"Matched on ⊢ {e}. Proving..." do
       if let .some proof ←  proveWithOmega? e hyps then do
         (← getMainGoal).assign proof.h
-    withTraceNode "Simplifying goal." do
+    withTraceNode m!"Simplifying goal." do
       SimpMemM.simplifyExpr (← whnf gt) hyps
 
 end
