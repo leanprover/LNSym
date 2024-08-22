@@ -44,7 +44,7 @@ macro "init_next_step" h_run:ident stepi_eq:ident sn:ident : tactic =>
 section stepiTac
 
 /-- Apply the relevant pre-generated stepi lemma to a local hypothesis
-  `stepi_eq : ?s' = stepi ?s`
+  `stepi_eq : stepi ?s = ?s'`
 to obtain a new local hypothesis in terms of `w` and `write_mem`
   `h_step : ?s' = w _ _ (w _ _ (... ?s))`
 -/
