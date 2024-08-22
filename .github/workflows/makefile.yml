@@ -43,7 +43,6 @@ jobs:
     - name: Build AWS-LC and run ELFSage tests (Ubuntu)
       if : ${{ runner.os != 'macOS' }}
       run: |
-        ./scripts/ci_ubuntu_build_awslc.sh
         make awslc_elf
 
     - name: Run LNSym Makefile (Ubuntu)

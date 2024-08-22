@@ -29,7 +29,7 @@ tests:
 
 .PHONY: awslc_elf
 awslc_elf:
-	time -p $(LAKE) build AWSLCELFTests
+	./scripts/ci_ubuntu_build_awslc.sh; time -p $(LAKE) build AWSLCELFTests
 
 .PHONY: cosim
 cosim:
