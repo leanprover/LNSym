@@ -6,4 +6,5 @@ initialize
   registerTraceClass `Tactic.cse.summary -- CSE phase that summaries information after collection.
   registerTraceClass `Tactic.cse.generalize -- CSE phase that attempts reperated generalization.
 
+  -- enable tracing for `sym_n` tactic and related components
   registerTraceClass `Tactic.sym

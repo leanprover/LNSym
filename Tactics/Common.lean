@@ -98,18 +98,30 @@ def getBitVecValue? (e : Expr) : MetaM (Option ((n : Nat) × BitVec n)) :=
     | _ => Lean.Meta.getBitVecValue? e
 
 /-- Given a ground term `e` of type `Nat`, fully reduce it,
-and attempt to reflect it into a meta-level `Nat` -/
+and attempt to reflect it into a meta-level `Nat`,
+returning `none` on failure -/
+partial def reflectNatLiteral? (e : Expr) : MetaM (Option Nat) := OptionT.run do
+  let e' ← instantiateMVars e
+  go e'
+where go (e : Expr) : MetaM (Option Nat) := do
+  let e ← whnf e
+  if let some n ← evalNat e then
+    return n
+
+  let_expr Nat.succ e' := e | return none
+  let some n ← go e'        | return none
+  return some (n + 1)
+
+/-- Given a ground term `e` of type `Nat`, fully reduce it,
+and attempt to reflect it into a meta-level `Nat`,
+throwing an error on failure -/
 def reflectNatLiteral (e : Expr) : MetaM Nat := do
   if e.hasFVar then
     throwError "Expected a ground term, but {e} has free variables"
+  let some n ← reflectNatLiteral? e
+    | throwError "Failed to reflect expression into a `Nat` literal:\n  {e}"
+  return n
 
-  let e' ← reduce (← instantiateMVars e)
-  let some x := e'.rawNatLit?
-    | throwError "Expected a numeric literal, found:\n\t{e'}
-which was obtained by reducing:\n\t{e}"
-  -- ^^ The previous reduction will have reduced a canonical-form nat literal
-  --    into a raw literal, hence, we use `rawNatLit?` rather than `nat?`
-  return x
 
 /-- For a concrete width `w`,
 reduce an expression `e` (of type `BitVec w`) to be of the form `?n#w`,

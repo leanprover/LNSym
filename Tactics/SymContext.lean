@@ -8,6 +8,7 @@ import Lean.Meta
 
 import Arm.Exec
 import Tactics.Common
+import Tactics.Attr
 
 /-!
 This files defines the `SymContext` structure,
@@ -35,14 +36,20 @@ structure SymContext where
   state : Name
   /-- `finalState` is an expression of type `ArmState` -/
   finalState : Expr
-  /-- `runSteps` is the number of steps that we can *maximally* simulate,
-  because of the way it occurs in `h_run`.
-  Note that `runSteps` is a meta-level natural number, reflecting the fact that
-  we expect the number of steps in `h_run` to be expressed as a concrete literal
-  -/
-  runSteps : Nat
+  /-- `runSteps?` stores the number of steps that we can *maximally* simulate,
+  if known.
+
+  If `runSteps?` is `some n`, where `n` is a meta-level `Nat`,
+  then we expect that `<runSteps>` in type of `h_run` is the literal `n`.
+  Otherwise, if `runSteps?` is `none`,
+  then `<runSteps>` is allowed to be anything, even a symbolic value.
+
+  See also `SymContext.h_run` -/
+  runSteps? : Option Nat
   /-- `h_run` is a local hypothesis of the form
-  `finalState = run {runSteps} state` -/
+    `finalState = run <runSteps> state`
+
+  See also `SymContext.runSteps?` -/
   h_run : Name
   /-- `program` is a *constant* which represents the program being evaluated -/
   program : Name
@@ -104,12 +111,45 @@ def h_pc_ident        : Ident := mkIdent c.h_pc
 def h_err_ident       : Ident := mkIdent c.h_err
 def h_sp_ident        : Ident := mkIdent c.h_sp
 
-def stateExpr : MetaM Expr := do
-  let some decl := (← getLCtx).findFromUserName? c.state
-    | throwError "Unknown local variable `{c.state}`"
-  return Expr.fvar decl.fvarId
+/-- Find the local declaration that corresponds to a given name,
+or throw an error if no local variable of that name exists -/
+private def findFromUserName (name : Name) : MetaM LocalDecl := do
+  let some decl := (← getLCtx).findFromUserName? name
+    | throwError "Unknown local variable `{name}`"
+  return decl
+
+/-- Return an expression for `c.state`,
+or throw an error if no local variable of that name exists -/
+def stateExpr : MetaM Expr :=
+  (·.toExpr) <$> findFromUserName c.state
+
+/-- Find the local declaration that corresponds to `c.h_run`,
+or throw an error if no local variable of that name exists -/
+def hRunDecl : MetaM LocalDecl := do
+  findFromUserName c.h_run
 
 end
+
+/-! ## `ToMessageData` instance -/
+
+/-- Convert a `SymContext` to `MessageData` for tracing.
+This is not a `ToMessageData` instance because we need access to `MetaM` -/
+def toMessageData (c : SymContext) : MetaM MessageData := do
+  let state ← c.stateExpr
+  let h_run ← userNameToMessageData c.h_run
+  let h_err? ← c.h_err?.mapM userNameToMessageData
+  let h_sp?  ← c.h_sp?.mapM userNameToMessageData
+
+  return m!"\{ state := {state},
+  finalState := {c.finalState},
+  runSteps? := {c.runSteps?},
+  h_run := {h_run},
+  program := {c.program},
+  pc := {c.pc},
+  h_err? := {h_err?},
+  h_sp? := {h_sp?},
+  state_prefix := {c.state_prefix},
+  curr_state_number := {c.curr_state_number} }"
 
 /-! ## Creating initial contexts -/
 
@@ -143,6 +183,9 @@ private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) 
 /-- Build a `SymContext` by searching the local context for hypotheses of the
 required types (up-to defeq) -/
 def fromLocalContext (state? : Option Name) : MetaM SymContext := do
+  let msg := m!"Building a `SymContext` from the local context"
+  withTraceNode `Tactic.sym (fun _ => pure msg) do
+  trace[Tactic.Sym] "state? := {state?}"
   let lctx ← getLCtx
 
   -- Either get the state expression from the local context,
@@ -161,7 +204,12 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let h_run ← findLocalDeclUsernameOfTypeOrError h_run_type
 
   -- Unwrap and reflect `runSteps`
-  let runSteps ← withErrorContext h_run h_run_type <| reflectNatLiteral runSteps
+  let runSteps? ← do
+    let msg := m!"Reflecting: {runSteps}"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      let runSteps? ← reflectNatLiteral? runSteps
+      trace[Tactic.sym] "got: {runSteps?}"
+      pure runSteps?
   let finalState ← instantiateMVars finalState
 
   -- At this point, `stateExpr` should have been assigned (if it was an mvar),
@@ -190,9 +238,6 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let ⟨h_program, program⟩ ← withErrorContext h_run h_run_type <|
     findProgramHyp stateExpr
   let h_program := h_program.userName
-  /-
-    TODO: assert that the expected `stepi` theorems have been generated
-  -/
 
   -- Then, try to find `h_pc`
   let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
@@ -212,16 +257,22 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
 
   return inferStatePrefixAndNumber {
-    state, finalState, h_run, runSteps, program, h_program, pc, h_pc,
+    state, finalState, h_run, runSteps?, program, h_program, pc, h_pc,
     h_err?, h_sp?
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
-    let decl ← findLocalDeclOfType? expectedType
-    return (·.userName) <$> decl
+    let msg := m!"Searching for hypothesis of type: {expectedType}"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      let decl? ← findLocalDeclOfType? expectedType
+      trace[Tactic.sym] "Found: {(·.toExpr) <$> decl?}"
+      return (·.userName) <$> decl?
   findLocalDeclUsernameOfTypeOrError (expectedType : Expr) : MetaM Name := do
-    let decl ← findLocalDeclOfTypeOrError expectedType
-    return decl.userName
+    let msg := m!"Searching for hypothesis of type: {expectedType}"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      let decl ← findLocalDeclOfTypeOrError expectedType
+      trace[Tactic.sym] "Found: {decl.toExpr}"
+      return decl.userName
 
 
 
@@ -231,7 +282,8 @@ where
 add new goals of the expected types,
 and use these to add `h_sp` and `h_err` to the main goal context -/
 def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
-  withMainContext do
+  let msg := "Adding goals for missing hypotheses"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
     let mut ctx := ctx
     let mut goal ← getMainGoal
     let mut newGoals := []
@@ -240,33 +292,45 @@ def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
       (Expr.fvar ·.fvarId) <$> lCtx.findFromUserName? ctx.state
       | throwError "Could not find '{ctx.state}' in the local context"
 
-    if ctx.h_err?.isNone then
-      let h_err? := Name.mkSimple s!"h_{ctx.state}_run"
-      let newGoal ← mkFreshMVarId
+    match ctx.h_err? with
+      | none =>
+          trace[Tactic.sym] "h_err? is none, adding a new goal"
 
-      goal := ← do
-        let goalType := h_err_type stateExpr
-        let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
-        let goal' ← goal.assert h_err? goalType newGoalExpr
-        let ⟨_, goal'⟩ ← goal'.intro1P
-        return goal'
+          let h_err? := Name.mkSimple s!"h_{ctx.state}_run"
+          let newGoal ← mkFreshMVarId
 
-      newGoals := newGoal :: newGoals
-      ctx := { ctx with h_err? }
+          goal := ← do
+            let goalType := h_err_type stateExpr
+            let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
+            let goal' ← goal.assert h_err? goalType newGoalExpr
+            let ⟨_, goal'⟩ ← goal'.intro1P
+            return goal'
 
-    if ctx.h_sp?.isNone then
-      let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
-      let newGoal ← mkFreshMVarId
+          newGoals := newGoal :: newGoals
+          ctx := { ctx with h_err? }
+      | some h_err =>
+          let h_err ← userNameToMessageData h_err
+          trace[Tactic.sym] "h_err? is {h_err}, no new goal needed"
 
-      goal := ← do
-        let h_sp_type := h_sp_type stateExpr
-        let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
-        let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
-        let ⟨_, goal'⟩ ← goal'.intro1P
-        return goal'
+    match ctx.h_sp? with
+      | none =>
+          trace[Tactic.sym] "h_sp? is none, adding a new goal"
 
-      newGoals := newGoal :: newGoals
-      ctx := { ctx with h_sp? }
+          let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
+          let newGoal ← mkFreshMVarId
+
+          goal := ← do
+            let h_sp_type := h_sp_type stateExpr
+            let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
+            let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
+            let ⟨_, goal'⟩ ← goal'.intro1P
+            return goal'
+
+          newGoals := newGoal :: newGoals
+          ctx := { ctx with h_sp? }
+      | some h_sp =>
+          let h_sp ← userNameToMessageData h_sp
+          trace[Tactic.sym] "h_sp? is {h_sp}, no new goal needed"
 
     replaceMainGoal (goal :: newGoals)
     return ctx
@@ -284,10 +348,11 @@ def canonicalizeHypothesisTypes (c : SymContext) : TacticM Unit := withMainConte
   let program := mkConst c.program
 
   let mut hyps := #[
-    (c.h_run, h_run_type c.finalState (toExpr c.runSteps) state),
     (c.h_program, h_program_type state program),
     (c.h_pc, h_pc_type state (toExpr c.pc))
   ]
+  if let some runSteps := c.runSteps? then
+    hyps := hyps.push (c.h_run, h_run_type c.finalState (toExpr runSteps) state)
   if let some h_err := c.h_err? then
     hyps := hyps.push (h_err, h_err_type state)
   if let some h_sp := c.h_sp? then
@@ -317,7 +382,7 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     h_pc        := .mkSimple s!"h_{s}_pc"
     h_err?      := some <| .mkSimple s!"h_{s}_err"
     h_sp?       := some <| .mkSimple s!"h_{s}_sp"
-    runSteps    := c.runSteps - 1
+    runSteps?   := (· - 1) <$> c.runSteps?
     program     := c.program
     pc          := nextPc?.getD (c.pc + 4#64)
     curr_state_number
