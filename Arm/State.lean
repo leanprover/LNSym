@@ -533,6 +533,29 @@ theorem ofFin_toFin (x : StateField) : ofFin (toFin x) = x := by
         show @Fin.val 70 69 = 69 from rfl]
   done
 
+section ToExpr
+open Lean PFlag
+
+instance : ToExpr PFlag where
+  toTypeExpr := mkConst ``PFlag
+  toExpr := fun
+    | N => mkConst ``N
+    | V => mkConst ``V
+    | C => mkConst ``C
+    | Z => mkConst ``Z
+
+instance : ToExpr StateField where
+  toTypeExpr := mkConst ``StateField
+  toExpr := fun
+    | GPR x    => mkApp (mkConst ``GPR) (toExpr x)
+    | SFP x    => mkApp (mkConst ``SFP) (toExpr x)
+    | PC       => mkConst ``PC
+    | FLAG fl  => mkApp (mkConst ``FLAG) (toExpr fl)
+    | ERR      => mkConst ``ERR
+
+end ToExpr
+
+end StateField
 
 ----------------------------------------------------------------------
 
