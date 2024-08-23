@@ -442,6 +442,7 @@ theorem effects_of_nextc_from_0x4005b4_cond_holds_true
   -- Symbolic simulation
   -- (TODO) Better handling for branch instructions.
   init_next_step h_run h_step_1 s1
+  replace h_step_1 := h_step_1.symm
   rw [program.stepi_eq_0x4005b4] at h_step_1
   simp only [*, bitvec_rules, minimal_theory] at h_step_1
   (intro_fetch_decode_lemmas h_step_1 h_inv_program "h_inv";
@@ -483,6 +484,7 @@ theorem effects_of_nextc_from_0x4005b4_cond_holds_false
   -- (TODO) Better handling for branch instructions.
   init_next_step h_run h_step_1 s1
   rw [program.stepi_eq_0x4005b4] at h_step_1
+  replace h_step_1 := h_step_1.symm
   simp only [*, non_zero_one_bit_is_one, bitvec_rules, minimal_theory]
     at h_step_1
   (intro_fetch_decode_lemmas h_step_1 h_inv_program "h_inv";
