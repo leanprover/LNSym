@@ -23,6 +23,8 @@ def spec (x : BitVec 32) : BitVec 32 := BitVec.ofNat 32 x.toInt.natAbs
 
 #genStepEqTheorems program
 
+set_option trace.Tactic.sym true
+
 theorem correct
   {s0 sf : ArmState}
   (h_s0_pc : read_pc s0 = 0x4005d0#64)
