@@ -40,6 +40,8 @@ theorem correct
   effects_from_eq h_step_1
   effects_from_eq h_step_2
   effects_from_eq h_step_3
+  effects_from_eq h_step_4
+  effects_from_eq h_step_5
   sorry
 
 /-- info: 'Abs.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/
