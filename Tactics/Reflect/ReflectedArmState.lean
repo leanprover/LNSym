@@ -20,16 +20,18 @@ theorem foo : 1 ≠ 4 := by decide
 #check @instDecidableNot (Eq ?x ?y) <| instDecidableEqStateField ?x ?y
 
 /-- A reflected ArmState field -/
-structure ReflectedStateEffects.Field where
+structure AxEffects.FieldEffect where
   value : Expr
   /-- A proof that `r <field> <currentState> = <value>` -/
   proof : Expr
   deriving Repr
-open ReflectedStateEffects.Field
+open AxEffects.FieldEffect
 
-/-- `ReflectedStateEffects` is an axiomatic representation of an `ArmState`
-transformation written as a sequence of `w` and `write_mem`s to some
-initial state.
+/-- `AxEffects` is an axiomatic representation of effects,
+i.e., `AxEffects` transforms a description of an `ArmState` written as
+a sequence of `w` and `write_mem`s to some initial state
+into a set of hypotheses that relates reading fields from the final state
+to the initial state.
 
 It stores a hashmap from `StateField` to an expression, in terms of the fixed
 initial state, that describes the value of the given field *after* the
@@ -38,7 +40,7 @@ Additionally, each field carries a proof that it is indeed the right value
 
 Furthermore, we maintain a separate expression containing only the writes to
 memory. -/
-structure ReflectedStateEffects where
+structure AxEffects where
   /-- The initial state -/
   initialState : Expr
   /-- The current state, generally expressed in "exploded form".
@@ -52,7 +54,7 @@ structure ReflectedStateEffects where
     `currentStateEq` is used by field accessors to adjust types to
     expose `s`, rather than `currentState`. -/
   currentStateEq : Option Expr
-  fields : Std.HashMap StateField ReflectedStateEffects.Field
+  fields : Std.HashMap StateField AxEffects.FieldEffect
   /-- An expression that contains the proof of:
     ```lean
     ∀ (f : StateField), f ≠ <f₁> → ⋯ → f ≠ <fₙ> →
@@ -73,11 +75,11 @@ structure ReflectedStateEffects where
   memoryEffectProof : Expr
   deriving Repr
 
-namespace ReflectedStateEffects
+namespace AxEffects
 
 /-! ## Initial Reflected State -/
 
-def initial (state : Expr) : ReflectedStateEffects where
+def initial (state : Expr) : AxEffects where
   initialState      := state
   currentState      := state
   currentStateEq    := none
@@ -101,15 +103,15 @@ def initial (state : Expr) : ReflectedStateEffects where
 
 /-! ## ToMessageData -/
 
-instance : ToMessageData Field where
+instance : ToMessageData FieldEffect where
   toMessageData := fun {value, proof} =>
     m!"\{ value := {value},\n  proof := {proof} }"
 
-instance : ToMessageData (Std.HashMap StateField Field) where
+instance : ToMessageData (Std.HashMap StateField FieldEffect) where
   toMessageData map :=
     toMessageData map.toList
 
-instance : ToMessageData ReflectedStateEffects where
+instance : ToMessageData AxEffects where
   toMessageData eff :=
     m!"\
     \{ initialState := {eff.initialState},
@@ -148,19 +150,19 @@ private def rewriteType (e eq : Expr) : MetaM Expr := do
 /-- Rewrite the *type* of `e` via `eff.currentStateEq`, if given, to hide the
 exploded `currentState`, then move`e` into the new type via `Eq.mp`.
 Otherwise, if `currentStateEq` is none, return `e` unchanged -/
-def hideCurrentStateType (eff : ReflectedStateEffects) (e : Expr) :
+def hideCurrentStateType (eff : AxEffects) (e : Expr) :
     MetaM Expr := do
   match eff.currentStateEq with
     | none    => return e
     | some eq => rewriteType e (← mkEqSymm eq)
 
-def getField (eff : ReflectedStateEffects) (fld : StateField) : MetaM Field :=
+def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
   let msg := "getField _ {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     withTraceNode `Tactic.sym (fun _ => pure "current state") <| do
       trace[Tactic.sym] "{eff}"
 
-    let mut ({ value, proof } : Field) ←do
+    let mut ({ value, proof } : FieldEffect) ←do
       if let some val := eff.fields.get? fld then
         return val
       else
@@ -190,8 +192,8 @@ That is, `currentState` of the returned struct will be
 and all other fields are updated accordingly.
 Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
 -/
-private def update_write_mem (eff : ReflectedStateEffects) (n addr val : Expr) :
-    MetaM ReflectedStateEffects := do
+private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
+    MetaM AxEffects := do
   trace[Tactic.sym] "adding write of {n} bytes of value {val} \
     to memory address {addr}"
 
@@ -236,8 +238,8 @@ That is, `currentState` of the returned struct will be
 and all other fields are updated accordingly.
 Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
 -/
-private def update_w (eff : ReflectedStateEffects) (fld val : Expr) :
-    MetaM ReflectedStateEffects := do
+private def update_w (eff : AxEffects) (fld val : Expr) :
+    MetaM AxEffects := do
   let rField ← reflectStateField fld
   trace[Tactic.sym] "adding write of value {val} to register {rField}"
 
@@ -258,7 +260,7 @@ private def update_w (eff : ReflectedStateEffects) (fld val : Expr) :
         return none
 
   -- Update the main field
-  let newField : Field := {
+  let newField : FieldEffect := {
     value := val
     proof := mkApp3 (mkConst ``r_of_w_same) fld val eff.currentState
   }
@@ -315,7 +317,7 @@ private def assertHasType (e expectedType : Expr) : MetaM Unit := do
 `w`/`write_mem`s to the *current* state, update the effects accordingly.
 Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
 -/
-partial def update (eff : ReflectedStateEffects) (e : Expr) : MetaM ReflectedStateEffects := do
+partial def update (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
   let msg := m!"Updating effects with writes from: {e}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
     | write_mem_bytes n addr val e =>
@@ -347,8 +349,8 @@ partial def update (eff : ReflectedStateEffects) (e : Expr) : MetaM ReflectedSta
 
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to the current state>`,
 update the effects according the rhs, and update `currentStateEq` with `eq`. -/
-def updateWithEq (eff : ReflectedStateEffects) (eq : Expr) :
-    MetaM ReflectedStateEffects :=
+def updateWithEq (eff : AxEffects) (eq : Expr) :
+    MetaM AxEffects :=
   let msg := m!"Updating effects with equality {eq}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
 
@@ -379,13 +381,13 @@ def updateWithEq (eff : ReflectedStateEffects) (eq : Expr) :
 
 /-- TODO: write a function that combines two effects, where
 `left.currentState = right.initialState` (or the other way?) -/
-def compose (left right : ReflectedStateEffects) : MetaM ReflectedStateEffects := do
+def compose (left right : AxEffects) : MetaM AxEffects := do
   sorry
 
 /-! ## Validation -/
 
 /-- Validate that the various proofs in `eff` have the right types -/
-def validate (eff : ReflectedStateEffects) : MetaM Unit := do
+def validate (eff : AxEffects) : MetaM Unit := do
   let armState := mkConst ``ArmState
   assertHasType eff.initialState armState
   assertHasType eff.currentState armState
@@ -399,7 +401,7 @@ open Elab.Tactic
 - one for every field in `eff.fields`
 - `eff.nonEffectProof`, and
 - `eff.memoryEffectProof` -/
-def addHypothesesToLContext (eff : ReflectedStateEffects) : TacticM Unit :=
+def addHypothesesToLContext (eff : AxEffects) : TacticM Unit :=
   let msg := m!"adding hypotheses to local context"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
     withTraceNode `Tactic.sym (fun _ => pure "current state") <| do
@@ -443,7 +445,7 @@ open Lean Elab.Tactic
 
 elab "init_state " "with " s:term ", " h_step:term : tactic => do
   let s ← elabTerm s none
-  let c := ReflectedStateEffects.initial s
+  let c := AxEffects.initial s
   dbg_trace repr c
 
   let h_step ← elabTerm h_step none
