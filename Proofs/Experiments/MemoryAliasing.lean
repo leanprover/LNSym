@@ -144,9 +144,27 @@ theorem mem_automation_test_3
   rfl
 
 
+
 /-- info: 'mem_automation_test_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_3
 
+/-- TODO: make simp_mem repeat on change. -/
+theorem mem_automation_test_4
+  (h_no_wrap_src_region : mem_legal' src_addr 48)
+  (h_s0_src_ignore_disjoint :
+    mem_separate' src_addr  48
+                  ignore_addr ignore_n) :
+  read_mem_bytes 10 (1 + src_addr)
+    (write_mem_bytes ignore_n ignore_addr blah
+      (write_mem_bytes 48 src_addr val s0)) =
+   val.extractLsBytes 1 10 := by
+  simp only [memory_rules]
+  simp_mem; simp_mem -- TODO: repeat on change.
+  congr 1
+  bv_omega' -- TODO: address normalization.
+
+/-- info: 'mem_automation_test_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms mem_automation_test_4
 
 
 namespace ReadOverlappingRead
