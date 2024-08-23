@@ -129,6 +129,25 @@ theorem mem_automation_test_2
 /-- info: 'mem_automation_test_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_2
 
+/-- reading from a region `[src_addr+1..10] ⊆ [src_addr..16]` with an
+interleaved write `[ignore_addr..ignore_addr+ignore_n)`
+-/
+theorem mem_automation_test_3
+  (h_no_wrap_src_region : mem_legal' src_addr 16)
+  (h_s0_src_ignore_disjoint :
+    mem_separate' src_addr  16
+                  ignore_addr ignore_n) :
+  read_mem_bytes 10 (src_addr + 1) (write_mem_bytes ignore_n ignore_addr blah s0) =
+   read_mem_bytes 10 (src_addr + 1) s0 := by
+  simp only [memory_rules]
+  simp_mem
+  rfl
+
+
+/-- info: 'mem_automation_test_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms mem_automation_test_3
+
+
 
 namespace ReadOverlappingRead
 
