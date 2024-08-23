@@ -209,7 +209,7 @@ theorem test_1 {val : BitVec (16 * 8)}
   simp_mem
   · -- ⊢ val.extractLsBytes (src_addr.toNat - src_addr.toNat) 16 = val.extractLsBytes 0 16
     congr
-    simp
+    simp only [Nat.sub_self]
 
 theorem test_2 {val : BitVec _}
     (hlegal : mem_legal' src_addr 16) :
@@ -242,7 +242,8 @@ theorem test_quantified_1 {val : BitVec (16 * 8)}
     Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem) =
      val.extractLsBytes 0 16  := by
   simp_mem
-  simp
+  simp only [Nat.reduceMul, BitVec.ofNat_eq_ofNat, BitVec.toNat_ofNat, Nat.reducePow, Nat.zero_mod,
+    Nat.sub_self, implies_true]
 
 /--
 info: 'ExprVisitor.test_quantified_1' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -255,7 +256,9 @@ theorem test_app_1 {val : BitVec (16 * 8)}
     f (Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem)) =
     f (val.extractLsBytes 0 16)  := by
   simp_mem
-  simp
+  simp only [Nat.reduceMul, BitVec.ofNat_eq_ofNat, BitVec.toNat_ofNat, Nat.reducePow, Nat.zero_mod,
+    Nat.sub_self]
+
 /-- info: 'ExprVisitor.test_app_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms test_app_1
 
@@ -268,7 +271,8 @@ theorem test_quantified_app_1 {val : BitVec (16 * 8)}
     f (Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem)) =
     f (val.extractLsBytes 0 16)  := by
   simp_mem
-  simp
+  simp only [Nat.reduceMul, BitVec.ofNat_eq_ofNat, BitVec.toNat_ofNat, Nat.reducePow, Nat.zero_mod,
+    Nat.sub_self, implies_true]
 
 /--
 info: 'ExprVisitor.test_quantified_app_1' depends on axioms: [propext, Classical.choice, Quot.sound]

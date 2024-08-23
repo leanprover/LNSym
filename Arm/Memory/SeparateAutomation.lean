@@ -618,7 +618,8 @@ info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {x : BitVec 6
 -/
 #guard_msgs in #check Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
 
-/-- given that `e` is a read of the write, perform a rewrite. using -/
+/-- given that `e` is a read of the write, perform a rewrite,
+using `Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'`. -/
 def SimpMemM.rewriteReadOfSeparatedWrite
     (er : ReadBytesExpr) (ew : WriteBytesExpr)
     (separate : MemSeparateProof { sa := er.span, sb := ew.span }) : SimpMemM Unit := do
