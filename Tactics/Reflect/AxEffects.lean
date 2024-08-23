@@ -379,28 +379,28 @@ open Elab.Tactic
 - `eff.memoryEffectProof` -/
 def addHypothesesToLContext (eff : AxEffects) : TacticM Unit :=
   let msg := m!"adding hypotheses to local context"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
+  withTraceNode `Tactic.sym (fun _ => pure msg) do
     withTraceNode `Tactic.sym (fun _ => pure "current state") <| do
       trace[Tactic.sym] "{eff}"
     let mut goal ← getMainGoal
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
       let msg := m!"adding field {field}"
-      goal ← withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      goal ← withTraceNode `Tactic.sym (fun _ => pure msg) <| goal.withContext do
         trace[Tactic.sym] "raw proof: {proof}"
         let name := Name.mkSimple (s!"h_r_{field}")
         let proof ← eff.hideCurrentStateType proof
         replaceOrNote goal name proof
 
     trace[Tactic.sym] "adding non-effects with {eff.nonEffectProof}"
-    goal ← do
+    goal ← goal.withContext do
       let proof ← eff.hideCurrentStateType eff.nonEffectProof
       replaceOrNote goal `h_non_effects proof
 
     trace[Tactic.sym] "adding memory effects with {eff.memoryEffectProof}"
-    -- goal ← do
-    --   let proof ← eff.hideCurrentStateType eff.memoryEffectProof
-    --   replaceOrNote goal `h_memory_effects proof
+    goal ← goal.withContext do
+      let proof ← eff.hideCurrentStateType eff.memoryEffectProof
+      replaceOrNote goal `h_memory_effects proof
     replaceMainGoal [goal]
 where
   replaceOrNote (goal : MVarId) (h : Name) (v : Expr)
