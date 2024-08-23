@@ -156,6 +156,8 @@ def hideCurrentStateType (eff : AxEffects) (e : Expr) :
     | none    => return e
     | some eq => rewriteType e (← mkEqSymm eq)
 
+/-- Get the value for a field, if one is stored in `eff.fields`,
+or assemble an instantiation of the memory non-effects proof -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
   let msg := "getField _ {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -355,10 +357,9 @@ def fromEq (eq : Expr) : MetaM AxEffects :=
 
 /-! ## Composition -/
 
-/-- TODO: write a function that combines two effects, where
-`left.currentState = right.initialState` (or the other way?) -/
-def compose (left right : AxEffects) : MetaM AxEffects := do
-  sorry
+/- TODO: write a function that combines two effects `left` and `right`,
+where `left.initialState = right.currentState`.
+That is, compose the effect of "`left` after `right`" -/
 
 /-! ## Validation -/
 
@@ -377,7 +378,8 @@ open Elab.Tactic
 - one for every field in `eff.fields`
 - `eff.nonEffectProof`, and
 - `eff.memoryEffectProof` -/
-def addHypothesesToLContext (eff : AxEffects) : TacticM Unit :=
+def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
+    TacticM Unit :=
   let msg := m!"adding hypotheses to local context"
   withTraceNode `Tactic.sym (fun _ => pure msg) do
     withTraceNode `Tactic.sym (fun _ => pure "current state") <| do
@@ -388,19 +390,19 @@ def addHypothesesToLContext (eff : AxEffects) : TacticM Unit :=
       let msg := m!"adding field {field}"
       goal ← withTraceNode `Tactic.sym (fun _ => pure msg) <| goal.withContext do
         trace[Tactic.sym] "raw proof: {proof}"
-        let name := Name.mkSimple (s!"h_r_{field}")
+        let name := Name.mkSimple (s!"{hypPrefix}r_{field}")
         let proof ← eff.hideCurrentStateType proof
         replaceOrNote goal name proof
 
     trace[Tactic.sym] "adding non-effects with {eff.nonEffectProof}"
     goal ← goal.withContext do
       let proof ← eff.hideCurrentStateType eff.nonEffectProof
-      replaceOrNote goal `h_non_effects proof
+      replaceOrNote goal (.mkSimple s!"{hypPrefix}non_effects") proof
 
     trace[Tactic.sym] "adding memory effects with {eff.memoryEffectProof}"
     goal ← goal.withContext do
       let proof ← eff.hideCurrentStateType eff.memoryEffectProof
-      replaceOrNote goal `h_memory_effects proof
+      replaceOrNote goal (.mkSimple s!"{hypPrefix}memory_effects") proof
     replaceMainGoal [goal]
 where
   replaceOrNote (goal : MVarId) (h : Name) (v : Expr)
@@ -417,31 +419,3 @@ where
         return goal
 
 end Tactic
-
-section Test
-
-open Lean Elab.Tactic
-
--- variable (s0 : Expr)
-
-/-- given an equality `h_step : ?s = <sequence of writes to ?s0>`,
-add hypotheses to the context that describe reading from `?s` -/
-elab "effects_from_eq " h_step:term : tactic => withMainContext do
-  let h_step ← elabTerm h_step none
-  let eff ← fromEq h_step
-  trace[Tactic.sym] "{eff}"
-
-  eff.addHypothesesToLContext
-
-set_option trace.Tactic.sym true
-
-example (s0 s1 : ArmState)
-  (h_step : s1 = (write_mem_bytes 10 0#64 0#80 <| w .PC 128#64 s0)) :
-    r .PC s1 = 128#64 := by
-  effects_from_eq h_step
-  skip
-  sorry
-
-
-
-end Test
