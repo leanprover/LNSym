@@ -9,6 +9,8 @@ import Lean.Meta
 import Arm.Exec
 import Tactics.Common
 import Tactics.Attr
+import Tactics.Reflect.ProgramInfo
+import Tactics.Reflect.ReflectedArmState
 
 /-!
 This files defines the `SymContext` structure,
@@ -55,6 +57,9 @@ structure SymContext where
   program : Name
   /-- `h_program` is a local hypothesis of the form `state.program = program` -/
   h_program : Name
+  /-- `programInfo` is the relevant cached `ProgramInfo` -/
+  programInfo : ProgramInfo
+
   /-- `pc` is the *concrete* value of the program counter
 
   Note that for now we only support symbolic evaluation of programs
@@ -77,6 +82,8 @@ structure SymContext where
   `CheckSPAlignment state` -/
   h_sp?  : Option Name
 
+  effects : ReflectedStateEffects
+
   /-- `state_prefix` is used together with `curr_state_number`
   to determine the name of the next state variable that is added by `sym` -/
   state_prefix      : String := "s"
@@ -84,7 +91,6 @@ structure SymContext where
   and used together with `curr_state_number`
   to determine the name of the next state variable that is added by `sym` -/
   curr_state_number : Nat := 0
-  deriving Repr
 
 namespace SymContext
 
@@ -145,11 +151,13 @@ def toMessageData (c : SymContext) : MetaM MessageData := do
   runSteps? := {c.runSteps?},
   h_run := {h_run},
   program := {c.program},
+  programInfo := <elided>,
   pc := {c.pc},
   h_err? := {h_err?},
   h_sp? := {h_sp?},
   state_prefix := {c.state_prefix},
-  curr_state_number := {c.curr_state_number} }"
+  curr_state_number := {c.curr_state_number},
+  effects := {c.effects} }"
 
 /-! ## Creating initial contexts -/
 
@@ -256,9 +264,16 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   if h_sp?.isNone then
     trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
 
+  -- Finally, retrieve the programInfo from the environment
+  let some programInfo ← ProgramInfo.lookup? program
+    | throwError "Could not find program info for `{program}`.
+        Did you remember to generate step theorems with:
+          #generateStepEqTheorems {program}"
+  let effects := ReflectedStateEffects.initial stateExpr
+
   return inferStatePrefixAndNumber {
     state, finalState, h_run, runSteps?, program, h_program, pc, h_pc,
-    h_err?, h_sp?
+    h_err?, h_sp?, programInfo, effects
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
@@ -384,7 +399,23 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     h_sp?       := some <| .mkSimple s!"h_{s}_sp"
     runSteps?   := (· - 1) <$> c.runSteps?
     program     := c.program
+    programInfo := c.programInfo
+    effects     := c.effects
     pc          := nextPc?.getD (c.pc + 4#64)
     curr_state_number
     state_prefix := c.state_prefix
   }
+
+def updateEffectsWith (c : SymContext) (eq : Expr) : MetaM SymContext := do
+  withTraceNode `Tactic.sym (fun _ => pure m!"updateEffects") <| do
+    let some inst := c.programInfo.getInstInfoAt? c.pc
+      | throwError "No instruction found for PC {c.pc}"
+    let .value ⟨sem, type, proof⟩ := inst.instSemantics?
+      | throwError "Instruction at PC {c.pc} does not have a decoded semantics yet"
+    trace[Tactic.sym] "instruction info for PC {c.pc}:
+      sem   := {sem}
+      type  := {type}
+      proof := {proof}"
+    -- let inst_semantics
+    -- let effects
+  return c

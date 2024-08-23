@@ -202,15 +202,19 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
     -- Apply relevant pre-generated `stepi` lemma
     stepiTac stepi_eq h_step c
 
-    -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
-    let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
-    -- Ensure we run `intro_fetch_decode_lemmas` without `stepi_eq`
-    let _ ← withoutHyp stepi_eq.getId <| evalTacticAndTrace <|← `(tactic|
-      intro_fetch_decode_lemmas
-        $h_step:ident $c.h_program_ident:ident $h_st_prefix:str
-    )
-    return c.next
+    withMainContext <| do
+      let some hStepDecl := (← getLCtx).findFromUserName? h_step.getId
+        | throwError "internal error: could not find {h_step}"
+      let effects ← c.effects.updateWithEq hStepDecl.toExpr
 
+      -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
+      let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
+      -- Ensure we run `intro_fetch_decode_lemmas` without `stepi_eq`
+      let _ ← withoutHyp stepi_eq.getId <| evalTacticAndTrace <|← `(tactic|
+        intro_fetch_decode_lemmas
+          $h_step:ident $c.h_program_ident:ident $h_st_prefix:str
+      )
+      return { c with effects}.next
 
 /- used in `sym_n` tactic to specify an initial state -/
 syntax sym_at := "at" ident
@@ -301,3 +305,5 @@ Did you remember to generate step theorems with:
     -- The main loop
     for _ in List.range n do
       c ← sym1 c whileTac
+
+    c.effects.addHypothesesToLContext
