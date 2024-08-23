@@ -120,7 +120,7 @@ instance : ToMessageData AxEffects where
       fields := {eff.fields},
       nonEffectProof := {eff.nonEffectProof},
       memoryEffect := {eff.memoryEffect},
-      memoryEffectProof := {eff.memoryEffectProof}s
+      memoryEffectProof := {eff.memoryEffectProof}
     }"
 
 /-! ## Helpers -/
@@ -291,8 +291,8 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
 
   -- Update the memory effect proof
   let memoryEffectProof :=
-    mkApp3 (mkConst ``read_mem_bytes_w_of_read_mem_eq)
-      eff.memoryEffectProof fld val
+    mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
+      #[eff.currentState, eff.initialState, eff.memoryEffectProof, fld, val]
 
   -- Assemble the result
   let eff := { eff with
@@ -313,47 +313,33 @@ private def assertHasType (e expectedType : Expr) : MetaM Unit := do
   if !(←isDefEq eType expectedType) then
     throwError "{e} {← mkHasTypeButIsExpectedMsg eType expectedType}"
 
-/-- Given an expression `e : ArmState`, which is a sequence of
-`w`/`write_mem`s to the *current* state, update the effects accordingly.
-Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
+/-- Given an expression `e : ArmState`,
+which is a sequence of `w`/`write_mem`s to the some state `s`,
+return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
 -/
-partial def update (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
-  let msg := m!"Updating effects with writes from: {e}"
+partial def fromExpr (e : Expr) : MetaM AxEffects := do
+  let msg := m!"Building effects with writes from: {e}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
     | write_mem_bytes n addr val e =>
-        let eff ← eff.update e
+        let eff ← fromExpr e
         eff.update_write_mem n addr val
 
     | w field value e =>
-        let eff ← eff.update e
+        let eff ← fromExpr e
         eff.update_w field value
 
     | _ =>
-        if e == eff.currentState then
-          -- Either the last state has to syntactically match `eff.currentState`,
-          -- which implies `eff.currentState` does not have any `w`/`write_mem`s
-          trace[Tactic.sym] "base case, {e} is equal to `currentState` \
-            ({eff.currentState})"
-          return eff
-        else if let some eq := eff.currentStateEq then
-          -- Or, `eff.currentStateEq` should be set, and `e` should be def-eq
-          -- to the rhs of the equality stored in `eff.currentStateEq`
-          assertHasType eq <| mkApp3 (.const ``Eq [1]) (mkConst ``ArmState)
-            e eff.currentState
-          trace[Tactic.sym] "base case, `currentStateEq` has a proof ({eq}) \
-            that {e} is equal to `currentState` ({eff.currentState})"
+        return initial e
 
-          return eff
-        else
-          throwError "{e} is not syntactically equal to {eff.currentState}"
-
-/-- Given a proof `eq : ?s = <sequence of w/write_mem to the current state>`,
-update the effects according the rhs, and update `currentStateEq` with `eq`. -/
-def updateWithEq (eff : AxEffects) (eq : Expr) :
-    MetaM AxEffects :=
-  let msg := m!"Updating effects with equality {eq}"
+/-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
+where `?s` and `?s0` are arbitrary `ArmState`s,
+return an `AxEffect` with `?s0` as the initial state,
+the rhs of the equality as the current state, and
+`eq` stored as `currentStateEq`,
+so that `?s` is the public-facing current state -/
+def fromEq (eq : Expr) : MetaM AxEffects :=
+  let msg := m!"Building effects with equality: {eq}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-
     let A := mkConst ``ArmState
     let s ← mkFreshExprMVar A
     let rhs ← mkFreshExprMVar A
@@ -361,17 +347,7 @@ def updateWithEq (eff : AxEffects) (eq : Expr) :
     let expectedType := mkApp3 (.const ``Eq [1]) A s rhs
     assertHasType eq expectedType
 
-    let eq ← match eff.currentStateEq with
-      | none => do
-          trace[Tactic.sym] "`currentStateEq` is none, using {eq} as-is"
-          pure eq
-      | some currentStateEq => do
-          trace[Tactic.sym] "`currentStateEq` is {currentStateEq}"
-          let eq ← rewriteType eq currentStateEq
-          trace[Tactic.sym] "the composed equality is {eq}"
-          pure eq
-
-    let eff ← eff.update (← instantiateMVars rhs)
+    let eff ← fromExpr (← instantiateMVars rhs)
     let eff := { eff with currentStateEq := eq }
     withTraceNode `Tactic.sym (fun _ => pure "new state") do
       trace[Tactic.sym] "{eff}"
@@ -409,10 +385,12 @@ def addHypothesesToLContext (eff : AxEffects) : TacticM Unit :=
     let mut goal ← getMainGoal
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
-      trace[Tactic.sym] "adding field {field} with {proof}"
-      let name := Name.mkSimple (s!"h_r_{field}")
-      let proof ← eff.hideCurrentStateType proof
-      goal ← replaceOrNote goal name proof
+      let msg := m!"adding field {field}"
+      goal ← withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+        trace[Tactic.sym] "raw proof: {proof}"
+        let name := Name.mkSimple (s!"h_r_{field}")
+        let proof ← eff.hideCurrentStateType proof
+        replaceOrNote goal name proof
 
     trace[Tactic.sym] "adding non-effects with {eff.nonEffectProof}"
     goal ← do
@@ -420,20 +398,23 @@ def addHypothesesToLContext (eff : AxEffects) : TacticM Unit :=
       replaceOrNote goal `h_non_effects proof
 
     trace[Tactic.sym] "adding memory effects with {eff.memoryEffectProof}"
-    goal ← do
-      let proof := eff.memoryEffectProof
-      replaceOrNote goal `h_memory_effects proof
+    -- goal ← do
+    --   let proof ← eff.hideCurrentStateType eff.memoryEffectProof
+    --   replaceOrNote goal `h_memory_effects proof
     replaceMainGoal [goal]
 where
   replaceOrNote (goal : MVarId) (h : Name) (v : Expr)
       (t? : Option Expr := none) :
-      MetaM MVarId := do
-    if let some decl := (← getLCtx).findFromUserName? h then
-      let ⟨_, goal, _⟩ ← goal.replace decl.fvarId v t?
-      return goal
-    else
-      let ⟨_, goal⟩ ← goal.note h v t?
-      return goal
+      MetaM MVarId :=
+    let msg := m!"adding {h} to the local context"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      trace[Tactic.sym] "with value {v} and type {t?}"
+      if let some decl := (← getLCtx).findFromUserName? h then
+        let ⟨_, goal, _⟩ ← goal.replace decl.fvarId v t?
+        return goal
+      else
+        let ⟨_, goal⟩ ← goal.note h v t?
+        return goal
 
 end Tactic
 
@@ -443,23 +424,21 @@ open Lean Elab.Tactic
 
 -- variable (s0 : Expr)
 
-elab "init_state " "with " s:term ", " h_step:term : tactic => do
-  let s ← elabTerm s none
-  let c := AxEffects.initial s
-  dbg_trace repr c
-
+/-- given an equality `h_step : ?s = <sequence of writes to ?s0>`,
+add hypotheses to the context that describe reading from `?s` -/
+elab "effects_from_eq " h_step:term : tactic => withMainContext do
   let h_step ← elabTerm h_step none
-  let c ← c.updateWithEq h_step
+  let eff ← fromEq h_step
+  trace[Tactic.sym] "{eff}"
 
-  c.addHypothesesToLContext
-  dbg_trace repr c
+  eff.addHypothesesToLContext
 
 set_option trace.Tactic.sym true
 
 example (s0 s1 : ArmState)
   (h_step : s1 = (write_mem_bytes 10 0#64 0#80 <| w .PC 128#64 s0)) :
     r .PC s1 = 128#64 := by
-  init_state with s0 , h_step
+  effects_from_eq h_step
   skip
   sorry
 

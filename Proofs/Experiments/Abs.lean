@@ -37,6 +37,9 @@ theorem correct
   simp (config := {ground := true}) at h_run
 
   sym_n 5
+  effects_from_eq h_step_1
+  effects_from_eq h_step_2
+  effects_from_eq h_step_3
   sorry
 
 /-- info: 'Abs.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/

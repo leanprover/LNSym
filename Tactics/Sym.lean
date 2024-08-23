@@ -203,9 +203,10 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
     stepiTac stepi_eq h_step c
 
     withMainContext <| do
-      let some hStepDecl := (← getLCtx).findFromUserName? h_step.getId
-        | throwError "internal error: could not find {h_step}"
-      let effects ← c.effects.updateWithEq hStepDecl.toExpr
+      -- let some hStepDecl := (← getLCtx).findFromUserName? h_step.getId
+      --   | throwError "internal error: could not find {h_step}"
+      -- let effects ← c.effects.updateWithEq hStepDecl.toExpr
+      let effects := c.effects
 
       -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
       let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
