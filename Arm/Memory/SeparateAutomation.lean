@@ -87,8 +87,7 @@ The tactic shall be implemented as follows:
 
 section BvOmega
 
--- |@shilpi: upstream BitVec.le_def unfolding to bv_omega, and
--- generally kep an eye out.
+-- |TODO: Upstream BitVec.le_def unfolding to bv_omega.
 macro "bv_omega'" : tactic =>
   `(tactic| (try simp only [bv_toNat, mem_legal'] at * <;> try rw [BitVec.le_def]) <;> bv_omega)
 
