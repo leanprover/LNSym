@@ -46,12 +46,11 @@ structure ReflectedStateEffects where
   to the initial state -/
   currentState : Expr
   /-- An optional proof of
-      `<currentState> = ?s`
+      `?s = <currentState>`
     Where `s` is any equivalent `ArmState`, generally a single variable.
 
-    We store proofs in terms of `explodedState`,
-    but the the accessors defined for those fields will use `currentStateEq`
-    to adjust the types and expose only `s`. -/
+    `currentStateEq` is used by field accessors to adjust types to
+    expose `s`, rather than `currentState`. -/
   currentStateEq : Option Expr
   fields : Std.HashMap StateField ReflectedStateEffects.Field
   /-- An expression that contains the proof of:
@@ -153,7 +152,7 @@ def hideCurrentStateType (eff : ReflectedStateEffects) (e : Expr) :
     MetaM Expr := do
   match eff.currentStateEq with
     | none    => return e
-    | some eq => rewriteType e eq
+    | some eq => rewriteType e (← mkEqSymm eq)
 
 def getField (eff : ReflectedStateEffects) (fld : StateField) : MetaM Field :=
   let msg := "getField _ {fld}"
@@ -338,7 +337,7 @@ partial def update (eff : ReflectedStateEffects) (e : Expr) : MetaM ReflectedSta
           -- Or, `eff.currentStateEq` should be set, and `e` should be def-eq
           -- to the rhs of the equality stored in `eff.currentStateEq`
           assertHasType eq <| mkApp3 (.const ``Eq [1]) (mkConst ``ArmState)
-            eff.currentState e
+            e eff.currentState
           trace[Tactic.sym] "base case, `currentStateEq` has a proof ({eq}) \
             that {e} is equal to `currentState` ({eff.currentState})"
 
@@ -346,8 +345,8 @@ partial def update (eff : ReflectedStateEffects) (e : Expr) : MetaM ReflectedSta
         else
           throwError "{e} is not syntactically equal to {eff.currentState}"
 
-/-- Given a proof `eq : ?s = <sequence of w/write_mem to eff.currentState>`,
-update the effects according the rhs, and store `eq` as `currentStateEq`. -/
+/-- Given a proof `eq : ?s = <sequence of w/write_mem to the current state>`,
+update the effects according the rhs, and update `currentStateEq` with `eq`. -/
 def updateWithEq (eff : ReflectedStateEffects) (eq : Expr) :
     MetaM ReflectedStateEffects :=
   let msg := m!"Updating effects with equality {eq}"
@@ -356,11 +355,22 @@ def updateWithEq (eff : ReflectedStateEffects) (eq : Expr) :
     let A := mkConst ``ArmState
     let s ← mkFreshExprMVar A
     let rhs ← mkFreshExprMVar A
+
     let expectedType := mkApp3 (.const ``Eq [1]) A s rhs
     assertHasType eq expectedType
 
+    let eq ← match eff.currentStateEq with
+      | none => do
+          trace[Tactic.sym] "`currentStateEq` is none, using {eq} as-is"
+          pure eq
+      | some currentStateEq => do
+          trace[Tactic.sym] "`currentStateEq` is {currentStateEq}"
+          let eq ← rewriteType eq currentStateEq
+          trace[Tactic.sym] "the composed equality is {eq}"
+          pure eq
+
     let eff ← eff.update (← instantiateMVars rhs)
-    let eff := { eff with currentStateEq := ←mkEqSymm eq }
+    let eff := { eff with currentStateEq := eq }
     withTraceNode `Tactic.sym (fun _ => pure "new state") do
       trace[Tactic.sym] "{eff}"
     return eff
@@ -397,15 +407,19 @@ def addHypothesesToLContext (eff : ReflectedStateEffects) : TacticM Unit :=
     let mut goal ← getMainGoal
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
+      trace[Tactic.sym] "adding field {field} with {proof}"
       let name := Name.mkSimple (s!"h_r_{field}")
       let proof ← eff.hideCurrentStateType proof
       goal ← replaceOrNote goal name proof
 
+    trace[Tactic.sym] "adding non-effects with {eff.nonEffectProof}"
     goal ← do
       let proof ← eff.hideCurrentStateType eff.nonEffectProof
       replaceOrNote goal `h_non_effects proof
+
+    trace[Tactic.sym] "adding memory effects with {eff.memoryEffectProof}"
     goal ← do
-      let proof ← eff.hideCurrentStateType eff.memoryEffectProof
+      let proof := eff.memoryEffectProof
       replaceOrNote goal `h_memory_effects proof
     replaceMainGoal [goal]
 where
@@ -445,6 +459,7 @@ example (s0 s1 : ArmState)
     r .PC s1 = 128#64 := by
   init_state with s0 , h_step
   skip
+  sorry
 
 
 
