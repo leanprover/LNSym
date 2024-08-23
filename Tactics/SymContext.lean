@@ -117,47 +117,12 @@ def h_pc_ident        : Ident := mkIdent c.h_pc
 def h_err_ident       : Ident := mkIdent c.h_err
 def h_sp_ident        : Ident := mkIdent c.h_sp
 
-/-- Find the local declaration that corresponds to a given name,
-or throw an error if no local variable of that name exists -/
-private def findFromUserName (name : Name) : MetaM LocalDecl := do
-  let some decl := (← getLCtx).findFromUserName? name
-    | throwError "Unknown local variable `{name}`"
-  return decl
-
-/-- Return an expression for `c.state`,
-or throw an error if no local variable of that name exists -/
-def stateExpr : MetaM Expr :=
-  (·.toExpr) <$> findFromUserName c.state
-
-/-- Find the local declaration that corresponds to `c.h_run`,
-or throw an error if no local variable of that name exists -/
-def hRunDecl : MetaM LocalDecl := do
-  findFromUserName c.h_run
+def stateExpr : MetaM Expr := do
+  let some decl := (← getLCtx).findFromUserName? c.state
+    | throwError "Unknown local variable `{c.state}`"
+  return Expr.fvar decl.fvarId
 
 end
-
-/-! ## `ToMessageData` instance -/
-
-/-- Convert a `SymContext` to `MessageData` for tracing.
-This is not a `ToMessageData` instance because we need access to `MetaM` -/
-def toMessageData (c : SymContext) : MetaM MessageData := do
-  let state ← c.stateExpr
-  let h_run ← userNameToMessageData c.h_run
-  let h_err? ← c.h_err?.mapM userNameToMessageData
-  let h_sp?  ← c.h_sp?.mapM userNameToMessageData
-
-  return m!"\{ state := {state},
-  finalState := {c.finalState},
-  runSteps? := {c.runSteps?},
-  h_run := {h_run},
-  program := {c.program},
-  programInfo := <elided>,
-  pc := {c.pc},
-  h_err? := {h_err?},
-  h_sp? := {h_sp?},
-  state_prefix := {c.state_prefix},
-  curr_state_number := {c.curr_state_number},
-  effects := {c.effects} }"
 
 /-! ## Creating initial contexts -/
 
@@ -272,8 +237,8 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let effects := ReflectedStateEffects.initial stateExpr
 
   return inferStatePrefixAndNumber {
-    state, finalState, h_run, runSteps?, program, h_program, pc, h_pc,
-    h_err?, h_sp?, programInfo, effects
+    state, finalState, h_run, runSteps, program, h_program, pc, h_pc,
+    h_err?, h_sp?
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
