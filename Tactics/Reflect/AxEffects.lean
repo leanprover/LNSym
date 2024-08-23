@@ -11,14 +11,6 @@ import Std.Data.HashMap
 
 open Lean Meta
 
-theorem foo : 1 ≠ 4 := by decide
-
-#print foo
-#check of_decide_eq_true
-#synth Decidable <| (?x : StateField) ≠ _
-
-#check @instDecidableNot (Eq ?x ?y) <| instDecidableEqStateField ?x ?y
-
 /-- A reflected ArmState field -/
 structure AxEffects.FieldEffect where
   value : Expr
