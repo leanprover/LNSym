@@ -10,7 +10,7 @@ import Arm.Exec
 import Tactics.Common
 import Tactics.Attr
 import Tactics.Reflect.ProgramInfo
-import Tactics.Reflect.ReflectedArmState
+import Tactics.Reflect.AxEffects
 
 /-!
 This files defines the `SymContext` structure,
