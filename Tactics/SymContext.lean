@@ -82,7 +82,7 @@ structure SymContext where
   `CheckSPAlignment state` -/
   h_sp?  : Option Name
 
-  effects : ReflectedStateEffects
+  effects : AxEffects
 
   /-- `state_prefix` is used together with `curr_state_number`
   to determine the name of the next state variable that is added by `sym` -/
@@ -267,7 +267,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     | throwError "Could not find program info for `{program}`.
         Did you remember to generate step theorems with:
           #generateStepEqTheorems {program}"
-  let effects := ReflectedStateEffects.initial stateExpr
+  let effects := AxEffects.initial stateExpr
 
   return inferStatePrefixAndNumber {
     state, finalState, h_run, runSteps?, program, h_program, pc, h_pc,
