@@ -168,7 +168,8 @@ partial def Advanced_simd_copy_cls.dup_general.rand : Cosim.CosimM (Option (BitV
         op := 0b0#1,
         imm5 := imm5,
         imm4 := 0b0001#4,
-        Rn := ← BitVec.rand 5,
+        -- GPR Rn is a source operand for this instruction.
+        Rn := ← GPRIndex.rand,
         Rd := ← BitVec.rand 5
       }
     pure (inst.toBitVec32)
@@ -200,7 +201,8 @@ partial def Advanced_simd_copy_cls.ins_general.rand : Cosim.CosimM (Option (BitV
         op := 0b0#1,
         imm5 := imm5,
         imm4 := 0b0011#4,
-        Rn := ← BitVec.rand 5,
+        -- GPR Rn is a source operand for this instruction.
+        Rn := ← GPRIndex.rand,
         Rd := ← BitVec.rand 5
       }
     pure (inst.toBitVec32)
@@ -220,7 +222,8 @@ partial def Advanced_simd_copy_cls.smov.rand : Cosim.CosimM (Option (BitVec 32))
         imm5 := imm5,
         imm4 := 0b0101#4,
         Rn := ← BitVec.rand 5,
-        Rd := ← BitVec.rand 5
+        -- GPR Rd is the destination operand for this instruction.
+        Rd := ← GPRIndex.rand
       }
     pure (inst.toBitVec32)
 
@@ -239,7 +242,8 @@ partial def Advanced_simd_copy_cls.umov.rand : Cosim.CosimM (Option (BitVec 32))
         imm5 := imm5,
         imm4 := 0b0111#4,
         Rn := ← BitVec.rand 5,
-        Rd := ← BitVec.rand 5
+        -- GPR Rd is the destination operand for this instruction.
+        Rd := ← GPRIndex.rand
     }
     pure (inst.toBitVec32)
 

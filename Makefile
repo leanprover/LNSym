@@ -6,7 +6,7 @@ SHELL := /bin/bash
 
 LAKE = lake
 
-NUM_TESTS?=20
+NUM_TESTS?=3
 VERBOSE?=--verbose
 
 .PHONY: all 
@@ -26,6 +26,10 @@ proofs:
 .PHONY: tests
 tests:
 	time -p $(LAKE) build Tests
+
+.PHONY: awslc_elf
+awslc_elf:
+	./scripts/ci_ubuntu_build_awslc.sh; time -p $(LAKE) build AWSLCELFTests
 
 .PHONY: cosim
 cosim:

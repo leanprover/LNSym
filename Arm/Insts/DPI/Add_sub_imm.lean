@@ -53,7 +53,7 @@ def Add_sub_imm_cls.inst.rand : Cosim.CosimM (Option (BitVec 32)) := do
        -- 31) since our simulation framework doesn't work in such
        -- cases. For now, we do sacrifice a little bit of the state
        -- space.
-      Rn    := ← BitVec.rand 5 (lo := 0) (hi := 30),
+      Rn    := ← GPRIndex.rand (lo := 0) (hi := 30),
       Rd    := ← GPRIndex.rand (lo := 0) (hi := 30) }
   pure (some (inst.toBitVec32))
 

@@ -53,9 +53,9 @@ partial def Add_sub_shifted_reg_cls.rand : Cosim.CosimM (Option (BitVec 32)) := 
         op    := ← BitVec.rand 1,
         S     := ← BitVec.rand 1,
         shift := shift,
-        Rm    := ← BitVec.rand 5,
+        Rm    := ← GPRIndex.rand,
         imm6  := imm6,
-        Rn    := ← BitVec.rand 5,
+        Rn    := ← GPRIndex.rand,
         Rd    := ← GPRIndex.rand }
     pure (some (inst.toBitVec32))
 

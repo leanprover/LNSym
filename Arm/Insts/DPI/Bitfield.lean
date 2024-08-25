@@ -76,7 +76,7 @@ partial def Bitfield_cls.all.rand : Cosim.CosimM (Option (BitVec 32)) := do
       N     := N,
       immr  := immr,
       imms  := imms,
-      Rn    := ← BitVec.rand 5,
+      Rn    := ← GPRIndex.rand,
       Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))
  where pick_legal_bitfield_opc : IO (BitVec 2) := do
@@ -102,7 +102,7 @@ partial def Bitfield_cls.lsr.rand : Cosim.CosimM (Option (BitVec 32)) := do
       N     := N,
       immr  := immr,
       imms  := imms,
-      Rn    := ← BitVec.rand 5,
+      Rn    := ← GPRIndex.rand,
       Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))
 
@@ -118,7 +118,7 @@ partial def Bitfield_cls.lsl.rand : Cosim.CosimM (Option (BitVec 32)) := do
       N     := N,
       immr  := immr,
       imms  := imms,
-      Rn    := ← BitVec.rand 5,
+      Rn    := ← GPRIndex.rand,
       Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))
   where pick_legal_lsl_low_imms_bits : IO (BitVec 5) := do

@@ -92,26 +92,32 @@ partial def Conversion_between_FP_and_Int_cls.fmov_general.rand : Cosim.CosimM (
   let sf := ← BitVec.rand 1
   let intsize := 32 <<< sf.toNat
   let decode_fltsize := if ftype == 0b10#2 then 64 else (8 <<< (ftype ^^^ 0b10#2).toNat)
-  if ftype == 0b10#2 && (extractLsb 2 1 opcode) ++ rmode != 0b1101#4
-  || decode_fltsize != 16 && decode_fltsize != intsize
-  || intsize != 64 || ftype != 0b10#2 then
+  if ftype == 0b10#2 && ((extractLsb 2 1 opcode) ++ rmode) != 0b1101#4 ||
+     decode_fltsize != 16 && decode_fltsize != intsize ||
+     intsize != 64 || ftype != 0b10#2 then
     Conversion_between_FP_and_Int_cls.fmov_general.rand
   else
     let (inst : Conversion_between_FP_and_Int_cls) :=
+      let gpr_idx := ←GPRIndex.rand
+      let sfp_idx := ←BitVec.rand 5
+      let (src_idx, dst_idx) :=
+        if (lsb opcode 0) = 1#1 then
+        -- FPConvOp.FPConvOp_MOV_ItoF
+        -- Source operand is a GPR.
+        -- Destination operand is a SIMD&FP register.
+          (gpr_idx, sfp_idx)
+       else
+       -- FPConvOp.FPConvOp_MOV_FtoI
+       -- Source operand is a SIMD&FP register.
+       -- Destination operand is a GPR.
+         (sfp_idx, gpr_idx)
       { sf := sf,
         S := 0b0#1,
         ftype := ftype,
         rmode  := rmode,
         opcode := opcode,
-        Rn := ← BitVec.rand 5,
-        Rd := ← (if (lsb opcode 0) = 1#1 then
-                -- FPConvOp.FPConvOp_MOV_ItoF
-                -- Destination operand is a SIMD&FP register.
-                  BitVec.rand 5
-                else
-                -- FPConvOp.FPConvOp_MOV_FtoI
-                -- Destination operand is a GPR register.
-                  GPRIndex.rand) }
+        Rn := src_idx,
+        Rd := dst_idx }
     pure (inst.toBitVec32)
 
 /-- Generate random instructions of Conversion_between_FP_and_Int class. -/

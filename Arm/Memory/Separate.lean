@@ -137,13 +137,7 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
   · by_cases h₆ : a1.toNat > b2.toNat
     · simp only  [BitVec.val_bitvec_lt, gt_iff_lt, h₆, or_true]
     · exfalso
-      rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le ha] at h₁ h₂
-      rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le hb] at h₃ h₄
-      have h₅' : b1.toNat ≤ a2.toNat := by omega
-      have h₆' : a1.toNat ≤ b2.toNat := by omega
-      rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le h₅'] at h₄
-      rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le h₆'] at h₂
-      omega
+      bv_omega
 
 /--
 Given two legal memory regions `[a1, a2]` and `[b1, b2]`,
@@ -159,30 +153,7 @@ theorem mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal (h : a2 < b1 ∨ a1 >
   unfold mem_legal at ha hb
   simp only [decide_eq_true_eq] at ha hb
   rw [BitVec.le_def] at ha hb
-  simp only[BitVec.le_def]
-  rw [BitVec.lt_def, BitVec.gt_def] at h
-  rcases h with h | h
-  · rw [toNat_sub_eq_toNat_sub_toNat_of_le ha]
-    have ha1b1 : a1.toNat ≤ b1.toNat := by omega
-    rw [toNat_sub_eq_toNat_sub_toNat_of_le ha1b1]
-    have ha1b2 : a1.toNat ≤ b2.toNat := by omega
-    rw [toNat_sub_eq_toNat_sub_toNat_of_le ha1b2]
-    rw [toNat_sub_eq_toNat_sub_toNat_of_le hb]
-    have ha1b1' : a1.toNat < b1.toNat := by omega
-    rw [toNat_sub_eq_two_pow_sub_add_of_lt ha1b1']
-    rw [toNat_sub_eq_two_pow_sub_add_of_lt h]
-    omega
-  · rw [toNat_sub_eq_toNat_sub_toNat_of_le ha]
-    rw [toNat_sub_eq_toNat_sub_toNat_of_le hb]
-    have ha2b1 : b1.toNat ≤ a2.toNat := by omega
-    rw [toNat_sub_eq_toNat_sub_toNat_of_le ha2b1]
-    have ha1b1 : b1.toNat ≤ a1.toNat := by omega
-    rw [toNat_sub_eq_toNat_sub_toNat_of_le ha1b1]
-    have hb1a1 : b1.toNat < a1.toNat := by omega
-    rw [toNat_sub_eq_two_pow_sub_add_of_lt hb1a1]
-    have hb2a1 : b2.toNat < a1.toNat := by omega
-    rw [toNat_sub_eq_two_pow_sub_add_of_lt hb2a1]
-    omega
+  bv_omega
 
 /--
 Given two legal memory regions `[a1, a2]` and `[b1, b2]`,
@@ -212,14 +183,7 @@ theorem add_lt_of_mem_legal_of_lt
   by_cases hadd : a.toNat + n.toNat < 2^64
   · assumption
   · exfalso
-    have ha : a.toNat < 2^64 := a.isLt;
-    have h₂ : a.toNat + n.toNat - 2^64 < 2^64 := by omega
-    have hmod : (a.toNat + n.toNat) % 18446744073709551616 = a.toNat + n.toNat - 2^64 := by
-      rw [Nat.mod_eq_sub_mod]
-      rw [Nat.mod_eq_of_lt h₂]
-      omega
-    rw [hmod] at h
-    omega
+    bv_omega
 
 /--
 If we express a memory region as `[a..(a+n)]` for `(n : Nat)`,
@@ -259,6 +223,11 @@ of memory. Note that the interval is left closed, right open, and thus `n` is th
 def mem_legal' (a : BitVec 64) (n : Nat) : Prop :=
   a.toNat + n ≤ 2^64
 
+/-- Build a `mem_legal'` from a proof obligation that can be closed by `omega`. -/
+def mem_legal'.of_omega (h : a.toNat + n ≤ 2^64) : mem_legal' a n := h
+
+theorem mem_legal'.omega_def (h : mem_legal' a n) : a.toNat + n ≤ 2^64 := h
+
 /--
 @bollu: have proof automation exploit this.
 Equation lemma for `mem_legal'`.
@@ -273,6 +242,15 @@ theorem mem_legal'.size_le_two_pow (h : mem_legal' a n) : n ≤ 2 ^ 64 := by
   rw [mem_legal'] at h
   omega
 
+
+/--
+If we know that `[a..a+n)` is legal and `a'.toNat + n' < a.toNat + n`,
+then `[a'..a'+n')` is also legal. -/
+theorem mem_legal'.of_mem_legal'_of_lt
+    (h : mem_legal' a n) (hn : a'.toNat + n' ≤ a.toNat + n) :
+    mem_legal' a' n' := by
+  unfold mem_legal' at h ⊢
+  omega
 /--
 Legal in the new sense implies legal in the old sense.
 -/
@@ -281,10 +259,7 @@ theorem mem_legal_of_mem_legal' (h : mem_legal' a n) :
   simp only [mem_legal', mem_legal, BitVec.le_def] at h ⊢
   rw [BitVec.toNat_add_eq_toNat_add_toNat]
   simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.le_add_right, decide_True]
-  rw [BitVec.toNat_ofNat]
-  rw [Nat.mod_eq_of_lt (by omega)]
-  omega
-
+  bv_omega
 
 /--
 Legal in the new sense implies legal in the old sense.
@@ -293,9 +268,7 @@ Note that the subtraction could also have been written as `(b - a).toNat + 1`
 theorem mem_legal'_of_mem_legal (h: mem_legal a b) : mem_legal' a (b.toNat - a.toNat + 1) := by
   simp only [mem_legal, decide_eq_true_eq] at h
   rw [mem_legal']
-  rw [BitVec.le_def] at h
-  omega
-
+  bv_omega
 
 def mem_legal'_of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n) :
     mem_legal' a m := by
@@ -316,10 +289,7 @@ theorem mem_legal_iff_mem_legal' : mem_legal a b ↔
   · intros h
     simp only [mem_legal'] at h
     simp only [mem_legal, BitVec.le_def, decide_eq_true_eq]
-    apply Classical.byContradiction
-    intros h₂
-    rw [BitVec.toNat_sub_eq_two_pow_sub_add_of_lt (by omega)] at h
-    omega
+    bv_omega
 
 /--
 `mem_separate' a an b bn` asserts that two memory regions [a..an) and [b..bn) are separate.
@@ -331,6 +301,28 @@ structure mem_separate' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : 
   ha : mem_legal' a an
   hb : mem_legal' b bn
   h : a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn
+
+/--
+Unfold the definition of `mem_subset'` to write definitions that `omega` can process.
+-/
+theorem mem_separate'.omega_def (h : mem_separate' a an b bn) :
+  a.toNat + an ≤ 2^64 ∧
+  b.toNat + bn ≤ 2^64 ∧
+  (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn) := by
+  obtain ⟨ha, hb, hsplit⟩ := h
+  unfold mem_legal' at ha hb
+  omega
+
+/-- Build a mem_subset' from a goal that `h` that can be closed by `omega`. -/
+theorem mem_separate'.of_omega
+    (h :a.toNat + an ≤ 2^64 ∧
+    b.toNat + bn ≤ 2^64 ∧
+    (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn)) :
+    mem_separate' a an b bn :=  by
+  constructor
+  · unfold mem_legal'; omega
+  · unfold mem_legal'; omega
+  · omega
 
 theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
   rw [BitVec.le_def, BitVec.lt_def]
@@ -366,6 +358,31 @@ structure mem_subset' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Pr
   hb : mem_legal' b bn
   hstart : b ≤ a
   hend : a.toNat + an ≤ b.toNat + bn
+
+/--
+Unfold the definition of `mem_subset'` to write definitions that `omega` can process.
+-/
+theorem mem_subset'.omega_def (h : mem_subset' a an b bn) :
+  a.toNat + an ≤ 2^64 ∧
+  b.toNat + bn ≤ 2^64 ∧
+  b.toNat ≤ a.toNat ∧
+  a.toNat + an ≤ b.toNat + bn := by
+  obtain ⟨ha, hb, hstart, hend⟩ := h
+  rw [BitVec.le_def] at hstart
+  unfold mem_legal' at ha hb
+  omega
+
+/-- Build a mem_subset' from a goal that `h` that can be closed by `omega`. -/
+theorem mem_subset'.of_omega
+  (h : a.toNat + an ≤ 2^64 ∧
+  b.toNat + bn ≤ 2^64 ∧
+  b.toNat ≤ a.toNat ∧
+  a.toNat + an ≤ b.toNat + bn) : mem_subset' a an b bn :=  by
+constructor
+· unfold mem_legal'; omega
+· unfold mem_legal'; omega
+· rw [BitVec.le_def]; omega
+· omega
 
 theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
   ha := h
@@ -424,13 +441,7 @@ theorem mem_separate'_of_mem_separate'_of_mem_subset'
     | omega
     | assumption
 
-private theorem Nat.sub_mod_eq_of_lt_of_le {x y : Nat} (hx : x < n) (hy : y ≤ x) :
-    (x - y) % n = (x % n) - (y % n) := by
-  rw [Nat.mod_eq_of_lt (by omega)]
-  rw [Nat.mod_eq_of_lt (by omega)]
-  rw [Nat.mod_eq_of_lt (by omega)]
-
--- `mem_subset'` implies mem_subset.
+-- `mem_subset'` implies `mem_subset`.
 theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hbn : bn > 0) :
   mem_subset a (a + BitVec.ofNat 64 (an - 1)) b (b + BitVec.ofNat 64 (bn - 1)):= by
   unfold mem_subset
@@ -439,84 +450,31 @@ theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hb
   simp only [bitvec_rules, minimal_theory]
   by_cases hb : bn = 2^64
   · left
-    apply BitVec.eq_of_toNat_eq
-    rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le ]
-    · rw [BitVec.toNat_add_eq_toNat_add_toNat]
-      · simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]
-        rw [Nat.mod_eq_of_lt (by omega)]
-        omega
-      · simp only [BitVec.toNat_ofNat, Nat.reducePow]
-        rw [Nat.mod_eq_of_lt (by omega)]
-        omega
-    · simp only [BitVec.le_def, BitVec.toNat_add, BitVec.toNat_ofNat, Nat.reducePow,
-      Nat.add_mod_mod]
-      rw [Nat.mod_eq_of_lt (by omega)]
-      omega
-  · have hbn : (BitVec.ofNat 64 (bn - 1)).toNat = (bn - 1) := by simp; omega
-    have han : (BitVec.ofNat 64 (an - 1)).toNat = (an - 1) := by simp; omega
-    rw [BitVec.le_def] at hstart
-    right
-    constructor
-    · rw [BitVec.add_sub_cancel_left]
-      · apply (BitVec.le_add_iff_sub_le _ _).mp
-        · rw [BitVec.le_def, BitVec.toNat_add, han, BitVec.toNat_add, hbn]; omega
-        . rw [BitVec.le_def, BitVec.toNat_add, han]; omega
-        · rw [hbn]; omega
-      · rw [hbn]; omega
-    · rw [BitVec.sub_le_sub_iff_right]
-      · rw [BitVec.le_def, BitVec.toNat_add, han]
-        omega
-      · assumption
-      · rw [BitVec.le_def, BitVec.toNat_add, han]
-        omega
+    bv_omega
+  · bv_omega
 
-/- value of read_mem_bytes when separate. -/
-theorem read_mem_bytes_write_mem_bytes_eq_read_mem_bytes_of_mem_separate'
-  (hsep : mem_separate' x xn y yn) -- separation
-  (val : BitVec (yn * 8)) :
-    read_mem_bytes xn x (write_mem_bytes yn y val mem) =
-    read_mem_bytes xn x mem := by
-  simp only [bitvec_rules, minimal_theory, memory_rules]
+/- value of read_mem_bytes when separate from the write. -/
+theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
+    (hsep : mem_separate' x xn y yn) -- separation
+    (val : BitVec (yn * 8)) :
+    Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
+    Memory.read_bytes xn x mem := by
   apply BitVec.eq_of_getLsb_eq
   intros i
-  obtain ⟨hsrc, hdest, hsplit⟩ := hsep
-  rw [Memory.getLsb_read_bytes, Memory.getLsb_write_bytes, Memory.getLsb_read_bytes]
+  obtain := hsep.omega_def
+  rw [Memory.getLsb_read_bytes (by omega),
+     Memory.getLsb_write_bytes (by omega),
+     Memory.getLsb_read_bytes (by omega)]
   simp only [i.isLt]
   simp only [decide_True, ite_eq_left_iff, Bool.true_and]
   intros h₁
   intros h₂
-  -- we need to make use of mem_separate to show that src_addr + i / 8 < dest_addr | src_addr + i/7 ≥ dest_addr + 16
-  exfalso
-  · rcases hsplit with this | this
-    · simp only [bitvec_rules, minimal_theory, BitVec.not_lt, BitVec.le_def, BitVec.toNat_add,
-        BitVec.toNat_ofNat] at h₁
-      omega
-    · have hcontra_h2 : x.toNat + 16 < y.toNat + 16 := by
-        simp at this
-        have hi : (i : Nat) / 8 < xn := by
-          apply Nat.div_lt_of_lt_mul
-          simp only [Nat.mul_comm, Fin.is_lt]
-        rw [BitVec.toNat_add_eq_toNat_add_toNat] at h₂
-        · omega
-        · have := mem_legal'_def hsrc
-          apply Nat.lt_of_lt_of_le _ this
-          apply Nat.add_lt_add_iff_left.mpr
-          simp
-          rw [Nat.mod_eq_of_lt]
-          omega
-          omega
-      omega
-  · have := hsrc.size_le_two_pow
-    omega
-  · have := mem_legal'_def hdest
-    omega
-  · have := hsrc.size_le_two_pow
-    omega
+  bv_omega
 
-/- value of `read_mem_bytes'` when subset. -/
-theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
-  (hsep : mem_subset' x xn y yn) -- subset relation.
-  (val : BitVec (yn * 8)) :
+/- value of `read_mem_bytes'` when subset of the write. -/
+theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
+    (hsep : mem_subset' x xn y yn) -- subset relation.
+    (val : BitVec (yn * 8)) :
     Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
       val.extractLsBytes (x.toNat - y.toNat) xn := by
   apply BitVec.eq_of_getLsb_eq
@@ -535,11 +493,8 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
     exfalso
     have h := i.isLt
     simp at h
-  · simp only [show (0 < xn) by omega]
-    simp only [show ((x.toNat - y.toNat) * 8 + xn * 8 - 1 - (x.toNat - y.toNat) * 8) = xn * 8 - 1 by omega]
-    by_cases h₁ : ↑i < xn * 8
+  · by_cases h₁ : ↑i < xn * 8
     · simp only [h₁]
-      simp only [show (i ≤ xn * 8 - 1) by omega]
       simp only [decide_True, Bool.true_and]
       obtain ⟨i, hi⟩ := i
       simp only at h₁
@@ -582,14 +537,27 @@ theorem read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
           rw [BitVec.le_def] at hstart
           omega
     · simp only [h₁, bitvec_rules, minimal_theory]
-      intros h
-      apply BitVec.getLsb_ge
-      omega
 
-/--
-info: 'read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
-#guard_msgs in #print axioms read_mem_bytes_write_mem_bytes_eq_extract_LsB_of_mem_subset
-
+/- value of read_mem_bytes when subset of another *read*. -/
+theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
+    {mem : Memory}
+    (hread : mem.read_bytes bn b = val)
+    (hsubset : mem_subset' a an b bn) :
+    mem.read_bytes an a = val.extractLsBytes (a.toNat - b.toNat) an := by
+    have ⟨h1, h2, h3, h4⟩ := hsubset.omega_def
+    apply BitVec.eq_of_extractLsByte_eq
+    intros i
+    rw [extractLsByte_read_bytes (by bv_omega)]
+    rw [BitVec.extractLsByte_extractLsBytes]
+    by_cases h : i < an
+    · simp only [h, ↓reduceIte]
+      apply BitVec.eq_of_getLsb_eq
+      intros j
+      rw [← hread]
+      rw [extractLsByte_read_bytes (by bv_omega)]
+      simp only [show a.toNat - b.toNat + i < bn by bv_omega, if_true]
+      congr 2
+      bv_omega
+    · simp only [h, ↓reduceIte]
 
 end NewDefinitions

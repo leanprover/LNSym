@@ -34,7 +34,7 @@ theorem correct
   read_err sf = StateError.None := by
   simp (config := {ground := true}) at h_run
 
-  sym1_n 5
+  sym_n 5
   sorry
 
 /-- info: 'Abs.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/

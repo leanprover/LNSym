@@ -39,8 +39,8 @@ def Add_sub_carry_cls.rand : Cosim.CosimM (Option (BitVec 32)) := do
     { sf    := ← BitVec.rand 1,
       op    := ← BitVec.rand 1,
       S     := ← BitVec.rand 1,
-      Rm    := ← BitVec.rand 5,
-      Rn    := ← BitVec.rand 5,
+      Rm    := ← GPRIndex.rand,
+      Rn    := ← GPRIndex.rand,
       Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))
 

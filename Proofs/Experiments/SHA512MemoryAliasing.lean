@@ -6,8 +6,10 @@ Author(s): Shilpi Goel
 import Arm.Exec
 import Arm.Memory.MemoryProofs
 import Specs.SHA512
+import Arm.Memory.SeparateAutomation
+
 -- import Tactics.Sym
--- import Proofs.SHA512.Sha512StepLemmas
+-- import Proofs.SHA512.SHA512StepLemmas
 open BitVec
 
 /- The memory aliasing proof obligations in
@@ -57,6 +59,8 @@ Let's also check our address normalization implementation, e.g., does the automa
 work for `16#64 + ctx_addr`? What about `8#64 + ctx_addr + 8#64`? Other
 variations?
 -/
+set_option trace.simp_mem true in
+set_option trace.simp_mem.info true in
 theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   (h_s0_err : read_err s0 = StateError.None)
   (h_s0_sp_aligned : CheckSPAlignment s0)
@@ -64,6 +68,7 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   (h_s0_program : s0.program = sha512_program)
   (h_s0_num_blocks : num_blocks s0 = 1)
   (h_s0_x3 : r (StateField.GPR 3#5) s0 = ktbl_addr)
+  (hlegal : mem_legal' (ctx_addr s0) 64)
   (h_s0_ctx : read_mem_bytes 64 (ctx_addr s0) s0 = SHA2.h0_512.toBitVec)
   (h_s0_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s0 = BitVec.flatten SHA2.k_512)
   -- (FIXME) Add separateness invariants for the stack's memory region.
@@ -81,12 +86,25 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
                   ktbl_addr      (SHA2.k_512.length * 8))
   -- (h_run : sf = run 4 s0)
   :
-  read_mem_bytes 16 (ctx_addr s0 + 48#64) s0 = xxxx := by
-  -- Prelude
-  -- simp_all only [state_simp_rules, -h_run]
-  -- Symbolic Simulation
-  -- sym1_n 4
-  sorry
+  -- @shilpi: rewrite `SHA2.h0_512.toBitVec.extractLsBytes 48 16` to
+  -- `(extractLsBytes SHA2.h0_512.toBitVec 48 16)`
+  -- cause it's easier to read.
+  read_mem_bytes 16 (ctx_addr s0 + 48#64) s0 = SHA2.h0_512.toBitVec.extractLsBytes 48 16 := by
+  simp_all only [memory_rules]
+  simp_mem
+  -- ⊢ SHA2.h0_512.toBitVec.extractLsBytes ((ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat) 16 =
+  -- SHA2.h0_512.toBitVec.extractLsBytes 48 16
+  -- @shilpi: should this also be proven automatically? feels a little unreasonable to me.
+  · congr
+    -- ⊢ (ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat = 48
+    bv_omega'
+
+/--
+info: 'SHA512MemoryAliasing.sha512_block_armv8_prelude_sym_ctx_access' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in #print axioms sha512_block_armv8_prelude_sym_ctx_access
 
 /-
 Let's automatically figure out what
@@ -96,7 +114,14 @@ should simplify to, where `<addr>` can be
 
 Let's also check our address normalization implementation, e.g., does the automation
 work for `16#64 + ktbl_addr`?
+
+-- @bollu: TODO: implement address normalization here, so we can simplify e.g.
+--   TODO: add similar tests for all `ktbl_addr + n*16#64` for n in [0, 16].
+--   (16#64 + ktbl_addr) + 16#64
+--   ~> 32#64 ktbl_addr
 -/
+set_option trace.simp_mem true in
+set_option trace.simp_mem.info true in
 theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (h_s1_err : read_err s1 = StateError.None)
   (h_s1_sp_aligned : CheckSPAlignment s1)
@@ -119,7 +144,21 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (h_s1_ktbl_input_separate :
     mem_separate' (input_addr s1) ((num_blocks s1).toNat * 128)
                   ktbl_addr      (SHA2.k_512.length * 8)) :
-  read_mem_bytes 16 ktbl_addr s1 = xxxx := by
-  sorry
+  read_mem_bytes 16 ktbl_addr s1 =
+  (BitVec.flatten SHA2.k_512).extractLsBytes 0 16 := by
+  simp_all only [memory_rules]
+  -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
+  -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.
+  have hSHA2_k512_length : SHA2.k_512.length = 80 := by rfl
+  simp_mem -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
+  rfl
+
+/--
+info: 'SHA512MemoryAliasing.sha512_block_armv8_loop_sym_ktbl_access' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound]
+-/
+#guard_msgs in #print axioms sha512_block_armv8_loop_sym_ktbl_access
+
 
 end SHA512MemoryAliasing
