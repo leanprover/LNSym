@@ -429,8 +429,6 @@ def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
       let fields := eff.fields.insert field { value, proof }
       return { eff with fields }
 
-
-
 /-! ## Composition -/
 
 /- TODO: write a function that combines two effects `left` and `right`,
