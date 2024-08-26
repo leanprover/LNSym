@@ -160,8 +160,6 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
 
 /-! ## Update a Reflected State -/
 
-#check write_mem_bytes_program
-
 /-- Execute `write_mem <n> <addr> <val>` against the state stored in `eff`
 That is, `currentState` of the returned struct will be
   `write_mem <n> <addr> <val> <eff.currentState>`
