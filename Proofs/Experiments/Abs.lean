@@ -39,12 +39,10 @@ theorem correct
   simp (config := {ground := true}) at h_run
 
   sym_n 5
-  explode_step h_step_1
-  explode_step h_step_2
-  explode_step h_step_3
-  explode_step h_step_4
-  explode_step h_step_5
-  sorry
+  subst sf
+  apply And.intro
+  · sorry
+  · assumption
 
 /-- info: 'Abs.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms correct
