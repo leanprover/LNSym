@@ -315,5 +315,3 @@ Did you remember to generate step theorems with:
     -- The main loop
     for _ in List.range n do
       c ← sym1 c whileTac
-
-    c.effects.addHypothesesToLContext
