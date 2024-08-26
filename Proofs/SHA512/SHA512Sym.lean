@@ -47,7 +47,7 @@ abbrev ktbl_addr : BitVec 64 := 0x1b4300#64
 -- set_option profiler true in
 -- set_option profiler.threshold 1 in
 -- set_option pp.deepTerms false in
-set_option maxHeartbeats 9999999 in
+set_option maxHeartbeats 9999999 in -- To be fixed by https://github.com/leanprover/LNSym/pull/113
 theorem sha512_block_armv8_1block (s0 sf : ArmState)
   -- (FIXME) Ignore the `stp` instruction for now.
   (h_s0_pc : read_pc s0 = 0x1264c4#64)
