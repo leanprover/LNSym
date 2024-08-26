@@ -58,6 +58,8 @@ structure AxEffects where
       = read_mem_bytes n addr <memoryEffect>
     ``` -/
   memoryEffectProof : Expr
+  /-- A proof that `<currentState>.program = <initialState>.program` -/
+  programProof : Expr
   deriving Repr
 
 namespace AxEffects
@@ -84,6 +86,10 @@ def initial (state : Expr) : AxEffects where
       mkLambda `addr .default bv64 <|
         let rm := mkApp3 (mkConst ``read_mem_bytes) (.bvar 1) (.bvar 0) state
         mkApp2 (.const ``Eq.refl [1]) (n8 <| .bvar 1) rm
+  programProof      :=
+    mkAppN (.const ``Eq.refl [1]) #[
+      mkConst ``Program,
+      mkApp (mkConst ``ArmState.program) state]
 
 /-! ## ToMessageData -/
 
@@ -103,7 +109,8 @@ instance : ToMessageData AxEffects where
       fields := {eff.fields},
       nonEffectProof := {eff.nonEffectProof},
       memoryEffect := {eff.memoryEffect},
-      memoryEffectProof := {eff.memoryEffectProof}
+      memoryEffectProof := {eff.memoryEffectProof},
+      programProof := {eff.programProof}
     }"
 
 /-! ## Helpers -/
@@ -133,7 +140,7 @@ private def rewriteType (e eq : Expr) : MetaM Expr := do
 /-- Get the value for a field, if one is stored in `eff.fields`,
 or assemble an instantiation of the memory non-effects proof -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
-  let msg := "getField _ {fld}"
+  let msg := m!"getField {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     withTraceNode `Tactic.sym (fun _ => pure "current state") <| do
       trace[Tactic.sym] "{eff}"
@@ -152,6 +159,8 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
         pure {value, proof := mkAppN eff.nonEffectProof pre}
 
 /-! ## Update a Reflected State -/
+
+#check write_mem_bytes_program
 
 /-- Execute `write_mem <n> <addr> <val>` against the state stored in `eff`
 That is, `currentState` of the returned struct will be
@@ -184,6 +193,11 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
     mkAppN (mkConst ``read_mem_bytes_write_mem_bytes_of_read_mem_eq)
       #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, n, addr, val]
 
+  -- Update the program proof
+  let programProof ← mkEqTrans
+    (mkAppN (mkConst ``write_mem_bytes_program) #[
+      eff.currentState, n, addr, val])
+    eff.programProof
 
   -- Assemble the result
   let addWrite (e : Expr) := mkApp4 (mkConst ``write_mem_bytes) n addr val e
@@ -193,6 +207,7 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
     nonEffectProof
     memoryEffect    := addWrite eff.memoryEffect
     memoryEffectProof
+    programProof
   }
   withTraceNode `Tactic.sym (fun _ => pure "new state") <| do
       trace[Tactic.sym] "{eff}"
@@ -260,6 +275,11 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
     mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
       #[eff.currentState, eff.initialState, eff.memoryEffectProof, fld, val]
 
+  -- Update the program proof
+  let programProof ← mkEqTrans
+    (mkAppN (mkConst ``w_program) #[fld, val, eff.currentState])
+    eff.programProof
+
   -- Assemble the result
   let eff := { eff with
     currentState    := mkApp3 (mkConst ``w) fld val eff.currentState
@@ -267,6 +287,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
     nonEffectProof
     -- memory effects are unchanged
     memoryEffectProof
+    programProof
   }
   withTraceNode `Tactic.sym (fun _ => pure "new state") <| do
       trace[Tactic.sym] "{eff}"
@@ -303,20 +324,25 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
   withTraceNode `Tactic.sym (fun _ => pure "adjusting `currenstState`") do
     withTraceNode `Tactic.sym (fun _ => pure "current state") do
         trace[Tactic.sym] "{eff}"
+    trace[Tactic.sym] "rewriting along {eq}"
     assertHasType eq <| mkEqArmState s eff.currentState
     let eq ← mkEqSymm eq
 
     let fields ← eff.fields.toList.mapM fun (field, fieldEff) => do
-      let proof ← rewriteType eq fieldEff.proof
-      pure (field, {fieldEff with proof})
+      withTraceNode `Tactic.sym (fun _ => pure m!"rewriting field {field}") do
+        trace[Tactic.sym] "original proof: {fieldEff.proof}"
+        let proof ← rewriteType fieldEff.proof eq
+        trace[Tactic.sym] "new proof: {proof}"
+        pure (field, {fieldEff with proof})
     let fields := .ofList fields
 
-    let nonEffectProof ← rewriteType eq eff.nonEffectProof
-    let memoryEffectProof ← rewriteType eq eff.memoryEffectProof
+    let nonEffectProof ← rewriteType eff.nonEffectProof eq
+    let memoryEffectProof ← rewriteType eff.memoryEffectProof eq
     -- ^^ TODO: what happens if `memoryEffect` is the same as `currentState`?
     --    Presumably, we would *not* want to encapsulate `memoryEffect` here
+    let programProof ← rewriteType eff.programProof eq
 
-    return {eff with fields, nonEffectProof, memoryEffectProof}
+    return {eff with fields, nonEffectProof, memoryEffectProof, programProof}
 
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
 where `?s` and `?s0` are arbitrary `ArmState`s,
@@ -336,6 +362,60 @@ def fromEq (eq : Expr) : MetaM AxEffects :=
     withTraceNode `Tactic.sym (fun _ => pure "new state") do
       trace[Tactic.sym] "{eff}"
     return eff
+
+/-- Given an equality `eq : ?currentProgram = ?newProgram`,
+where `currentProgram` is the rhs of `eff.programProof`,
+apply transitivity to make `newProgram` the rhs of `programProof`
+in the return value.
+
+Generally used with `?currentProgram = <initialState>.program`, which is the
+default rhs created by `initial`,
+and `?newProgram` the constant of the concrete program. -/
+def withProgramEq (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
+  let programProof ← mkEqTrans eff.programProof eq
+  return {eff with programProof}
+
+/-- Given an equality `eq : r ?field <initialState> = ?value`,
+record `value` in the `AxEffect`s struct as the effect for `field`,
+assuming that `field` did not have an effect stored yet.
+
+Otherwise, if there *is* an effect stored for the field, try to rewrite it
+along the given equality.
+If this rewrite fails, return the original effects unchanged.
+
+Note: throws an error when `initialState = currentState` *and*
+the field already has a value stored, as the rewrite might produce expressions
+of unexpected types. -/
+def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
+  let fieldE ← mkFreshExprMVar (mkConst ``StateField)
+  let value ← mkFreshExprMVar none
+  assertHasType eq (←mkEq (mkApp2 (mkConst ``r) fieldE eff.initialState) value)
+
+  let field ← reflectStateField (← instantiateMVars fieldE)
+  let fieldEff ← eff.getField field
+
+  if field ∉ eff.fields then
+    let proof ← mkEqTrans fieldEff.proof eq
+    let fields := eff.fields.insert field { value, proof }
+    return { eff with fields }
+  else
+    if eff.currentState == eff.initialState then
+      throwError "error: {field} already has an effect associated with it, \
+        and the current state
+          {eff.currentState}
+        is equal to the initial state
+          {eff.initialState}"
+
+    let valEq ← try rewrite fieldEff.value eq
+      catch _ => return eff
+
+    let_expr Eq _ _ value := ← inferType valEq
+      | throwError "internal error: expected an equality, found {valEq}"
+    let proof ← mkEqMP valEq fieldEff.proof
+    let fields := eff.fields.insert field { value, proof }
+    return { eff with fields }
+
+
 
 /-! ## Composition -/
 
@@ -363,7 +443,7 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
       let msg := m!"adding field {field}"
       goal ← withTraceNode `Tactic.sym (fun _ => pure msg) <| goal.withContext do
         trace[Tactic.sym] "raw proof: {proof}"
-        let name := Name.mkSimple (s!"{hypPrefix}r_{field}")
+        let name := Name.mkSimple (s!"{hypPrefix}{field}")
         replaceOrNote goal name proof
 
     trace[Tactic.sym] "adding non-effects with {eff.nonEffectProof}"
@@ -377,6 +457,13 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
       let name := .mkSimple s!"{hypPrefix}memory_effects"
       let proof := eff.memoryEffectProof
       replaceOrNote goal name proof
+
+    trace[Tactic.sym] "adding program hypothesis with {eff.programProof}"
+    goal ← goal.withContext do
+      let name := .mkSimple s!"{hypPrefix}program"
+      let proof := eff.programProof
+      replaceOrNote goal name proof
+
     replaceMainGoal [goal]
 where
   replaceOrNote (goal : MVarId) (h : Name) (v : Expr)
@@ -392,18 +479,22 @@ where
         let ⟨_, goal⟩ ← goal.note h v t?
         return goal
 
-namespace ExplodeSteps
+-- namespace ExplodeStep
 
--- We make `explode_step` scoped, because this is not the only
--- implementation of this tactic
-/-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
-add hypotheses that axiomatically describe the effects in terms of
-reads from `s{i+1}` -/
-scoped elab "explode_step " h_step:term : tactic => withMainContext do
-  let h_step ← elabTerm h_step none
-  let eff ← AxEffects.fromEq h_step
-  eff.addHypothesesToLContext
 
-end ExplodeSteps
+
+-- -- We make `explode_step` scoped, because this is not the only
+-- -- implementation of this tactic
+-- /-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
+-- add hypotheses that axiomatically describe the effects in terms of
+-- reads from `s{i+1}` -/
+-- scoped elab "explode_step " h_step:term h_program:term pre:(str)? : tactic =>
+--   withMainContext do
+--     let hStep ← elabTerm h_step none
+--     let hProgram ← elabTerm h_program none
+--     let pre := ((·.getString) <$> pre).getD "h_"
+--     explodeStep hStep hProgram pre
+
+-- end ExplodeStep
 
 end Tactic

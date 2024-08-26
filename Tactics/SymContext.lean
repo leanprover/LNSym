@@ -82,8 +82,6 @@ structure SymContext where
   `CheckSPAlignment state` -/
   h_sp?  : Option Name
 
-  effects : AxEffects
-
   /-- `state_prefix` is used together with `curr_state_number`
   to determine the name of the next state variable that is added by `sym` -/
   state_prefix      : String := "s"
@@ -119,7 +117,7 @@ def h_sp_ident        : Ident := mkIdent c.h_sp
 
 /-- Find the local declaration that corresponds to a given name,
 or throw an error if no local variable of that name exists -/
-private def findFromUserName (name : Name) : MetaM LocalDecl := do
+def findFromUserName (name : Name) : MetaM LocalDecl := do
   let some decl := (← getLCtx).findFromUserName? name
     | throwError "Unknown local variable `{name}`"
   return decl
@@ -267,11 +265,10 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     | throwError "Could not find program info for `{program}`.
         Did you remember to generate step theorems with:
           #generateStepEqTheorems {program}"
-  let effects := AxEffects.initial stateExpr
 
   return inferStatePrefixAndNumber {
     state, finalState, h_run, runSteps?, program, h_program, pc, h_pc,
-    h_err?, h_sp?, programInfo, effects
+    h_err?, h_sp?, programInfo
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
@@ -398,22 +395,7 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     runSteps?   := (· - 1) <$> c.runSteps?
     program     := c.program
     programInfo := c.programInfo
-    effects     := c.effects
     pc          := nextPc?.getD (c.pc + 4#64)
     curr_state_number
     state_prefix := c.state_prefix
   }
-
-def updateEffectsWith (c : SymContext) (eq : Expr) : MetaM SymContext := do
-  withTraceNode `Tactic.sym (fun _ => pure m!"updateEffects") <| do
-    let some inst := c.programInfo.getInstInfoAt? c.pc
-      | throwError "No instruction found for PC {c.pc}"
-    let .value ⟨sem, type, proof⟩ := inst.instSemantics?
-      | throwError "Instruction at PC {c.pc} does not have a decoded semantics yet"
-    trace[Tactic.sym] "instruction info for PC {c.pc}:
-      sem   := {sem}
-      type  := {type}
-      proof := {proof}"
-    -- let inst_semantics
-    -- let effects
-  return c

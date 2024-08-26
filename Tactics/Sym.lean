@@ -9,6 +9,7 @@ import Tactics.FetchAndDecode
 import Tactics.ExecInst
 import Tactics.ChangeHyps
 import Tactics.SymContext
+import Tactics.Time
 
 import Lean
 
@@ -179,6 +180,23 @@ def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
           replaceMainGoal [newGoal]
           return newHyp
 
+
+/-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
+add hypotheses that axiomatically describe the effects in terms of
+reads from `s{i+1}` -/
+def explodeStep (c : SymContext) (hStep : Expr) :
+    TacticM Unit :=
+  withMainContext do
+    let eff ← AxEffects.fromEq hStep
+
+    let hProgram ← SymContext.findFromUserName c.h_program
+    let eff ← eff.withProgramEq hProgram.toExpr
+
+    -- let hErr ← SymContext.findFromUserName c.h_err
+    -- let eff ← eff.withField hErr.toExpr
+
+    eff.addHypothesesToLContext s!"h_{c.next_state}_"
+
 /--
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
@@ -191,7 +209,6 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
 
     let stepi_eq := Lean.mkIdent (.mkSimple s!"stepi_{c.state}")
     let h_step   := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
-    -- let stepi_eq := h_step
 
     unfoldRun c (fun _ => evalTacticAndTrace whileTac)
     -- Add new state to local context
@@ -203,19 +220,11 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
     stepiTac stepi_eq h_step c
 
     withMainContext <| do
-      -- let some hStepDecl := (← getLCtx).findFromUserName? h_step.getId
-      --   | throwError "internal error: could not find {h_step}"
-      -- let effects ← c.effects.updateWithEq hStepDecl.toExpr
-      let effects := c.effects
-
       -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
-      let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
-      -- Ensure we run `intro_fetch_decode_lemmas` without `stepi_eq`
-      let _ ← withoutHyp stepi_eq.getId <| evalTacticAndTrace <|← `(tactic|
-        intro_fetch_decode_lemmas
-          $h_step:ident $c.h_program_ident:ident $h_st_prefix:str
-      )
-      return { c with effects}.next
+      let hStep ← SymContext.findFromUserName h_step.getId
+      explodeStep c hStep.toExpr
+
+      return c.next
 
 /- used in `sym_n` tactic to specify an initial state -/
 syntax sym_at := "at" ident
