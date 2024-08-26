@@ -325,6 +325,14 @@ partial def fromExpr (e : Expr) : MetaM AxEffects := do
     | _ =>
         return initial e
 
+/-- Given a proof `eq : s = <currentState>`,
+set `s` to be the new `currentState`, and update all proofs accordingly -/
+def setCurrentStateFromEq (eff : AxEffects) (s eq : Expr) : MetaM AxEffects := do
+  assertHasType eq <| mkEqArmState s eff.currentState
+
+  let fields := eff.fields.map fun info =>
+    _
+
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
 where `?s` and `?s0` are arbitrary `ArmState`s,
 return an `AxEffect` with `?s0` as the initial state,
