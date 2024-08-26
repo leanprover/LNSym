@@ -39,13 +39,6 @@ structure AxEffects where
   That is, `currentState` is usually a sequence of `w`/`write_mem`s
   to the initial state -/
   currentState : Expr
-  /-- An optional proof of
-      `?s = <currentState>`
-    Where `s` is any equivalent `ArmState`, generally a single variable.
-
-    `currentStateEq` is used by field accessors to adjust types to
-    expose `s`, rather than `currentState`. -/
-  currentStateEq : Option Expr
   fields : Std.HashMap StateField AxEffects.FieldEffect
   /-- An expression that contains the proof of:
     ```lean
@@ -74,7 +67,6 @@ namespace AxEffects
 def initial (state : Expr) : AxEffects where
   initialState      := state
   currentState      := state
-  currentStateEq    := none
   fields            := .empty
   nonEffectProof    :=
     mkLambda `f .default (mkConst ``StateField) <|
@@ -108,7 +100,6 @@ instance : ToMessageData AxEffects where
     m!"\
     \{ initialState := {eff.initialState},
       currentState := {eff.currentState},
-      currentStateEq := {eff.currentStateEq},
       fields := {eff.fields},
       nonEffectProof := {eff.nonEffectProof},
       memoryEffect := {eff.memoryEffect},
@@ -139,15 +130,6 @@ Fails if the rewrite produces any subgoals.
 private def rewriteType (e eq : Expr) : MetaM Expr := do
   mkEqMP (← rewrite (← inferType e) eq) e
 
-/-- Rewrite the *type* of `e` via `eff.currentStateEq`, if given, to hide the
-exploded `currentState`, then move`e` into the new type via `Eq.mp`.
-Otherwise, if `currentStateEq` is none, return `e` unchanged -/
-def hideCurrentStateType (eff : AxEffects) (e : Expr) :
-    MetaM Expr := do
-  match eff.currentStateEq with
-    | none    => return e
-    | some eq => rewriteType e (← mkEqSymm eq)
-
 /-- Get the value for a field, if one is stored in `eff.fields`,
 or assemble an instantiation of the memory non-effects proof -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
@@ -156,27 +138,18 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
     withTraceNode `Tactic.sym (fun _ => pure "current state") <| do
       trace[Tactic.sym] "{eff}"
 
-    let mut ({ value, proof } : FieldEffect) ←do
-      if let some val := eff.fields.get? fld then
-        return val
-      else
-        let value := mkApp2 (mkConst ``r) (toExpr fld) eff.initialState
+    if let some val := eff.fields.get? fld then
+      return val
+    else
+      let value := mkApp2 (mkConst ``r) (toExpr fld) eff.initialState
 
-        lambdaTelescope eff.nonEffectProof <| fun fvars _ => do
-          let lctx ← getLCtx
-          let pre ← fvars.mapM fun expr => do
-            let ty := lctx.get! expr.fvarId! |>.type
-            mkDecideProof ty
+      lambdaTelescope eff.nonEffectProof <| fun fvars _ => do
+        let lctx ← getLCtx
+        let pre ← fvars.mapM fun expr => do
+          let ty := lctx.get! expr.fvarId! |>.type
+          mkDecideProof ty
 
-          pure {value, proof := mkAppN eff.nonEffectProof pre}
-
-    trace[Tactic.sym] "found value {value} with proof {proof}"
-    if eff.currentStateEq.isSome then
-      proof ← eff.hideCurrentStateType proof
-      trace[Tactic.sym] "`currentStateEq` is {eff.currentStateEq}, \
-        so proof was adjusted to {proof}"
-    return {value, proof}
-
+        pure {value, proof := mkAppN eff.nonEffectProof pre}
 
 /-! ## Update a Reflected State -/
 
@@ -216,7 +189,6 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
   let addWrite (e : Expr) := mkApp4 (mkConst ``write_mem_bytes) n addr val e
   let eff := { eff with
     currentState    := addWrite eff.currentState
-    currentStateEq  := none
     fields          := .ofList fields
     nonEffectProof
     memoryEffect    := addWrite eff.memoryEffect
@@ -291,7 +263,6 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
   -- Assemble the result
   let eff := { eff with
     currentState    := mkApp3 (mkConst ``w) fld val eff.currentState
-    currentStateEq  := none
     fields := Std.HashMap.ofList fields
     nonEffectProof
     -- memory effects are unchanged
@@ -327,11 +298,25 @@ partial def fromExpr (e : Expr) : MetaM AxEffects := do
 
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
-def setCurrentStateFromEq (eff : AxEffects) (s eq : Expr) : MetaM AxEffects := do
-  assertHasType eq <| mkEqArmState s eff.currentState
+def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
+    MetaM AxEffects := do
+  withTraceNode `Tactic.sym (fun _ => pure "adjusting `currenstState`") do
+    withTraceNode `Tactic.sym (fun _ => pure "current state") do
+        trace[Tactic.sym] "{eff}"
+    assertHasType eq <| mkEqArmState s eff.currentState
+    let eq ← mkEqSymm eq
 
-  let fields := eff.fields.map fun info =>
-    _
+    let fields ← eff.fields.toList.mapM fun (field, fieldEff) => do
+      let proof ← rewriteType eq fieldEff.proof
+      pure (field, {fieldEff with proof})
+    let fields := .ofList fields
+
+    let nonEffectProof ← rewriteType eq eff.nonEffectProof
+    let memoryEffectProof ← rewriteType eq eff.memoryEffectProof
+    -- ^^ TODO: what happens if `memoryEffect` is the same as `currentState`?
+    --    Presumably, we would *not* want to encapsulate `memoryEffect` here
+
+    return {eff with fields, nonEffectProof, memoryEffectProof}
 
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
 where `?s` and `?s0` are arbitrary `ArmState`s,
@@ -347,7 +332,7 @@ def fromEq (eq : Expr) : MetaM AxEffects :=
     assertHasType eq <| mkEqArmState s rhs
 
     let eff ← fromExpr (← instantiateMVars rhs)
-    let eff := { eff with currentStateEq := eq }
+    let eff ← eff.adjustCurrentStateWithEq s eq
     withTraceNode `Tactic.sym (fun _ => pure "new state") do
       trace[Tactic.sym] "{eff}"
     return eff
@@ -357,15 +342,6 @@ def fromEq (eq : Expr) : MetaM AxEffects :=
 /- TODO: write a function that combines two effects `left` and `right`,
 where `left.initialState = right.currentState`.
 That is, compose the effect of "`left` after `right`" -/
-
-/-! ## Validation -/
-
-/-- Validate that the various proofs in `eff` have the right types -/
-def validate (eff : AxEffects) : MetaM Unit := do
-  let armState := mkConst ``ArmState
-  assertHasType eff.initialState armState
-  assertHasType eff.currentState armState
-  -- TODO: actually validate the proofs
 
 /-! ## Tactic Environment -/
 section Tactic
@@ -388,18 +364,19 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
       goal ← withTraceNode `Tactic.sym (fun _ => pure msg) <| goal.withContext do
         trace[Tactic.sym] "raw proof: {proof}"
         let name := Name.mkSimple (s!"{hypPrefix}r_{field}")
-        let proof ← eff.hideCurrentStateType proof
         replaceOrNote goal name proof
 
     trace[Tactic.sym] "adding non-effects with {eff.nonEffectProof}"
     goal ← goal.withContext do
-      let proof ← eff.hideCurrentStateType eff.nonEffectProof
-      replaceOrNote goal (.mkSimple s!"{hypPrefix}non_effects") proof
+      let name := .mkSimple s!"{hypPrefix}non_effects"
+      let proof := eff.nonEffectProof
+      replaceOrNote goal name proof
 
     trace[Tactic.sym] "adding memory effects with {eff.memoryEffectProof}"
     goal ← goal.withContext do
-      let proof ← eff.hideCurrentStateType eff.memoryEffectProof
-      replaceOrNote goal (.mkSimple s!"{hypPrefix}memory_effects") proof
+      let name := .mkSimple s!"{hypPrefix}memory_effects"
+      let proof := eff.memoryEffectProof
+      replaceOrNote goal name proof
     replaceMainGoal [goal]
 where
   replaceOrNote (goal : MVarId) (h : Name) (v : Expr)
