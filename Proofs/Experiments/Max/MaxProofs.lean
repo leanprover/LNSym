@@ -61,22 +61,6 @@ instance : Spec' ArmState where
 
 -- TODO(@alexkeizer): change `Program.max` to `Program.maxAddr`
 
-theorem correct' : ∃ (n : Nat),
-  {s0 sf : ArmState} →
-  (h_s0_pc : read_pc s0 = 0x894#64)  →
-  (h_s0_program : s0.program = Max.program)  →
-  (h_s0_sp_aligned : CheckSPAlignment s0)  →
-  (h_s0_err : read_err s0 = StateError.None)  →
-  (h_run : sf = run n s0) →
-  read_gpr 32 0 sf = Max.spec (read_gpr 32 0 s0) (read_gpr 32 1 s0) ∧
-  read_err sf = StateError.None := by
-  apply Exists.intro ?n
-  intros s0 sf h_s0_pc h_s0_program h_s0_sp_aligned h_s0_err h_run
-
-  have : ?n = (?m : Nat) + 1 := ?h; simp [this] at h_run
-  sym_n (while := skip) 1 at s0
-  sorry
-
 set_option trace.Tactic.sym true in
 theorem correct
   {s0 sf : ArmState}
