@@ -1,5 +1,12 @@
 import Proofs.Experiments.Max.MaxProgram
+import Correctness.iterate
 
+open Iterate Classical in
+noncomputable def runUntilSteps (P : ArmState → Prop) (s : ArmState) : Nat :=
+  iterate (fun (s, i) => if P s then .inl i else .inr (stepi s, i + 1)) (s, 0)
+
+noncomputable def runUntil (P : ArmState → Prop) (s : ArmState) : ArmState :=
+  run (runUntilSteps P s) s
 
 set_option trace.Tactic.sym true in
 theorem correct
