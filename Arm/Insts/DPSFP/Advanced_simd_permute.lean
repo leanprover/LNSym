@@ -7,6 +7,7 @@ Author(s): Yan Peng
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -59,7 +60,7 @@ def exec_advanced_simd_permute
 
 ----------------------------------------------------------------------
 
-partial def Advanced_simd_permute_cls.trn1.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_permute_cls.trn1.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let size := ← BitVec.rand 2
   let Q := ← BitVec.rand 1
   if size ++ Q = 0b110#3 then
@@ -75,7 +76,7 @@ partial def Advanced_simd_permute_cls.trn1.rand : IO (Option (BitVec 32)) := do
       }
     pure (some (inst.toBitVec32))
 
-partial def Advanced_simd_permute_cls.trn2.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_permute_cls.trn2.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let size := ← BitVec.rand 2
   let Q := ← BitVec.rand 1
   if size ++ Q = 0b110#3 then
@@ -92,7 +93,7 @@ partial def Advanced_simd_permute_cls.trn2.rand : IO (Option (BitVec 32)) := do
     pure (some (inst.toBitVec32))
 
 /-- Generate random instructions of Advanced_simd_permute class. -/
-def Advanced_simd_permute_cls.rand : List (IO (Option (BitVec 32))) :=
+def Advanced_simd_permute_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Advanced_simd_permute_cls.trn1.rand,
     Advanced_simd_permute_cls.trn2.rand ]
 

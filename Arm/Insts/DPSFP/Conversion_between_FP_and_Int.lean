@@ -8,6 +8,7 @@ Author(s): Yan Peng
 import Arm.Decode
 import Arm.Insts.Common
 import Arm.BitVec
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -84,7 +85,7 @@ def exec_conversion_between_FP_and_Int
 
 ----------------------------------------------------------------------
 
-partial def Conversion_between_FP_and_Int_cls.fmov_general.rand : IO (Option (BitVec 32)) := do
+partial def Conversion_between_FP_and_Int_cls.fmov_general.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let ftype := ← BitVec.rand 2
   let rmode := ← (0b0#1 ++ ·) <$> BitVec.rand 1
   let opcode := ← (0b11#2++ ·) <$> BitVec.rand 1
@@ -120,7 +121,7 @@ partial def Conversion_between_FP_and_Int_cls.fmov_general.rand : IO (Option (Bi
     pure (inst.toBitVec32)
 
 /-- Generate random instructions of Conversion_between_FP_and_Int class. -/
-def Conversion_between_FP_and_Int_cls.rand : List (IO (Option (BitVec 32))) :=
+def Conversion_between_FP_and_Int_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Conversion_between_FP_and_Int_cls.fmov_general.rand ]
 
 end DPSFP

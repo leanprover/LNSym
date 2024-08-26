@@ -7,6 +7,7 @@ Author(s): Yan Peng
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -94,7 +95,7 @@ def exec_advanced_simd_shift_by_immediate
 ----------------------------------------------------------------------
 
 partial def Advanced_simd_shift_by_immediate_cls.shr_all.rand
-  (opcode : BitVec 5) : IO (Option (BitVec 32)) := do
+  (opcode : BitVec 5) : Cosim.CosimM (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let immh := ← BitVec.rand 4
   if immh = 0b0000#4 || (lsb immh 3) ++ Q == 0b10#2 then
@@ -112,7 +113,7 @@ partial def Advanced_simd_shift_by_immediate_cls.shr_all.rand
     pure (some inst.toBitVec32)
 
 partial def Advanced_simd_shift_by_immediate_cls.shl.rand
-  : IO (Option (BitVec 32)) := do
+  : Cosim.CosimM (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let immh := ← BitVec.rand 4
   if immh == 0b0000#4 || (lsb immh 3) ++ Q == 0b10#2 then
@@ -130,7 +131,7 @@ partial def Advanced_simd_shift_by_immediate_cls.shl.rand
     pure (some inst.toBitVec32)
 
 /-- Generate random instructions of Advanced_simd_shift_by_immediate_cls class. -/
-def Advanced_simd_shift_by_immediate_cls.rand : List (IO (Option (BitVec 32))) :=
+def Advanced_simd_shift_by_immediate_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
 [ Advanced_simd_shift_by_immediate_cls.shl.rand,               -- SHL
   Advanced_simd_shift_by_immediate_cls.shr_all.rand 0b00000#5, -- SSHR, USHR
   Advanced_simd_shift_by_immediate_cls.shr_all.rand 0b00010#5, -- SSRA, USRA

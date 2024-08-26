@@ -8,6 +8,7 @@ Author(s): Yan Peng
 import Arm.Decode
 import Arm.Insts.Common
 import Arm.BitVec
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -138,7 +139,7 @@ def exec_advanced_simd_copy
 
 ----------------------------------------------------------------------
 
-partial def Advanced_simd_copy_cls.dup_element.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_copy_cls.dup_element.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let imm5 := ← BitVec.rand 5
   let size := lowest_set_bit imm5
@@ -155,7 +156,7 @@ partial def Advanced_simd_copy_cls.dup_element.rand : IO (Option (BitVec 32)) :=
       }
     pure (inst.toBitVec32)
 
-partial def Advanced_simd_copy_cls.dup_general.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_copy_cls.dup_general.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let imm5 := ← BitVec.rand 5
   let size := lowest_set_bit imm5
@@ -173,7 +174,7 @@ partial def Advanced_simd_copy_cls.dup_general.rand : IO (Option (BitVec 32)) :=
       }
     pure (inst.toBitVec32)
 
-partial def Advanced_simd_copy_cls.ins_element.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_copy_cls.ins_element.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let imm5 := ← BitVec.rand 5
   let size := lowest_set_bit imm5
   if size > 3 then
@@ -189,7 +190,7 @@ partial def Advanced_simd_copy_cls.ins_element.rand : IO (Option (BitVec 32)) :=
       }
     pure (inst.toBitVec32)
 
-partial def Advanced_simd_copy_cls.ins_general.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_copy_cls.ins_general.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let imm5 := ← BitVec.rand 5
   let size := lowest_set_bit imm5
   if size > 3 then
@@ -206,7 +207,7 @@ partial def Advanced_simd_copy_cls.ins_general.rand : IO (Option (BitVec 32)) :=
       }
     pure (inst.toBitVec32)
 
-partial def Advanced_simd_copy_cls.smov.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_copy_cls.smov.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let imm5 := ← BitVec.rand 5
   let size := lowest_set_bit imm5
@@ -226,7 +227,7 @@ partial def Advanced_simd_copy_cls.smov.rand : IO (Option (BitVec 32)) := do
       }
     pure (inst.toBitVec32)
 
-partial def Advanced_simd_copy_cls.umov.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_copy_cls.umov.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let imm5 := ← BitVec.rand 5
   let size := lowest_set_bit imm5
@@ -247,7 +248,7 @@ partial def Advanced_simd_copy_cls.umov.rand : IO (Option (BitVec 32)) := do
     pure (inst.toBitVec32)
 
 /-- Generate random instructions of Advanced_simd_copy class. -/
-def Advanced_simd_copy_cls.rand : List (IO (Option (BitVec 32))) :=
+def Advanced_simd_copy_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
 [   Advanced_simd_copy_cls.dup_element.rand,
     Advanced_simd_copy_cls.dup_general.rand,
     Advanced_simd_copy_cls.ins_element.rand,

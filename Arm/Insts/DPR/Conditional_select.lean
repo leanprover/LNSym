@@ -9,6 +9,7 @@ import Arm.Decode
 import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
+import Arm.Insts.CosimM
 
 namespace DPR
 
@@ -39,7 +40,7 @@ def exec_conditional_select (inst : Conditional_select_cls) (s : ArmState) : Arm
       s
 
 /-- Generate random instructions of the DPR.Conditional_select class. -/
-def Conditional_select_cls.rand : IO (Option (BitVec 32)) := do
+def Conditional_select_cls.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Conditional_select_cls) :=
     { sf    := ← BitVec.rand 1,
       op    := ← pure 0#1,
