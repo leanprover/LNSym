@@ -735,7 +735,7 @@ theorem read_mem_bytes_w_of_read_mem_eq
     (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
     (fld val n₁ addr₁) :
     read_mem_bytes n₁ addr₁ (w fld val s₁)
-    = read_mem_bytes n₁ addr₁ (w fld val s₂) := by
+    = read_mem_bytes n₁ addr₁ s₂ := by
   simp only [read_mem_bytes_of_w, h]
 
 @[state_simp_rules]
