@@ -13,7 +13,8 @@ import Proofs.Experiments.Summary1
 import Proofs.Experiments.MemoryAliasing
 import Proofs.Experiments.SHA512MemoryAliasing
 import Proofs.Experiments.Max
-import Proofs.Experiments.Abs
-import Proofs.Experiments.AbsVCG
+import Proofs.Experiments.Abs.Abs
+import Proofs.Experiments.Abs.AbsVCG
+import Proofs.Experiments.Abs.AbsVCGTandem
 import Proofs.Experiments.AddLoop
 import Proofs.Experiments.MemCpyVCG
