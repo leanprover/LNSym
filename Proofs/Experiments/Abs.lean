@@ -11,6 +11,8 @@ import Tactics.Sym
 
 namespace Abs
 
+open AxEffects.ExplodeSteps -- get the `explode_steps` tactic
+
 def program : Program :=
   def_program
    [(0x4005d0#64, 0x2a0003e1#32), --  mov w1, w0
@@ -37,11 +39,11 @@ theorem correct
   simp (config := {ground := true}) at h_run
 
   sym_n 5
-  effects_from_eq h_step_1
-  effects_from_eq h_step_2
-  effects_from_eq h_step_3
-  effects_from_eq h_step_4
-  effects_from_eq h_step_5
+  explode_step h_step_1
+  explode_step h_step_2
+  explode_step h_step_3
+  explode_step h_step_4
+  explode_step h_step_5
   sorry
 
 /-- info: 'Abs.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/

@@ -392,14 +392,18 @@ where
         let ⟨_, goal⟩ ← goal.note h v t?
         return goal
 
+namespace ExplodeSteps
+
 -- We make `explode_step` scoped, because this is not the only
 -- implementation of this tactic
 /-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
 add hypotheses that axiomatically describe the effects in terms of
 reads from `s{i+1}` -/
-scoped elab "explode_step " h_step:term : tactic => do
+scoped elab "explode_step " h_step:term : tactic => withMainContext do
   let h_step ← elabTerm h_step none
   let eff ← AxEffects.fromEq h_step
   eff.addHypothesesToLContext
+
+end ExplodeSteps
 
 end Tactic
