@@ -76,16 +76,12 @@ def initial (state : Expr) : AxEffects where
       mkApp2 (.const ``Eq.refl [1]) (.const ``ArmState []) rf
   memoryEffect      := state
   memoryEffectProof :=
-    let n8 (n : Expr) : Expr :=
-      let N     := mkConst ``Nat
-      let inst  := mkApp2 (.const ``instHMul [1]) N (.const ``instMulNat [])
-      mkAppN (.const ``HMul.hMul [1]) #[N, N, N, inst, n, toExpr 8]
-
     mkLambda `n .default (mkConst ``Nat) <|
       let bv64 := mkApp (mkConst ``BitVec) (toExpr 64)
       mkLambda `addr .default bv64 <|
-        let rm := mkApp3 (mkConst ``read_mem_bytes) (.bvar 1) (.bvar 0) state
-        mkApp2 (.const ``Eq.refl [1]) (n8 <| .bvar 1) rm
+        mkApp2 (.const ``Eq.refl [1])
+          (mkApp (mkConst ``BitVec) <| mkNatMul (.bvar 1) (toExpr 8))
+          (mkApp3 (mkConst ``read_mem_bytes) (.bvar 1) (.bvar 0) state)
   programProof      :=
     mkAppN (.const ``Eq.refl [1]) #[
       mkConst ``Program,
@@ -137,6 +133,27 @@ Fails if the rewrite produces any subgoals.
 private def rewriteType (e eq : Expr) : MetaM Expr := do
   mkEqMP (← rewrite (← inferType e) eq) e
 
+/-- Given a `field` such that `fields ∉ eff.fields`, return a proof of
+  `r field <currentState> = r field <initialState>`
+by constructing an application of `eff.nonEffectProof` -/
+partial def mkAppNonEffect (eff : AxEffects) (field : Expr) : MetaM Expr := do
+  let msg := m!"constructing application of non-effects proof"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    trace[Tactic.sym] "nonEffectProof: {eff.nonEffectProof}"
+
+    let nonEffectProof := mkApp eff.nonEffectProof field
+    let typeOfNonEffects ← inferType nonEffectProof
+    forallTelescope typeOfNonEffects <| fun fvars _ => do
+      trace[Tactic.sym] "hypotheses of nonEffectProof: {fvars}"
+      let lctx ← getLCtx
+      let pre ← fvars.mapM fun expr => do
+        let ty := lctx.get! expr.fvarId! |>.type
+        mkDecideProof ty
+
+      let nonEffectProof := mkAppN nonEffectProof pre
+      trace[Tactic.sym] "constructed: {nonEffectProof}"
+      return nonEffectProof
+
 /-- Get the value for a field, if one is stored in `eff.fields`,
 or assemble an instantiation of the memory non-effects proof -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
@@ -146,17 +163,13 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
       trace[Tactic.sym] "{eff}"
 
     if let some val := eff.fields.get? fld then
+      trace[Tactic.sym] "returning stored value {val}"
       return val
     else
+      trace[Tactic.sym] "found no stored value"
       let value := mkApp2 (mkConst ``r) (toExpr fld) eff.initialState
-
-      lambdaTelescope eff.nonEffectProof <| fun fvars _ => do
-        let lctx ← getLCtx
-        let pre ← fvars.mapM fun expr => do
-          let ty := lctx.get! expr.fvarId! |>.type
-          mkDecideProof ty
-
-        pure {value, proof := mkAppN eff.nonEffectProof pre}
+      let proof  ← eff.mkAppNonEffect (toExpr fld)
+      pure { value, proof }
 
 /-! ## Update a Reflected State -/
 
@@ -385,33 +398,36 @@ Note: throws an error when `initialState = currentState` *and*
 the field already has a value stored, as the rewrite might produce expressions
 of unexpected types. -/
 def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
-  let fieldE ← mkFreshExprMVar (mkConst ``StateField)
-  let value ← mkFreshExprMVar none
-  assertHasType eq (←mkEq (mkApp2 (mkConst ``r) fieldE eff.initialState) value)
+  let msg := m!"withField {eq}"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    let fieldE ← mkFreshExprMVar (mkConst ``StateField)
+    let value ← mkFreshExprMVar none
+    let expectedType ← mkEq (mkApp2 (mkConst ``r) fieldE eff.initialState) value
+    assertHasType eq expectedType
 
-  let field ← reflectStateField (← instantiateMVars fieldE)
-  let fieldEff ← eff.getField field
+    let field ← reflectStateField (← instantiateMVars fieldE)
+    let fieldEff ← eff.getField field
 
-  if field ∉ eff.fields then
-    let proof ← mkEqTrans fieldEff.proof eq
-    let fields := eff.fields.insert field { value, proof }
-    return { eff with fields }
-  else
-    if eff.currentState == eff.initialState then
-      throwError "error: {field} already has an effect associated with it, \
-        and the current state
-          {eff.currentState}
-        is equal to the initial state
-          {eff.initialState}"
+    if field ∉ eff.fields then
+      let proof ← mkEqTrans fieldEff.proof eq
+      let fields := eff.fields.insert field { value, proof }
+      return { eff with fields }
+    else
+      if eff.currentState == eff.initialState then
+        throwError "error: {field} already has an effect associated with it, \
+          and the current state
+            {eff.currentState}
+          is equal to the initial state
+            {eff.initialState}"
 
-    let valEq ← try rewrite fieldEff.value eq
-      catch _ => return eff
+      let valEq ← try rewrite fieldEff.value eq
+        catch _ => return eff
 
-    let_expr Eq _ _ value := ← inferType valEq
-      | throwError "internal error: expected an equality, found {valEq}"
-    let proof ← mkEqMP valEq fieldEff.proof
-    let fields := eff.fields.insert field { value, proof }
-    return { eff with fields }
+      let_expr Eq _ _ value := ← inferType valEq
+        | throwError "internal error: expected an equality, found {valEq}"
+      let proof ← mkEqMP valEq fieldEff.proof
+      let fields := eff.fields.insert field { value, proof }
+      return { eff with fields }
 
 
 

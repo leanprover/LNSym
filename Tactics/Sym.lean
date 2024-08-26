@@ -180,20 +180,19 @@ def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
           replaceMainGoal [newGoal]
           return newHyp
 
-
 /-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
 add hypotheses that axiomatically describe the effects in terms of
 reads from `s{i+1}` -/
 def explodeStep (c : SymContext) (hStep : Expr) :
     TacticM Unit :=
   withMainContext do
-    let eff ← AxEffects.fromEq hStep
+    let mut eff ← AxEffects.fromEq hStep
 
     let hProgram ← SymContext.findFromUserName c.h_program
-    let eff ← eff.withProgramEq hProgram.toExpr
+    eff ← eff.withProgramEq hProgram.toExpr
 
-    -- let hErr ← SymContext.findFromUserName c.h_err
-    -- let eff ← eff.withField hErr.toExpr
+    let hErr ← SymContext.findFromUserName c.h_err
+    eff ← eff.withField hErr.toExpr
 
     eff.addHypothesesToLContext s!"h_{c.next_state}_"
 
