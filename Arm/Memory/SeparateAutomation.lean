@@ -98,7 +98,8 @@ namespace SeparateAutomation
 structure SimpMemConfig where
   /-- number of times rewrites must be performed. -/
   rewriteFuel : Nat := 1000
-
+  /-- whether an error should be thrown if the tactic makes no progress. -/
+  failIfUnchanged : Bool := true
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
 structure Context where
@@ -306,6 +307,11 @@ def consumeRewriteFuel : SimpMemM Unit :=
 
 def outofRewriteFuel? : SimpMemM Bool := do
   return (← get).rewriteFuel == 0
+
+def getConfig : SimpMemM SimpMemConfig := do
+  let ctx ← read
+  return ctx.cfg
+
 /-
 Introduce a new definition into the local context,
 and return the FVarId of the new definition in the goal.
@@ -674,16 +680,17 @@ mutual
 /--
 Pattern match for memory patterns, and simplify them.
 Close memory side conditions with `simplifyGoal`.
+Returns if progress was made.
 -/
-partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM Unit := do
+partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM Bool := do
   consumeRewriteFuel
   if ← outofRewriteFuel? then
     trace[simp_mem.info] "out of fuel for rewriting, stopping."
-    return ()
+    return false
 
   if e.isSort then
     trace[simp_mem.info] "skipping sort '{e}'."
-    return ()
+    return false
 
   if let .some er := ReadBytesExpr.ofExpr? e then
     if let .some ew := WriteBytesExpr.ofExpr? er.mem then
@@ -697,99 +704,130 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
       if let .some separateProof ← proveWithOmega? separate hyps then do
         trace[simp_mem.info] "{checkEmoji} {separate}"
         rewriteReadOfSeparatedWrite er ew separateProof
-        return ()
+        return true
       else if let .some subsetProof ← proveWithOmega? subset hyps then do
         trace[simp_mem.info] "{checkEmoji} {subset}"
         rewriteReadOfSubsetWrite er ew subsetProof
+        return true
       else
         trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
-        return ()
+        return false
     else
       -- read
       trace[simp_mem.info] "{checkEmoji} Found read {er}."
       -- TODO: we don't need a separate `subset` branch for the writes: instead, for the write,
       -- we can add the theorem that `(write region).read = write val`.
       -- Then this generic theory will take care of it.
-      withTraceNode m!"Searching for overlapping read {er.span}." do
+      let changed? ← withTraceNode m!"Searching for overlapping read {er.span}." do
+        let mut changed? := false
         for hyp in hyps do
           if let Hypothesis.read_eq hReadEq := hyp then do
-            withTraceNode m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? " do
-            -- the read we are analyzing should be a subset of the hypothesis
-            let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
-            if let some hSubsetProof ← proveWithOmega? subset hyps then
-              trace[simp_mem.info] "{checkEmoji}  ... ⊆ {hReadEq.read.span}"
-              rewriteReadOfSubsetRead er hReadEq hSubsetProof
-              return ()
-            else
-              trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
+            changed? := changed? ||
+              (← withTraceNode m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? " do
+                -- the read we are analyzing should be a subset of the hypothesis
+                let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
+                if let some hSubsetProof ← proveWithOmega? subset hyps then
+                  trace[simp_mem.info] "{checkEmoji}  ... ⊆ {hReadEq.read.span}"
+                  rewriteReadOfSubsetRead er hReadEq hSubsetProof
+                  pure true
+                else
+                  trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
+                  pure false)
+        pure changed?
+      return changed?
   else
     if e.isForall then
       Lean.Meta.forallTelescope e fun xs b => do
+        let mut changed? := false
         for x in xs do
-          SimpMemM.simplifyExpr x hyps
+          changed? := changed? || (← SimpMemM.simplifyExpr x hyps)
           -- we may have a hypothesis like
           -- ∀ (x : read_mem (read_mem_bytes ...) ... = out).
           -- we want to simplify the *type* of x.
-          SimpMemM.simplifyExpr (← inferType x) hyps
-        SimpMemM.simplifyExpr b hyps
+          changed? := changed? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
+        changed? := changed? || (← SimpMemM.simplifyExpr b hyps)
+        return changed?
     else if e.isLambda then
       Lean.Meta.lambdaTelescope e fun xs b => do
+        let mut changed? := false
         for x in xs do
-          SimpMemM.simplifyExpr x hyps
-          SimpMemM.simplifyExpr (← inferType x) hyps
-        SimpMemM.simplifyExpr b hyps
+          changed? := changed? || (← SimpMemM.simplifyExpr x hyps)
+          changed? := changed? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
+        changed? := changed? || (← SimpMemM.simplifyExpr b hyps)
+        return changed?
     else
       -- check if we have expressions.
       match e with
       | .app f x =>
-        SimpMemM.simplifyExpr f hyps
-        SimpMemM.simplifyExpr x hyps
-      | _ => return ()
+        let mut changed? := false
+        changed? := changed? || (← SimpMemM.simplifyExpr f hyps)
+        changed? := changed? || (← SimpMemM.simplifyExpr x hyps)
+        return changed?
+      | _ => return false
+
 
 /--
 simplify the goal state, closing legality, subset, and separation goals,
 and simplifying all other expressions.
 -/
-partial def SimpMemM.simplifyGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM Unit := do
+partial def SimpMemM.simplifyGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM Bool := do
   SimpMemM.withMainContext do
     trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
     let gt ← g.getType
-    if let .some e := MemLegalProp.ofExpr? gt then do
+    if let .some e := MemLegalProp.ofExpr? gt then
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-      if let .some proof ← proveWithOmega? e hyps then do
-        (← getMainGoal).assign proof.h
-    if let .some e := MemSubsetProp.ofExpr? gt then do
-      withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-      if let .some proof ←  proveWithOmega? e hyps then do
-        (← getMainGoal).assign proof.h
-    if let .some e := MemSeparateProp.ofExpr? gt then do
-      withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-      if let .some proof ←  proveWithOmega? e hyps then do
-        (← getMainGoal).assign proof.h
-    withTraceNode m!"Simplifying goal." do
-      SimpMemM.simplifyExpr (← whnf gt) hyps
+        if let .some proof ← proveWithOmega? e hyps then
+          (← getMainGoal).assign proof.h
+      return true
 
+    if let .some e := MemSubsetProp.ofExpr? gt then
+      withTraceNode m!"Matched on ⊢ {e}. Proving..." do
+        if let .some proof ←  proveWithOmega? e hyps then
+          (← getMainGoal).assign proof.h
+      return true
+    if let .some e := MemSeparateProp.ofExpr? gt then
+      withTraceNode m!"Matched on ⊢ {e}. Proving..." do
+        if let .some proof ←  proveWithOmega? e hyps then
+          (← getMainGoal).assign proof.h
+      return true
+    else
+      let changed? ← withTraceNode m!"Simplifying goal." do
+          SimpMemM.simplifyExpr (← whnf gt) hyps
+      return changed?
 end
 
 /--
 The core simplification loop.
 We look for appropriate hypotheses, and simplify (often closing) the main goal using them.
 -/
-def SimpMemM.simplifyLoop : SimpMemM Unit := do
-    (← getMainGoal).withContext do
+partial def SimpMemM.simplifyLoop : SimpMemM Unit := do
+  (← getMainGoal).withContext do
+    let mut madeProgress? := false
+    while true do
       let hyps := (← getLocalHyps)
       let foundHyps ← withTraceNode m!"Searching for Hypotheses" do
         let mut foundHyps : Array Hypothesis := #[]
         for h in hyps do
           foundHyps ← hypothesisOfExpr h foundHyps
         pure foundHyps
+
       withTraceNode m!"Summary: Found {foundHyps.size} hypotheses" do
         for (i, h) in foundHyps.toList.enum do
           trace[simp_mem.info] m!"{i+1}) {h}"
 
-      withTraceNode m!"Performing Rewrite At Main Goal" do
-        SimpMemM.simplifyGoal (← getMainGoal) foundHyps
+      if (← getUnsolvedGoals).isEmpty then
+        trace[simp_mem.info] "{checkEmoji} All goals solved."
+        break
 
+      let changed? ← withTraceNode m!"Performing Rewrite At Main Goal" do
+        SimpMemM.simplifyGoal (← getMainGoal) foundHyps
+      madeProgress? := madeProgress? || changed?
+
+      if changed?
+      then continue
+        else if !madeProgress? && (← getConfig).failIfUnchanged then
+          throwError "{crossEmoji} simp_mem failed to make progress."
+        break
 end Simplify
 
 /--
