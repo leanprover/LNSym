@@ -1,7 +1,7 @@
 import Proofs.Experiments.Max.MaxProgram
 
 
-
+set_option trace.Tactic.sym true in
 theorem correct
   {s0 sf : ArmState}
   (h_s0_pc : read_pc s0 = 0x894#64)
@@ -14,22 +14,24 @@ theorem correct
   -- simp (config := {ground := true}) only at h_s0_pc
   -- ^^ Still needed, because `gcm_gmult_v8_program.min` is somehow
   --    unable to be reflected
-  sym_n 1
-  sym_n 1
-  simp [h_s1_sp_aligned] at h_step_2
-  sym_n 1
-  simp [h_s2_sp_aligned] at h_step_3
-  sym_n 1
-  simp [h_s3_sp_aligned] at h_step_4
-  sym_n 1
-  simp [h_s4_sp_aligned] at h_step_5
-  sym_n 1
-  simp [h_s5_sp_aligned] at h_step_6
-  by_cases hflag : r (StateField.FLAG PFlag.Z) s6 = 0#1
-  · -- TODO: how do I proceed here?
-    sorry
-  · -- TODO: how do I proceed here?
-    sorry
+  sym_n 6
+  -- by_cases hflag : r (StateField.FLAG PFlag.Z) s6 = 0#1
+  · init_next_step h_run stepi_s7 s7
+    have h_step_7 :=  Eq.trans (Eq.symm stepi_s7) (Max.program.stepi_eq_0x8ac h_s6_program h_s6_pc h_s6_err)
+    clear stepi_s7
+    split at h_step_7
+    case isTrue h =>
+      intro_fetch_decode_lemmas h_step_7 h_s6_program "h_s6"
+      -- sym_n 5
+      sym_n 5
+      sorry
+    case isFalse h =>
+      intro_fetch_decode_lemmas h_step_7 h_s6_program "h_s6"
+      sym_n 3
+      init_next_step h_run stepi_s11 s11
+      sorry
+
+#eval (2220#64).toHex
 
 /-- info: 'Max.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms correct
