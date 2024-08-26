@@ -246,3 +246,12 @@ def findProgramHyp (state : Expr) : MetaM (LocalDecl × Name) := do
         throwError "Expected a constant, found:\n\t{program}"
 
   return ⟨h_program, program⟩
+
+/-! ## Expr Builders -/
+
+/-- Return the expression for `ArmState` -/
+def mkArmState : Expr := mkConst ``ArmState
+
+/-- Return `x = y`, given expressions `x` and `y` of type `ArmState` -/
+def mkEqArmState (x y : Expr) : Expr :=
+  mkApp3 (.const ``Eq [1]) mkArmState x y

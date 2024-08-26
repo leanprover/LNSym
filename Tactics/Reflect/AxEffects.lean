@@ -334,12 +334,9 @@ so that `?s` is the public-facing current state -/
 def fromEq (eq : Expr) : MetaM AxEffects :=
   let msg := m!"Building effects with equality: {eq}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-    let A := mkConst ``ArmState
-    let s ← mkFreshExprMVar A
-    let rhs ← mkFreshExprMVar A
-
-    let expectedType := mkApp3 (.const ``Eq [1]) A s rhs
-    assertHasType eq expectedType
+    let s ← mkFreshExprMVar mkArmState
+    let rhs ← mkFreshExprMVar mkArmState
+    assertHasType eq <| mkEqArmState s rhs
 
     let eff ← fromExpr (← instantiateMVars rhs)
     let eff := { eff with currentStateEq := eq }
