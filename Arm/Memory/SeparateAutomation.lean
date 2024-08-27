@@ -213,9 +213,10 @@ get the expression corresponding `[x1, ..., xn]`. -/
 def MemPairwiseSeparateProp.getMemSpanListExpr
     (e : MemPairwiseSeparateProp) : Expr := Id.run do
   let memoryRegionTy : Expr := mkConst ``Memory.Region
-  let mut out := mkApp (mkConst  ``List.nil) memoryRegionTy
-  for x in e.xs do
-    out := mkAppN (mkConst ``List.cons) #[memoryRegionTy, x.toExpr, out]
+  let mut out := mkApp (mkConst  ``List.nil [0]) memoryRegionTy
+  for i in [0:e.xs.size] do
+    let x := e.xs[e.xs.size - i - 1]!
+    out := mkAppN (mkConst ``List.cons [0]) #[memoryRegionTy, x.toExpr, out]
   return out
 
 /-- Get the expression `Memory.Region.pairwiseSeparate [x1, ..., xn]` -/
