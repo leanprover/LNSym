@@ -718,11 +718,11 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
       -- TODO: we don't need a separate `subset` branch for the writes: instead, for the write,
       -- we can add the theorem that `(write region).read = write val`.
       -- Then this generic theory will take care of it.
-      let changed? ← withTraceNode m!"Searching for overlapping read {er.span}." do
-        let mut changed? := false
+      let changedInCurrentIter? ← withTraceNode m!"Searching for overlapping read {er.span}." do
+        let mut changedInCurrentIter? := false
         for hyp in hyps do
           if let Hypothesis.read_eq hReadEq := hyp then do
-            changed? := changed? ||
+            changedInCurrentIter? := changedInCurrentIter? ||
               (← withTraceNode m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? " do
                 -- the read we are analyzing should be a subset of the hypothesis
                 let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
@@ -733,36 +733,36 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
                 else
                   trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
                   pure false)
-        pure changed?
-      return changed?
+        pure changedInCurrentIter?
+      return changedInCurrentIter?
   else
     if e.isForall then
       Lean.Meta.forallTelescope e fun xs b => do
-        let mut changed? := false
+        let mut changedInCurrentIter? := false
         for x in xs do
-          changed? := changed? || (← SimpMemM.simplifyExpr x hyps)
+          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
           -- we may have a hypothesis like
           -- ∀ (x : read_mem (read_mem_bytes ...) ... = out).
           -- we want to simplify the *type* of x.
-          changed? := changed? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
-        changed? := changed? || (← SimpMemM.simplifyExpr b hyps)
-        return changed?
+          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
+        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
+        return changedInCurrentIter?
     else if e.isLambda then
       Lean.Meta.lambdaTelescope e fun xs b => do
-        let mut changed? := false
+        let mut changedInCurrentIter? := false
         for x in xs do
-          changed? := changed? || (← SimpMemM.simplifyExpr x hyps)
-          changed? := changed? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
-        changed? := changed? || (← SimpMemM.simplifyExpr b hyps)
-        return changed?
+          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
+          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
+        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
+        return changedInCurrentIter?
     else
       -- check if we have expressions.
       match e with
       | .app f x =>
-        let mut changed? := false
-        changed? := changed? || (← SimpMemM.simplifyExpr f hyps)
-        changed? := changed? || (← SimpMemM.simplifyExpr x hyps)
-        return changed?
+        let mut changedInCurrentIter? := false
+        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr f hyps)
+        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
+        return changedInCurrentIter?
       | _ => return false
 
 
@@ -791,9 +791,9 @@ partial def SimpMemM.simplifyGoal (g : MVarId) (hyps : Array Hypothesis) : SimpM
           (← getMainGoal).assign proof.h
       return true
     else
-      let changed? ← withTraceNode m!"Simplifying goal." do
+      let changedInCurrentIter? ← withTraceNode m!"Simplifying goal." do
           SimpMemM.simplifyExpr (← whnf gt) hyps
-      return changed?
+      return changedInCurrentIter?
 end
 
 /--
@@ -802,7 +802,7 @@ We look for appropriate hypotheses, and simplify (often closing) the main goal u
 -/
 partial def SimpMemM.simplifyLoop : SimpMemM Unit := do
   (← getMainGoal).withContext do
-    let mut madeProgress? := false
+    let mut madeAnyProgress? := false -- whether we ever make any progress. Used to throw `failIfUnchanged` error.
     while true do
       let hyps := (← getLocalHyps)
       let foundHyps ← withTraceNode m!"Searching for Hypotheses" do
@@ -819,14 +819,14 @@ partial def SimpMemM.simplifyLoop : SimpMemM Unit := do
         trace[simp_mem.info] "{checkEmoji} All goals solved."
         break
 
-      let changed? ← withTraceNode m!"Performing Rewrite At Main Goal" do
+      let changedInCurrentIter? ← withTraceNode m!"Performing Rewrite At Main Goal" do
         SimpMemM.simplifyGoal (← getMainGoal) foundHyps
-      madeProgress? := madeProgress? || changed?
+      madeAnyProgress? := madeAnyProgress? || changedInCurrentIter?
 
-      if changed?
-      then continue
-        else if !madeProgress? && (← getConfig).failIfUnchanged then
-          throwError "{crossEmoji} simp_mem failed to make progress."
+      if changedInCurrentIter?
+      then continue -- we've changed state, so let's continue
+      else if !madeAnyProgress? && (← getConfig).failIfUnchanged then
+        throwError "{crossEmoji} simp_mem failed to make progress."
         break
 end Simplify
 
