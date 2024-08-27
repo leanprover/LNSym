@@ -365,3 +365,7 @@ theorem mem_separate_move_of_lt_of_le  (h : mem_separate' a an b bn)
   (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a').toNat) b bn := by simp_mem
 
 end MathProperties
+
+
+section PairwiseSeparate
+end PairwiseSeparate

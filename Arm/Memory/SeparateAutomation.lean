@@ -129,6 +129,9 @@ deriving Inhabited
 def MemSpanExpr.toExpr (span : MemSpanExpr) : Expr :=
   mkAppN (Expr.const ``Memory.Region.mk []) #[span.base, span.n]
 
+def MemSpanExpr.toTypeExpr  : Expr :=
+    (Expr.const ``Memory.Region [])
+
 instance : ToMessageData MemSpanExpr where
   toMessageData span := m! "[{span.base}..{span.n})"
 
@@ -203,6 +206,9 @@ structure MemPairwiseSeparateProp where
 
 /-- info: List.cons.{u} {α : Type u} (head : α) (tail : List α) : List α -/
 #guard_msgs in #check List.cons
+
+def MemPairwiseSeparateProp.getMemSpanListExpr (h : MemPairwiseSeparateProp) : MetaM Expr :=
+  mkListLit (type := mkConst ``Memory.Region) <| (h.xs.map MemSpanExpr.toExpr).toList
 
 instance : ToExpr MemPairwiseSeparateProp where
   toTypeExpr := mkConst ``Memory.Region.pairwiseSeparate
@@ -569,8 +575,13 @@ info: Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem {mems : List Memo
 /-- info: List.get?.{u} {α : Type u} (as : List α) (i : Nat) : Option α -/
 #guard_msgs in #check List.get?
 
+def mkListGetEqSomeTy (mems : MemPairwiseSeparateProp) (i : Nat) (a : MemSpanExpr) : SimpMemM Expr := do
+  let lhs ← mkAppOptM ``List.get? #[.none, ← mems.getMemSpanListExpr, mkNatLit i]
+  let rhs ← mkSome MemSpanExpr.toTypeExpr a.toExpr
+  mkEq lhs rhs
+
 def MemPairwiseSeparateProof.mem_separate'_of_pairwiseSeparate_of_mem_of_mem
-    (self : MemPairwiseSeparateProof e) (i j : Nat) (a b : MemSpanExpr)  :
+    (self : MemPairwiseSeparateProof mems) (i j : Nat) (a b : MemSpanExpr)  :
     SimpMemM <| MemSeparateProof ⟨a, b⟩ := do
   let iexpr := mkNatLit i
   let jexpr := mkNatLit j
@@ -578,16 +589,15 @@ def MemPairwiseSeparateProof.mem_separate'_of_pairwiseSeparate_of_mem_of_mem
     -- i ≠ j
   let hijTy := mkAppN (mkConst ``Ne [0]) #[(mkConst ``Nat), mkNatLit i, mkNatLit j]
   -- mems.get? i = some a
-  let haTy ← mkFreshExprMVar (type? := .none)
-  let hbTy ← mkFreshExprMVar (type? := .none)
+  let haTy ← (mkListGetEqSomeTy mems i a)
+  let hbTy ← (mkListGetEqSomeTy mems j a)
 
   let hijVal ← mkDecideProof hijTy
   let haVal ← mkDecideProof haTy
   let hbVal ← mkDecideProof hbTy
-  let a := e.xs[i]!
 
   let h := mkAppN (Expr.const ``Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem [])
-    #[toExpr e, self.h, iexpr, jexpr, hijVal, a.toExpr, b.toExpr, haVal, hbVal]
+    #[← mems.getMemSpanListExpr, self.h, iexpr, jexpr, hijVal, a.toExpr, b.toExpr, haVal, hbVal]
 
   return ⟨h⟩
 /--
