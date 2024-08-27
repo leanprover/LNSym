@@ -354,6 +354,14 @@ def consumeRewriteFuel : SimpMemM Unit :=
 
 def outofRewriteFuel? : SimpMemM Bool := do
   return (← get).rewriteFuel == 0
+
+/-- Create a trace note that folds `header` with `(NOTE: can be large)`,
+and prints `msg` under such a trace node.
+-/
+def SimpMemM.traceLargeMsg (header : MessageData) (msg : MessageData) : SimpMemM Unit :=
+    withTraceNode m!"{header} (NOTE: can be large)" do
+      trace[simp_mem.info] msg
+
 /-
 Introduce a new definition into the local context,
 and return the FVarId of the new definition in the goal.
@@ -466,7 +474,7 @@ partial def MemPairwiseSeparateProof.ofExpr? (e : Expr) : Option MemPairwiseSepa
       match_expr e with
       | List.cons _α ex exs =>
         match_expr ex with
-        | Prod.mk _ta a _tn n =>
+        | Prod.mk _ta _tb a n =>
           let x : MemSpanExpr := ⟨a, n⟩
           go exs (xs.push x)
         | _ => none
@@ -575,6 +583,7 @@ info: Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem {mems : List Memo
 /-- info: List.get?.{u} {α : Type u} (as : List α) (i : Nat) : Option α -/
 #guard_msgs in #check List.get?
 
+/-- Make the expression `mems.get? i = some a`. -/
 def mkListGetEqSomeTy (mems : MemPairwiseSeparateProp) (i : Nat) (a : MemSpanExpr) : SimpMemM Expr := do
   let lhs ← mkAppOptM ``List.get? #[.none, ← mems.getMemSpanListExpr, mkNatLit i]
   let rhs ← mkSome MemSpanExpr.toTypeExpr a.toExpr
@@ -587,17 +596,30 @@ def MemPairwiseSeparateProof.mem_separate'_of_pairwiseSeparate_of_mem_of_mem
   let jexpr := mkNatLit j
 
     -- i ≠ j
-  let hijTy := mkAppN (mkConst ``Ne [0]) #[(mkConst ``Nat), mkNatLit i, mkNatLit j]
+  let hijTy := mkAppN (mkConst ``Ne [1]) #[(mkConst ``Nat), mkNatLit i, mkNatLit j]
+  _ ← inferType hijTy
+
   -- mems.get? i = some a
   let haTy ← (mkListGetEqSomeTy mems i a)
-  let hbTy ← (mkListGetEqSomeTy mems j a)
+  let hbTy ← (mkListGetEqSomeTy mems j b)
+
+  _ ← inferType haTy
+  _ ← inferType hbTy
 
   let hijVal ← mkDecideProof hijTy
-  let haVal ← mkDecideProof haTy
-  let hbVal ← mkDecideProof hbTy
+  let haVal ← mkEqRefl haTy
+  let hbVal ← mkEqRefl hbTy
 
   let h := mkAppN (Expr.const ``Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem [])
-    #[← mems.getMemSpanListExpr, self.h, iexpr, jexpr, hijVal, a.toExpr, b.toExpr, haVal, hbVal]
+    #[← mems.getMemSpanListExpr,
+      self.h,
+      iexpr,
+      jexpr,
+      hijVal,
+      a.toExpr,
+      b.toExpr,
+      haVal,
+      hbVal]
 
   return ⟨h⟩
 /--
@@ -614,8 +636,10 @@ def MemPairwiseSeparateProof.addOmegaFacts (h : MemPairwiseSeparateProof e) (arg
     for j in [i+1:e.xs.size] do
       let a := e.xs[i]!
       let b := e.xs[j]!
-      let proof ← h.mem_separate'_of_pairwiseSeparate_of_mem_of_mem i j a b
-      args ← proof.addOmegaFacts args
+      args ← SimpMemM.withTraceNode m!"Exploiting ({i}, {j}) : {a} ⟂ {b}" do
+        let proof ← h.mem_separate'_of_pairwiseSeparate_of_mem_of_mem i j a b
+        SimpMemM.traceLargeMsg m!"added {← inferType proof.h}" m!"{proof.h}"
+        proof.addOmegaFacts args
   return args
 /--
 Given a hypothesis, add declarations that would be useful for omega-blasting
