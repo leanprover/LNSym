@@ -11,7 +11,7 @@ import Std.Data.HashMap
 
 open Lean Meta
 
-/-- A reflected ArmState field -/
+/-- A reflected `ArmState` field, see `AxEffects.fields` for more context -/
 structure AxEffects.FieldEffect where
   value : Expr
   /-- A proof that `r <field> <currentState> = <value>` -/
@@ -25,20 +25,24 @@ a sequence of `w` and `write_mem`s to some initial state
 into a set of hypotheses that relates reading fields from the final state
 to the initial state.
 
-It stores a hashmap from `StateField` to an expression, in terms of the fixed
-initial state, that describes the value of the given field *after* the
-writes.
-Additionally, each field carries a proof that it is indeed the right value
+`AxEffectx` contains a hashmap from `StateField` to an expression,
+in terms of the fixed initial state,
+that describes the value of the given field *after* the writes.
+Additionally, each field carries a proof that it is indeed the right value.
 
-Furthermore, we maintain a separate expression containing only the writes to
-memory. -/
+Furthermore, we maintain a few other invariants,
+see the docstrings on each field for more detail -/
 structure AxEffects where
   /-- The initial state -/
   initialState : Expr
-  /-- The current state, generally expressed in "exploded form".
-  That is, `currentState` is usually a sequence of `w`/`write_mem`s
-  to the initial state -/
+  /-- The current state, which may be expressed in either the "exploded form"
+  (a sequence of `w`/`write_mem` to the initial state), or as just a variable
+  which is (propositionally) equal to that exploded form -/
   currentState : Expr
+
+  /-- A map from each statefield to the corresponding `FieldEffect`.
+  If a field has no entry in this map, it has not been changed, and thus,
+  its value can be retrieved from the `nonEffectProof` -/
   fields : Std.HashMap StateField AxEffects.FieldEffect
   /-- An expression that contains the proof of:
     ```lean
@@ -49,7 +53,8 @@ structure AxEffects where
   -/
   nonEffectProof : Expr
   /-- An expression of a (potentially empty) sequence of `write_mem`s
-  to the initial state, which describes the effects on memory -/
+  to the initial state, which describes the effects on memory.
+  See `memoryEffectProof` for more detail -/
   memoryEffect : Expr
   /-- An expression that contains the proof of:
     ```lean
@@ -74,6 +79,9 @@ namespace AxEffects
 
 /-! ## Initial Reflected State -/
 
+/-- An initial `AxEffects` state which has no writes.
+That is, the given `state` is assigned to be both the initial and the current
+state -/
 def initial (state : Expr) : AxEffects where
   initialState      := state
   currentState      := state
