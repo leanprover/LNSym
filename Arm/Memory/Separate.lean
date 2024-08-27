@@ -571,9 +571,9 @@ abbrev Memory.Region := BitVec 64 × Nat
 
 def Memory.Region.mk (a : BitVec 64) (n : Nat) : Memory.Region := (a, n)
 
+/-- A hypothesis that memory regions `a` and `b` are separate. -/
 def Memory.Region.separate (a b : Memory.Region) : Prop :=
   mem_separate' a.fst a.snd b.fst b.snd
-
 
 /-- A list of memory regions, that are known to be pairwise disjoint. -/
 def Memory.Region.pairwiseSeparate (mems : List Memory.Region) : Prop :=
