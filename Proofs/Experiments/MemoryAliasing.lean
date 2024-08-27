@@ -15,17 +15,20 @@ set_option trace.simp_mem.info true
 
 namespace MemLegal
 /-- Show reflexivity of legality. -/
-theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
+theorem legal_1 (l : Memory.Region.mk a 16 |>.legal) : Memory.Region.mk a 16 |>.legal := by
   simp_mem
 
-/-- info: 'MemLegal.legal_1' depends on axioms: [propext, Quot.sound] -/
+/-- info: 'MemLegal.legal_1' depends on axioms: [sorryAx] -/
 #guard_msgs in #print axioms legal_1
 
 end MemLegal
 
 namespace MemSubset
+open Memory
+
 /-- Reflexivity. -/
-theorem subset_1 (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
+theorem subset_1 (l : (⟨a, 16⟩ : Memory.Region) ⊆ ⟨b, 16⟩) :
+    (⟨a, 16⟩ : Memory.Region) ⊆ ⟨b, 16⟩ := by
   simp_mem
 
 /-- info: 'MemSubset.subset_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -48,9 +51,10 @@ theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
 end MemSubset
 
 namespace MemSeparate
+open Memory
 
 /-- Reflexivity. -/
-theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
+theorem separate_1 (l : ⟨a, 16⟩ ⟂ ⟨b, 16⟩) : ⟨a, 16⟩ ⟂ ⟨b, 16⟩ := by
   simp_mem
 
 /-- info: 'MemSeparate.separate_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -58,14 +62,15 @@ theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
 
 
 /-- Symmetry. -/
-theorem separate_2 (l : mem_separate' a 16 b 16) : mem_separate' b 16 a 16 := by
+theorem separate_2 (l : ⟨a, 16⟩ ⟂ ⟨b, 16⟩) : ⟨b, 16⟩ ⟂ ⟨a, 16⟩ := by
   simp_mem
 
 /-- info: 'MemSeparate.separate_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_2
 
+
 /-- Smaller subsets. -/
-theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
+theorem separate_3 (l : ⟨a, 16⟩ ⟂ ⟨b, 16⟩) :  ⟨b, 10⟩ ⟂ ⟨a, 10⟩ := by
   simp_mem
 
 /-- info: 'MemSeparate.separate_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -73,7 +78,7 @@ theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
 
 
 /-- sliding subset to the right. -/
-theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
+theorem separate_4 (l : ⟨a, 16⟩ ⟂ ⟨b, 16⟩) (hab : a < b) :
     mem_separate' a 17 (b+1) 15 := by
   simp_mem
 
@@ -83,7 +88,7 @@ theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
 /-- shifts inside the arithmetic. -/
 theorem separate_5 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
-    mem_separate' a 16 b 16 := by
+    ⟨a, 16⟩ ⟂ ⟨b, 16⟩ := by
   simp_mem
 
 /-- info: 'MemSeparate.separate_5' depends on axioms: [propext, Classical.choice, Quot.sound] -/
@@ -99,10 +104,10 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
 #guard_msgs in #print axioms separate_6
 
 end MemSeparate
-
+open Memory
 
 theorem mem_automation_test_1
-  (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
+  (h_s0_src_dest_separate : ⟨src_addr, 16⟩ ⟂ ⟨dest_addr, 16⟩) :
   read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
   read_mem_bytes 16 src_addr s0 := by
   simp only [memory_rules]

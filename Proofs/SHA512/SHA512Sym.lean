@@ -47,6 +47,7 @@ abbrev ktbl_addr : BitVec 64 := 0x1b4300#64
 -- set_option profiler true in
 -- set_option profiler.threshold 1 in
 -- set_option pp.deepTerms false in
+open Memory in
 set_option maxHeartbeats 9999999 in -- To be fixed by https://github.com/leanprover/LNSym/pull/113
 theorem sha512_block_armv8_1block (s0 sf : ArmState)
   -- (FIXME) Ignore the `stp` instruction for now.
@@ -62,14 +63,11 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
   -- (FIXME) Add separateness invariants for the stack's memory region.
   -- (FIXME @bollu): State the separate assumptions in terms of `List.Pairwise mem_separate ...` to ensure linear number of `mem_separate` hypotheses.
   (_h_s0_ctx_input_separate :
-    mem_separate' (ctx_addr s0)   64
-                 (input_addr s0) ((num_blocks s0).toNat * 128))
+    ⟨ctx_addr s0, 64⟩ ⟂ ⟨input_addr s0, (num_blocks s0).toNat * 128⟩)
   (_h_s0_ktbl_ctx_separate :
-    mem_separate' (ctx_addr s0) 64
-                  ktbl_addr  (SHA2.k_512.length * 8))
+    ⟨ctx_addr s0, 64⟩ ⟂ ⟨ktbl_addr, SHA2.k_512.length * 8⟩)
   (_h_s0_ktbl_input_separate :
-    mem_separate' (input_addr s0) ((num_blocks s0).toNat * 128)
-                  ktbl_addr      (SHA2.k_512.length * 8))
+    ⟨input_addr s0, (num_blocks s0).toNat * 128⟩ ⟂ ⟨ktbl_addr, SHA2.k_512.length * 8⟩)
   -- (FIXME) Use program.length instead of 20 here (depends on the
   -- performance of the new symbolic simulation tactic).
   (h_run : sf = run 20 s0) :

@@ -50,6 +50,7 @@ def program : Program :=
     ]
 
 
+open Memory in
 /-- Precondition for the correctness of the MemCpy program. -/
 def pre (s : ArmState) : Prop :=
   let num_blks := ArmState.x0 s
@@ -61,7 +62,7 @@ def pre (s : ArmState) : Prop :=
   -- or even more generally,
   -- dst_base ≤ src_base ∨
   -- src_base + num_bytes ≤ dst_base.
-  mem_separate' src_base num_bytes.toNat dst_base num_bytes.toNat ∧
+  (⟨src_base, num_bytes.toNat⟩ ⟂ ⟨dst_base, num_bytes.toNat⟩) ∧
   read_pc s = 0x8e0#64 ∧
   s.program = program ∧
   read_err s = .None ∧
@@ -70,6 +71,7 @@ def pre (s : ArmState) : Prop :=
   -- is updated to make this requirement optional.
   CheckSPAlignment s
 
+open Memory in
 /-- Postcondition for the correctness of the MemCpy program. -/
 def post (s0 sf : ArmState) : Prop :=
   let num_blks := ArmState.x0 s0
@@ -96,7 +98,7 @@ def post (s0 sf : ArmState) : Prop :=
     id (read_mem_bytes 16 (src_base + (16 * i)) s0)) ∧
   -- All memory regions separate from the destination are unchanged.
   (∀ (n : Nat) (addr : BitVec 64),
-      mem_separate' dst_base num_bytes.toNat addr n →
+      (⟨dst_base, num_bytes.toNat⟩ ⟂ ⟨addr, n⟩) →
       read_mem_bytes n addr sf = read_mem_bytes n addr s0) ∧
   read_pc sf = 0x8f8#64 ∧
   read_err sf = .None ∧
