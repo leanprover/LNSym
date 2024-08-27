@@ -369,9 +369,15 @@ end MathProperties
 
 
 section PairwiseSeparate
-  theorem foo (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
+  /- Check that a direct implication of the pairwise separation is proven. -/
+  theorem pairwise_direct (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
     mem_separate' a 100 b 200 := by
     simp_mem
 
+  /- Check that a direct implication of the pairwise separation is proven. -/
+  theorem separate_of_pairwise (h : Memory.Region.pairwiseSeparate [⟨a, n⟩, ⟨b, m⟩, ⟨c, o⟩])
+    (hn' : n' < n) (hm' : m' < m) :
+    (mem_separate' a n' b m') := by
+  simp_mem
 
 end PairwiseSeparate
