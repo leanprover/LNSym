@@ -118,6 +118,10 @@ instance : ToMessageData AxEffects where
       programProof := {eff.programProof}
     }"
 
+private def traceCurrentState (eff : AxEffects) : MetaM Unit :=
+  withTraceNode `Tactic.sym (fun _ => pure "current state") do
+    trace[Tactic.sym] "{eff}"
+
 /-! ## Helpers -/
 
 /--
@@ -168,8 +172,7 @@ or assemble an instantiation of the memory non-effects proof -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
   let msg := m!"getField {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-    withTraceNode `Tactic.sym (fun _ => pure "current state") <| do
-      trace[Tactic.sym] "{eff}"
+    eff.traceCurrentState
 
     if let some val := eff.fields.get? fld then
       trace[Tactic.sym] "returning stored value {val}"
@@ -346,8 +349,7 @@ set `s` to be the new `currentState`, and update all proofs accordingly -/
 def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     MetaM AxEffects := do
   withTraceNode `Tactic.sym (fun _ => pure "adjusting `currenstState`") do
-    withTraceNode `Tactic.sym (fun _ => pure "current state") do
-        trace[Tactic.sym] "{eff}"
+    eff.traceCurrentState
     trace[Tactic.sym] "rewriting along {eq}"
     assertHasType eq <| mkEqArmState s eff.currentState
     let eq ← mkEqSymm eq
@@ -456,8 +458,7 @@ def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
     MetaM (Option AxEffects) := do
   let msg := m!"withInitialStackAlignment? {spAlignment}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-    withTraceNode `Tactic.sym (fun _ => pure "current state") do
-      trace[Tactic.sym] "{eff}"
+    eff.traceCurrentState
 
     let { value, proof } ← eff.getField StateField.SP
     let expected :=
@@ -490,8 +491,7 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
     TacticM Unit :=
   let msg := m!"adding hypotheses to local context"
   withTraceNode `Tactic.sym (fun _ => pure msg) do
-    withTraceNode `Tactic.sym (fun _ => pure "current state") <| do
-      trace[Tactic.sym] "{eff}"
+    eff.traceCurrentState
     let mut goal ← getMainGoal
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
