@@ -825,8 +825,8 @@ partial def SimpMemM.simplifyLoop : SimpMemM Unit := do
         SimpMemM.simplifyGoal (← getMainGoal) foundHyps
       madeAnyProgress? := madeAnyProgress? || changedInCurrentIter?
 
-      /- we haven't changed ever, nor in the current iteration.. -/
-      if !changedInCurrentIter? && !madeAnyProgress? && (← getConfig).failIfUnchanged then
+    /- we haven't changed ever, nor in the current iteration.. -/
+    if !madeAnyProgress? && (← getConfig).failIfUnchanged then
         throwError "{crossEmoji} simp_mem failed to make progress."
 end Simplify
 
