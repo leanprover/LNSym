@@ -607,8 +607,8 @@ def MemPairwiseSeparateProof.mem_separate'_of_pairwiseSeparate_of_mem_of_mem
   _ ← inferType hbTy
 
   let hijVal ← mkDecideProof hijTy
-  let haVal ← mkEqRefl haTy
-  let hbVal ← mkEqRefl hbTy
+  let haVal ← mkEqRefl <| ← mkSome MemSpanExpr.toTypeExpr a.toExpr
+  let hbVal ← mkEqRefl <| ← mkSome MemSpanExpr.toTypeExpr b.toExpr
 
   let h := mkAppN (Expr.const ``Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem [])
     #[← mems.getMemSpanListExpr,
@@ -620,6 +620,8 @@ def MemPairwiseSeparateProof.mem_separate'_of_pairwiseSeparate_of_mem_of_mem
       b.toExpr,
       haVal,
       hbVal]
+
+  _ ← inferType h
 
   return ⟨h⟩
 /--

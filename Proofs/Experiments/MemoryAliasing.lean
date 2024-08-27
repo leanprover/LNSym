@@ -371,12 +371,7 @@ end MathProperties
 section PairwiseSeparate
   theorem foo (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
     mem_separate' a 100 b 200 := by
-
-    -- have : mem_separate' (a, 100).fst (a, 100).snd (d, 400).fst (d, 400).snd := by
-    --   apply Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem h 0 3
-    --   · decide
-    --   · rfl
-    --   · rfl
     simp_mem
+
 
 end PairwiseSeparate
