@@ -419,6 +419,7 @@ of unexpected types. -/
 def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
   let msg := m!"withField {eq}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    eff.traceCurrentState
     let fieldE ← mkFreshExprMVar (mkConst ``StateField)
     let value ← mkFreshExprMVar none
     let expectedType ← mkEq (mkApp2 (mkConst ``r) fieldE eff.initialState) value
@@ -426,6 +427,7 @@ def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
 
     let field ← reflectStateField (← instantiateMVars fieldE)
     let fieldEff ← eff.getField field
+    trace[Tactic.sym] "current field effect: {fieldEff}"
 
     if field ∉ eff.fields then
       let proof ← mkEqTrans fieldEff.proof eq
