@@ -383,4 +383,29 @@ theorem partial_correctness_from_assertions [Sys σ] [Spec' σ]
         ⟨n, Nat.le_refl _, hexit, hpost⟩
     find 0 (v1 s0 hp) (Nat.zero_le ..)
 
+----------------------------------------------------------------------
+
+noncomputable def rank_decreases [Sys σ] [Spec' σ] (rank : σ → Nat) (si sn : σ) (i : Nat) : Nat × Prop :=
+  iterate (fun (sn, i) =>
+    if cut sn then
+      .inl (i, rank sn < rank si)
+    else
+      .inr (next sn, i + 1))
+  (sn, i)
+
+theorem rank_decreases_eq [Sys σ] [Spec' σ] (rank : σ → Nat) (si sn : σ) (i : Nat) :
+  rank_decreases rank si sn i =
+    if cut sn then (i, rank sn < rank si)
+              else rank_decreases rank si (next sn) (i + 1) := by
+  unfold rank_decreases
+  conv => lhs; rw [iterate_eq]
+  by_cases cut sn <;> simp [*]
+  done
+
+theorem termination_from_decreasing_rank [Sys σ] [Spec' σ] (rank : σ → Nat)
+    (v1 : ∀ s0 : σ, pre s0 → assert s0 s0)
+    (v2 : ∀ s0 si : σ, assert s0 si → ¬ exit si → (rank_decreases rank si (run si 1) 0).snd)
+    : Termination σ := by
+    sorry
+
 end Correctness
