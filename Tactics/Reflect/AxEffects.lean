@@ -352,6 +352,8 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     assertHasType eq <| mkEqArmState s eff.currentState
     let eq ← mkEqSymm eq
 
+    let currentState := s
+
     let fields ← eff.fields.toList.mapM fun (field, fieldEff) => do
       withTraceNode `Tactic.sym (fun _ => pure m!"rewriting field {field}") do
         trace[Tactic.sym] "original proof: {fieldEff.proof}"
@@ -366,7 +368,9 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     --    Presumably, we would *not* want to encapsulate `memoryEffect` here
     let programProof ← rewriteType eff.programProof eq
 
-    return {eff with fields, nonEffectProof, memoryEffectProof, programProof}
+    return { eff with
+      currentState, fields, nonEffectProof, memoryEffectProof, programProof
+    }
 
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
 where `?s` and `?s0` are arbitrary `ArmState`s,
@@ -452,6 +456,9 @@ def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
     MetaM (Option AxEffects) := do
   let msg := m!"withInitialStackAlignment? {spAlignment}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    withTraceNode `Tactic.sym (fun _ => pure "current state") do
+      trace[Tactic.sym] "{eff}"
+
     let { value, proof } ← eff.getField StateField.SP
     let expected :=
       mkApp2 (mkConst ``r) (mkConst ``StateField.SP) eff.initialState
