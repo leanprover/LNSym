@@ -499,8 +499,10 @@ open Elab.Tactic
 /-- Add new hypotheses to the local context of a given mvar (or the main goal,
 by default):
 - one for every field in `eff.fields`
-- `eff.nonEffectProof`, and
-- `eff.memoryEffectProof` -/
+- `eff.nonEffectProof`,
+- `eff.memoryEffectProof`,
+- `eff.programProof`, and
+- `eff.stackAlignmentProof?` (if the field is not `none`) -/
 def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
     (mvar : Option MVarId := none):
     TacticM Unit :=
