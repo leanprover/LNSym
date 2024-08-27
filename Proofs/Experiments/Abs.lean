@@ -11,8 +11,6 @@ import Tactics.Sym
 
 namespace Abs
 
-open AxEffects.ExplodeSteps -- get the `explode_steps` tactic
-
 def program : Program :=
   def_program
    [(0x4005d0#64, 0x2a0003e1#32), --  mov w1, w0
