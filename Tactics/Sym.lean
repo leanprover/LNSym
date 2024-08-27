@@ -244,6 +244,20 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM Unit :=
     withMainContext <|
       eff.addHypothesesToLContext s!"h_{c.next_state}_"
 
+/-- A tactic wrapper around `explodeStep`.
+Note the use of `SymContext.fromLocalContext`,
+so the local context is assumed to be of the same shape as for `sym_n` -/
+elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
+  let hStep ← elabTerm h_step none
+  let state ← elabTerm state mkArmState
+  let .fvar stateFVar := state
+    | throwError "Expected fvar, found {state}"
+  let stateDecl := (← getLCtx).get! stateFVar
+  let c ← SymContext.fromLocalContext (some stateDecl.userName)
+
+  explodeStep c hStep
+
+
 /--
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
