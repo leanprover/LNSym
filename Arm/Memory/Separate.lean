@@ -457,11 +457,11 @@ theorem mem_subset_of_Region.Subset (h : Region.Subset a b) (han : a.len > 0) (h
   · bv_omega
 
 /- value of read_mem_bytes when separate from the write. -/
-theorem read_bytes_write_bytes_eq_read_bytes_of_Region.separate {x y : Region}
-    (hsep : x ⟂ y) -- separation
-    (val : BitVec (y.len * 8)) :
-    Memory.read_bytes x.len x.base (Memory.write_bytes y.len y.base val mem) =
-    Memory.read_bytes x.len x.base mem := by
+theorem Region.Separate.read_bytes_write_bytes_eq_read_bytes {r w : Region}
+    (hsep : r ⟂ w) -- separation
+    (val : BitVec (w.len * 8)) :
+    Memory.read_bytes r.len r.base (Memory.write_bytes w.len w.base val mem) =
+    Memory.read_bytes r.len r.base mem := by
   apply BitVec.eq_of_getLsb_eq
   intros i
   obtain := hsep.omega_def
@@ -475,11 +475,11 @@ theorem read_bytes_write_bytes_eq_read_bytes_of_Region.separate {x y : Region}
   bv_omega
 
 /- value of `read_mem_bytes'` when subset of the write. -/
-theorem read_bytes_write_bytes_eq_of_Region.Subset
-    (hsep : x ⊆ y) -- subset relation.
-    (val : BitVec (y.len * 8)) :
-    Memory.read_bytes x.len x.base (Memory.write_bytes y.len y.base val mem) =
-      val.extractLsBytes (x.base.toNat - y.base.toNat) x.len := by
+theorem Region.Subset.read_bytes_write_bytes_eq_of_Region {r w : Region}
+    (hsep : r ⊆ w) -- subset relation.
+    (val : BitVec (w.len * 8)) :
+    Memory.read_bytes r.len r.base (Memory.write_bytes w.len w.base val mem) =
+      val.extractLsBytes (r.base.toNat - w.base.toNat) r.len := by
   apply BitVec.eq_of_getLsb_eq
   intros i
   obtain ⟨hx, hy, hstart, hend⟩ := hsep
@@ -491,9 +491,9 @@ theorem read_bytes_write_bytes_eq_of_Region.Subset
   rw [Memory.getLsb_write_bytes (by omega)]
   rw [BitVec.getLsb_extractLsByte]
   rw [BitVec.getLsb_extractLsBytes]
-  by_cases hxn : x.len = 0
+  by_cases hxn : r.len = 0
   · simp_all [hxn]
-  · by_cases h₁ : ↑i < x.len * 8
+  · by_cases h₁ : ↑i < r.len * 8
     · simp only [h₁]
       simp only [decide_True, Bool.true_and]
       obtain ⟨i, hi⟩ := i
@@ -502,17 +502,17 @@ theorem read_bytes_write_bytes_eq_of_Region.Subset
       have h₁' : (BitVec.ofNat 64 (i / 8)).toNat = (i / 8) := by
         apply BitVec.toNat_ofNat_lt
         omega
-      have hadd : (x.base + BitVec.ofNat 64 (↑i / 8)).toNat = x.base.toNat + (i / 8) := by
+      have hadd : (r.base + BitVec.ofNat 64 (↑i / 8)).toNat = r.base.toNat + (i / 8) := by
         rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
         rw [BitVec.toNat_ofNat_lt (by omega)]
       simp only [BitVec.lt_def]
       simp only [hadd]
-      by_cases h₂ : (x.base.toNat + i/ 8) < y.base.toNat
+      by_cases h₂ : (r.base.toNat + i/ 8) < w.base.toNat
       · -- contradiction
         exfalso
         omega
       · simp only [h₂, if_false]
-        by_cases h₃ : x.base.toNat + i / 8 ≥ y.base.toNat + y.len
+        by_cases h₃ : r.base.toNat + i / 8 ≥ w.base.toNat + w.len
         · omega
         · simp only [h₃, if_false]
           simp only [show i % 8 ≤ 7 by omega]
@@ -536,7 +536,7 @@ theorem read_bytes_write_bytes_eq_of_Region.Subset
     · simp only [h₁, bitvec_rules, minimal_theory]
 
 /- value of read_mem_bytes when subset of another *read*. -/
-theorem read_bytes_eq_extractLsBytes_sub_of_Region.Subset {a b : Region}
+theorem Region.Subset.read_bytes_eq_extractLsBytes_sub {a b : Region}
     {mem : Memory}
     {val : BitVec (b.len * 8)}
     (hread : mem.read_bytes b.len b.base = val)

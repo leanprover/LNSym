@@ -113,7 +113,7 @@ structure Proof (α : Type) (e : α) where
   /-- `h` is an expression of type `e`. -/
   h : Expr
 
-def WithProof.e {α : Type} {e : α} (p : Proof α e) : α := e
+def WithProof.e {α : Type} {e : α} (_p : Proof α e) : α := e
 
 instance [ToMessageData α] : ToMessageData (Proof α e) where
   toMessageData proof := m! "{proof.h}: {e}"
@@ -140,7 +140,7 @@ structure MemLegalProp  where
 
 /-- convert this back to an Expr -/
 def MemLegalProp.toExpr (legal : MemLegalProp) : Expr :=
-  mkAppN (Expr.const ``Memory.Region.legal []) #[legal.region.e]
+  mkAppN (Expr.const ``Memory.Region.legal []) #[legal.region.toExpr]
 
 instance : ToMessageData MemLegalProp where
   toMessageData e := m!"{e.region}.legal"
@@ -645,60 +645,61 @@ def SimpMemM.rewriteWithEquality (rw : Expr) (msg : MessageData) : SimpMemM Unit
       replaceMainGoal [mvarId']
 
 /--
-info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat}
-  {mem : Memory} (hsep : mem_separate' x xn y yn) (val : BitVec (yn * 8)) :
-  Memory.read_bytes xn x (Memory.write_bytes yn y val mem) = Memory.read_bytes xn x mem
+info: Memory.Region.Separate.read_bytes_write_bytes_eq_read_bytes {mem : Memory} {r w : Memory.Region} (hsep : r.Separate w)
+  (val : BitVec (w.len * 8)) :
+  Memory.read_bytes r.len r.base (Memory.write_bytes w.len w.base val mem) = Memory.read_bytes r.len r.base mem
 -/
-#guard_msgs in #check Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
+#guard_msgs in #check Memory.Region.Separate.read_bytes_write_bytes_eq_read_bytes
 
 /-- given that `e` is a read of the write, perform a rewrite,
-using `Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'`. -/
+using `Region.Separate.read_bytes_write_bytes_eq_read_bytes`. -/
 def SimpMemM.rewriteReadOfSeparatedWrite
     (er : ReadBytesExpr) (ew : WriteBytesExpr)
     (separate : MemSeparateProof { sa := er.span, sb := ew.span }) : SimpMemM Unit := do
   let call :=
-    mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' [])
-      #[er.span.base, er.span.n,
-        ew.span.base, ew.span.n,
-        ew.mem,
+    mkAppN (Expr.const ``Memory.Region.Separate.read_bytes_write_bytes_eq_read_bytes [])
+      #[ew.mem,
+        er.span.toExpr,
+        ew.span.toExpr,
         separate.h,
         ew.val]
   SimpMemM.rewriteWithEquality call m!"rewriting read({er})⟂write({ew})"
 
 /--
-info: Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' {bn : Nat} {b : BitVec 64} {val : BitVec (bn * 8)}
-  {a : BitVec 64} {an : Nat} {mem : Memory} (hread : Memory.read_bytes bn b mem = val)
-  (hsubset : mem_subset' a an b bn) : Memory.read_bytes an a mem = val.extractLsBytes (a.toNat - b.toNat) an
+info: Memory.Region.Subset.read_bytes_eq_extractLsBytes_sub {a b : Memory.Region} {mem : Memory} {val : BitVec (b.len * 8)}
+  (hread : Memory.read_bytes b.len b.base mem = val) (hsubset : a.Subset b) :
+  Memory.read_bytes a.len a.base mem = val.extractLsBytes (a.base.toNat - b.base.toNat) a.len
 -/
-#guard_msgs in #check Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
+#guard_msgs in #check Memory.Region.Subset.read_bytes_eq_extractLsBytes_sub
 
 def SimpMemM.rewriteReadOfSubsetRead
     (er : ReadBytesExpr)
     (hread : ReadBytesEqProof)
     (hsubset : MemSubsetProof { sa := er.span, sb := hread.read.span })
   : SimpMemM Unit := do
-  let call := mkAppN (Expr.const ``Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' [])
-    #[hread.read.span.n, hread.read.span.base,
-      hread.val,
-      er.span.base, er.span.n,
+  let call := mkAppN (Expr.const ``Memory.Region.Subset.read_bytes_eq_extractLsBytes_sub [])
+    #[er.span.toExpr,
+      hread.read.span.toExpr,
       er.mem,
+      hread.val,
       hread.h,
       hsubset.h]
   SimpMemM.rewriteWithEquality call m!"rewriting read({er})⊆read({hread.read})"
 
 /--
-info: Memory.read_bytes_write_bytes_eq_of_mem_subset' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat} {mem : Memory}
-  (hsep : mem_subset' x xn y yn) (val : BitVec (yn * 8)) :
-  Memory.read_bytes xn x (Memory.write_bytes yn y val mem) = val.extractLsBytes (x.toNat - y.toNat) xn
+info: Memory.Region.Subset.read_bytes_write_bytes_eq_of_Region {mem : Memory} {r w : Memory.Region} (hsep : r.Subset w)
+  (val : BitVec (w.len * 8)) :
+  Memory.read_bytes r.len r.base (Memory.write_bytes w.len w.base val mem) =
+    val.extractLsBytes (r.base.toNat - w.base.toNat) r.len
 -/
-#guard_msgs in #check Memory.read_bytes_write_bytes_eq_of_mem_subset'
+#guard_msgs in #check Memory.Region.Subset.read_bytes_write_bytes_eq_of_Region
 
 def SimpMemM.rewriteReadOfSubsetWrite
     (er : ReadBytesExpr) (ew : WriteBytesExpr) (hsubset : MemSubsetProof { sa := er.span, sb := ew.span }) : SimpMemM Unit := do
-  let call := mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_of_mem_subset' [])
-    #[er.span.base, er.span.n,
-      ew.span.base, ew.span.n,
-      ew.mem,
+  let call := mkAppN (Expr.const ``Memory.Region.Subset.read_bytes_write_bytes_eq_of_Region [])
+    #[ew.mem,
+      er.span.toExpr,
+      ew.span.toExpr,
       hsubset.h,
       ew.val]
   SimpMemM.rewriteWithEquality call m!"rewriting read({er})⊆write({ew})"
