@@ -328,6 +328,12 @@ theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
   rw [BitVec.le_def, BitVec.lt_def]
   omega
 
+theorem mem_separate'_comm (h : mem_separate' a an b bn) :
+    mem_separate' b bn a an := by
+  have := h.omega_def
+  apply mem_separate'.of_omega
+  omega
+
 /-#
 This is a theorem we ought to prove, which establishes the equivalence
 between the old and new defintions of 'mem_separate'.
@@ -559,5 +565,51 @@ theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
       congr 2
       bv_omega
     · simp only [h, ↓reduceIte]
+
+/-- A region of memory, given by (base pointer, length) -/
+abbrev Memory.Region := BitVec 64 × Nat
+
+def Memory.Region.mk (a : BitVec 64) (n : Nat) : Memory.Region := (a, n)
+
+def Memory.Region.separate (a b : Memory.Region) : Prop :=
+  mem_separate' a.fst a.snd b.fst b.snd
+
+
+/-- A list of memory regions, that are known to be pairwise disjoint. -/
+def Memory.Region.pairwiseSeparate (mems : List Memory.Region) : Prop :=
+  mems.Pairwise Memory.Region.separate
+
+def Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
+  (h : Memory.Region.pairwiseSeparate mems)
+  (i j : Nat)
+  (hij : i ≠ j)
+  (a b : Memory.Region)
+  (ha : mems.get? i = some a) (hb :mems.get? j = some b) :
+    mem_separate' a.fst a.snd b.fst b.snd := by
+  induction h generalizing a b i j
+  case nil => simp at ha
+  case cons x xs ihx _ihxs ihxs' =>
+    simp at ha hb
+    rcases i with rfl | i'
+    · simp at ha
+      · rcases j with rfl | j'
+        · simp at hij
+        · clear hij
+          subst ha
+          simp at hb
+          apply ihx
+          exact List.getElem?_mem hb
+    · rcases j with rfl | j'
+      · simp at hb
+        · subst hb
+          simp at ha
+          apply mem_separate'_comm
+          apply ihx
+          exact List.getElem?_mem ha
+      · simp at ha hb
+        apply ihxs' i' j'
+        · omega
+        · simp [ha]
+        · simp [hb]
 
 end NewDefinitions

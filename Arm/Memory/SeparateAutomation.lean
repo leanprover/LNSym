@@ -121,6 +121,13 @@ instance [ToMessageData α] : ToMessageData (Proof α e) where
 structure MemSpanExpr where
   base : Expr
   n : Expr
+deriving Inhabited
+
+/-- info: Memory.Region.mk (a : BitVec 64) (n : Nat) : Memory.Region -/
+#guard_msgs in #check Memory.Region.mk
+
+def MemSpanExpr.toExpr (span : MemSpanExpr) : Expr :=
+  mkAppN (Expr.const ``Memory.Region.mk []) #[span.base, span.n]
 
 instance : ToMessageData MemSpanExpr where
   toMessageData span := m! "[{span.base}..{span.n})"
@@ -181,11 +188,37 @@ abbrev MemLegalProof := Proof MemLegalProp
 def MemLegalProof.mk {e : MemLegalProp} (h : Expr) : MemLegalProof e :=
   { h }
 
+
+/-- info: Memory.Region.pairwiseSeparate (mems : List Memory.Region) : Prop -/
+#guard_msgs in #check Memory.Region.pairwiseSeparate
+
 /--
-A proposition List.pairwise mem_separate' [x1, x2, ..., xn].
+A proposition `Memory.Region.pairwiseSeparate [x1, x2, ..., xn]`.
 -/
 structure MemPairwiseSeparateProp where
-  xs : Array Expr
+  xs : Array MemSpanExpr
+
+/-- info: List.nil.{u} {α : Type u} : List α -/
+#guard_msgs in #check List.nil
+
+/-- info: List.cons.{u} {α : Type u} (head : α) (tail : List α) : List α -/
+#guard_msgs in #check List.cons
+
+instance : ToExpr MemPairwiseSeparateProp where
+  toTypeExpr := mkConst ``Memory.Region.pairwiseSeparate
+
+  toExpr e := Id.run do
+    let memoryRegionTy : Expr := mkConst ``Memory.Region
+    let mut out := mkApp (mkConst  ``List.nil) memoryRegionTy
+    for x in e.xs do
+      out := mkAppN (mkConst ``List.cons) #[memoryRegionTy, x.toExpr, out]
+    let ty := mkConst ``Memory.Region.pairwiseSeparate
+    return (mkApp ty out)
+
+instance : ToMessageData MemPairwiseSeparateProp where
+  toMessageData e := m!"pairwiseSeparate {e.xs.toList}"
+
+abbrev MemPairwiseSeparateProof := Proof MemPairwiseSeparateProp
 
 /-- info: Memory.read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) -/
 #guard_msgs in #check Memory.read_bytes
@@ -263,11 +296,12 @@ inductive Hypothesis
 | separate (proof : MemSeparateProof e)
 | subset (proof : MemSubsetProof e)
 | legal (proof : MemLegalProof e)
-| pairwise_separate (proof : MemPairwiseSeparateProof e)
+| pairwiseSeparate (proof : MemPairwiseSeparateProof e)
 | read_eq (proof : ReadBytesEqProof)
 
 def Hypothesis.proof : Hypothesis → Expr
-| .separate proof  => proof.h
+| .pairwiseSeparate proof  => proof.h
+| .separate proof => proof.h
 | .subset proof => proof.h
 | .legal proof => proof.h
 | .read_eq proof => proof.h
@@ -278,6 +312,7 @@ instance : ToMessageData Hypothesis where
   | .separate proof => toMessageData proof
   | .legal proof => toMessageData proof
   | .read_eq proof => toMessageData proof
+  | .pairwiseSeparate proof => toMessageData proof
 
 /-- The internal state for the `SimpMemM` monad, recording previously encountered atoms. -/
 structure State where
@@ -404,6 +439,35 @@ def MemSeparateProp.ofExpr? (e : Expr) : Option MemSeparateProp :=
     .some { sa, sb }
   | _ => none
 
+/-- info: Prod.mk.{u, v} {α : Type u} {β : Type v} (fst : α) (snd : β) : α × β -/
+#guard_msgs in #check Prod.mk
+
+/-- info: List.cons.{u} {α : Type u} (head : α) (tail : List α) : List α -/
+#guard_msgs in #check List.cons
+
+/-- info: List.nil.{u} {α : Type u} : List α -/
+#guard_msgs in #check List.nil
+
+/-- match an expression `e` to a `Memory.Region.pairwiseSeparate`. -/
+partial def MemPairwiseSeparateProof.ofExpr? (e : Expr) : Option MemPairwiseSeparateProp :=
+  match_expr e with
+  | Memory.Region.pairwiseSeparate xs => do
+      let .some xs := go xs #[] | none
+      some { xs := xs }
+  | _ => none
+  where
+    go (e : Expr) (xs : Array MemSpanExpr) : Option (Array MemSpanExpr) :=
+      match_expr e with
+      | List.cons _α ex exs =>
+        match_expr ex with
+        | Prod.mk _ta a _tn n =>
+          let x : MemSpanExpr := ⟨a, n⟩
+          go exs (xs.push x)
+        | _ => none
+      | List.nil _α => some xs
+      | _ => none
+
+
 /-- Match an expression `h` to see if it's a useful hypothesis. -/
 def hypothesisOfExpr (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothesis) := do
   let ht ← inferType h
@@ -423,6 +487,10 @@ def hypothesisOfExpr (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothe
   else if let .some legal := MemLegalProp.ofExpr? ht then
     let proof : MemLegalProof legal := ⟨h⟩
     let hyps := hyps.push (.legal proof)
+    return hyps
+  else if let .some pairwiseSep := MemPairwiseSeparateProof.ofExpr? ht then
+    let proof : MemPairwiseSeparateProof pairwiseSep := ⟨h⟩
+    let hyps := hyps.push (.pairwiseSeparate proof)
     return hyps
   else
     let mut hyps := hyps
@@ -487,6 +555,58 @@ def MemSeparateProof.addOmegaFacts (h : MemSeparateProof e) (args : Array Expr) 
     trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
     return args.push (Expr.fvar fvar)
 
+
+/--
+info: Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem {mems : List Memory.Region}
+  (h : Memory.Region.pairwiseSeparate mems) (i j : Nat) (hij : i ≠ j) (a b : Memory.Region) (ha : mems.get? i = some a)
+  (hb : mems.get? j = some b) : mem_separate' a.fst a.snd b.fst b.snd
+-/
+#guard_msgs in #check Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
+
+/-- info: Ne.{u} {α : Sort u} (a b : α) : Prop -/
+#guard_msgs in #check Ne
+
+/-- info: List.get?.{u} {α : Type u} (as : List α) (i : Nat) : Option α -/
+#guard_msgs in #check List.get?
+
+def MemPairwiseSeparateProof.mem_separate'_of_pairwiseSeparate_of_mem_of_mem
+    (self : MemPairwiseSeparateProof e) (i j : Nat) (a b : MemSpanExpr)  :
+    SimpMemM <| MemSeparateProof ⟨a, b⟩ := do
+  let iexpr := mkNatLit i
+  let jexpr := mkNatLit j
+
+    -- i ≠ j
+  let hijTy := mkAppN (mkConst ``Ne [0]) #[(mkConst ``Nat), mkNatLit i, mkNatLit j]
+  -- mems.get? i = some a
+  let haTy ← mkFreshExprMVar (type? := .none)
+  let hbTy ← mkFreshExprMVar (type? := .none)
+
+  let hijVal ← mkDecideProof hijTy
+  let haVal ← mkDecideProof haTy
+  let hbVal ← mkDecideProof hbTy
+  let a := e.xs[i]!
+
+  let h := mkAppN (Expr.const ``Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem [])
+    #[toExpr e, self.h, iexpr, jexpr, hijVal, a.toExpr, b.toExpr, haVal, hbVal]
+
+  return ⟨h⟩
+/--
+Currently, if the list is syntacticaly of the form [x1, ..., xn],
+ we create hypotheses of the form `mem_separate' xi xj` for all i, j..
+This can (and should) be generalized to pairwise separation given hypotheses x ∈ xs, x' ∈ xs.
+-/
+def MemPairwiseSeparateProof.addOmegaFacts (h : MemPairwiseSeparateProof e) (args : Array Expr) :
+    SimpMemM (Array Expr) := do
+  -- We need to loop over i, j where i < j and extract hypotheses.
+  -- We need to find the length of the list, and return an `Array MemRegion`.
+  let mut args := args
+  for i in [0:e.xs.size] do
+    for j in [i+1:e.xs.size] do
+      let a := e.xs[i]!
+      let b := e.xs[j]!
+      let proof ← h.mem_separate'_of_pairwiseSeparate_of_mem_of_mem i j a b
+      args ← proof.addOmegaFacts args
+  return args
 /--
 Given a hypothesis, add declarations that would be useful for omega-blasting
 -/
@@ -495,6 +615,7 @@ def Hypothesis.addOmegaFactsOfHyp (h : Hypothesis) (args : Array Expr) : SimpMem
   | Hypothesis.legal h => h.addOmegaFacts args
   | Hypothesis.subset h => h.addOmegaFacts args
   | Hypothesis.separate h => h.addOmegaFacts args
+  | Hypothesis.pairwiseSeparate h => h.addOmegaFacts args
   | Hypothesis.read_eq _h => return args -- read has no extra `omega` facts.
 
 /--
