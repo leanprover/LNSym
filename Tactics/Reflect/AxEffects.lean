@@ -488,16 +488,18 @@ That is, compose the effect of "`left` after `right`" -/
 section Tactic
 open Elab.Tactic
 
-/-- Add new hypotheses to the local context:
+/-- Add new hypotheses to the local context of a given mvar (or the main goal,
+by default):
 - one for every field in `eff.fields`
 - `eff.nonEffectProof`, and
 - `eff.memoryEffectProof` -/
-def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
+def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
+    (mvar : Option MVarId := none):
     TacticM Unit :=
   let msg := m!"adding hypotheses to local context"
   withTraceNode `Tactic.sym (fun _ => pure msg) do
     eff.traceCurrentState
-    let mut goal ← getMainGoal
+    let mut goal ← mvar.getDM getMainGoal
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
       let msg := m!"adding field {field}"
