@@ -291,7 +291,8 @@ where
 /-- If `h_sp` or `h_err` are missing from the `SymContext`,
 add new goals of the expected types,
 and use these to add `h_sp` and `h_err` to the main goal context -/
-def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
+def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
+    TacticM SymContext :=
   let msg := "Adding goals for missing hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
     let mut ctx := ctx
@@ -324,20 +325,24 @@ def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
 
     match ctx.h_sp? with
       | none =>
-          trace[Tactic.sym] "h_sp? is none, adding a new goal"
+          if addHSp then
+            trace[Tactic.sym] "h_sp? is none, adding a new goal"
 
-          let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
-          let newGoal ← mkFreshMVarId
+            let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
+            let newGoal ← mkFreshMVarId
 
-          goal := ← do
-            let h_sp_type := h_sp_type stateExpr
-            let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
-            let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
-            let ⟨_, goal'⟩ ← goal'.intro1P
-            return goal'
+            goal := ← do
+              let h_sp_type := h_sp_type stateExpr
+              let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
+              let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
+              let ⟨_, goal'⟩ ← goal'.intro1P
+              return goal'
 
-          newGoals := newGoal :: newGoals
-          ctx := { ctx with h_sp? }
+            newGoals := newGoal :: newGoals
+            ctx := { ctx with h_sp? }
+          else
+            trace[Tactic.sym] "h_sp? is none, but addHSp is false, \
+              so no new goal is added"
       | some h_sp =>
           let h_sp ← userNameToMessageData h_sp
           trace[Tactic.sym] "h_sp? is {h_sp}, no new goal needed"
