@@ -464,8 +464,10 @@ def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
 
     let { value, proof } ← eff.getField StateField.SP
     let expected :=
-      mkApp2 (mkConst ``r) (mkConst ``StateField.SP) eff.initialState
-    if !(←isDefEq value expected) then
+      mkApp2 (mkConst ``r) (toExpr <| StateField.SP) eff.initialState
+    trace[Tactic.sym] "checking whether value:\n  {value}\n\
+      is syntactically equal to expected value\n  {expected}"
+    if value != expected then
       trace[Tactic.sym] "failed to transport proof:
         expected value to be {expected}, but found {value}"
       return none
@@ -473,6 +475,7 @@ def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
     let stackAlignmentProof? := some <|
       mkAppN (mkConst ``CheckSPAlignment_of_r_sp_eq)
         #[eff.initialState, eff.currentState, proof, spAlignment]
+    trace[Tactic.sym] "constructed stackAlignmentProof: {stackAlignmentProof?}"
     return some { eff with stackAlignmentProof? }
 
 /-! ## Composition -/
