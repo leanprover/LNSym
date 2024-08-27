@@ -60,6 +60,14 @@ structure AxEffects where
   memoryEffectProof : Expr
   /-- A proof that `<currentState>.program = <initialState>.program` -/
   programProof : Expr
+  /-- An optional proof of `CheckSPAlignment <currentState>`.
+
+  This proof is preserved on a best-effort basis.
+  That is, if we update the state with a write to memory, or a register that is
+  not SP, we maintain the proof.
+  However, if SP is written to, no effort is made to prove alignment of the
+  new value; the field will be set to `none` -/
+  stackAlignmentProof? : Option Expr
   deriving Repr
 
 namespace AxEffects
@@ -86,6 +94,7 @@ def initial (state : Expr) : AxEffects where
     mkAppN (.const ``Eq.refl [1]) #[
       mkConst ``Program,
       mkApp (mkConst ``ArmState.program) state]
+  stackAlignmentProof? := none
 
 /-! ## ToMessageData -/
 
@@ -310,6 +319,10 @@ private def assertHasType (e expectedType : Expr) : MetaM Unit := do
   if !(←isDefEq eType expectedType) then
     throwError "{e} {← mkHasTypeButIsExpectedMsg eType expectedType}"
 
+private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
+  if !(←isDefEq e expected) then
+    throwError "expected:\n  {expected}\nbut found:\n  {e}"
+
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to the some state `s`,
 return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
@@ -429,6 +442,29 @@ def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
       let fields := eff.fields.insert field { value, proof }
       return { eff with fields }
 
+/-- Given a proof of `CheckSPAlignment <initialState>`,
+attempt to transport it to a proof of `CheckSPAlignment <currentState>`
+and store that proof in `stackAlignmentProof?`.
+
+Returns `none` if the proof failed to be transported,
+i.e., if SP was written to. -/
+def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
+    MetaM (Option AxEffects) := do
+  let msg := m!"withInitialStackAlignment? {spAlignment}"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    let { value, proof } ← eff.getField StateField.SP
+    let expected :=
+      mkApp2 (mkConst ``r) (mkConst ``StateField.SP) eff.initialState
+    if !(←isDefEq value expected) then
+      trace[Tactic.sym] "failed to transport proof:
+        expected value to be {expected}, but found {value}"
+      return none
+
+    let stackAlignmentProof? := some <|
+      mkAppN (mkConst ``CheckSPAlignment_of_r_sp_eq)
+        #[eff.initialState, eff.currentState, proof, spAlignment]
+    return some { eff with stackAlignmentProof? }
+
 /-! ## Composition -/
 
 /- TODO: write a function that combines two effects `left` and `right`,
@@ -475,6 +511,15 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
       let name := .mkSimple s!"{hypPrefix}program"
       let proof := eff.programProof
       replaceOrNote goal name proof
+
+    trace[Tactic.sym] "stackAlignmentProof? is {eff.stackAlignmentProof?}"
+    if let some stackAlignmentProof := eff.stackAlignmentProof? then
+      trace[Tactic.sym] "adding stackAlignment hypothesis"
+      goal ← goal.withContext do
+        let name := .mkSimple s!"{hypPrefix}sp"
+        replaceOrNote goal name stackAlignmentProof
+    else
+      trace[Tactic.sym] "skipping stackAlignment hypothesis"
 
     replaceMainGoal [goal]
 where

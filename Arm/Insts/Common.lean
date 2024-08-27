@@ -14,11 +14,11 @@ open BitVec
 
 ----------------------------------------------------------------------
 
-/-- 
+/--
 `GPRIndex.rand` picks a safe GPR index for Arm-based Apple platforms
 i.e., one not reserved on them. Use this function instead of
 `BitVec.rand` to pick an appropriate random index for a source and
-destination GPR during cosimulations. 
+destination GPR during cosimulations.
 
 See "NOTE: Considerations for running cosimulations on Arm-based Apple
 platforms" in Arm/Cosim.lean for details.
@@ -146,6 +146,12 @@ theorem CheckSPAlignment_AddWithCarry_64_4 (st : ArmState) (y : BitVec 64) (carr
   : Aligned (AddWithCarry (r (StateField.GPR 31#5) st) y carry_in).fst 4 := by
   simp_all only [CheckSPAlignment, read_gpr, zeroExtend_eq, Nat.sub_zero, add_eq,
     Aligned_AddWithCarry_64_4]
+
+theorem CheckSPAlignment_of_r_sp_eq {s s' : ArmState}
+    (h_eq : r (StateField.GPR 31#5) s' = r (StateField.GPR 31#5) s)
+    (h_sp : CheckSPAlignment s) :
+    CheckSPAlignment s' := by
+  simpa only [CheckSPAlignment, read_gpr, h_eq] using h_sp
 
 ----------------------------------------------------------------------
 

@@ -194,6 +194,14 @@ def explodeStep (c : SymContext) (hStep : Expr) :
     let hErr ← SymContext.findFromUserName c.h_err
     eff ← eff.withField hErr.toExpr
 
+    if let some h_sp := c.h_sp? then
+      try
+        let hSp ← SymContext.findFromUserName h_sp
+        let effWithSp? ← eff.withStackAlignment? hSp.toExpr
+        eff := effWithSp?.getD eff
+      catch err =>
+        trace[Tactic.sym] "failed to show stack alignment:\n{err.toMessageData}"
+
     eff.addHypothesesToLContext s!"h_{c.next_state}_"
 
 /--

@@ -257,6 +257,10 @@ inductive StateField where
   | ERR    : StateField
 deriving DecidableEq, Repr, Hashable
 
+/-- general purpose register `x31` is used as stack pointer -/
+@[state_simp_rules]
+abbrev StateField.SP := StateField.GPR 31#5
+
 instance : ToString StateField :=
   ⟨fun s => match s with
   | StateField.GPR i  => "x" ++ (ToString.toString i.toNat)
