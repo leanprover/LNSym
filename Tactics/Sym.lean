@@ -294,7 +294,7 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
     withMainContext <| do
       let hStep ← SymContext.findFromUserName h_step.getId
-      -- ^^ we can't reuse `hStep` from before, since it's fvarId might've been
+      -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`
       explodeStep c hStep.toExpr
 
