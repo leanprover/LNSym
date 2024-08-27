@@ -181,6 +181,12 @@ abbrev MemLegalProof := Proof MemLegalProp
 def MemLegalProof.mk {e : MemLegalProp} (h : Expr) : MemLegalProof e :=
   { h }
 
+/--
+A proposition List.pairwise mem_separate' [x1, x2, ..., xn].
+-/
+structure MemPairwiseSeparateProp where
+  xs : Array Expr
+
 /-- info: Memory.read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) -/
 #guard_msgs in #check Memory.read_bytes
 
@@ -257,6 +263,7 @@ inductive Hypothesis
 | separate (proof : MemSeparateProof e)
 | subset (proof : MemSubsetProof e)
 | legal (proof : MemLegalProof e)
+| pairwise_separate (proof : MemPairwiseSeparateProof e)
 | read_eq (proof : ReadBytesEqProof)
 
 def Hypothesis.proof : Hypothesis → Expr
