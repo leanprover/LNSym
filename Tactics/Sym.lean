@@ -183,10 +183,14 @@ def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
 /-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
 add hypotheses that axiomatically describe the effects in terms of
 reads from `s{i+1}` -/
-def explodeStep (c : SymContext) (hStep : Expr) :
-    TacticM Unit :=
+def explodeStep (c : SymContext) (hStep : Expr) : TacticM Unit :=
   withMainContext do
     let mut eff ← AxEffects.fromEq hStep
+
+    let stateExpr ← c.stateExpr
+    if !(← isDefEq eff.initialState stateExpr) then
+      throwError "[explodeStep] expected initial state {stateExpr}, but found:\n  \
+        {eff.initialState}\nin\n\n{eff}"
 
     let hProgram ← SymContext.findFromUserName c.h_program
     eff ← eff.withProgramEq hProgram.toExpr
