@@ -153,6 +153,12 @@ theorem CheckSPAlignment_of_r_sp_eq {s s' : ArmState}
     CheckSPAlignment s' := by
   simpa only [CheckSPAlignment, read_gpr, h_eq] using h_sp
 
+theorem CheckSPAlignment_of_r_sp_aligned {s : ArmState} {value}
+    (h_eq : r (StateField.GPR 31#5) s = value)
+    (h_aligned : Aligned value 4) :
+    CheckSPAlignment s := by
+  simp only [CheckSPAlignment, read_gpr, h_eq, zeroExtend_eq, h_aligned]
+
 ----------------------------------------------------------------------
 
 inductive ShiftType where
