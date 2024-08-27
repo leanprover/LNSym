@@ -390,8 +390,8 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     h_run       := c.h_run
     h_program   := .mkSimple s!"h_{s}_program"
     h_pc        := .mkSimple s!"h_{s}_pc"
-    h_err?      := some <| .mkSimple s!"h_{s}_err"
-    h_sp?       := some <| .mkSimple s!"h_{s}_sp_aligned"
+    h_err?      := c.h_err?.map (fun _ => .mkSimple s!"h_{s}_err")
+    h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")
     runSteps?   := (· - 1) <$> c.runSteps?
     program     := c.program
     programInfo := c.programInfo
