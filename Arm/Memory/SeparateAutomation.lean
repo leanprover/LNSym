@@ -803,7 +803,9 @@ We look for appropriate hypotheses, and simplify (often closing) the main goal u
 partial def SimpMemM.simplifyLoop : SimpMemM Unit := do
   (← getMainGoal).withContext do
     let mut madeAnyProgress? := false -- whether we ever make any progress. Used to throw `failIfUnchanged` error.
-    while true do
+    let mut changedInCurrentIter? := true
+    while ! (← outofRewriteFuel?) && changedInCurrentIter? do
+      consumeRewriteFuel
       let hyps := (← getLocalHyps)
       let foundHyps ← withTraceNode m!"Searching for Hypotheses" do
         let mut foundHyps : Array Hypothesis := #[]
@@ -819,15 +821,13 @@ partial def SimpMemM.simplifyLoop : SimpMemM Unit := do
         trace[simp_mem.info] "{checkEmoji} All goals solved."
         break
 
-      let changedInCurrentIter? ← withTraceNode m!"Performing Rewrite At Main Goal" do
+      changedInCurrentIter? ← withTraceNode m!"Performing Rewrite At Main Goal" do
         SimpMemM.simplifyGoal (← getMainGoal) foundHyps
       madeAnyProgress? := madeAnyProgress? || changedInCurrentIter?
 
-      if changedInCurrentIter?
-      then continue -- we've changed state, so let's continue
-      else if !madeAnyProgress? && (← getConfig).failIfUnchanged then
+      /- we haven't changed ever, nor in the current iteration.. -/
+      if !changedInCurrentIter? && !madeAnyProgress? && (← getConfig).failIfUnchanged then
         throwError "{crossEmoji} simp_mem failed to make progress."
-        break
 end Simplify
 
 /--
