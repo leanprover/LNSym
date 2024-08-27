@@ -579,37 +579,40 @@ def Memory.Region.separate (a b : Memory.Region) : Prop :=
 def Memory.Region.pairwiseSeparate (mems : List Memory.Region) : Prop :=
   mems.Pairwise Memory.Region.separate
 
+/-- If `i ≠ j`, then prove that `mems[i] ⟂ mems[j]`.
+The theorem is stated in mildly awkward fashion for ease of use during proof automation.
+-/
 def Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
   (h : Memory.Region.pairwiseSeparate mems)
   (i j : Nat)
   (hij : i ≠ j)
   (a b : Memory.Region)
-  (ha : mems.get? i = some a) (hb :mems.get? j = some b) :
+  (ha : mems.get? i = some a) (hb : mems.get? j = some b) :
     mem_separate' a.fst a.snd b.fst b.snd := by
   induction h generalizing a b i j
-  case nil => simp at ha
+  case nil => simp only [List.get?_eq_getElem?, List.getElem?_nil] at ha
   case cons x xs ihx _ihxs ihxs' =>
-    simp at ha hb
+    simp only [List.get?_eq_getElem?] at ha hb
     rcases i with rfl | i'
     · simp at ha
       · rcases j with rfl | j'
-        · simp at hij
-        · clear hij
-          subst ha
-          simp at hb
+        · simp only [ne_eq, not_true_eq_false] at hij
+        · subst ha
+          simp only [List.getElem?_cons_succ] at hb
           apply ihx
           exact List.getElem?_mem hb
     · rcases j with rfl | j'
-      · simp at hb
+      · simp only [List.length_cons, Nat.zero_lt_succ, List.getElem?_eq_getElem,
+        List.getElem_cons_zero, Option.some.injEq] at hb
         · subst hb
-          simp at ha
+          simp only [List.getElem?_cons_succ] at ha
           apply mem_separate'_comm
           apply ihx
           exact List.getElem?_mem ha
-      · simp at ha hb
+      · simp only [List.getElem?_cons_succ] at ha hb
         apply ihxs' i' j'
         · omega
-        · simp [ha]
-        · simp [hb]
+        · simp only [List.get?_eq_getElem?, ha]
+        · simp only [List.get?_eq_getElem?, hb]
 
 end NewDefinitions

@@ -208,19 +208,19 @@ structure MemPairwiseSeparateProp where
 /-- info: List.cons.{u} {α : Type u} (head : α) (tail : List α) : List α -/
 #guard_msgs in #check List.cons
 
-def MemPairwiseSeparateProp.getMemSpanListExpr (h : MemPairwiseSeparateProp) : MetaM Expr :=
-  mkListLit (type := mkConst ``Memory.Region) <| (h.xs.map MemSpanExpr.toExpr).toList
+/-- Given `Memory.Region.pairwiseSeparate [x1, ..., xn]`,
+get the expression corresponding `[x1, ..., xn]`. -/
+def MemPairwiseSeparateProp.getMemSpanListExpr
+    (e : MemPairwiseSeparateProp) : Expr := Id.run do
+  let memoryRegionTy : Expr := mkConst ``Memory.Region
+  let mut out := mkApp (mkConst  ``List.nil) memoryRegionTy
+  for x in e.xs do
+    out := mkAppN (mkConst ``List.cons) #[memoryRegionTy, x.toExpr, out]
+  return out
 
-instance : ToExpr MemPairwiseSeparateProp where
-  toTypeExpr := mkConst ``Memory.Region.pairwiseSeparate
-
-  toExpr e := Id.run do
-    let memoryRegionTy : Expr := mkConst ``Memory.Region
-    let mut out := mkApp (mkConst  ``List.nil) memoryRegionTy
-    for x in e.xs do
-      out := mkAppN (mkConst ``List.cons) #[memoryRegionTy, x.toExpr, out]
-    let ty := mkConst ``Memory.Region.pairwiseSeparate
-    return (mkApp ty out)
+/-- Get the expression `Memory.Region.pairwiseSeparate [x1, ..., xn]` -/
+def MemPairwiseSeparateProp.toExpr (e : MemPairwiseSeparateProp) : Expr :=
+  mkApp (mkConst ``Memory.Region.pairwiseSeparate) e.getMemSpanListExpr
 
 instance : ToMessageData MemPairwiseSeparateProp where
   toMessageData e := m!"pairwiseSeparate {e.xs.toList}"
@@ -374,11 +374,12 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     let goal ← getMainGoal
     let hdefTy ← inferType hdefVal
 
-    let (simpCtx, simprocs) ← LNSymSimpContext (config := { decide := true, failIfUnchanged := false})
+    /- Simp to gain some more juice out of the defn.. -/
+    let (simpCtx, simprocs) ← LNSymSimpContext
+      (config := { decide := false, failIfUnchanged := false })
     let (simpResult, _stats) ← simp hdefTy simpCtx simprocs
     let hdefVal ← simpResult.mkCast hdefVal
     let hdefTy ← inferType hdefVal
-    trace[simp_mem.info] "{processingEmoji} Simplified {hdefTy} to {hdefTy}"
 
     let goal ← goal.define name hdefTy hdefVal
     let (fvar, goal) ← goal.intro1P
@@ -580,12 +581,6 @@ def MemSeparateProof.addOmegaFacts (h : MemSeparateProof e) (args : Array Expr) 
     return args.push (Expr.fvar fvar)
 
 
-/--
-info: Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem {mems : List Memory.Region}
-  (h : Memory.Region.pairwiseSeparate mems) (i j : Nat) (hij : i ≠ j) (a b : Memory.Region) (ha : mems.get? i = some a)
-  (hb : mems.get? j = some b) : mem_separate' a.fst a.snd b.fst b.snd
--/
-#guard_msgs in #check Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
 
 /-- info: Ne.{u} {α : Sort u} (a b : α) : Prop -/
 #guard_msgs in #check Ne
@@ -595,33 +590,31 @@ info: Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem {mems : List Memo
 
 /-- Make the expression `mems.get? i = some a`. -/
 def mkListGetEqSomeTy (mems : MemPairwiseSeparateProp) (i : Nat) (a : MemSpanExpr) : SimpMemM Expr := do
-  let lhs ← mkAppOptM ``List.get? #[.none, ← mems.getMemSpanListExpr, mkNatLit i]
+  let lhs ← mkAppOptM ``List.get? #[.none, mems.getMemSpanListExpr, mkNatLit i]
   let rhs ← mkSome MemSpanExpr.toTypeExpr a.toExpr
   mkEq lhs rhs
 
+/--
+info: Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem {mems : List Memory.Region}
+  (h : Memory.Region.pairwiseSeparate mems) (i j : Nat) (hij : i ≠ j) (a b : Memory.Region) (ha : mems.get? i = some a)
+  (hb : mems.get? j = some b) : mem_separate' a.fst a.snd b.fst b.snd
+-/
+#guard_msgs in #check Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
+
+/-- make `Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem i j (by decide) a b rfl rfl`. -/
 def MemPairwiseSeparateProof.mem_separate'_of_pairwiseSeparate_of_mem_of_mem
     (self : MemPairwiseSeparateProof mems) (i j : Nat) (a b : MemSpanExpr)  :
     SimpMemM <| MemSeparateProof ⟨a, b⟩ := do
   let iexpr := mkNatLit i
   let jexpr := mkNatLit j
-
     -- i ≠ j
   let hijTy := mkAppN (mkConst ``Ne [1]) #[(mkConst ``Nat), mkNatLit i, mkNatLit j]
-  _ ← inferType hijTy
-
   -- mems.get? i = some a
-  let haTy ← (mkListGetEqSomeTy mems i a)
-  let hbTy ← (mkListGetEqSomeTy mems j b)
-
-  _ ← inferType haTy
-  _ ← inferType hbTy
-
   let hijVal ← mkDecideProof hijTy
   let haVal ← mkEqRefl <| ← mkSome MemSpanExpr.toTypeExpr a.toExpr
   let hbVal ← mkEqRefl <| ← mkSome MemSpanExpr.toTypeExpr b.toExpr
-
   let h := mkAppN (Expr.const ``Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem [])
-    #[← mems.getMemSpanListExpr,
+    #[mems.getMemSpanListExpr,
       self.h,
       iexpr,
       jexpr,
@@ -630,14 +623,11 @@ def MemPairwiseSeparateProof.mem_separate'_of_pairwiseSeparate_of_mem_of_mem
       b.toExpr,
       haVal,
       hbVal]
-
-  _ ← inferType h
-
   return ⟨h⟩
 /--
 Currently, if the list is syntacticaly of the form [x1, ..., xn],
  we create hypotheses of the form `mem_separate' xi xj` for all i, j..
-This can (and should) be generalized to pairwise separation given hypotheses x ∈ xs, x' ∈ xs.
+This can be generalized to pairwise separation given hypotheses x ∈ xs, x' ∈ xs.
 -/
 def MemPairwiseSeparateProof.addOmegaFacts (h : MemPairwiseSeparateProof e) (args : Array Expr) :
     SimpMemM (Array Expr) := do
