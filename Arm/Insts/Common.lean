@@ -14,11 +14,11 @@ open BitVec
 
 ----------------------------------------------------------------------
 
-/-- 
+/--
 `GPRIndex.rand` picks a safe GPR index for Arm-based Apple platforms
 i.e., one not reserved on them. Use this function instead of
 `BitVec.rand` to pick an appropriate random index for a source and
-destination GPR during cosimulations. 
+destination GPR during cosimulations.
 
 See "NOTE: Considerations for running cosimulations on Arm-based Apple
 platforms" in Arm/Cosim.lean for details.
@@ -73,14 +73,14 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   let V := read_flag V s
   let result :=
     match (extractLsb 3 1 cond) with
-      | 0b000#3 => Z = 1#1
-      | 0b001#3 => C = 1#1
-      | 0b010#3 => N = 1#1
-      | 0b011#3 => V = 1#1
-      | 0b100#3 => C = 1#1 ∧ Z = 0#1
-      | 0b101#3 => N = V
-      | 0b110#3 => N = V ∧ Z = 0#1
-      | 0b111#3 => true
+      | 0b000#3 => Z = 1#1           -- EQ or NE
+      | 0b001#3 => C = 1#1           -- CS or CC
+      | 0b010#3 => N = 1#1           -- MI or PL
+      | 0b011#3 => V = 1#1           -- VS or VC
+      | 0b100#3 => C = 1#1 ∧ Z = 0#1 -- HI or LS
+      | 0b101#3 => N = V             -- GE or LT
+      | 0b110#3 => (N = V) ∧ (Z = 0#1) -- GT or LE
+      | 0b111#3 => true                -- AL
   if (lsb cond 0) = 1#1 ∧ cond ≠ 0b1111#4 then
     not result
   else

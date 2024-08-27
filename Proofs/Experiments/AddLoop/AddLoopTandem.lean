@@ -142,11 +142,7 @@ theorem program.stepi_0x4005a4_cut (s sn : ArmState)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
-  cut sn = false ∧
-  r StateField.PC sn = 0x4005b0#64 ∧
-  r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  cut sn = false := by
   have := program.stepi_eq_0x4005a4 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this,

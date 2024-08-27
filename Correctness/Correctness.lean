@@ -402,6 +402,7 @@ theorem rank_decreases_eq [Sys σ] [Spec' σ] (rank : σ → Nat) (si sn : σ) (
   by_cases cut sn <;> simp [*]
   done
 
+-- TODO: add condition that rank of exit state is zero.
 theorem termination_from_decreasing_rank [Sys σ] [Spec' σ] (rank : σ → Nat)
     (v1 : ∀ s0 : σ, pre s0 → assert s0 s0)
     (v2 : ∀ s0 si : σ, assert s0 si → ¬ exit si → (rank_decreases rank si (run si 1) 0).snd)
