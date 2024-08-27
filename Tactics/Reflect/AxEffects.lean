@@ -523,7 +523,7 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
     if let some stackAlignmentProof := eff.stackAlignmentProof? then
       trace[Tactic.sym] "adding stackAlignment hypothesis"
       goal ← goal.withContext do
-        let name := .mkSimple s!"{hypPrefix}sp"
+        let name := .mkSimple s!"{hypPrefix}sp_aligned"
         replaceOrNote goal name stackAlignmentProof
     else
       trace[Tactic.sym] "skipping stackAlignment hypothesis"
