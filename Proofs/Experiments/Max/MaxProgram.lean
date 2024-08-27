@@ -35,7 +35,6 @@ def program : Program :=
 /- 0x38  -/  (0x8cc#64, 0xd65f03c0#32)   --  ret -- return
 ]
 
-set_option trace.gen_step.debug true in
 #genStepEqTheorems program
 
 def spec (x y : BitVec 32) : BitVec 32 :=

@@ -20,13 +20,13 @@ open Max
 
 section PC
 
-scoped notation "entry_start" => 0x894#64 
-scoped notation "entry_end" => 0x8ac#64 
-scoped notation "then_start" => 0x8b0#64 
-scoped notation "then_end" => 0x8b8#64 
-scoped notation "else_start" => 0x8bc#64 
-scoped notation "else_end" => 0x8c0#64 
-scoped notation "merge_start" => 0x8c4#64 
+scoped notation "entry_start" => 0x894#64
+scoped notation "entry_end" => 0x8ac#64
+scoped notation "then_start" => 0x8b0#64
+scoped notation "then_end" => 0x8b8#64
+scoped notation "else_start" => 0x8bc#64
+scoped notation "else_end" => 0x8c0#64
+scoped notation "merge_start" => 0x8c4#64
 scoped notation "merge_end" => 0x0cc5bc#64
 
 def pcs : List (BitVec 64) := [entry_start, entry_end, then_start, then_end, else_start, else_end, merge_start, merge_end]
@@ -84,7 +84,7 @@ def assert (s0 si : ArmState) : Prop :=
   -- readability).
   match (read_pc si) with
   | entry_start => entry_start_inv s0 si
-  | entry_end => entry_end_inv 
+  | entry_end => entry_end_inv
   | then_start => then_start_inv
   | then_end => then_end_inv
   | else_start => else_start_inv
@@ -103,90 +103,159 @@ instance : Spec' ArmState where
 -------------------------------------------------------------------------------
 -- Generating the program effects and non-effects
 
-
 -- (FIXME) Obtain *_cut theorems for each instruction automatically.
-
+-- 1/15
 theorem program.stepi_0x894_cut (s sn : ArmState)
   (h_program : s.program = program)
-  (h_pc : r StateField.PC s = 0x4005a4#64)
+  (h_pc : r StateField.PC s = 0x894#64)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
-  r StateField.PC sn = 0x4005b0#64 ∧
+  r StateField.PC sn = 0x898#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_eq_0x4005a4 h_program h_pc h_err
+  subst h_step
+  have := Max.program.stepi_eq_0x894 h_program h_pc h_err
+  simp (config := { decide := true, ground := true })only [minimal_theory] at this
+  simp_all only [run, cut, this,
+                 state_simp_rules, bitvec_rules, minimal_theory, pcs]
+  simp only [List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
+    true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
+  apply Aligned_AddWithCarry_64_4
+  · assumption
+  · decide
+
+-- 2/15
+theorem program.stepi_0x898_cut (s sn : ArmState)
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x898#64)
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) :
+  cut sn = false ∧
+  r StateField.PC sn = 0x89c#64 ∧
+  r StateField.ERR sn = .None ∧
+  sn.program = program ∧
+  CheckSPAlignment sn := by
+  have := program.stepi_eq_0x898 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
-  done
+  simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
+    true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
 
-theorem program.stepi_0x4005a4_cut (s sn : ArmState)
+-- 3/15
+theorem program.stepi_0x89c_cut (s sn : ArmState)
   (h_program : s.program = program)
-  (h_pc : r StateField.PC s = 0x4005a4#64)
+  (h_pc : r StateField.PC s = 0x89c#64)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
-  r StateField.PC sn = 0x4005b0#64 ∧
+  r StateField.PC sn = 0x8a0#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_eq_0x4005a4 h_program h_pc h_err
-  simp only [minimal_theory] at this
-  simp_all only [run, cut, this,
-                 state_simp_rules, bitvec_rules, minimal_theory]
-  done
-
-theorem program.stepi_0x4005a8_cut (s sn : ArmState)
-  (h_program : s.program = program)
-  (h_pc : r StateField.PC s = 0x4005a8#64)
-  (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
-  (h_step : sn = run 1 s) :
-  cut sn = false ∧
-  r StateField.PC sn = 0x4005ac#64 ∧
-  r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
-  have := program.stepi_eq_0x4005a8 h_program h_pc h_err
+  have := program.stepi_eq_0x89c h_program h_pc h_err
   simp only [minimal_theory, bitvec_rules] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
+    true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
   done
 
-theorem program.stepi_0x4005ac_cut (s sn : ArmState)
+-- 4/15
+theorem program.stepi_0x8a0_cut (s sn : ArmState)
   (h_program : s.program = program)
-  (h_pc : r StateField.PC s = 0x4005ac#64)
+  (h_pc : r StateField.PC s = 0x8a0#64)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
-  r StateField.PC sn = 0x4005b0#64 ∧
+  r StateField.PC sn = 0x8a4#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_eq_0x4005ac h_program h_pc h_err
+  have := program.stepi_eq_0x8a0 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
+    true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
   done
 
-theorem program.stepi_0x4005b0_cut (s sn : ArmState)
+-- 5/15
+theorem program.stepi_0x8a4_cut (s sn : ArmState)
   (h_program : s.program = program)
-  (h_pc : r StateField.PC s = 0x4005b0#64)
+  (h_pc : r StateField.PC s = 0x8a4#64)
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) :
+  cut sn = false ∧
+  r StateField.PC sn = 0x8a8#64 ∧
+  r StateField.ERR sn = .None ∧
+  sn.program = program ∧
+  CheckSPAlignment sn := by
+  have := program.stepi_eq_0x8a4 h_program h_pc h_err
+  simp only [minimal_theory] at this
+  simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
+    true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
+  done
+
+-- 6/15
+theorem program.stepi_0x8a8_cut (s sn : ArmState)
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x8a8#64)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = true ∧
-  r StateField.PC sn = 0x4005b4#64 ∧
+  r StateField.PC sn = 0x8ac#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
-  have := program.stepi_eq_0x4005b0 h_program h_pc h_err
+  have := program.stepi_eq_0x8a8 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
-  done
+  simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
+    true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
+  simp only [or_false, or_true]
+
+-- 7/15
+theorem program.stepi_0x8ac_cut (s sn : ArmState)
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x8ac#64)
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) :
+  cut sn = true ∧
+  r StateField.PC sn =
+  (if ((r (StateField.FLAG PFlag.N) s = r (StateField.FLAG PFlag.V) s))
+    then
+      if r (StateField.FLAG PFlag.Z) s = 0x0#1
+      then 0x8b0#64
+      else 0x8bc#64
+    else
+      0x8b0#64) ∧
+  r StateField.ERR sn = .None ∧
+  sn.program = program ∧
+  CheckSPAlignment sn := by
+  have := program.stepi_eq_0x8ac h_program h_pc h_err
+  simp only [minimal_theory] at this
+  simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  by_cases h : r (StateField.FLAG PFlag.N) s = r (StateField.FLAG PFlag.V) s
+  · simp_all only [state_simp_rules, bitvec_rules, minimal_theory, h]
+    by_cases h₂ : r (StateField.FLAG PFlag.Z) s = 0x0#1
+    · simp_all only [state_simp_rules, bitvec_rules, minimal_theory, h₂]
+
+    · sorry
+
+  ·
+    simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
+      true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
+    simp only [or_false, or_true]
+
 
 -- Branch instruction!
 theorem program.stepi_0x4005b4_cut (s sn : ArmState)

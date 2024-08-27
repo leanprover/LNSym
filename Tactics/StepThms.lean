@@ -194,22 +194,26 @@ def reduceStepi (addr : BitVec 64) : SymM (Expr × Expr) := do
 
 def genStepEqTheorems : SymM Unit := do
   let pi ← get
-  for ⟨addr, instInfo⟩ in pi.instructions do
+  /- iterate in ascending memory location order. -/
+  for ⟨addr, instInfo⟩ in pi.instructions.toArray.qsort (fun addrInst addrInst' => addrInst.fst < addrInst'.fst) do
     let startTime ← IO.monoMsNow
     let inst := instInfo.rawInst
 
-    trace[gen_step.debug] "[genStepEqTheorems] Generating theorem for address {addr.toHex}\
-      with instruction {inst.toHex}"
     let name := let addr_str := addr.toHexWithoutLeadingZeroes
                 Name.str pi.name ("stepi_eq_0x" ++ addr_str)
+    trace[gen_step.debug] "[genStepEqTheorems] Generating theorem '{name}' for address {addr.toHex}\
+      with instruction {inst.toHex}"
     let ⟨type, value⟩ ← reduceStepi addr
 
     trace[gen_step.debug.timing] "[genStepEqTheorems] reduced in: {(← IO.monoMsNow) - startTime}ms"
-    addDecl <| Declaration.thmDecl {
+    let thmVal := {
       name, type, value,
       levelParams := []
     }
+    let thmDecl := Declaration.thmDecl thmVal
+    addDecl <| thmDecl
     trace[gen_step.debug.timing] "[genStepEqTheorems] added to environment in: {(← IO.monoMsNow) - startTime}ms"
+    logInfo  m!"Generated theorem '{name}' for {addr.toHex}:{inst.toHex}"
 
 /-- `#genProgramInfo program` ensures the `ProgramInfo` for `program`
 has been generated and persistently cached in the enviroment -/
