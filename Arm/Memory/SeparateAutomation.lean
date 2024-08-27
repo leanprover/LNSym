@@ -18,6 +18,7 @@ import Lean.Meta.Tactic.Rewrite
 import Lean.Meta.Tactic.Rewrites
 import Lean.Elab.Tactic.Conv
 import Lean.Elab.Tactic.Conv.Basic
+import Tactics.Simp
 
 open Lean Meta Elab Tactic
 
@@ -363,14 +364,22 @@ def SimpMemM.traceLargeMsg (header : MessageData) (msg : MessageData) : SimpMemM
       trace[simp_mem.info] msg
 
 /-
-Introduce a new definition into the local context,
+Introduce a new definition into the local context, simplify it using `simp`,
 and return the FVarId of the new definition in the goal.
 -/
-def introDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
+def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
   SimpMemM.withMainContext do
+
     let name ← mkFreshUserName <| .mkSimple name
     let goal ← getMainGoal
     let hdefTy ← inferType hdefVal
+
+    let (simpCtx, simprocs) ← LNSymSimpContext (config := { decide := true, failIfUnchanged := false})
+    let (simpResult, _stats) ← simp hdefTy simpCtx simprocs
+    let hdefVal ← simpResult.mkCast hdefVal
+    let hdefTy ← inferType hdefVal
+    trace[simp_mem.info] "{processingEmoji} Simplified {hdefTy} to {hdefTy}"
+
     let goal ← goal.define name hdefTy hdefVal
     let (fvar, goal) ← goal.intro1P
     replaceMainGoal [goal]
@@ -527,7 +536,7 @@ def MemLegalProof.omega_def (h : MemLegalProof e) : Expr :=
 def MemLegalProof.addOmegaFacts (h : MemLegalProof e) (args : Array Expr) :
     SimpMemM (Array Expr) := do
   SimpMemM.withMainContext do
-    let fvar ← introDef "hmemLegal_omega" h.omega_def
+    let fvar ← simpAndIntroDef "hmemLegal_omega" h.omega_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
     return args.push (Expr.fvar fvar)
 
@@ -549,7 +558,7 @@ def MemSubsetProof.omega_def (h : MemSubsetProof e) : Expr :=
 def MemSubsetProof.addOmegaFacts (h : MemSubsetProof e) (args : Array Expr) :
     SimpMemM (Array Expr) := do
   SimpMemM.withMainContext do
-    let fvar ← introDef "hmemSubset_omega" h.omega_def
+    let fvar ← simpAndIntroDef "hmemSubset_omega" h.omega_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
     return args.push (Expr.fvar fvar)
 
@@ -565,7 +574,8 @@ def MemSeparateProof.omega_def (h : MemSeparateProof e) : Expr :=
 def MemSeparateProof.addOmegaFacts (h : MemSeparateProof e) (args : Array Expr) :
     SimpMemM (Array Expr) := do
   SimpMemM.withMainContext do
-    let fvar ← introDef "hmemSeparate_omega" h.omega_def
+    -- simp only [bitvec_rules] (failIfUnchanged := false)
+    let fvar ← simpAndIntroDef "hmemSeparate_omega" h.omega_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
     return args.push (Expr.fvar fvar)
 

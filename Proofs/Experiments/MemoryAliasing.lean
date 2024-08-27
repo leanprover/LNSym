@@ -98,6 +98,26 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
 /-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_6
 
+/-- constant shift for base pointer. -/
+theorem separate_7 (hm : m ≠ 0)
+    (l : mem_separate' a 100 b m)
+    (l : mem_separate' (a+100) 100 b m)  :
+    mem_separate' a 200 b m := by
+  simp_mem
+  sorry /- Need better address normalization. -/
+
+/-- symbolic shift for base pointer. -/
+theorem separate_8 {n : Nat} (hn : n ≠ 0) (hm : m ≠ 0)
+    (l : mem_separate' a n b m)
+    (l : mem_separate' (a+n) n b m)  :
+    mem_separate' a (2*n) b m := by
+  simp_mem
+  sorry  /- Need better address normalization. -/
+
+/-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+#guard_msgs in #print axioms separate_6
+
+
 end MemSeparate
 
 
@@ -375,9 +395,8 @@ section PairwiseSeparate
     simp_mem
 
   /- Check that a direct implication of the pairwise separation is proven. -/
-  theorem separate_of_pairwise (h : Memory.Region.pairwiseSeparate [⟨a, n⟩, ⟨b, m⟩, ⟨c, o⟩])
-    (hn' : n' < n) (hm' : m' < m) :
-    (mem_separate' a n' b m') := by
-  simp_mem
+  theorem pairwise_subset (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
+    mem_separate' a 80 b 100 := by
+    simp_mem
 
 end PairwiseSeparate
