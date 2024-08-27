@@ -17,6 +17,5 @@ namespace GCMGmultV8Program
   simp (config := {ground := true}) only [Option.some.injEq] at h_s0_pc h_run
   sym_n 1
   · sorry
-  · exact (sorry : CheckSPAlignment s0)
   · exact (sorry : read_err s0 = .None)
   done
