@@ -1,3 +1,8 @@
+/-
+Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author(s): Shilpi Goel
+-/
 import ELFSage
 import Arm.State
 
@@ -53,3 +58,14 @@ def getSymbolMap (symbolname : String) (elffile : RawELFFile) : IO Program := do
                       BitVec.ofNat 32 x')
                       insts
   return (BitVec.enumFrom (BitVec.ofNat 64 st_value) insts_bv)
+
+/- Get the 32-bit words content for symbol `symbolname` in the file `elffile`. -/
+def getSymbolWords (symbolname : String) (elffile : RawELFFile) : IO (List (BitVec 32)) := do
+  let (_, bytes) ← getSymbolContentsTop symbolname elffile
+  let insts ← bytes.toUInt32s elffile.isBigendian
+  let insts_bv := List.map
+                    (fun (x : UInt32) =>
+                      let x' := x.toNat
+                      BitVec.ofNat 32 x')
+                      insts
+  return insts_bv

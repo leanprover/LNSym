@@ -8,6 +8,7 @@ Author(s): Yan Peng
 import Arm.Decode
 import Arm.Insts.Common
 import Arm.BitVec
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -35,7 +36,7 @@ def exec_advanced_simd_scalar_copy
 
 ----------------------------------------------------------------------
 
-partial def Advanced_simd_scalar_copy_cls.dup.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_scalar_copy_cls.dup.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let imm5 := ← BitVec.rand 5
   if (lowest_set_bit imm5) > 3 then
     Advanced_simd_scalar_copy_cls.dup.rand
@@ -50,7 +51,7 @@ partial def Advanced_simd_scalar_copy_cls.dup.rand : IO (Option (BitVec 32)) := 
     pure (some inst.toBitVec32)
 
 /-- Generate random instructions of Advanced_simd_scalar_copy class. -/
-def Advanced_simd_scalar_copy_cls.rand : List (IO (Option (BitVec 32))) :=
+def Advanced_simd_scalar_copy_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Advanced_simd_scalar_copy_cls.dup.rand ]
 
 end DPSFP

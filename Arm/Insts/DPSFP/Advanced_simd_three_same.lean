@@ -9,6 +9,7 @@ import Arm.Decode
 import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -122,7 +123,7 @@ theorem pc_of_exec_advanced_simd_three_same
 
 ----------------------------------------------------------------------
 
-def Advanced_simd_three_same_cls.binary.rand : IO (Option (BitVec 32)) := do
+def Advanced_simd_three_same_cls.binary.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let size := ← if Q = 0#1 then BitVec.rand 2 (lo := 0) (hi := 2) else BitVec.rand 2
   let (inst : Advanced_simd_three_same_cls) :=
@@ -135,7 +136,7 @@ def Advanced_simd_three_same_cls.binary.rand : IO (Option (BitVec 32)) := do
       Rd := ← BitVec.rand 5 }
   pure (inst.toBitVec32)
 
-def Advanced_simd_three_same_cls.logic.rand : IO (Option (BitVec 32)) := do
+def Advanced_simd_three_same_cls.logic.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Advanced_simd_three_same_cls) :=
     { Q := ← BitVec.rand 1,
       U := ← BitVec.rand 1,
@@ -147,7 +148,7 @@ def Advanced_simd_three_same_cls.logic.rand : IO (Option (BitVec 32)) := do
   pure (inst.toBitVec32)
 
 /-- Generate random instructions of Advanced_simd_three_same class. -/
-def Advanced_simd_three_same_cls.rand : List (IO (Option (BitVec 32))) :=
+def Advanced_simd_three_same_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Advanced_simd_three_same_cls.binary.rand,
     Advanced_simd_three_same_cls.logic.rand ]
 

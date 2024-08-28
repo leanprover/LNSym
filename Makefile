@@ -27,6 +27,10 @@ proofs:
 tests:
 	time -p $(LAKE) build Tests
 
+.PHONY: awslc_elf
+awslc_elf:
+	./scripts/ci_ubuntu_build_awslc.sh; time -p $(LAKE) build AWSLCELFTests
+
 .PHONY: cosim
 cosim:
 	time -p lake exe lnsym $(VERBOSE) --num-tests $(NUM_TESTS)

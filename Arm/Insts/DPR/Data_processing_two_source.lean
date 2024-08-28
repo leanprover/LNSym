@@ -7,6 +7,7 @@ Author(s): Yan Peng
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -42,7 +43,7 @@ def exec_data_processing_two_source
 ----------------------------------------------------------------------
 
 def Data_processing_two_source_cls.shift.rand
-  (opcode : BitVec 6) : IO (Option (BitVec 32)) := do
+  (opcode : BitVec 6) : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Data_processing_two_source_cls) :=
     { sf := ← BitVec.rand 1,
       S := 0b0#1,
@@ -54,7 +55,7 @@ def Data_processing_two_source_cls.shift.rand
   pure (some inst.toBitVec32)
 
 /-- Generate random instructions of Data_processing_two_source_cls class. -/
-def Data_processing_two_source_cls.rand : List (IO (Option (BitVec 32))) :=
+def Data_processing_two_source_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Data_processing_two_source_cls.shift.rand 0b001000#6,
     Data_processing_two_source_cls.shift.rand 0b001001#6,
     Data_processing_two_source_cls.shift.rand 0b001010#6,

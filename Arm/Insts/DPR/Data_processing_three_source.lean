@@ -7,6 +7,7 @@ Author(s): Nathan Wetzler
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -74,7 +75,7 @@ def exec_data_processing_three_source
 
 def Data_processing_three_source_cls.shift.rand
   (sf : BitVec 1) (op54 : BitVec 2) (op31 : BitVec 3) (o0 : BitVec 1)
-  : IO (Option (BitVec 32)) := do
+  : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Data_processing_three_source_cls) :=
     { sf := sf,
       op54 := op54,
@@ -88,7 +89,7 @@ def Data_processing_three_source_cls.shift.rand
   pure (some inst.toBitVec32)
 
 /-- Generate random instructions of Data_processing_three_source_cls class. -/
-def Data_processing_three_source_cls.rand : List (IO (Option (BitVec 32))) :=
+def Data_processing_three_source_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Data_processing_three_source_cls.shift.rand 0b0#1 0b00#2 0b000#3 0b0#1, -- MADD (32-bit)
     Data_processing_three_source_cls.shift.rand 0b1#1 0b00#2 0b000#3 0b0#1, -- MADD (64-bit)
   ]

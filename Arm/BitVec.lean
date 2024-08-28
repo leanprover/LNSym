@@ -940,7 +940,7 @@ theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
 
 /--
 Definition to extract the `n`th least significant *Byte* from a bitvector.
-TODO: this should be named `getLsbByte`.
+TODO: this should be named `getLsByte`, or `getLsbByte` (Shilpi prefers this).
 -/
 def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
   val.extractLsb ((n + 1) * 8 - 1) (n * 8) |> .cast (by omega)

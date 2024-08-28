@@ -2,4 +2,7 @@ import Lean
 
 open Lean
 initialize
-  registerTraceClass `Tactic.cse.summary -- CSE phase that summaries information after collection.
+  -- CSE tactic's non-verbose summary logging.
+  registerTraceClass `Tactic.cse.summary 
+  -- enable tracing for `sym_n` tactic and related components
+  registerTraceClass `Tactic.sym
