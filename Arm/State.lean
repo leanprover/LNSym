@@ -688,13 +688,6 @@ theorem read_mem_bytes_of_w :
     rw [n_ih]
   done
 
-theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq
-    (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
-    (n₂ addr₂ val n₁ addr₁) :
-    read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₁)
-    = read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₂) := by
-  sorry
-
 theorem read_mem_bytes_w_of_read_mem_eq
     (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
     (fld val n₁ addr₁) :
@@ -1079,3 +1072,32 @@ by_cases h : ix < base
   · simp only [h₂, ↓reduceIte, BitVec.getLsb_extractLsByte]
 
 end Memory
+
+/-! ## Helper lemma for `AxEffects` -/
+
+theorem Memory.eq_of_read_mem_bytes_eq {m₁ m₂ : Memory}
+    (h : ∀ n addr, m₁.read_bytes n addr = m₂.read_bytes n addr) :
+    m₁ = m₂ := by
+  funext i
+  specialize (h 1 i)
+  simp only [Nat.reduceMul, read_bytes, Nat.reduceAdd, read, read_store,
+    BitVec.cast_eq] at h
+  rw [BitVec.zero_append, BitVec.zero_append] at h
+  simpa only [Nat.reduceAdd, BitVec.cast_eq] using h
+
+theorem mem_eq_iff_read_mem_bytes_eq {s₁ s₂ : ArmState} :
+    s₁.mem = s₂.mem
+    ↔ ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂ := by
+  simp only [memory_rules]
+  constructor
+  · intro h _ _; rw[h]
+  · exact Memory.eq_of_read_mem_bytes_eq
+
+theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq
+    (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
+    (n₂ addr₂ val n₁ addr₁) :
+    read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₁)
+    = read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₂) := by
+  revert n₁ addr₁
+  simp only [← mem_eq_iff_read_mem_bytes_eq] at h ⊢
+  simp only [memory_rules, h]
