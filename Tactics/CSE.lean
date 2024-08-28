@@ -168,7 +168,6 @@ def CSEM.hasFuelEliminate? : CSEM Bool := do
 def CSEM.consumeFuelEliminate : CSEM Unit :=
   modify fun s => { s with currentFuelEliminate := s.currentFuelEliminate - 1 }
 
-
 def CSEM.isDryRun? : CSEM Bool := do
   return (← getConfig).dryRun?
 
