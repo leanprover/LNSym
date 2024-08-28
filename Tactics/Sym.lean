@@ -9,7 +9,6 @@ import Tactics.FetchAndDecode
 import Tactics.ExecInst
 import Tactics.ChangeHyps
 import Tactics.SymContext
-import Tactics.Time
 
 import Lean
 
