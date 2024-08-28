@@ -8,8 +8,9 @@ import Arm.Insts.DPR.Insts
 import Arm.Insts.BR.Insts
 import Arm.Insts.DPSFP.Insts
 import Arm.Insts.LDST.Insts
+import Arm.Insts.CosimM
 
-def Insts.rand : List (IO (Option (BitVec 32))) :=
+def Insts.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   BR.rand ++
   DPI.rand ++
   DPR.rand ++

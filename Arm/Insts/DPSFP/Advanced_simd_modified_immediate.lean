@@ -9,6 +9,7 @@ Author(s): Yan Peng
 import Arm.Decode
 import Arm.Insts.Common
 import Arm.BitVec
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -133,7 +134,7 @@ def exec_advanced_simd_modified_immediate
 
 ----------------------------------------------------------------------
 
-partial def Advanced_simd_modified_immediate_cls.all.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_modified_immediate_cls.all.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let cmode := ← BitVec.rand 4
   let op := ← BitVec.rand 1
   let Q := ← BitVec.rand 1
@@ -159,7 +160,7 @@ partial def Advanced_simd_modified_immediate_cls.all.rand : IO (Option (BitVec 3
     pure (some inst.toBitVec32)
 
 /-- Generate random instructions of Advanced_simd_modified_immediate class. -/
-def Advanced_simd_modified_immediate_cls.rand : List (IO (Option (BitVec 32))) :=
+def Advanced_simd_modified_immediate_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Advanced_simd_modified_immediate_cls.all.rand ]
 
 ----------------------------------------------------------------------

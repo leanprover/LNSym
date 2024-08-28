@@ -154,6 +154,16 @@ private def Array.replicate (n : Nat) (v : α) : Array α := List.replicate n v 
 def ExprData.isProfitable? (data : ExprData) : CSEM Bool :=
   return data.size > 1 && data.occs >= (← getConfig).minOccsToCSE
 
+/-- Check if an expression is a nat literal, or a `OfNat.ofNat` of a nat literal.
+This lets us avoid CSEing over nat literals, which are already in canonical form.
+-/
+def CSEM.isNatLit (e : Expr) : Bool :=
+  if e.isRawNatLit then true
+  else
+  match_expr e with
+  | OfNat.ofNat _α x _inst  => x.isRawNatLit -- @OfNat.ofNat Nat 1 (instOfNatNat 1)
+  | _ => false
+
 /--
 The function is partial because of the call to `tryAddExpr` that
 Lean does not infer is smaller in `e`.
@@ -161,7 +171,7 @@ Lean does not infer is smaller in `e`.
 partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
   let t ← inferType e
   -- for now, we ignore function terms.
-  let relevant? := !t.isArrow && !t.isSort && !t.isForall
+  let relevant? := !t.isArrow && !t.isSort && !t.isForall && !isNatLit e
   trace[Tactic.cse.collection] m!"{if relevant? then checkEmoji else crossEmoji} ({e}):({t})"
   /-
   If we have an application, then only add its children
@@ -223,6 +233,7 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
   let e := arg.expr
 
   let mvarId ← getMainGoal
+  let checkpoint ← Tactic.saveState
   mvarId.withContext do
     -- implementation modeled after `Lean.Elab.Tactic.evalGeneralize`.
     trace[Tactic.cse.generalize] "{tryEmoji} Generalizing {hname} : {e} = {xname}"
@@ -246,6 +257,7 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
       trace[Tactic.cse.generalize] "{checkEmoji} succeeded in generalizing {hname}. ({← getMainGoal})"
       return true
     catch e =>
+      checkpoint.restore
       trace[Tactic.cse.generalize] "{bombEmoji} failed to generalize {hname}"
       return false
 

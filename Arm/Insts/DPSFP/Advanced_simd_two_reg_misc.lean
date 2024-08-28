@@ -9,6 +9,7 @@ import Arm.Decode
 import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -117,7 +118,7 @@ def exec_advanced_simd_two_reg_misc
 
 ----------------------------------------------------------------------
 
-partial def Advanced_simd_two_reg_misc_cls.rev64_16.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_two_reg_misc_cls.rev64_16.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Advanced_simd_two_reg_misc_cls) :=
     { Q := ← BitVec.rand 1,
       U := ← pure 0b0#1,
@@ -133,7 +134,7 @@ partial def Advanced_simd_two_reg_misc_cls.rev64_16.rand : IO (Option (BitVec 32
   else
     pure (some (inst.toBitVec32))
 
-partial def Advanced_simd_two_reg_misc_cls.rev32.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_two_reg_misc_cls.rev32.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Advanced_simd_two_reg_misc_cls) :=
     { Q := ← BitVec.rand 1,
       U := ← pure 0b1#1,
@@ -150,6 +151,6 @@ partial def Advanced_simd_two_reg_misc_cls.rev32.rand : IO (Option (BitVec 32)) 
     pure (some (inst.toBitVec32))
 
 /-- Generate random instructions of Advanced_simd_two_reg_misc_cls class. -/
-def Advanced_simd_two_reg_misc_cls.rand : List (IO (Option (BitVec 32))) :=
+def Advanced_simd_two_reg_misc_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [Advanced_simd_two_reg_misc_cls.rev64_16.rand,
    Advanced_simd_two_reg_misc_cls.rev32.rand]

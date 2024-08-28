@@ -7,6 +7,7 @@ Author(s): Yan Peng
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -99,7 +100,7 @@ def exec_data_processing_one_source
 
 ----------------------------------------------------------------------
 
-partial def Data_processing_one_source_cls.rev_all.rand : IO (Option (BitVec 32)) := do
+partial def Data_processing_one_source_cls.rev_all.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let opc := ← BitVec.rand 2
   let sf := ← BitVec.rand 1
   -- When opc == 0b00#2, inst is instruction RBIT, RBIT is not modeled currently
@@ -117,7 +118,7 @@ partial def Data_processing_one_source_cls.rev_all.rand : IO (Option (BitVec 32)
     pure (some (inst.toBitVec32))
 
 /-- Generate random instructions of Data_processing_one_source_cls class. -/
-def Data_processing_one_source_cls.rand : IO (Option (BitVec 32)) :=
+def Data_processing_one_source_cls.rand : Cosim.CosimM (Option (BitVec 32)) :=
   Data_processing_one_source_cls.rev_all.rand
 
 end DPR
