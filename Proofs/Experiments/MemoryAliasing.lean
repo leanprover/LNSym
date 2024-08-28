@@ -98,6 +98,31 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
 /-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_6
 
+
+/-- stack pointer separation given legality. -/
+theorem separate_7 (hm : mem_legal' sp 20) : mem_separate' (sp + 12) 4 (sp + 8) 4 := by
+  simp_mem
+
+-- h_sp_legal : mem_legal' (s@StateField.GPR 0x1f#5) 20
+-- h_step : sn = s@mem[(s@StateField.GPR 0x1f#5) + 0x8#64, 4]:= BitVec.zeroExtend 32 (s@StateField.GPR 0x1#5); @pc := 0x8a0#64;
+-- this : stepi s = s@mem[(s@StateField.GPR 0x1f#5) + 0x8#64, 4]:= BitVec.zeroExtend 32 (s@StateField.GPR 0x1#5); @pc := 0x8a0#64;
+-- hmemLegal_omega✝ : BitVec.toNat (s@StateField.GPR 0x1f#5) + 20 ≤ 2 ^ 64 := mem_legal'.omega_def h_sp_legal
+-- ⊢ BitVec.toNat ((s@StateField.GPR 0x1f#5) + 0xc#64) + 4 ≤ 2 ^ 64 ∧
+--   ((s@StateField.GPR 0x1f#5) + 0x8#64).toNat + 4 ≤ 2 ^ 64 ∧
+--     (BitVec.toNat ((s@StateField.GPR 0x1f#5) + 0xc#64) + 4 ≤ ((s@StateField.GPR 0x1f#5) + 0x8#64).toNat ∨
+--       BitVec.toNat ((s@StateField.GPR 0x1f#5) + 0xc#64) ≥ ((s@StateField.GPR 0x1f#5) + 0x8#64).toNat + 4)
+
+-- hmemLegal_omega✝ : (f s).toNat + 20 ≤ 2 ^ 64 := mem_legal'.omega_def hm
+-- ⊢ (f s + 12#64).toNat + 4 ≤ 2 ^ 64 ∧
+--   (f s + 8#64).toNat + 4 ≤ 2 ^ 64 ∧
+--     ((f s + 12#64).toNat + 4 ≤ (f s + 8#64).toNat ∨ (f s + 12#64).toNat ≥ (f s + 8#64).toNat + 4)
+
+/-- stack pointer separation given legality, simulating projection of stack pointer. -/
+theorem separate_8 (f : α → BitVec 64) (s : α)
+    (hm : mem_legal' (f s) 20) : mem_separate' ((f s) + 12#64) 4 ((f s) + 8#64) 4 := by
+  simp_mem
+
+
 end MemSeparate
 
 

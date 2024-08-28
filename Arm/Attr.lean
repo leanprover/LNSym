@@ -9,6 +9,8 @@ register_simp_attr state_simp_rules
 register_simp_attr bitvec_rules
 -- Rules for memory lemmas
 register_simp_attr memory_rules
+-- Rules for memory aligned lemmas
+register_simp_attr aligned_rules
 
 /-
 syntax "state_simp" : tactic

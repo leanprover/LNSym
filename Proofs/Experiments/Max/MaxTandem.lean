@@ -13,10 +13,14 @@ import Tactics.Sym
 import Tactics.StepThms
 import Correctness.ArmSpec
 import Proofs.Experiments.Max.MaxProgram
+import Arm.Insts.Common
+import Arm.Memory.SeparateAutomation
 
 namespace MaxTandem
 open Max
 
+
+#check ArmState
 
 section PC
 
@@ -68,6 +72,8 @@ def post (s0 sf : ArmState) : Prop :=
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment si
+  -- ∧ read_mem_bytes 4 (r (Spec) si) si = 0x0#32
+
 @[simp] def then_start_inv : Prop := True
 @[simp] def then_end_inv : Prop := True
 @[simp] def else_start_inv : Prop := True
@@ -107,8 +113,38 @@ instance : Spec' ArmState where
 -------------------------------------------------------------------------------
 -- Generating the program effects and non-effects
 
+section CutTheorems
+
+namespace ArmStateNotation
+--   scoped notation s "." slot  => r slot s
+--   scoped notation s "." slot " := " val "; "  => w slot val s
+--   scoped notation "x0" => StateField.GPR 0#5
+--   scoped notation "x1" => StateField.GPR 1#5
+--   scoped notation "sp" => StateField.GPR 31#5
+--   scoped notation "pc" => StateField.PC
+
+-- --   -- scoped notation s"@x0" => r (StateField.GPR 0x0#5) s
+-- --   -- scoped notation x "[:32]" => BitVec.zeroExtend 32 x
+-- --   -- scoped notation s"@sp" => r (StateField.GPR 31#5) s
+-- --   -- scoped notation s"@pc" => r (StateField.PC) s
+-- --   -- scoped notation s"@ERR" => r (StateField.ERR) s
+
+
+@[inherit_doc read_mem_bytes]
+syntax:max term noWs "[" withoutPosition(term)  ","  withoutPosition(term) noWs "]" : term
+macro_rules | `($s[$base,$n]) => `(read_mem_bytes $n $base $s)
+
+
+  -- scoped notation s "[" base ", " n "]" => read_mem_bytes n base s
+  -- scoped notation s "[" base ", " n "]" ":= " val "; " => write_mem_bytes n base val s
+end ArmStateNotation
+
+open ArmStateNotation
+
+#check GetElem
+
 -- (FIXME) Obtain *_cut theorems for each instruction automatically.
--- 1/15
+-- 1/15: sub  sp, sp, #0x20  ;
 theorem program.stepi_0x894_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x894#64)
@@ -118,20 +154,34 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
   cut sn = false ∧
   r StateField.PC sn = 0x898#64 ∧
   r StateField.ERR sn = .None ∧
+  (sn.x0) = (s.x0) ∧
+  (sn.x1) = (s.x1) ∧
+  (sn.sp) = (s.sp) - 0x20#64 ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
   subst h_step
   have := Max.program.stepi_eq_0x894 h_program h_pc h_err
-  simp (config := { decide := true, ground := true })only [minimal_theory] at this
+  -- clear Decidable.rec (...)
+  simp (config := { decide := true, ground := true }) only [minimal_theory] at this
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory, pcs]
   simp only [List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
-  apply Aligned_AddWithCarry_64_4
-  · assumption
-  · decide
+  repeat first
+  | simp (config := { ground := true, decide := true}) [aligned_rules, state_simp_rules]
+  | apply Aligned_BitVecSub_64_4;
+  | apply Aligned_BitVecAdd_64_4;
+  | apply Aligned_AddWithCarry_64_4;
+  | apply Aligned_AddWithCarry_64_4'
 
--- 2/15
+  repeat solve
+  | apply Aligned_of_extractLsb_eq_zero; bv_decide
+  | apply Aligned_of_toNat_mod_eq_zero; bv_omega
+  | decide
+  | bv_omega
+  | assumption
+
+-- 2/15: str  w0, [sp, #12]  ; sp[12] = w0_a
 theorem program.stepi_0x898_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x898#64)
@@ -142,6 +192,10 @@ theorem program.stepi_0x898_cut (s sn : ArmState)
   r StateField.PC sn = 0x89c#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
+  sn[(sn.sp) + 12#64, 4] = (s.x0).truncate 32 ∧
+  (sn.x0) = (s.x0) ∧
+  (sn.x1) = (s.x1) ∧
+  (sn.sp) = (s.sp) ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x898 h_program h_pc h_err
   simp only [minimal_theory] at this
@@ -150,14 +204,22 @@ theorem program.stepi_0x898_cut (s sn : ArmState)
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
 
--- 3/15
+-- 3/15: str  w1, [sp, #8]   ; sp[8] = w1_a
+set_option trace.simp_mem.info true in
 theorem program.stepi_0x89c_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x89c#64)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
-  (h_step : sn = run 1 s) :
+  (h_sp_legal : mem_legal' (s.sp) 20)
+  (h_step : sn = run 1 s)
+  (h_s_sp_plus_12 : s[(s.sp) + 12#64, 4] = (s.x0).truncate 32)
+  :
   cut sn = false ∧
+  sn[(sn.sp) + 8#64, 4] = (s.x1).truncate 32 ∧
+  (sn.x0) = (s.x0) ∧
+  (sn.x1) = (s.x1) ∧
+  (sn.sp) = (s.sp) ∧
   r StateField.PC sn = 0x8a0#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
@@ -167,9 +229,9 @@ theorem program.stepi_0x89c_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
-  done
 
--- 4/15
+
+-- 4/15: ldr  w1, [sp, #12]  ; w1_b = sp[12]
 theorem program.stepi_0x8a0_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x8a0#64)
@@ -177,6 +239,9 @@ theorem program.stepi_0x8a0_cut (s sn : ArmState)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
+  sn.x1 = BitVec.zeroExtend 64 (s[sn.sp + 12, 4])  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn.x0 = s.x0 ∧
+  sn.sp = s.sp ∧
   r StateField.PC sn = 0x8a4#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
@@ -188,7 +253,7 @@ theorem program.stepi_0x8a0_cut (s sn : ArmState)
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
   done
 
--- 5/15
+-- 5/15: ldr  w0, [sp, #8]
 theorem program.stepi_0x8a4_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x8a4#64)
@@ -196,6 +261,7 @@ theorem program.stepi_0x8a4_cut (s sn : ArmState)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
+  sn.x0 = BitVec.zeroExtend 64 (s[sn.sp + 8, 4])  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
   r StateField.PC sn = 0x8a8#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
@@ -207,7 +273,7 @@ theorem program.stepi_0x8a4_cut (s sn : ArmState)
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
   done
 
--- 6/15
+-- 6/15: cmp  w1, w0
 theorem program.stepi_0x8a8_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x8a8#64)
@@ -227,6 +293,7 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
   simp only [or_false, or_true]
 
 -- 7/15
+-- @bollu: this is useless? we were able to make progress even without this?
 theorem program.stepi_0x8ac_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x8ac#64)
@@ -260,6 +327,60 @@ theorem program.stepi_0x8ac_cut (s sn : ArmState)
     --   true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
     -- simp only [or_false, or_true]
 
+
+theorem program.stepi_0x8b0_cut (s sn : ArmState)
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x8b0#64)
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) : True := sorry
+
+theorem program.stepi_0x8b4_cut (s sn : ArmState)
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x8b4#64)
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) : True := sorry
+
+theorem program.stepi_0x8b8_cut (s sn : ArmState)
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x8b8#64)
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) : True := sorry
+
+theorem program.stepi_0x8bc_cut (s sn : ArmState)
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x8bc#64)
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) : True := sorry
+
+theorem program.stepi_0x8c0_cut (s sn : ArmState)
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x8c0#64)
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) : True := sorry
+
+
+theorem program.stepi_0x8c4_cut (s sn : ArmState)
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x8c4#64)
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) : True := sorry
+
+
+theorem program.stepi_0x8c8_cut (s sn : ArmState)
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x8c8#64)
+  (h_err : r StateField.ERR s = StateError.None)
+  (h_sp_aligned : CheckSPAlignment s)
+  (h_step : sn = run 1 s) : True := sorry
+
+
+end CutTheorems
 
 -- -- Branch instruction!
 -- theorem program.stepi_0x4005b4_cut (s sn : ArmState)

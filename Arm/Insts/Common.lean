@@ -7,7 +7,8 @@ Author(s): Shilpi Goel, Yan Peng, Nathan Wetzler
 import LeanSAT
 import Arm.BitVec
 import Arm.State
-
+import Arm.Attr
+import Lean
 section Common
 
 open BitVec
@@ -58,6 +59,39 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   let V := if signExtend (n + 1) result = signed_sum then 0#1 else 1#1
   (result, (make_pstate N Z C V))
 
+@[bitvec_rules, state_simp_rules]
+theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
+  (AddWithCarry x y 0#1).fst = x + y := by
+  simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
+  apply BitVec.eq_of_toNat_eq
+  simp only [toNat_truncate, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod]
+  have : 2^n < 2^(n + 1) := by
+    refine Nat.pow_lt_pow_of_lt (by omega) (by omega)
+  have : x.toNat + y.toNat < 2^(n + 1) := by omega
+  rw [Nat.mod_eq_of_lt this]
+
+@[bitvec_rules, state_simp_rules]
+theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
+  (AddWithCarry x y 1#1).fst = x - ~~~y := by
+  simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
+  apply BitVec.eq_of_toNat_eq
+  simp only [toNat_truncate, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod, toNat_ofNat, Nat.pow_one,
+    Nat.reduceMod, toNat_sub, toNat_not]
+  simp only [show 2 ^ n - (2 ^ n - 1 - y.toNat) = 1 + y.toNat by omega]
+  have : 2^n < 2^(n + 1) := by
+    refine Nat.pow_lt_pow_of_lt (by omega) (by omega)
+  have : x.toNat + y.toNat + 1 < 2^(n + 1) := by omega
+  rw [Nat.mod_eq_of_lt this]
+  congr 1
+  omega
+
+@[bitvec_rules, state_simp_rules]
+theorem fst_AddWithCarry_eq (x : BitVec n) (y : BitVec n) {carry : BitVec 1} :
+  (AddWithCarry x y carry).fst = if carry = 1#1 then x - ~~~y else x + y := by
+  have : carry = 0#1 ∨ carry = 1#1 := by bv_decide
+  rcases this with rfl | rfl  <;> simp [state_simp_rules]
+
+
 -- TODO: Is this rule helpful at all?
 @[bitvec_rules]
 theorem zeroExtend_eq_of_AddWithCarry :
@@ -96,6 +130,15 @@ def Aligned (x : BitVec n) (a : Nat) : Prop :=
 instance : Decidable (Aligned x a) := by
   cases a <;> simp [Aligned] <;> infer_instance
 
+@[aligned_rules]
+theorem Aligned_BitVecSub_64_4 {x : BitVec 64} {y : BitVec 64}
+  (x_aligned : Aligned x 4)
+  (y_aligned : Aligned y 4)
+  : Aligned (x - y) 4 := by
+  simp_all [Aligned]
+  bv_decide
+
+@[aligned_rules]
 theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
   (x_aligned : Aligned x 4)
   (y_aligned : Aligned y 4)
@@ -103,13 +146,81 @@ theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
   simp_all [Aligned]
   bv_decide
 
+@[aligned_rules]
 theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : BitVec 1)
   (x_aligned : Aligned x 4)
   (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
   : Aligned (AddWithCarry x y carry_in).fst 4 := by
   unfold AddWithCarry Aligned at *
-  simp_all
+  simp_all only [Nat.sub_zero, zero_eq, add_eq]
   bv_decide
+
+@[aligned_rules]
+theorem Aligned_AddWithCarry_64_4' (x : BitVec 64) (y : BitVec 64) (carry_in : BitVec 1)
+  (x_aligned : Aligned x 4)
+  (y_carry_in_aligned : Aligned (y + (carry_in.zeroExtend _)) 4)
+  : Aligned (AddWithCarry x y carry_in).fst 4 := by
+  unfold AddWithCarry Aligned at *
+  simp_all only [Nat.sub_zero, zero_eq, add_eq]
+  bv_decide
+
+/- A bitvector `x` has alignment `n` if the least significant `n` bites are zero. -/
+@[aligned_rules]
+theorem Aligned_of_extractLsb_eq_zero {w n : Nat} {x : BitVec w} (hx : x.extractLsb (n - 1) 0 = 0 := by bv_decide) :
+    Aligned x n := by
+  simp [Aligned]
+  rcases n with rfl | n
+  · simp only
+  · simp only [Nat.add_one_sub_one, Nat.sub_zero, ofNat_eq_ofNat] at hx
+    simp only
+    rw [hx]
+
+/--
+When the alignment `n` is zero, the bitvector `x` is always aligned.
+For other alignments, then low `n` bits of `x` must be zero.
+Mathematically, this corresponds to the fact that `x % 2^n = 0`. When `n = 0`,
+we get `x % 1 = 0`, which is true for all numbers.
+TODO: this should be rewritten in terms of `extractLsb'` because we want to talk about 0 width bitvectors
+when `n = 0`.
+-/
+@[aligned_rules]
+theorem extractLsb_eq_zero_of_Aligned {w n : Nat} {x : BitVec w} (haligned : Aligned x n) :
+    (n = 0) ∨ x.extractLsb (n - 1) 0 = 0#(n - 1 + 1) := by
+  rw [Aligned] at haligned
+  rcases n with rfl | n
+  · simp at haligned
+    simp
+  · simp at haligned
+    simp
+    exact haligned
+
+/-- A bitvector `x` has alignment `n` if `x % 2^n = 0`. -/
+theorem Aligned_of_toNat_mod_eq_zero {w n : Nat} {x : BitVec w} (hx : x.toNat % 2 ^ n = 0 := by bv_omega) :
+    Aligned x n := by
+  simp [Aligned]
+  rcases n with rfl | n
+  · simp only
+  · apply BitVec.eq_of_toNat_eq
+    simp only [Nat.sub_zero, extractLsb_toNat, Nat.shiftRight_zero, hx, toNat_ofNat, Nat.zero_mod]
+
+theorem toNat_mod_eq_zero_of_Aligned {w n : Nat} {x : BitVec w} (hx : Aligned x n) :
+    x.toNat % 2 ^ n = 0 := by
+  simp [Aligned] at hx
+  rcases n with rfl | n
+  · simp only [Nat.pow_zero]
+    omega
+  · simp only at hx
+    have : (extractLsb n 0 x).toNat = (0#(n+1)).toNat := by
+      rw [hx]
+    simpa only [Nat.sub_zero, extractLsb_toNat, Nat.shiftRight_zero, toNat_ofNat,
+      Nat.zero_mod] using this
+
+@[bv_toNat]
+theorem Aligned_iff_toNat_mod_eq_zero {w n : Nat} {x : BitVec w} :
+    Aligned x n ↔ x.toNat % 2 ^ n = 0 := by
+  constructor
+  · apply toNat_mod_eq_zero_of_Aligned
+  · apply Aligned_of_toNat_mod_eq_zero
 
 /-- Check correct stack pointer (SP) alignment for AArch64 state; returns
 true when sp is aligned. -/
@@ -124,28 +235,41 @@ def CheckSPAlignment (s : ArmState) : Prop :=
 /-- We need to prove why the CheckSPAlignment predicate is Decidable. -/
 instance : Decidable (CheckSPAlignment s) := by unfold CheckSPAlignment; infer_instance
 
-@[state_simp_rules]
+@[state_simp_rules, aligned_rules]
 theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
   CheckSPAlignment (w fld v s) = CheckSPAlignment s := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
-@[state_simp_rules]
+@[state_simp_rules, aligned_rules]
 theorem CheckSPAligment_of_w_sp :
   CheckSPAlignment (w (StateField.GPR 31#5) v s) = (Aligned v 4) := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
-@[state_simp_rules]
+@[state_simp_rules, aligned_rules]
 theorem CheckSPAligment_of_write_mem_bytes :
   CheckSPAlignment (write_mem_bytes n addr v s) = CheckSPAlignment s := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
-@[state_simp_rules]
+@[state_simp_rules, aligned_rules]
 theorem CheckSPAlignment_AddWithCarry_64_4 (st : ArmState) (y : BitVec 64) (carry_in : BitVec 1)
   (x_aligned : CheckSPAlignment st)
   (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
   : Aligned (AddWithCarry (r (StateField.GPR 31#5) st) y carry_in).fst 4 := by
-  simp_all only [CheckSPAlignment, read_gpr, zeroExtend_eq, Nat.sub_zero, add_eq,
-    Aligned_AddWithCarry_64_4]
+  simp_all only [CheckSPAlignment, read_gpr, zeroExtend_eq, Nat.sub_zero, add_eq, Aligned_AddWithCarry_64_4]
+
+
+open Lean Elab Meta Macro in
+macro "solve_align" : tactic =>
+  `(tactic|
+      repeat solve
+      | simp (config := { ground := true, decide := true}) [aligned_rules, state_simp_rules]
+      | apply Aligned_BitVecSub_64_4;
+      | apply Aligned_BitVecAdd_64_4;
+      | apply Aligned_AddWithCarry_64_4;
+      | apply Aligned_AddWithCarry_64_4';
+      | apply Aligned_of_extractLsb_eq_zero; bv_decide
+      | apply Aligned_of_toNat_mod_eq_zero; bv_omega
+      | rfl)
 
 ----------------------------------------------------------------------
 

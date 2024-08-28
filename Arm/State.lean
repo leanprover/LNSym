@@ -270,7 +270,7 @@ attribute [state_simp_rules] StateField.GPR.injEq
 attribute [state_simp_rules] StateField.SFP.injEq
 attribute [state_simp_rules] StateField.FLAG.injEq
 
-@[reducible]
+@[reducible, state_simp_rules]
 def state_value (fld : StateField) : Type :=
   open StateField in
   match fld with
@@ -279,6 +279,25 @@ def state_value (fld : StateField) : Type :=
   | PC      => BitVec 64
   | FLAG _  => BitVec 1
   | ERR     => StateError
+
+@[state_simp_rules]
+def state_value_gpr : state_value (StateField.GPR i) = BitVec 64 := rfl
+
+@[state_simp_rules]
+def state_value_sp: state_value (StateField.GPR 31#5) = BitVec 64 := rfl
+
+@[state_simp_rules]
+def state_value_sfp : state_value (StateField.SFP i) = BitVec 128 := rfl
+
+@[state_simp_rules]
+def state_value_pc : state_value (StateField.PC) = BitVec 64 := rfl
+
+@[state_simp_rules]
+def state_value_flag : state_value (StateField.FLAG p) = BitVec 1 := rfl
+
+@[state_simp_rules]
+def state_value_err : state_value (StateField.ERR) = StateError := rfl
+
 
 @[irreducible]
 def r (fld : StateField) (s : ArmState) : (state_value fld) :=
@@ -289,6 +308,16 @@ def r (fld : StateField) (s : ArmState) : (state_value fld) :=
   | PC      => read_base_pc s
   | FLAG i  => read_base_flag i s
   | ERR     => read_base_error s
+
+@[state_simp_rules]
+def ArmState.x0 (s : ArmState) : BitVec 64 := r (StateField.GPR 0) s
+
+@[state_simp_rules]
+def ArmState.x1 (s : ArmState) : BitVec 64 := r (StateField.GPR 1) s
+
+@[state_simp_rules]
+def ArmState.sp (s : ArmState) : BitVec 64 := r (StateField.GPR 31) s
+
 
 @[irreducible]
 def w (fld : StateField) (v : (state_value fld)) (s : ArmState) : ArmState :=

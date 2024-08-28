@@ -27,6 +27,7 @@ theorem arm_run (n : Nat) (s : ArmState) :
     simp only [Sys.run, Sys.next, run]
     rw [h]
 
+/-
 -- (TODO) Move to Arm/BitVec.lean?
 /-- Unexpander to represent bitvector literals in hexadecimal -- this overrides
   the unexpander in the Lean BitVec library. -/
@@ -42,5 +43,6 @@ theorem arm_run (n : Nat) (s : ArmState) :
       let bv := Lean.Syntax.mkNumLit s!"0x{trimmed_hex}#{n'}"
       `($bv:num)
   | _ => throw ()
+-/
 
 end Correctness
