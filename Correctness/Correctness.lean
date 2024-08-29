@@ -249,7 +249,11 @@ theorem snd_cassert_of_cut [Sys σ] [Spec' σ] {s0 si : σ} (h : cut si) (i : Na
   rw [cassert_eq]
   simp [*]
   done
-
+theorem snd_cassert_of_not_cut [Sys σ] [Spec' σ] {s0 si : σ} (h : cut si = false) (i : Nat) :
+  (cassert s0 si i).snd = (cassert s0 (next si) (i + 1)).snd  := by
+  rw [cassert_eq]
+  simp [*]
+  done
 
 theorem cassert_not_cut [Sys σ] [Spec' σ] {s0 si : σ} (h₁ : ¬ cut si)
   (h₂ : (cassert s0 (next si) (i+1)).fst = j) :

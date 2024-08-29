@@ -33,7 +33,43 @@ scoped notation "else_end" => 0x8c0#64
 scoped notation "merge_start" => 0x8c4#64
 scoped notation "merge_end" => 0x8cc#64
 
-def pcs : List (BitVec 64) := [entry_start, entry_end, then_start, then_end, else_start, else_end, merge_start, merge_end]
+
+namespace ArmStateNotation
+--   scoped notation s "." slot  => r slot s
+--   scoped notation s "." slot " := " val "; "  => w slot val s
+--   scoped notation "x0" => StateField.GPR 0#5
+--   scoped notation "x1" => StateField.GPR 1#5
+--   scoped notation "sp" => StateField.GPR 31#5
+--   scoped notation "pc" => StateField.PC
+
+-- --   -- scoped notation s"@x0" => r (StateField.GPR 0x0#5) s
+-- --   -- scoped notation x "[:32]" => BitVec.zeroExtend 32 x
+-- --   -- scoped notation s"@sp" => r (StateField.GPR 31#5) s
+-- --   -- scoped notation s"@pc" => r (StateField.PC) s
+-- --   -- scoped notation s"@ERR" => r (StateField.ERR) s
+
+
+@[inherit_doc read_mem_bytes]
+syntax:max term noWs "[" withoutPosition(term)  ","  withoutPosition(term) noWs "]" : term
+macro_rules | `($s[$base,$n]) => `(read_mem_bytes $n $base $s)
+
+
+  -- scoped notation s "[" base ", " n "]" => read_mem_bytes n base s
+  -- scoped notation s "[" base ", " n "]" ":= " val "; " => write_mem_bytes n base val s
+end ArmStateNotation
+
+open ArmStateNotation
+
+
+
+def pcs : List (BitVec 64) := [entry_start,
+  entry_end,
+  then_start,
+  then_end,
+  else_start,
+  else_end,
+  merge_start,
+  merge_end]
 
 end PC
 
@@ -54,7 +90,9 @@ def pre (s : ArmState) : Prop :=
 
 /-- Specification function. -/
 def spec (x0 x1 : BitVec 64) : BitVec 64 :=
-  if x0 < x1 then x1 else x0
+  if x0.zeroExtend 32 < x1.zeroExtend 32
+  then (x1.zeroExtend 32).zeroExtend 64
+  else (x0.zeroExtend 32).zeroExtend 64
 
 def post (s0 sf : ArmState) : Prop :=
   read_gpr 64 0#5 sf = spec (read_gpr 64 0#5 s0) (read_gpr 64 1#5 s0) ∧
@@ -141,34 +179,6 @@ instance : Spec' ArmState where
 -- Generating the program effects and non-effects
 
 section CutTheorems
-
-namespace ArmStateNotation
---   scoped notation s "." slot  => r slot s
---   scoped notation s "." slot " := " val "; "  => w slot val s
---   scoped notation "x0" => StateField.GPR 0#5
---   scoped notation "x1" => StateField.GPR 1#5
---   scoped notation "sp" => StateField.GPR 31#5
---   scoped notation "pc" => StateField.PC
-
--- --   -- scoped notation s"@x0" => r (StateField.GPR 0x0#5) s
--- --   -- scoped notation x "[:32]" => BitVec.zeroExtend 32 x
--- --   -- scoped notation s"@sp" => r (StateField.GPR 31#5) s
--- --   -- scoped notation s"@pc" => r (StateField.PC) s
--- --   -- scoped notation s"@ERR" => r (StateField.ERR) s
-
-
-@[inherit_doc read_mem_bytes]
-syntax:max term noWs "[" withoutPosition(term)  ","  withoutPosition(term) noWs "]" : term
-macro_rules | `($s[$base,$n]) => `(read_mem_bytes $n $base $s)
-
-
-  -- scoped notation s "[" base ", " n "]" => read_mem_bytes n base s
-  -- scoped notation s "[" base ", " n "]" ":= " val "; " => write_mem_bytes n base val s
-end ArmStateNotation
-
-open ArmStateNotation
-
-#check GetElem
 
 -- (FIXME) Obtain *_cut theorems for each instruction automatically.
 -- 1/15: sub  sp, sp, #0x20  ;
@@ -493,10 +503,10 @@ theorem program.stepi_0x8c0_cut (s sn : ArmState)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
+  cut sn = true ∧
   r StateField.PC sn = 0x8c4#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
-  cut sn = true ∧
   sn[sn.sp + 28, 4] = s.x0.zeroExtend 32  ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8c0 h_program h_pc h_err
@@ -677,6 +687,37 @@ theorem cassert_eq (s0 si : ArmState) (i : Nat) :
   rw [Correctness.cassert_eq]
   simp only [Sys.next, Spec'.cut, Spec'.assert, run]
   done
+/--
+rename an old term `old` identifier a new identifier `new`, and replace
+all occurrences of `old` with `new`.
+-/
+macro "rename" old:ident "to" new:ident : tactic =>
+  `(tactic|
+    generalize h_rename : $old = $new <;> subst $old)
+
+/-- define a value `x := val`, and name the hypothesis `heq : x := val` -/
+macro "name" heq:ident ":" x:ident " := " val:term : tactic =>
+  `(tactic| generalize $heq : $val = $x)
+
+
+/-- info: Correctness.cassert {σ : Type} [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat) : Nat × Prop -/
+#guard_msgs in #check Correctness.cassert
+
+/-- info: MaxTandem.cut (s : ArmState) : Bool -/
+#guard_msgs in #check cut
+
+/-
+open Lean Meta Elab in
+dsimproc [vcg_rules] reduce_snd_cassert_of_cut
+  (Correctness.cassert _ _ _) := fun e => do
+  let_expr Correctness.cassert s0 si i := e | return .continue
+  for hyp in (← getLCtx) do
+    -- cut si = true
+    -- match_expr hyp.type with
+    -- | cut s2 = true
+    pure ()
+  return .continue
+-/
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by
@@ -807,33 +848,45 @@ theorem partial_correctness :
       generalize h_si_s1 : si = s1; subst si
       sym_i_cassert 1 cassert_eq program.stepi_0x8b8_cut
       simp [assert, h_s2_pc, read_pc]
-      simp (config := {}) [h_pre, h_s2_err, h_s2_program, h_s2_sp_aligned, read_err]
+      simp [h_pre, h_s2_err, h_s2_program, h_s2_sp_aligned, read_err]
 
     · -- start @ else_start_inv
       rename_i x h_s1_pc -- what in the world is this `x`?
       simp [else_start_inv] at h_assert
       obtain ⟨h_s1_err, h_s1_program, h_s1_sp_aligned⟩ := h_assert
-      generalize h_si_s1 : si = s1; subst si
-
-      generalize h_s2 : run 1 s1 = s2
+      rename si to s1
+      name h_s2 : s2 := run 1 s1
+      -- generalize h_s2 : run 1 s1 = s2
       obtain ⟨h_cut, h_pc, h_err, h_program, h_s2_x0, h_sp_aligned⟩  :=
         program.stepi_0x8bc_cut s1 s2 h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned h_s2.symm
       rw [Correctness.snd_cassert_of_cut h_cut]
-      simp [Spec'.assert, assert, h_pc, read_pc, h_pre]
-      simp [h_err, h_program, h_sp_aligned, read_err]
+      simp only [Spec'.assert, assert, state_simp_rules,
+        h_pre, read_pc, h_pc, else_end_inv, read_err, h_err,
+        h_program, h_sp_aligned, and_self]
     ·  -- start @ else_end_inv
       rename_i x h_s1_pc
       simp [else_end_inv] at h_assert
-      obtain ⟨h_err, h_program, h_sp_aligned⟩ := h_assert
-      generalize hsi : si = s; subst si -- rename 'si' to 's'.
-      generalize h_run : run 1 s = s'
-      obtain ⟨h_cut, h_pc, h_err, h_program, h_s2_x0, h_sp_aligned⟩  :=
-        program.stepi_0x8c0_cut s s' h_program h_s1_pc h_err h_sp_aligned h_run.symm
 
+      obtain ⟨h_s1_err, h_s1_program, h_s1_sp_aligned⟩ := h_assert
+      rename si to s1
+      name h_s2 : s2 := run 1 s1
+      obtain ⟨h_cut, h_pc, h_err, h_program, h_s2_x0, h_sp_aligned⟩ :=
+        program.stepi_0x8c0_cut s1 s2 h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned h_s2.symm
+      try rw [Correctness.snd_cassert_of_cut h_cut]; try rw [Correctness.snd_cassert_of_not_cut h_cut];
+      simp [Spec'.assert, assert, h_pc, read_pc, h_err, read_err, h_program, h_sp_aligned, h_pre]
+    · -- start @ merge_start_inv
       sorry
-    · sorry
-    · sorry
-    · sorry
+    · -- start @ merge_end_inv
+      rename_i x h_s1_pc
+      simp [merge_end_inv] at h_assert
+
+      obtain ⟨h_s1_err, h_s1_program, h_s1_sp_aligned⟩ := h_assert
+      rename si to s1
+      -- what? why can't I have a cutpoint here? I don't get it.
+      rw [h_s1_pc] at h_not_exit
+      simp at h_not_exit
+
+    · exact False.elim h_assert
 
 
 /--
