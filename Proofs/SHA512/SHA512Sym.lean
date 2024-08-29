@@ -75,17 +75,13 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
   r (StateField.GPR 2#5) sf = 0#64 ∧
   r StateField.ERR sf = StateError.None := by
   sym_n 20
-  /-
-  (FIXME @bollu) cse fails with the following message:
-  no goals to be solved
-  -/
-  cse (config := { processHyps := .allHyps })
-  -- Final Steps
-  unfold run at h_run
-  subst sf
-  rw [h_s20_err]
-  simp only [minimal_theory]
-  -- (FIXME) Need effects aggregation here.
-  sorry
+
+  simp (config := {decide := true, ground := true}) only [AddWithCarry, minimal_theory,
+    bitvec_rules, minimal_theory, Nat.reduceAdd]
+  apply And.intro
+  · cse (config := { processHyps := .allHyps })
+    sorry
+  · assumption
+
 
 end SHA512

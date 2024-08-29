@@ -34,9 +34,7 @@ theorem small_asm_snippet_sym_experiment_1 (s0 s_final : ArmState)
   -- Symbolic Simulation
   sym_n 4
   -- Final Steps
-  unfold run at h_run
-  subst s_final
-  simp_all (config := {decide := true}) only [@zeroExtend_eq 128, state_simp_rules, minimal_theory, bitvec_rules]
+  assumption
   done
 
 /-

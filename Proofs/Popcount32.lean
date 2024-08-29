@@ -88,9 +88,7 @@ theorem popcount32_sym_no_error (s0 s_final : ArmState)
        clear h_step_21 h_step_22 h_step_23 h_step_24;
        clear h_step_25 h_step_26)
   -- Final Steps
-  unfold run at h_run
-  subst s_final
-  rw [h_s27_err]
+  assumption
   done
 
 -- theorem popcount32_sym_meets_spec (s0 s_final : ArmState)

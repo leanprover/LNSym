@@ -221,16 +221,8 @@ theorem effects_of_nextc_from_0x4005d0 (h_pre : abs_pre s0)
   obtain ⟨h_pc, h_program, h_err, h_sp_aligned⟩ := h_pre
   simp only [state_simp_rules] at *
   -- Symbolic simulation
-  -- (FIXME) Why do we need `try assumption` below?
-  sym_n 4 at s0 <;> try assumption
-  -- Aggregate the effects
-  simp only [run] at h_run
-  subst sn
-  simp only [abs_cut,
-            h_s4_err, h_s4_pc, h_s4_program, h_s4_sp_aligned,
-            state_simp_rules, minimal_theory]
-  simp only [h_step_4, h_step_3, h_step_2, h_step_1,
-             state_simp_rules, bitvec_rules, minimal_theory]
+  sym_n 4 at s0
+  assumption
   done
 
 theorem partial_correctness :

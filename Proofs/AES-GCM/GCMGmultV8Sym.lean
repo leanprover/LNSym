@@ -17,6 +17,5 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
   -- ^^ Still needed, because `gcm_gmult_v8_program.min` is somehow
   --    unable to be reflected
   sym_n 27
-  subst h_run
   assumption
   done
