@@ -18,10 +18,10 @@ def program : Program :=
 /- 0x0   -/  (0x894#64, 0xd10083ff#32),  --  sub  sp, sp, #0x20  ;
 /- 0x4   -/  (0x898#64, 0xb9000fe0#32),  --  str  w0, [sp, #12]  ; sp[12] = w0_a
 /- 0x8   -/  (0x89c#64, 0xb9000be1#32),  --  str  w1, [sp, #8]   ; sp[8] = w1_a
-/- 0xc   -/  (0x8a0#64, 0xb9400fe1#32),  --  ldr  w1, [sp, #12]  ; w1_b = sp[12]
-/- 0x10  -/  (0x8a4#64, 0xb9400be0#32),  --  ldr  w0, [sp, #8]   ; w0_b = sp[8]
-/- 0x14  -/  (0x8a8#64, 0x6b00003f#32),  --  cmp  w1, w0         ; w1_b - w0_b
-/- 0x18  -/  (0x8ac#64, 0x5400008d#32),  --  b.le 8bc <max+0x28> ; -- entry end.
+/- 0xc   -/  (0x8a0#64, 0xb9400fe1#32),  --  ldr  w1, [sp, #12]  ; w1_b = sp[12] = w0_a
+/- 0x10  -/  (0x8a4#64, 0xb9400be0#32),  --  ldr  w0, [sp, #8]   ; w0_b = sp[8] = w1_a
+/- 0x14  -/  (0x8a8#64, 0x6b00003f#32),  --  cmp  w1, w0         ; w1_b - w0_b = w0_a - w1_a
+/- 0x18  -/  (0x8ac#64, 0x5400008d#32),  --  b.le 8bc <max+0x28> ; w0_a ≤ w1_a: br ... -- entry end.
 --                          LOAD FROM sp[8] = w1_a (which is > w0_a) AND STORE IN w0
 /- 0x1c  -/  (0x8b0#64, 0xb9400fe0#32),  --  ldr  w0, [sp, #12]  ;  w0_c = sp[12] = w0_a -- then start
 /- 0x20  -/  (0x8b4#64, 0xb9001fe0#32),  --  str  w0, [sp, #28]  ; sp[28] = w0_c = w0_a

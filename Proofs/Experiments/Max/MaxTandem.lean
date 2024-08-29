@@ -26,7 +26,7 @@ section PC
 
 scoped notation "entry_start" => 0x894#64
 scoped notation "entry_end" => 0x8ac#64
-scoped notation "then_start" => 0x8b0#64
+scoped notation "then_start" => 0x8b0#64 -- yeesh, this is actually else.
 scoped notation "then_end" => 0x8b8#64
 scoped notation "else_start" => 0x8bc#64
 scoped notation "else_end" => 0x8c0#64
@@ -95,7 +95,7 @@ def spec (x0 x1 : BitVec 64) : BitVec 64 :=
   else (x0.zeroExtend 32).zeroExtend 64
 
 def post (s0 sf : ArmState) : Prop :=
-  read_gpr 64 0#5 sf = spec s0.x0 s0.x1 ∧
+  sf.x0 = spec s0.x0 s0.x1 ∧
   read_pc sf = 0x894#64 ∧
   read_err sf = StateError.None ∧
   sf.program = program ∧
@@ -118,7 +118,9 @@ def post (s0 sf : ArmState) : Prop :=
   -- ∧ read_mem_bytes 4 (r (Spec) si) si = 0x0#32
 
 @[simp] def then_start_inv (s0 si : ArmState): Prop :=
-  entry_end_inv s0 si
+  entry_end_inv s0 si ∧
+  ¬ (s0.x0 ≤ s0.x1)
+
 
 @[simp] def then_end_inv (s0 si : ArmState) : Prop :=
   read_err si = .None ∧
@@ -126,7 +128,7 @@ def post (s0 sf : ArmState) : Prop :=
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment si ∧
-  s0.x0 < s0.x1
+  si[s0.sp - 20#64 + 28#64, 4] = (spec s0.x0 s0.x1).zeroExtend 32
 
 
 @[simp] def else_start_inv (s0 si : ArmState) : Prop :=
@@ -135,7 +137,7 @@ def post (s0 sf : ArmState) : Prop :=
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment si ∧
-  ¬ (s0.x0 < s0.x1)
+  (s0.x0 ≤ s0.x1)
 
 @[simp] def else_end_inv (s0 si : ArmState) : Prop :=
   read_err si = .None ∧
