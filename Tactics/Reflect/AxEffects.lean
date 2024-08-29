@@ -88,8 +88,7 @@ def initial (state : Expr) : AxEffects where
   fields            := .empty
   nonEffectProof    :=
     mkLambda `f .default (mkConst ``StateField) <|
-      let rf := mkApp2 (mkConst ``r) (.bvar 0) state
-      mkApp2 (.const ``Eq.refl [1]) (.const ``ArmState []) rf
+      mkEqReflArmState <| mkApp2 (mkConst ``r) (.bvar 0) state
   memoryEffect      := state
   memoryEffectProof :=
     mkLambda `n .default (mkConst ``Nat) <|

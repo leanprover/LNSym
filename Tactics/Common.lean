@@ -255,3 +255,7 @@ def mkArmState : Expr := mkConst ``ArmState
 /-- Return `x = y`, given expressions `x` and `y` of type `ArmState` -/
 def mkEqArmState (x y : Expr) : Expr :=
   mkApp3 (.const ``Eq [1]) mkArmState x y
+
+/-- Return a proof of type `x = x`, where `x : ArmState` -/
+def mkEqReflArmState (x : Expr) : Expr :=
+  mkApp2 (.const ``Eq.refl [1]) mkArmState x
