@@ -23,7 +23,9 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   simp (config := {ground := true}) only at h_s0_pc
   -- ^^ Still needed, because `aes_hw_encrypt_program.min` is somehow
   --    unable to be reflected
-  sym_n 60
-  subst h_run
-  assumption
-  done
+  -- TODO: branching condition currently not supported
+  sorry
+  -- sym_n 60
+  -- subst h_run
+  -- assumption
+  -- done
