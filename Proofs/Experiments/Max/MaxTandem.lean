@@ -95,7 +95,7 @@ def spec (x0 x1 : BitVec 64) : BitVec 64 :=
   else (x0.zeroExtend 32).zeroExtend 64
 
 def post (s0 sf : ArmState) : Prop :=
-  read_gpr 64 0#5 sf = spec (read_gpr 64 0#5 s0) (read_gpr 64 1#5 s0) ∧
+  read_gpr 64 0#5 sf = spec s0.x0 s0.x1 ∧
   read_pc sf = 0x894#64 ∧
   read_err sf = StateError.None ∧
   sf.program = program ∧
@@ -104,36 +104,47 @@ def post (s0 sf : ArmState) : Prop :=
   CheckSPAlignment sf
 
 @[simp] def entry_start_inv (s0 si : ArmState) : Prop := si = s0
+
+
+
 @[simp] def entry_end_inv (s0 si : ArmState): Prop :=
   read_err si = .None ∧
   si.program = program ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment si
+  CheckSPAlignment si ∧
+  si[s0.sp - 20#64 + 12#64, 4] = s0.x0.zeroExtend 32 ∧
+  si[s0.sp - 20#64 + 8#64, 4] = s0.x1.zeroExtend 32 -- TODO: read flags.
   -- ∧ read_mem_bytes 4 (r (Spec) si) si = 0x0#32
 
-@[simp] def then_start_inv : Prop := True
+@[simp] def then_start_inv (s0 si : ArmState): Prop :=
+  entry_end_inv s0 si
+
 @[simp] def then_end_inv (s0 si : ArmState) : Prop :=
   read_err si = .None ∧
   si.program = program ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment si
+  CheckSPAlignment si ∧
+  s0.x0 < s0.x1
+
 
 @[simp] def else_start_inv (s0 si : ArmState) : Prop :=
   read_err si = .None ∧
   si.program = program ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment si
-
+  CheckSPAlignment si ∧
+  ¬ (s0.x0 < s0.x1)
 
 @[simp] def else_end_inv (s0 si : ArmState) : Prop :=
   read_err si = .None ∧
   si.program = program ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment si
+  CheckSPAlignment si ∧
+  si[s0.sp - 20#64 + 28#64, 4] = (spec s0.x0 s0.x1).zeroExtend 32
+
 
 
 @[simp] def merge_start_inv (s0 si : ArmState) : Prop :=
@@ -141,7 +152,8 @@ def post (s0 sf : ArmState) : Prop :=
   si.program = program ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment si
+  CheckSPAlignment si  ∧
+  si[s0.sp - 20#64 + 28#64, 4] = (spec s0.x0 s0.x1).zeroExtend 32
 
 
 @[simp] def merge_end_inv (s0 sf : ArmState): Prop := post s0 sf
