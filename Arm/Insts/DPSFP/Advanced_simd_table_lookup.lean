@@ -7,6 +7,7 @@ Author(s): Yan Peng
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -72,7 +73,7 @@ def exec_advanced_simd_table_lookup
 
 ----------------------------------------------------------------------
 
-def Advanced_simd_table_lookup_cls.tbl.rand : IO (Option (BitVec 32)) := do
+def Advanced_simd_table_lookup_cls.tbl.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let (inst : Advanced_simd_table_lookup_cls) :=
     { Q := ← BitVec.rand 1,
       op2 := 0b00#2,
@@ -85,7 +86,7 @@ def Advanced_simd_table_lookup_cls.tbl.rand : IO (Option (BitVec 32)) := do
   pure (some (inst.toBitVec32))
 
 /-- Generate random instructions of Advanced_simd_table_lookup class. -/
-def Advanced_simd_table_lookup_cls.rand : List (IO (Option (BitVec 32))) :=
+def Advanced_simd_table_lookup_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Advanced_simd_table_lookup_cls.tbl.rand ]
 
 end DPSFP
