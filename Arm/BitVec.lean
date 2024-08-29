@@ -36,7 +36,6 @@ attribute [bitvec_rules] BitVec.toNat_ofFin
 attribute [bitvec_rules] BitVec.toNat_ofNatLt
 attribute [bitvec_rules] BitVec.getLsb_ofNatLt
 attribute [bitvec_rules] BitVec.toFin_ofNat
-attribute [bitvec_rules] BitVec.toNat_zero
 attribute [bitvec_rules] BitVec.getLsb_zero
 attribute [bitvec_rules] BitVec.getMsb_zero
 attribute [bitvec_rules] BitVec.toNat_mod_cancel

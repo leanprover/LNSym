@@ -2,7 +2,7 @@ import Tactics.CSE
 
 import Arm.Insts.DPSFP.Insts
 import Specs.SHA512
-import LeanSAT
+import Std.Tactic.BVDecide
 import Tactics.CSE
 
 
