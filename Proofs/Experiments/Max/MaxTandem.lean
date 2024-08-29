@@ -75,10 +75,37 @@ def post (s0 sf : ArmState) : Prop :=
   -- ∧ read_mem_bytes 4 (r (Spec) si) si = 0x0#32
 
 @[simp] def then_start_inv : Prop := True
-@[simp] def then_end_inv : Prop := True
-@[simp] def else_start_inv : Prop := True
-@[simp] def else_end_inv : Prop := True
-@[simp] def merge_start_inv : Prop := True
+@[simp] def then_end_inv (s0 si : ArmState) : Prop :=
+  read_err si = .None ∧
+  si.program = program ∧
+  -- (FIXME) We don't really need the stack pointer to be aligned, but the
+  -- `sym_n` tactic expects this. Can we make this optional?
+  CheckSPAlignment si
+
+@[simp] def else_start_inv (s0 si : ArmState) : Prop :=
+  read_err si = .None ∧
+  si.program = program ∧
+  -- (FIXME) We don't really need the stack pointer to be aligned, but the
+  -- `sym_n` tactic expects this. Can we make this optional?
+  CheckSPAlignment si
+
+
+@[simp] def else_end_inv (s0 si : ArmState) : Prop :=
+  read_err si = .None ∧
+  si.program = program ∧
+  -- (FIXME) We don't really need the stack pointer to be aligned, but the
+  -- `sym_n` tactic expects this. Can we make this optional?
+  CheckSPAlignment si
+
+
+@[simp] def merge_start_inv (s0 si : ArmState) : Prop :=
+  read_err si = .None ∧
+  si.program = program ∧
+  -- (FIXME) We don't really need the stack pointer to be aligned, but the
+  -- `sym_n` tactic expects this. Can we make this optional?
+  CheckSPAlignment si
+
+
 @[simp] def merge_end_inv (s0 sf : ArmState): Prop := post s0 sf
 
 def exit (s : ArmState) : Prop :=
@@ -96,10 +123,10 @@ def assert (s0 si : ArmState) : Prop :=
   | entry_start => entry_start_inv s0 si
   | entry_end => entry_end_inv s0 si
   | then_start => then_start_inv
-  | then_end => then_end_inv
-  | else_start => else_start_inv
-  | else_end => else_end_inv
-  | merge_start => merge_start_inv
+  | then_end => then_end_inv s0 si
+  | else_start => else_start_inv s0 si
+  | else_end => else_end_inv s0 si
+  | merge_start => merge_start_inv s0 si
   | merge_end => merge_end_inv s0 si
   | _ => False
 
@@ -763,10 +790,47 @@ theorem partial_correctness :
         done
       case pos =>
         sorry
-    · sorry
-    · sorry
-    · sorry
-    · sorry
+    · -- start @ then_start_inv
+      simp [then_start_inv] at h_assert
+      sym_i_cassert 0 cassert_eq program.stepi_0x894_cut
+      case h_s1_sp_aligned =>
+        simp (config := {decide := true, ground := true}) only []
+        apply Aligned_BitVecSub_64_4
+        · assumption
+        · decide
+      -- End: Symbolic simulation
+      sorry
+    · -- start @ then_end_inv
+      rename_i x h_s1_pc -- what in the world is this `x`?
+      simp [then_end_inv] at h_assert
+      obtain ⟨h_s1_err, h_s1_program, h_s1_sp_aligned⟩ := h_assert
+      generalize h_si_s1 : si = s1; subst si
+      sym_i_cassert 1 cassert_eq program.stepi_0x8b8_cut
+      simp [assert, h_s2_pc, read_pc]
+      simp (config := {}) [h_pre, h_s2_err, h_s2_program, h_s2_sp_aligned, read_err]
+
+    · -- start @ else_start_inv
+      rename_i x h_s1_pc -- what in the world is this `x`?
+      simp [else_start_inv] at h_assert
+      obtain ⟨h_s1_err, h_s1_program, h_s1_sp_aligned⟩ := h_assert
+      generalize h_si_s1 : si = s1; subst si
+
+      generalize h_s2 : run 1 s1 = s2
+      obtain ⟨h_cut, h_pc, h_err, h_program, h_s2_x0, h_sp_aligned⟩  :=
+        program.stepi_0x8bc_cut s1 s2 h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned h_s2.symm
+      rw [Correctness.snd_cassert_of_cut h_cut]
+      simp [Spec'.assert, assert, h_pc, read_pc, h_pre]
+      simp [h_err, h_program, h_sp_aligned, read_err]
+    ·  -- start @ else_end_inv
+      rename_i x h_s1_pc
+      simp [else_end_inv] at h_assert
+      obtain ⟨h_err, h_program, h_sp_aligned⟩ := h_assert
+      generalize hsi : si = s; subst si -- rename 'si' to 's'.
+      generalize h_run : run 1 s = s'
+      obtain ⟨h_cut, h_pc, h_err, h_program, h_s2_x0, h_sp_aligned⟩  :=
+        program.stepi_0x8c0_cut s s' h_program h_s1_pc h_err h_sp_aligned h_run.symm
+
+      sorry
     · sorry
     · sorry
     · sorry
