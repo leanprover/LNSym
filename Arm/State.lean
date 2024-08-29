@@ -487,6 +487,8 @@ end Accessor_updater_functions
 
 namespace StateField
 
+/- Might eventually be used to maintain a `O(1)` access `StateField` map, 
+by using `StateField.toFin` to index into a sparse array. -/
 def toFin : StateField → Fin 70
   | .GPR x    => x.toFin.castAdd 38
   | .SFP x    => (x.toFin.addNat 32).castAdd 6
