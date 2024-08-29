@@ -174,7 +174,7 @@ def assert (s0 si : ArmState) : Prop :=
   match (read_pc si) with
   | entry_start => entry_start_inv s0 si
   | entry_end => entry_end_inv s0 si
-  | then_start => then_start_inv
+  | then_start => then_start_inv s0 si
   | then_end => then_end_inv s0 si
   | else_start => else_start_inv s0 si
   | else_end => else_end_inv s0 si
