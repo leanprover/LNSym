@@ -403,3 +403,39 @@ Did you remember to generate step theorems with:
     -- The main loop
     for _ in List.range n do
       c ← sym1 c whileTac
+
+    -- Check if we can substitute the final state
+    if c.runSteps? = some 0 then
+      let msg := do
+        let hRun ← userNameToMessageData c.h_run
+        pure m!"runSteps := 0, substituting along {hRun}"
+      withTraceNode `Tactic.sym (fun _ => msg) <| withMainContext do
+        let s ← SymContext.findFromUserName c.state
+        let sfEq ← mkEq s.toExpr c.finalState
+
+        let goal ← getMainGoal
+        trace[Tactic.sym] "original goal:\n{goal}"
+        let ⟨hEqId, goal⟩ ← do
+          let hRun ← SymContext.findFromUserName c.h_run
+          goal.note `this (← mkEqSymm hRun.toExpr) sfEq
+        goal.withContext <| do
+          trace[Tactic.sym] "added {← userNameToMessageData `this} of type \
+            {sfEq} in:\n{goal}"
+
+        let goal ← subst goal hEqId
+        trace[Tactic.sym] "performed subsitutition in:\n{goal}"
+
+        replaceMainGoal [goal]
+
+    -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
+    -- added while symbolically evaluating to `simp`
+    withMainContext <| do
+      let lctx ← getLCtx
+      let some axHyps := c.axHyps.toArray.mapM lctx.find?
+        | throwError "internal error: one of the following fvars could not \
+            be found:\n  {c.axHyps.map Expr.fvar}"
+      let (ctx, simprocs) ← LNSymSimpContext
+          (config := {decide := true, failIfUnchanged := false})
+          (decls := axHyps)
+      let goal? ← LNSymSimp (← getMainGoal) ctx simprocs
+      replaceMainGoal goal?.toList

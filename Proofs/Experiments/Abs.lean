@@ -44,18 +44,10 @@ theorem correct
   simp (config := {ground := true}) at h_run
 
   sym_n 4
-  simp only [run] at h_run
-  subst sf
-  apply And.intro
-  · simp only [read_gpr, BitVec.ofNat_eq_ofNat]
-    simp (config := {decide := true}) only [
-      h_s4_x0,
-      h_s3_x1, h_s3_non_effects,
-      h_s2_x0, h_s2_non_effects,
-      h_s1_x1, h_s1_non_effects]
-    generalize r (StateField.GPR 0#5) s0 = x
-    simp only [spec, AddWithCarry]
-    split <;> bv_decide
+
+  simp only [spec, AddWithCarry]
+  constructor
+  · split <;> bv_decide
   · assumption
 
 /--
