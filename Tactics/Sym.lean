@@ -182,7 +182,7 @@ def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
 /-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
 add hypotheses that axiomatically describe the effects in terms of
 reads from `s{i+1}` -/
-def explodeStep (c : SymContext) (hStep : Expr) : TacticM Unit :=
+def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
   withMainContext do
     let mut eff ← AxEffects.fromEq hStep
 
@@ -240,8 +240,9 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM Unit :=
                 #[eff.currentState, spEff.value, spEff.proof, hAligned]
             pure { eff with stackAlignmentProof? }
 
-    withMainContext <|
+    let axHyps ← withMainContext <|
       eff.addHypothesesToLContext s!"h_{c.next_state}_"
+    return { c with axHyps := axHyps ++ c.axHyps}
 
 /-- A tactic wrapper around `explodeStep`.
 Note the use of `SymContext.fromLocalContext`,
@@ -254,7 +255,7 @@ elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
   let stateDecl := (← getLCtx).get! stateFVar
   let c ← SymContext.fromLocalContext (some stateDecl.userName)
 
-  explodeStep c hStep
+  let _ ← explodeStep c hStep
 
 
 /--
@@ -305,7 +306,7 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
           skipping simplification step"
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
-    withMainContext <| do
+    let c ← withMainContext <| do
       let hStep ← SymContext.findFromUserName h_step.getId
       -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`

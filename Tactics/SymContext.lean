@@ -82,6 +82,10 @@ structure SymContext where
   `CheckSPAlignment state` -/
   h_sp?  : Option Name
 
+  /-- The list of all axiomatic-effect hypotheses added by `AxEffect`
+  throughout the current `sym_n` run -/
+  axHyps : List FVarId
+
   /-- `state_prefix` is used together with `curr_state_number`
   to determine the name of the next state variable that is added by `sym` -/
   state_prefix      : String := "s"
@@ -268,7 +272,8 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
 
   return inferStatePrefixAndNumber {
     state, finalState, h_run, runSteps?, program, h_program, pc, h_pc,
-    h_err?, h_sp?, programInfo
+    h_err?, h_sp?, programInfo,
+    axHyps := []
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
@@ -401,6 +406,7 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     program     := c.program
     programInfo := c.programInfo
     pc          := nextPc?.getD (c.pc + 4#64)
+    axHyps      := c.axHyps
     curr_state_number
     state_prefix := c.state_prefix
   }
