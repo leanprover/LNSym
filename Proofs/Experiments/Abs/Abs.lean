@@ -37,7 +37,9 @@ theorem correct
   sym_n 5
   sorry
 
-/-- info: 'Abs.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/
+/--
+info: 'Abs.correct' depends on axioms: [propext, sorryAx, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
 #guard_msgs in #print axioms correct
 
 end Abs

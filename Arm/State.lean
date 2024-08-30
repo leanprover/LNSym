@@ -318,6 +318,9 @@ def ArmState.x0 (s : ArmState) : BitVec 64 := r (StateField.GPR 0) s
 def ArmState.x1 (s : ArmState) : BitVec 64 := r (StateField.GPR 1) s
 
 @[state_simp_rules]
+def ArmState.x2 (s : ArmState) : BitVec 64 := r (StateField.GPR 2) s
+
+@[state_simp_rules]
 def ArmState.sp (s : ArmState) : BitVec 64 := r (StateField.GPR 31) s
 
 @[state_simp_rules]
