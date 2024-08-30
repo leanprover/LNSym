@@ -4,9 +4,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Yan Peng, Nathan Wetzler
 -/
 
-import LeanSAT
+import Std.Tactic.BVDecide
 import Arm.BitVec
 import Arm.State
+import Arm.Insts.CosimM
 
 section Common
 
@@ -14,22 +15,18 @@ open BitVec
 
 ----------------------------------------------------------------------
 
-/-- 
+/--
 `GPRIndex.rand` picks a safe GPR index for Arm-based Apple platforms
 i.e., one not reserved on them. Use this function instead of
 `BitVec.rand` to pick an appropriate random index for a source and
-destination GPR during cosimulations. 
+destination GPR during cosimulations.
 
 See "NOTE: Considerations for running cosimulations on Arm-based Apple
 platforms" in Arm/Cosim.lean for details.
 -/
 partial def GPRIndex.rand (lo := 0) (hi := 31) :
-  IO (BitVec 5) := do
-  let darwin_check ←
-  IO.Process.output
-      { cmd  := "Arm/Insts/Cosim/platform_check.sh",
-        args := #["-d"] }
-  if darwin_check.exitCode == 1 then
+  Cosim.CosimM (BitVec 5) := do
+  if ← Cosim.darwin? then
     go lo hi
   else
     -- On non-Darwin machines, fall through to `BitVec.rand`.
@@ -303,13 +300,14 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
     unfold invalid_bit_masks
     simp only [Nat.lt_one_iff, ite_not, Bool.not_eq_true]
     split
-    · simp only [Nat.reduceAdd, false_implies]
+    · simp only [Nat.reduceAdd, false_implies, Bool.true_eq_false]
     . simp_all only [Bool.ite_eq_false_distrib, ite_eq_left_iff, imp_false]
       split
-      . simp only [false_implies]
+      . simp only [Bool.true_eq_false, Nat.reduceAdd, false_implies]
       . split
-        . simp only [false_implies]
-        . simp only [Decidable.not_not, imp_self]
+        . simp only [Bool.true_eq_false, Nat.reduceAdd, false_implies]
+        . simp only [Nat.reduceAdd, Bool.true_eq_false, imp_false,
+            Decidable.not_not, imp_self]
     done
 
 -- Resources on Arm bitmask immediate:

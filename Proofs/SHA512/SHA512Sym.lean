@@ -25,7 +25,7 @@ that the register `x2` is decremented early on in this program:
 
 In the near future, we'd like to prove that the hash computed for this
 one input block matches the expected value, i.e., one dictated by
-`SHA2.sha512`. 
+`SHA2.sha512`.
 
 Also see `Tests.SHA2.SHA512ProgramTest` for an example of a concrete
 run that checks the implementation against the specification.
@@ -71,7 +71,7 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
                   ktbl_addr      (SHA2.k_512.length * 8))
   -- (FIXME) Use program.length instead of 20 here (depends on the
   -- performance of the new symbolic simulation tactic).
-  (h_run : sf = run 20 s0) :  
+  (h_run : sf = run 20 s0) :
   r (StateField.GPR 2#5) sf = 0#64 ∧
   r StateField.ERR sf = StateError.None := by
   sym_n 20
@@ -79,7 +79,7 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
   (FIXME @bollu) cse fails with the following message:
   no goals to be solved
   -/
-  -- cse (config := { processHyps := .allHyps })
+  cse (config := { processHyps := .allHyps })
   -- Final Steps
   unfold run at h_run
   subst sf

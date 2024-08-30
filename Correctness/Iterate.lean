@@ -46,9 +46,10 @@ theorem iterate'_eq [Inhabited β] (f : α → Sum β α) (a : α) (h : fuel ≠
         : iterate' f a fuel = if ht : test f a then some (base f a) else iterate' f (next f a ht) (fuel - 1) := by
   conv => lhs; unfold iterate'; simp [*]
 
-theorem iterate'_succ_eq [Inhabited β] (f : α → Sum β α) (a : α) (fuel : Nat)
-        : iterate' f a (fuel + 1) = if ht : test f a then some (base f a) else iterate' f (next f a ht) fuel := by
-   conv => lhs; unfold iterate'; simp only [↓reduceIte, Nat.add_one_sub_one]
+theorem iterate'_succ_eq [Inhabited β] (f : α → Sum β α) (a : α) (fuel : Nat) :
+    iterate' f a (fuel + 1) = if ht : test f a then some (base f a) else iterate' f (next f a ht) fuel := by
+  conv => lhs; unfold iterate';
+  simp only [Nat.add_one_ne_zero, ↓reduceIte, Nat.add_one_sub_one]
 
 variable [Inhabited β] {f : α → Sum β α}
 

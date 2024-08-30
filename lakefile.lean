@@ -35,6 +35,5 @@ lean_exe «lnsym» where
   -- Remove this line if you do not need such functionality.
   -- supportInterpreter := true
 
-require LeanSAT from git "https://github.com/leanprover/leansat" @ "main"
 require ELFSage from git "https://github.com/draperlaboratory/ELFSage.git" @ "main"
 require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "main"

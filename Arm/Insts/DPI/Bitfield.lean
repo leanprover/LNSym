@@ -13,6 +13,7 @@ Author(s): Shilpi Goel, Nevine
 
 import Arm.Decode
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 namespace DPI
 
@@ -61,7 +62,7 @@ def exec_bitfield (inst: Bitfield_cls) (s : ArmState) : ArmState :=
 ----------------------------------------------------------------------
 
 /-- Generate random instructions of the DPI.Bitfield class. -/
-partial def Bitfield_cls.all.rand : IO (Option (BitVec 32)) := do
+partial def Bitfield_cls.all.rand : Cosim.CosimM (Option (BitVec 32)) := do
   -- Choose assignments based on sf that will not result in illegal instructions
   let sf := ← BitVec.rand 1
   -- All legal instructions have the same values for sf and N fields.
@@ -89,7 +90,7 @@ partial def Bitfield_cls.all.rand : IO (Option (BitVec 32)) := do
 -- because we want to make sure they are hit during conformance testing,
 -- which may not be the case when `Bitfield_cls.all.rand` is used to
 -- generate a small number of test cases.
-partial def Bitfield_cls.lsr.rand : IO (Option (BitVec 32)) := do
+partial def Bitfield_cls.lsr.rand : Cosim.CosimM (Option (BitVec 32)) := do
   -- Specifically test the assignment that results in LSR
   let sf := ← BitVec.rand 1
   let N := sf
@@ -105,7 +106,7 @@ partial def Bitfield_cls.lsr.rand : IO (Option (BitVec 32)) := do
       Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))
 
-partial def Bitfield_cls.lsl.rand : IO (Option (BitVec 32)) := do
+partial def Bitfield_cls.lsl.rand : Cosim.CosimM (Option (BitVec 32)) := do
   -- Specifically test the assignment that results in LSL
   let sf := ← BitVec.rand 1
   let N := sf
@@ -127,7 +128,7 @@ partial def Bitfield_cls.lsl.rand : IO (Option (BitVec 32)) := do
     else
       return bits
 
-def Bitfield_cls.rand : List (IO (Option (BitVec 32))) :=
+def Bitfield_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Bitfield_cls.all.rand,
     Bitfield_cls.lsr.rand,
     Bitfield_cls.lsl.rand ]

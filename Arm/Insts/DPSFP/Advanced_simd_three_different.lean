@@ -9,6 +9,7 @@ Author(s): Yan Peng
 import Arm.Decode
 import Arm.State
 import Arm.Insts.Common
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -75,7 +76,7 @@ def exec_advanced_simd_three_different
 
 ----------------------------------------------------------------------
 
-partial def Advanced_simd_three_different_cls.pmull.rand : IO (Option (BitVec 32)) := do
+partial def Advanced_simd_three_different_cls.pmull.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let size := ← BitVec.rand 2
   if size == 0b01#2 || size == 0b10#2 then
     Advanced_simd_three_different_cls.pmull.rand
@@ -92,7 +93,7 @@ partial def Advanced_simd_three_different_cls.pmull.rand : IO (Option (BitVec 32
     pure (some (inst.toBitVec32))
 
 /-- Generate random instructions of Advanced_simd_three_different class. -/
-def Advanced_simd_three_different_cls.rand : List (IO (Option (BitVec 32))) :=
+def Advanced_simd_three_different_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [Advanced_simd_three_different_cls.pmull.rand]
 
 end DPSFP
