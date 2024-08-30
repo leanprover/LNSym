@@ -69,43 +69,35 @@ def popcount32_program : Program :=
 #genStepEqTheorems popcount32_program
 
 theorem popcount32_sym_no_error (s0 s_final : ArmState)
-  (h_s0_pc : read_pc s0 = 0x4005b4#64)
-  (h_s0_program : s0.program = popcount32_program)
-  (h_s0_sp_aligned : CheckSPAlignment s0)
-  (h_s0_err : read_err s0 = StateError.None)
-  (h_run : s_final = run 27 s0) :
-  read_err s_final = StateError.None := by
-  -- Prelude
-  simp_all only [state_simp_rules, -h_run]
+    (h_s0_pc : read_pc s0 = 0x4005b4#64)
+    (h_s0_program : s0.program = popcount32_program)
+    (h_s0_sp_aligned : CheckSPAlignment s0)
+    (h_s0_err : read_err s0 = StateError.None)
+    (h_run : s_final = run 27 s0) :
+    read_err s_final = StateError.None := by
   -- Symbolic Simulation
   sym_n 27
   done
 
--- theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
---   (h_s0_pc : read_pc s0 = 0x4005b4#64)
---   (h_s0_program : s0.program = popcount32_program)
---   (h_s0_sp_aligned : CheckSPAlignment s0)
---   (h_s0_err : read_err s0 = StateError.None)
---   (h_run : s_final = run 27 s0) :
---   read_gpr 32 0#5 s_final = popcount32_spec (read_gpr 32 0#5 s0) ∧
---   read_err s_final = StateError.None := by
---   -- Prelude
---   simp_all only [state_simp_rules, -h_run]
---   -- Symbolic Simulation
---   sym_n 27
---   try (clear h_step_1 h_step_2 h_step_3 h_step_4;
---        clear h_step_5 h_step_6 h_step_7 h_step_8;
---        clear h_step_9 h_step_10;
---        clear h_step_11 h_step_12 h_step_13 h_step_14;
---        clear h_step_15 h_step_16 h_step_17 h_step_18;
---        clear h_step_19 h_step_20;
---        clear h_step_21 h_step_22 h_step_23 h_step_24;
---        clear h_step_25 h_step_26)
---   -- Final Steps
---   unfold run at h_run
---   subst s_final
---   unfold popcount32_spec
---   sorry
+theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
+    (h_s0_pc : read_pc s0 = 0x4005b4#64)
+    (h_s0_program : s0.program = popcount32_program)
+    (h_s0_sp_aligned : CheckSPAlignment s0)
+    (h_s0_err : read_err s0 = StateError.None)
+    (h_run : s_final = run 27 s0) :
+    read_gpr 32 0#5 s_final = popcount32_spec (read_gpr 32 0#5 s0) ∧
+    read_err s_final = StateError.None := by
+  -- Symbolic Simulation
+  sym_n 27
+
+  generalize r (.GPR 0#5) s0  = x
+  generalize r (.GPR 31#5) s0 = y
+  simp (config := {ground := true}) only [popcount32_spec, popcount32_spec_rec, AddWithCarry,
+    bitvec_rules, minimal_theory]
+  -- TODO: remove once bv_decide understands extractLsb'
+  simp [BitVec.extractLsb'_eq_extractLsb _ _ _ (by omega : 1 > 0)]
+  -- bv_decide
+  sorry
 
 /-! ## Tests for step theorem generation -/
 section Tests
