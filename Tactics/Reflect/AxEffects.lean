@@ -305,7 +305,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
   -- Update the memory effect proof
   let memoryEffectProof :=
     mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
-      #[eff.currentState, eff.initialState, eff.memoryEffectProof, fld, val]
+      #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, fld, val]
 
   -- Update the program proof
   let programProof ← mkEqTrans
