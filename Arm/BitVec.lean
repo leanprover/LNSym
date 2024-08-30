@@ -288,6 +288,25 @@ abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
   -- by LeanSAT.
   (BitVec.extractLsb i i x).cast (by omega)
 
+section ForLean
+
+@[simp]
+theorem ofBool_eq_1_iff (x : Bool) : BitVec.ofBool x = 1#1 ↔ x = true := by
+  rcases x <;> simp
+
+@[simp]
+theorem ofBool_eq_0_iff (x : Bool) : BitVec.ofBool x = 0#1 ↔ x = false := by
+  rcases x <;> simp
+
+end ForLean
+
+theorem lsb_eq_ofBool_getLsb : lsb x i = BitVec.ofBool (x.getLsb i) := by
+  apply BitVec.eq_of_getLsb_eq
+  simp only [getLsb_cast, getLsb_extract, Nat.sub_self, Nat.le_zero_eq, getLsb_ofBool]
+  intros k
+  simp only [show k = 0 by omega, Fin.isValue, Fin.val_zero, decide_True, Nat.add_zero,
+    Bool.true_and]
+
 abbrev partInstall (hi lo : Nat) (val : BitVec (hi - lo + 1)) (x : BitVec n): BitVec n :=
   let mask := allOnes (hi - lo + 1)
   let val_aligned := (zeroExtend n val) <<< lo

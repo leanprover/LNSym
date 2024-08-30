@@ -45,6 +45,19 @@ partial def GPRIndex.rand (lo := 0) (hi := 31) :
 
 ----------------------------------------------------------------------
 
+/-- Sum of bitvectors `x y : BitVec n` and `c : BitVec 1` in a large bitvector `unsigned_sum`.  -/
+def unsignedSum (x y : BitVec n) (c : BitVec 1) : BitVec (n + 1) :=
+  (zeroExtend (n + 1) x) + (zeroExtend (n + 1) y) + (zeroExtend (n + 1) c)
+
+def signedSum (x y : BitVec n) (c : BitVec 1) : BitVec (n + 1) :=
+  signExtend (n + 1) x + signExtend (n + 1) y + (signExtend (n + 1)) c
+
+@[bitvec_rules]
+theorem toNat_unsignedSum {x y : BitVec n} : (unsignedSum x y c).toNat = x.toNat + y.toNat + c.toNat := by
+  simp [unsignedSum]
+  rw [Nat.mod_eq_of_lt (by omega)]
+
+-- https://developer.arm.com/documentation/ddi0597/2023-12/Shared-Pseudocode/shared-functions-integer?lang=en#impl-shared.AddWithCarry.3
 def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   (BitVec n × PState) :=
   let carry_in_ext := zeroExtend (n + 1) carry_in
@@ -91,14 +104,88 @@ theorem fst_AddWithCarry_eq (x : BitVec n) (y : BitVec n) {carry : BitVec 1} :
   have : carry = 0#1 ∨ carry = 1#1 := by bv_decide
   rcases this with rfl | rfl  <;> simp [state_simp_rules]
 
+/-- the `z` flag is `1` when the result is `0`. -/
+@[bitvec_rules, state_simp_rules]
+theorem z_snd_AddWithCarry_iff (x y : BitVec n) :
+    ((AddWithCarry x y c).snd.z = 1#1) ↔ ((x.toNat + y.toNat + c.toNat) % 2^n = 0) := by
+  simp [AddWithCarry, make_pstate]
+  have hxyc : x.toNat + y.toNat + c.toNat < 2^(n + 1) := by omega
+  constructor
+  · intros h
+    simp at h
+    obtain this
+      : (zeroExtend n (zeroExtend (n + 1) x + zeroExtend (n + 1) y + (zeroExtend (n + 1) c))).toNat = (0#n).toNat :=
+      by simp [h]
+    simp at this
+    simp only [Nat.mod_eq_of_lt hxyc] at this
+    exact this
+  · intros h
+    apply BitVec.eq_of_toNat_eq
+    simp only [toNat_truncate, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod, Nat.mod_eq_of_lt hxyc,
+      h, toNat_ofNat, Nat.zero_mod]
+/-- the `z` flag is `1` when the result is `0`. -/
+@[bitvec_rules, state_simp_rules]
+theorem z_snd_AddWithCarry_zero_eq (x y : BitVec n) :
+    ((AddWithCarry x y 0#1).snd.z = 1#1) ↔ ((x.toNat + y.toNat) % 2^n = 0) := by
+  simp [state_simp_rules]
 
--- TODO: Is this rule helpful at all?
+/-- the `z` flag is `1` when the result is `0`. -/
+@[bitvec_rules, state_simp_rules]
+theorem z_snd_AddWithCarry_one_eq (x y : BitVec n) :
+    ((AddWithCarry x (~~~y) 1#1).snd.z = 1#1) ↔ ((x.toNat - y.toNat) % 2^n = 0) := by
+  simp [state_simp_rules]
+  simp [show x.toNat + (2^n - 1 - y.toNat) + 1 = 2^n + x.toNat - y.toNat by omega]
+
+
+/-- the `n` flag is `1` when the result is negative. -/
+@[bitvec_rules, state_simp_rules]
+theorem n_snd_AddWithCarry_iff (x y : BitVec n) (hn : n > 0) :
+    ((AddWithCarry x y c).snd.n = 1#1) ↔ ((x.toNat + y.toNat + c.toNat) ≥ 2^n) := by sorry
+
 @[bitvec_rules]
 theorem zeroExtend_eq_of_AddWithCarry :
   zeroExtend n (AddWithCarry x y carry_in).fst =
   (AddWithCarry x y carry_in).fst := by
   simp only [zeroExtend_eq]
 
+/-- The `z` flag is set from the `AddWithCarry` result iff the result is zero. -/
+theorem z_snd_AddWithCarry_eq_one_iff_eq (x y : BitVec 64) :
+     ((AddWithCarry x y c).snd.z = 1#1)  ↔ ((AddWithCarry x y c).fst = 0#64):= by
+  simp [AddWithCarry, make_pstate]
+
+/-- The `n` flag is set from the `AddWithCarry` result iff the result is negative. -/
+theorem n_snd_AddWithCarry_eq_one_iff_lt_zero (x y : BitVec 64) :
+     (BitVec.slt (AddWithCarry x y c).fst 0#64) ↔ ((AddWithCarry x y c).snd.n = 1#1) := by
+  simp [AddWithCarry, make_pstate]
+  bv_decide
+
+/-- The cn` flag is set from the `AddWithCarry` result iff the result has a carry bit. -/
+theorem c_snd_AddWithCarry_iff_adc_carry_eq_one (x y : BitVec 64) (c : BitVec 1):
+    ((AddWithCarry x y c).snd.c = 1#1) ↔ (BitVec.adc x y (decide (c = 1#1))).fst := by
+  simp [AddWithCarry, make_pstate]
+  rw [adc_spec]
+  try bv_decide
+  sorry
+
+-- https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/instruction.ml#L543C36-L543C62
+/- `x ≥ y` iff `(N = V)` . -/
+theorem ge_iff_n_eq_v_and_z_eq_0 (x y : BitVec 64) :
+  (((AddWithCarry x (~~~y) 1).snd.n = (AddWithCarry x (~~~y) 1).snd.v)) ↔ BitVec.sle y x := by
+  simp [AddWithCarry, make_pstate]
+  bv_decide
+
+
+/- `x ≤ y` iff `(N = V)` and `(Z = 0)`. -/
+theorem le_iff_n_eq_v_and_z_eq_0 (x y : BitVec 64) :
+  (!(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
+   (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
+  -- (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
+  --  (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.sle x y := by
+  simp [AddWithCarry, make_pstate]
+  bv_decide
+
+
+-- https://developer.arm.com/documentation/ddi0602/2023-09/Shared-Pseudocode/shared-functions-system?lang=en#impl-shared.ConditionHolds.1
 def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   open PFlag in
   let N := read_flag N s

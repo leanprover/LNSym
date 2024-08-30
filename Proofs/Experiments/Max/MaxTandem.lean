@@ -85,7 +85,8 @@ def pre (s : ArmState) : Prop :=
   read_err s = StateError.None ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment s
+  CheckSPAlignment s ∧
+  mem_legal' s.sp 80 -- TODO: find the correct smallest bound we need here.
 
 
 /-- Specification function. -/
@@ -243,11 +244,13 @@ theorem program.stepi_0x898_cut (s sn : ArmState)
   (h_pc : r StateField.PC s = 0x898#64)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
+  (h_legal : mem_legal' s.sp 40)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
   r StateField.PC sn = 0x89c#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
+  sn[(sn.sp) + 8#64, 4] = s[s.sp + 8#64, 4] ∧
   sn[(sn.sp) + 12#64, 4] = (s.x0).truncate 32 ∧
   (sn.x0) = (s.x0) ∧
   (sn.x1) = (s.x1) ∧
@@ -259,6 +262,10 @@ theorem program.stepi_0x898_cut (s sn : ArmState)
                  state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
+  simp only [memory_rules, state_simp_rules]
+  simp_mem
+  rfl
+
 
 /--
 info: 'MaxTandem.program.stepi_0x898_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
@@ -272,12 +279,12 @@ theorem program.stepi_0x89c_cut (s sn : ArmState)
   (h_pc : r StateField.PC s = 0x89c#64)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
-  -- (h_sp_legal : mem_legal' (s.sp) 20)
+  (h_legal : mem_legal' s.sp 40)
   (h_step : sn = run 1 s)
-  (h_s_sp_plus_12 : s[(s.sp) + 12#64, 4] = (s.x0).truncate 32)
   :
   cut sn = false ∧
   sn[(sn.sp) + 8#64, 4] = (s.x1).truncate 32 ∧
+  sn[(sn.sp) + 12#64, 4] = s[s.sp + 12#64, 4] ∧
   (sn.x0) = (s.x0) ∧
   (sn.x1) = (s.x1) ∧
   (sn.sp) = (s.sp) ∧
@@ -290,6 +297,9 @@ theorem program.stepi_0x89c_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
+  simp [memory_rules, state_simp_rules, minimal_theory]
+  simp_mem
+  rfl
 
 /--
 info: 'MaxTandem.program.stepi_0x89c_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
@@ -359,13 +369,23 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
   r StateField.PC sn = 0x8ac#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.C = (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 1#5) s))
+            (~~~BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s)) 1#1).snd.c ∧
+  sn.V = (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 1#5) s))
+            (~~~BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s)) 1#1).snd.v ∧
+  sn.Z = (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 1#5) s))
+            (~~~BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s)) 1#1).snd.z ∧
+  sn.N = (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 1#5) s))
+            (~~~BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s)) 1#1).snd.n ∧
+  CheckSPAlignment sn ∧
+  sn.mem = s.mem := by
   have := program.stepi_eq_0x8a8 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
   simp only [or_false, or_true]
+  -- simp [minimal_theory, bitvec_rules, memory_rules, state_simp_rules]
 
 /--
 info: 'MaxTandem.program.stepi_0x8a8_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -381,31 +401,35 @@ theorem program.stepi_0x8ac_cut (s sn : ArmState)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
-  cut sn = true
-  -- r StateField.PC sn =
-  -- (if ((r (StateField.FLAG PFlag.N) s = r (StateField.FLAG PFlag.V) s))
-  --   then
-  --     if r (StateField.FLAG PFlag.Z) s = 0x0#1
-  --     then 0x8b0#64
-  --     else 0x8bc#64
-  --   else
-  --     0x8b0#64) ∧
-  -- r StateField.ERR sn = .None ∧
-  -- sn.program = program ∧
-  -- CheckSPAlignment sn
+  cut sn = true ∧
+  r StateField.PC sn =
+  (if ¬(r (StateField.FLAG PFlag.N) s = r (StateField.FLAG PFlag.V) s ∧ r (StateField.FLAG PFlag.Z) s = 0#1)
+  then 2236#64 -- takes the branch
+  else 0x8b0#64) ∧
+  r StateField.ERR sn = .None ∧
+  sn.program = program ∧
+  CheckSPAlignment sn
   := by
   have := program.stepi_eq_0x8ac h_program h_pc h_err
   simp only [minimal_theory] at this
-  simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory, pcs]
-  by_cases h : r (StateField.FLAG PFlag.N) s = r (StateField.FLAG PFlag.V) s
-  · simp_all only [state_simp_rules, bitvec_rules, minimal_theory, h]
-    by_cases h₂ : r (StateField.FLAG PFlag.Z) s = 0x0#1
-    · simp_all (config := {decide := true}) only [state_simp_rules, bitvec_rules, minimal_theory, h₂]
-    · simp [h₂, h_pc, state_simp_rules]
-  · simp_all only [state_simp_rules, bitvec_rules, minimal_theory, h]
-    by_cases h₂ : r (StateField.FLAG PFlag.Z) s = 0x0#1
-    · simp_all (config := {decide := true}) only [state_simp_rules, bitvec_rules, minimal_theory, h₂]
-    · simp [h₂, h_pc, state_simp_rules]
+  simp only [← not_and] at *
+  simp only [cut, read_pc, pcs, List.mem_cons, List.mem_singleton, Bool.decide_or, Bool.or_eq_true,
+    decide_eq_true_eq, state_value]
+  split
+  case isTrue h =>
+    simp [h] at this
+    have : sn = w StateField.PC (2236#64) s := by
+      rw [h_step, ← this]
+      rfl
+    simp [this, state_simp_rules, h_sp_aligned, h_err, h_program]
+  case isFalse h =>
+    simp [h] at this
+    /- TODO: we have too many layers of abstraction. We need to choose a simp normal form
+    between `run` and `step`. -/
+    have : sn = w StateField.PC (2224#64) s := by
+      rw [h_step, ← this]
+      rfl
+    simp [this, state_simp_rules, h_sp_aligned, h_err, h_program]
 
 /--
 info: 'MaxTandem.program.stepi_0x8ac_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -720,6 +744,20 @@ macro "name" heq:ident ":" x:ident " := " val:term : tactic =>
 /-- info: MaxTandem.cut (s : ArmState) : Bool -/
 #guard_msgs in #check cut
 
+open Lean Elab Meta Tactic in
+/-- If no name is supplied, then clears all inaccessible names.
+If a list of names is supplied, then clear all inaccessible names that have
+*any* one of the strings as prefixes. -/
+elab "clear_named" names:(ident)* : tactic =>  do
+  withMainContext do
+    for hyp in (← getLCtx) do
+      trace[debug] "name: {hyp.userName}"
+      for name in names do
+        if name.getId.toString.isPrefixOf hyp.userName.toString then
+          replaceMainGoal [← (← getMainGoal).clear hyp.fvarId]
+          continue
+
+
 /-
 open Lean Meta Elab in
 dsimproc [vcg_rules] reduce_snd_cassert_of_cut
@@ -732,7 +770,7 @@ dsimproc [vcg_rules] reduce_snd_cassert_of_cut
     pure ()
   return .continue
 -/
-
+set_option trace.debug true in
 theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions
@@ -767,35 +805,61 @@ theorem partial_correctness :
     simp [Spec.exit, exit] at h_not_exit
     simp only [Spec'.assert, assert, h_not_exit, minimal_theory] at h_assert
     obtain ⟨h_pre, h_assert⟩ := h_assert
-    have ⟨h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned⟩ := h_pre
+    have ⟨h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned, h_mem_legal⟩ := h_pre
     simp_all only [Spec'.assert, Spec.exit, assert, exit,
                    minimal_theory, state_simp_rules]
     split at h_assert
-    · -- Next cutpoint from 0x894#64 (first instruction)
+    · -- Next cutpoint from 0x894#64 (1/15)
       subst si
-      -- Begin: Symbolic simulation
-      sym_i_cassert 0 cassert_eq program.stepi_0x894_cut
-      case h_s1_sp_aligned =>
-        simp (config := {decide := true, ground := true}) only []
-        apply Aligned_BitVecSub_64_4
-        · assumption
-        · decide
-      sym_i_cassert 1 cassert_eq program.stepi_0x898_cut
-      simp only [h_s1_sp_aligned, minimal_theory] at h_step_2
-      sym_i_cassert 2 cassert_eq program.stepi_0x89c_cut
-      simp only [h_s2_sp_aligned, minimal_theory] at h_step_3
-      sym_i_cassert 3 cassert_eq program.stepi_0x8a0_cut
-      simp only [h_s3_sp_aligned, minimal_theory] at h_step_4
-      sym_i_cassert 4 cassert_eq program.stepi_0x8a4_cut
-      simp only [h_s4_sp_aligned, minimal_theory] at h_step_5
-      sym_i_cassert 5 cassert_eq program.stepi_0x8a8_cut
-      -- End: Symbolic simulation
-      simp only [assert, h_pre, h_s6_pc,
-                 state_simp_rules, bitvec_rules, minimal_theory]
-      simp only [h_s6_pc, h_s6_program, h_s6_err, h_s6_sp_aligned,
-                 entry_end_inv, state_simp_rules, minimal_theory]
-      -- @bollu: I'm not sure why we need to do this.
-      simp [cut, h_s3_pc, read_pc, pcs]
+      rename_i x h_pc
+      name h_run : s1 := run 1 s0
+      obtain ⟨h_cut, h_pc, h_err, h_x0, h_x1, h_sp, h_program, h_sp_aligned⟩ :=
+        program.stepi_0x894_cut s0 s1 h_s0_program h_pc h_s0_err h_s0_sp_aligned h_run.symm
+      rw [Correctness.snd_cassert_of_not_cut h_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      simp [show Sys.next s1 = run 1 s1 by rfl]
+      -- 2/15
+      name h_run : s2 := run 1 s1
+      obtain ⟨h_cut, h_pc, h_err, h_program, h_read_sp_12, h_x0, h_x1, h_sp, h_sp_aligned⟩ :=
+        program.stepi_0x898_cut s1 s2 h_program h_pc h_err h_sp_aligned _ h_run.symm
+      rw [Correctness.snd_cassert_of_not_cut h_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      simp [show Sys.next s2 = run 1 s2 by rfl]
+      replace h_sp : s2.sp = (s0.sp - 32#64) := by simp_all
+      replace h_x0 : s2.x0 = s0.x0 := by simp_all
+      replace h_x1 : s2.x1 = s0.x1 := by simp_all
+      -- 3/15
+      name h_run : s3 := run 1 s2
+      obtain h := program.stepi_0x89c_cut s2 s3 h_program h_pc h_err h_sp_aligned _ h_run.symm
+      obtain ⟨h_cut, h_read_sp_8, h_read_sp_12, h_x0, h_x1, h_sp, h_pc, h_err, h_program, h_sp_align⟩ := h
+      replace h_x0 : s3.x0 = s0.x0 := by simp_all
+      replace h_x1 : s3.x1 = s0.x1 := by simp_all
+      replace h_sp : s3.sp = s0.sp - 32 := by simp_all
+
+      -- replace h_read_sp_12 : read_mem_bytes 4 (s2.sp + 12#64) s3 = BitVec.truncate 32 s1.x0 := by
+      --   exact h_read_sp_12
+        -- clear_named h_program -- TODO: stick to naming discipline of h_s3_... to be able to clear via this tactic.
+      -- -- Begin: Symbolic simulation
+      -- sym_i_cassert 0 cassert_eq program.stepi_0x894_cut
+      -- case h_s1_sp_aligned =>
+      --   simp (config := {decide := true, ground := true}) only []
+      --   apply Aligned_BitVecSub_64_4
+      --   · assumption
+      --   · decide
+      -- sym_i_cassert 1 cassert_eq program.stepi_0x898_cut
+      -- simp only [h_s1_sp_aligned, minimal_theory] at h_step_2
+      -- sym_i_cassert 2 cassert_eq program.stepi_0x89c_cut
+      -- simp only [h_s2_sp_aligned, minimal_theory] at h_step_3
+      -- sym_i_cassert 3 cassert_eq program.stepi_0x8a0_cut
+      -- simp only [h_s3_sp_aligned, minimal_theory] at h_step_4
+      -- sym_i_cassert 4 cassert_eq program.stepi_0x8a4_cut
+      -- simp only [h_s4_sp_aligned, minimal_theory] at h_step_5
+      -- sym_i_cassert 5 cassert_eq program.stepi_0x8a8_cut
+      -- -- End: Symbolic simulation
+      -- simp only [assert, h_pre, h_s6_pc,
+      --            state_simp_rules, bitvec_rules, minimal_theory]
+      -- simp only [h_s6_pc, h_s6_program, h_s6_err, h_s6_sp_aligned,
+      --            entry_end_inv, state_simp_rules, minimal_theory]
+      -- -- @bollu: I'm not sure why we need to do this.
+      -- simp [cut, h_s3_pc, read_pc, pcs]
       done
     · -- Next cutpoint from 0x8ac (B.LE instruction)
       --

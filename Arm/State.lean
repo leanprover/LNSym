@@ -93,11 +93,13 @@ attribute [state_simp_rules] StateError.Fault.injEq
 attribute [state_simp_rules] StateError.Other.injEq
 
 -- PFlag (Process State's Flags)
+-- https://developer.arm.com/documentation/100235/0002/Chunk1781120237
 inductive PFlag where
-  | N : PFlag
-  | Z : PFlag
-  | C : PFlag
-  | V : PFlag
+  | N : PFlag -- Set to 1 when the result of the operation was negative, cleared to 0 otherwise.
+  | Z : PFlag -- Set to 1 when the result of the operation was zero, cleared to 0 otherwise.
+  | C : PFlag -- Set to 1 when the operation resulted in a carry, cleared to 0 otherwise.
+  | V : PFlag -- Set to 1 when the operation caused overflow, cleared to 0 otherwise.
+
 deriving DecidableEq, Repr
 
 instance : ToString PFlag :=
@@ -318,6 +320,17 @@ def ArmState.x1 (s : ArmState) : BitVec 64 := r (StateField.GPR 1) s
 @[state_simp_rules]
 def ArmState.sp (s : ArmState) : BitVec 64 := r (StateField.GPR 31) s
 
+@[state_simp_rules]
+def ArmState.V (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.V) s
+
+@[state_simp_rules]
+def ArmState.C (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.C) s
+
+@[state_simp_rules]
+def ArmState.Z (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.Z) s
+
+@[state_simp_rules]
+def ArmState.N (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.N) s
 
 @[irreducible]
 def w (fld : StateField) (v : (state_value fld)) (s : ArmState) : ArmState :=
@@ -656,6 +669,7 @@ theorem fetch_inst_of_write_mem_bytes :
     rw [n_ih, fetch_inst_of_write_mem]
   done
 
+@[state_simp_rules]
 theorem read_mem_of_w :
   read_mem addr (w fld v s) = read_mem addr s := by
   unfold read_mem
@@ -730,6 +744,18 @@ def Memory.read (addr : BitVec 64) (m : Memory) : BitVec 8 :=
   read_store addr m
 
 theorem ArmState.read_mem_eq_mem_read : read_mem addr s = s.mem.read addr := rfl
+
+@[state_simp_rules, memory_rules]
+theorem ArmState.mem_w_eq_mem (fld : StateField) (v : state_value fld) (s : ArmState) :
+    (w fld v s).mem = s.mem := by
+  cases fld <;>
+  unfold w write_base_error
+    write_base_gpr
+    write_base_sfp
+    write_base_pc
+    write_base_flag <;>
+    simp
+
 
 /--
 A variant of `write_mem` that directly talks about writes to memory, instead of over the entire `ArmState`
