@@ -680,6 +680,13 @@ protected theorem truncate_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitV
   truncate n (x ++ y) = y := by
   simp only [truncate_append, Nat.le_refl, ↓reduceDIte, zeroExtend_eq]
 
+@[bitvec_rules]
+theorem ofBool_getLsb (x : BitVec w) (i : Nat) :
+    ofBool (x.getLsb i) = x.extractLsb' i 1 := by
+  apply eq_of_getLsb_eq
+  have (j : Fin 1) : j.val = 0 := by omega
+  simp [this]
+
 ---------------------------- Shift Lemmas ---------------------------
 
 @[bitvec_rules]
