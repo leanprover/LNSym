@@ -5,6 +5,7 @@ Author(s): Alex Keizer
 -/
 import Proofs.«AES-GCM».GCMGmultV8Sym
 
+-- Enable extra validations
 set_option Tactic.sym.debug true
 
 namespace GCMGmultV8Program
