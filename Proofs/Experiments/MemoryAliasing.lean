@@ -385,7 +385,7 @@ info: ⊢ False
   trace_state
 
 /--
-error: ❌ simp_mem failed to make progress.
+error: ❌️ simp_mem failed to make progress.
 ---
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses

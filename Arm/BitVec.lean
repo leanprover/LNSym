@@ -36,7 +36,6 @@ attribute [bitvec_rules] BitVec.toNat_ofFin
 attribute [bitvec_rules] BitVec.toNat_ofNatLt
 attribute [bitvec_rules] BitVec.getLsb_ofNatLt
 attribute [bitvec_rules] BitVec.toFin_ofNat
-attribute [bitvec_rules] BitVec.toNat_zero
 attribute [bitvec_rules] BitVec.getLsb_zero
 attribute [bitvec_rules] BitVec.getMsb_zero
 attribute [bitvec_rules] BitVec.toNat_mod_cancel
@@ -493,15 +492,6 @@ protected theorem zero_le_sub (x y : BitVec n) :
 
 ----------------------------- Logical  Lemmas ------------------------
 
-protected theorem or_comm (x y : BitVec n) : x ||| y = y ||| x := by
-  refine eq_of_toNat_eq ?_
-  simp only [toNat_or]
-  apply Nat.eq_of_testBit_eq
-  intro i
-  simp only [Nat.testBit_or]
-  exact Bool.or_comm (x.toNat.testBit i) (y.toNat.testBit i)
-  done
-
 @[bitvec_rules]
 protected theorem zero_or (x : BitVec n) : 0#n ||| x = x := by
   unfold HOr.hOr instHOrOfOrOp OrOp.or instOrOp BitVec.or
@@ -695,17 +685,6 @@ protected theorem shift_left_zero_eq (n : Nat) (x : BitVec n) : x <<< 0 = x := b
     simp only [toNat_shiftLeft, Nat.shiftLeft_zero, toNat_mod_cancel]
 
 ---------------------------- Negate Lemmas ---------------------------
-
-@[simp]
-theorem neg_neg (x : BitVec w₁) : - (- x) = x := by
-  apply BitVec.eq_of_toNat_eq
-  simp only [toNat_neg]
-  by_cases h : x.toNat = 0
-  · simp [h]
-  · rw [Nat.mod_eq_of_lt (a := 2^w₁ - x.toNat) (by omega)]
-    rw [Nat.sub_sub_eq_min]
-    rw [Nat.min_def]
-    simp [show ¬ 2^w₁ ≤ x.toNat by omega]
 
 theorem neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by
   apply BitVec.eq_of_toNat_eq
