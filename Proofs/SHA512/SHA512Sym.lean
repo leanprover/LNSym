@@ -76,12 +76,10 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
   r StateField.ERR sf = StateError.None := by
   sym_n 20
 
-  simp (config := {decide := true, ground := true}) only [AddWithCarry, minimal_theory,
-    bitvec_rules, minimal_theory, Nat.reduceAdd]
-  apply And.intro
-  · cse (config := { processHyps := .allHyps })
-    sorry
-  · assumption
+  simp (config := {decide := true, ground := true}) only
+    [AddWithCarry, bitvec_rules, minimal_theory, Nat.reduceAdd]
+  cse (config := { processHyps := .allHyps })
+  sorry
 
 
 end SHA512

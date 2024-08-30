@@ -208,8 +208,8 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   -- Find `h_run`
   let finalState ← mkFreshExprMVar none
   let runSteps ← mkFreshExprMVar (Expr.const ``Nat [])
-  let h_run_type := h_run_type finalState runSteps stateExpr
-  let h_run ← findLocalDeclUsernameOfTypeOrError h_run_type
+  let h_run ←
+    findLocalDeclOfTypeOrError <| h_run_type finalState runSteps stateExpr
 
   -- Unwrap and reflect `runSteps`
   let runSteps? ← do
@@ -225,12 +225,13 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let stateExpr ← instantiateMVars stateExpr
   let state ← state?.getDM <| do
     let .fvar state := stateExpr
-      | let h_run ← userNameToMessageData h_run
+      | let h_run_type ← instantiateMVars h_run.type
+        let h_run := h_run.toExpr
         throwError
   "Expected a free variable, found:
     {stateExpr}
   We inferred this as the initial state because we found:
-    {h_run} : {← instantiateMVars h_run_type}
+    {h_run} : {h_run_type}
   in the local context.
 
   If this is wrong, please explicitly provide the right initial state,
@@ -243,24 +244,22 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     pure state.userName
 
   -- Try to find `h_program`, and infer `program` from it
-  let ⟨h_program, program⟩ ← withErrorContext h_run h_run_type <|
+  let ⟨h_program, program⟩ ← withErrorContext h_run.userName h_run.type <|
     findProgramHyp stateExpr
-  let h_program := h_program.userName
 
   -- Then, try to find `h_pc`
   let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
-  let h_pc_type := h_pc_type stateExpr pc
-  let h_pc ← findLocalDeclUsernameOfTypeOrError h_pc_type
+  let h_pc ← findLocalDeclOfTypeOrError <| h_pc_type stateExpr pc
 
   -- Unwrap and reflect `pc`
   let pc ← instantiateMVars pc
-  let pc ← withErrorContext h_pc h_pc_type <| reflectBitVecLiteral 64 pc
+  let pc ← withErrorContext h_pc.userName h_pc.type <| reflectBitVecLiteral 64 pc
 
   -- Attempt to find `h_err` and `h_sp`
-  let h_err? ← findLocalDeclUsernameOfType? (h_err_type stateExpr)
+  let h_err? ← findLocalDeclOfType? (h_err_type stateExpr)
   if h_err?.isNone then
     trace[Sym] "Could not find local hypothesis of type {h_err_type stateExpr}"
-  let h_sp?  ← findLocalDeclUsernameOfType? (h_sp_type stateExpr)
+  let h_sp?  ← findLocalDeclOfType? (h_sp_type stateExpr)
   if h_sp?.isNone then
     trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
 
@@ -270,24 +269,33 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
         Did you remember to generate step theorems with:
           #generateStepEqTheorems {program}"
 
+  -- Initialize the axiomatic hypotheses with hypotheses for the initial state
+  let axHyps := [h_program, h_pc] ++ h_err?.toList ++ h_sp?.toList
+  let axHyps := axHyps.map (·.fvarId)
+
   return inferStatePrefixAndNumber {
-    state, finalState, h_run, runSteps?, program, h_program, pc, h_pc,
-    h_err?, h_sp?, programInfo,
-    axHyps := []
+    state, finalState, runSteps?, program, pc,
+    h_run := h_run.userName,
+    h_program := h_program.userName,
+    h_pc := h_pc.userName
+    h_err? := (·.userName) <$> h_err?,
+    h_sp? := (·.userName) <$> h_sp?,
+    programInfo,
+    axHyps
   }
 where
-  findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
+  findLocalDeclOfType? (expectedType : Expr) : MetaM (Option LocalDecl) := do
     let msg := m!"Searching for hypothesis of type: {expectedType}"
     withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-      let decl? ← findLocalDeclOfType? expectedType
+      let decl? ← _root_.findLocalDeclOfType? expectedType
       trace[Tactic.sym] "Found: {(·.toExpr) <$> decl?}"
-      return (·.userName) <$> decl?
-  findLocalDeclUsernameOfTypeOrError (expectedType : Expr) : MetaM Name := do
+      return decl?
+  findLocalDeclOfTypeOrError (expectedType : Expr) : MetaM LocalDecl := do
     let msg := m!"Searching for hypothesis of type: {expectedType}"
     withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-      let decl ← findLocalDeclOfTypeOrError expectedType
+      let decl ← _root_.findLocalDeclOfTypeOrError expectedType
       trace[Tactic.sym] "Found: {decl.toExpr}"
-      return decl.userName
+      return decl
 
 
 
@@ -381,7 +389,7 @@ def canonicalizeHypothesisTypes (c : SymContext) : TacticM Unit := withMainConte
   for ⟨name, type⟩ in hyps do
     let some decl := lctx.findFromUserName? name
       | throwError "Unknown local hypothesis `{c.state}`"
-    goal ← goal.changeLocalDecl decl.fvarId type
+    goal ← goal.replaceLocalDeclDefEq decl.fvarId type
   replaceMainGoal [goal]
 
 /-! ## Incrementing the context to the next state -/

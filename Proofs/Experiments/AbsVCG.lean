@@ -222,7 +222,6 @@ theorem effects_of_nextc_from_0x4005d0 (h_pre : abs_pre s0)
   simp only [state_simp_rules] at *
   -- Symbolic simulation
   sym_n 4 at s0
-  assumption
   done
 
 theorem partial_correctness :

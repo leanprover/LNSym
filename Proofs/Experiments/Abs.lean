@@ -41,14 +41,12 @@ theorem correct
   (h_run : sf = run (program.length - 1) s0) :
   read_gpr 32 0 sf = spec (read_gpr 32 0 s0) ∧
   read_err sf = StateError.None := by
-  simp (config := {ground := true}) at h_run
+  simp (config := {ground := true}) only at h_run
 
   sym_n 4
 
   simp only [spec, AddWithCarry]
-  constructor
-  · split <;> bv_decide
-  · assumption
+  split <;> bv_decide
 
 /--
 info: 'Abs.correct' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]

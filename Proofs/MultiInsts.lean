@@ -33,8 +33,6 @@ theorem small_asm_snippet_sym_experiment_1 (s0 s_final : ArmState)
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation
   sym_n 4
-  -- Final Steps
-  assumption
   done
 
 /-
