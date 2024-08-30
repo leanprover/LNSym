@@ -243,7 +243,7 @@ theorem cassert_eq [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat)
                        else cassert s0 (next si) (i + 1) := by
   unfold cassert
   conv => lhs; rw [iterate_eq]
-  by_cases cut si <;> simp only [↓reduceIte, *]
+  by_cases cut si <;> simp only [Bool.false_eq_true, ↓reduceIte, *]
   done
 
 theorem cassert_cut [Sys σ] [Spec' σ] {s0 si : σ} (h : cut si) (i : Nat) :
@@ -446,7 +446,7 @@ theorem rank_decreases_eq [Sys σ] [Spec' σ] (rank : σ → Nat) (si sn : σ) (
               else rank_decreases rank si (next sn) (i + 1) := by
   unfold rank_decreases
   conv => lhs; rw [iterate_eq]
-  by_cases cut sn <;> simp only [↓reduceIte, *]
+  by_cases cut sn <;> simp only [Bool.false_eq_true, ↓reduceIte, *]
   done
 
 /-
@@ -495,7 +495,7 @@ private theorem term_helper_aux [Sys σ] [Spec' σ] (s0 si : σ) (n : Nat)
   (v2 : ∀ n, ¬ exit (run si n))
   (v2 : assert s0 si) :
   assert s0 (run si n) := by
-  induction n using Nat.strongInductionOn generalizing si
+  induction n using Nat.strongRecOn generalizing si
   rename_i n h_inv h_not_exit
   by_cases h_gt_0 : n - (cassert s0 (run si 1) 0).fst - 1 > 0
   case neg =>
@@ -598,7 +598,7 @@ theorem termination_from_decreasing_rank [Sys σ] [Spec' σ] (rank : σ → Nat)
     -- cleaner induction.
     clear h_assert_s h_pre_s0 h_s
     generalize h_rank : rank s = n
-    induction n using Nat.strongInductionOn generalizing s
+    induction n using Nat.strongRecOn generalizing s
     rename_i n h_inv
     have ⟨n', h_term_helper⟩ := @term_helper σ _ _ rank s0 s
                                  v2 h_assert_s' h_not_exit
