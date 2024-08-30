@@ -8,3 +8,8 @@ initialize
 
   -- enable tracing for `sym_n` tactic and related components
   registerTraceClass `Tactic.sym
+
+  registerOption `Tactic.sym.debug {
+    defValue := true
+    descr := "enable/disable extra validation of `sym_n` internal state"
+  }

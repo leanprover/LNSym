@@ -240,7 +240,10 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
                 #[eff.currentState, spEff.value, spEff.proof, hAligned]
             pure { eff with stackAlignmentProof? }
 
-    let axHyps ← withMainContext <|
+    let axHyps ← withMainContext <| do
+      if ←(getBoolOption `Tactic.sym.debug) then
+        eff.validate
+
       eff.addHypothesesToLContext s!"h_{c.next_state}_"
     return { c with axHyps := axHyps ++ c.axHyps}
 

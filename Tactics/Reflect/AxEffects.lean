@@ -125,8 +125,10 @@ instance : ToMessageData AxEffects where
       programProof := {eff.programProof}
     }"
 
-private def traceCurrentState (eff : AxEffects) : MetaM Unit :=
-  withTraceNode `Tactic.sym (fun _ => pure "current state") do
+private def traceCurrentState (eff : AxEffects)
+    (header : MessageData := "current state") :
+    MetaM Unit :=
+  withTraceNode `Tactic.sym (fun _ => pure header) do
     trace[Tactic.sym] "{eff}"
 
 /-! ## Helpers -/
@@ -303,7 +305,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
   -- Update the memory effect proof
   let memoryEffectProof :=
     mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
-      #[eff.currentState, eff.initialState, eff.memoryEffectProof, fld, val]
+      #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, fld, val]
 
   -- Update the program proof
   let programProof ← mkEqTrans
@@ -319,8 +321,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
     memoryEffectProof
     programProof
   }
-  withTraceNode `Tactic.sym (fun _ => pure "new state") <| do
-      trace[Tactic.sym] "{eff}"
+  eff.traceCurrentState "new state"
   return eff
 
 /-- Throw an error if `e` is not of type `expectedType` -/
@@ -490,6 +491,33 @@ def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
 /- TODO: write a function that combines two effects `left` and `right`,
 where `left.initialState = right.currentState`.
 That is, compose the effect of "`left` after `right`" -/
+
+/-! ## Validation -/
+
+/-- type check all expressions stored in `eff`,
+throwing an error if one is not type-correct.
+
+NOTE: does not necessarily validate *which* type an expression has,
+validation will still pass if types are different to those we claim in the
+docstrings -/
+def validate (eff : AxEffects) : MetaM Unit := do
+  let msg := "validating that the axiomatic effects are well-formed"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    eff.traceCurrentState
+
+    assertHasType eff.initialState mkArmState
+    assertHasType eff.currentState mkArmState
+
+    for ⟨_field, fieldEff⟩ in eff.fields do
+      check fieldEff.value
+      check fieldEff.proof
+
+    check eff.nonEffectProof
+    check eff.memoryEffect
+    check eff.memoryEffectProof
+    check eff.programProof
+    if let some h := eff.stackAlignmentProof? then
+      check h
 
 /-! ## Tactic Environment -/
 section Tactic
