@@ -125,8 +125,10 @@ instance : ToMessageData AxEffects where
       programProof := {eff.programProof}
     }"
 
-private def traceCurrentState (eff : AxEffects) : MetaM Unit :=
-  withTraceNode `Tactic.sym (fun _ => pure "current state") do
+private def traceCurrentState (eff : AxEffects)
+    (header : MessageData := "current state") :
+    MetaM Unit :=
+  withTraceNode `Tactic.sym (fun _ => pure header) do
     trace[Tactic.sym] "{eff}"
 
 /-! ## Helpers -/
@@ -319,8 +321,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
     memoryEffectProof
     programProof
   }
-  withTraceNode `Tactic.sym (fun _ => pure "new state") <| do
-      trace[Tactic.sym] "{eff}"
+  eff.traceCurrentState "new state"
   return eff
 
 /-- Throw an error if `e` is not of type `expectedType` -/
