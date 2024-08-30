@@ -25,12 +25,12 @@ open Max
 section PC
 
 scoped notation "entry_start" => 0x894#64
-scoped notation "entry_end" => 0x8ac#64
+-- scoped notation "entry_end" => 0x8ac#64
 scoped notation "then_start" => 0x8b0#64 -- yeesh, this is actually else.
-scoped notation "then_end" => 0x8b8#64
+-- scoped notation "then_end" => 0x8b8#64
 scoped notation "else_start" => 0x8bc#64
-scoped notation "else_end" => 0x8c0#64
-scoped notation "merge_start" => 0x8c4#64
+-- scoped notation "else_end" => 0x8c0#64
+-- scoped notation "merge_start" => 0x8c4#64
 scoped notation "merge_end" => 0x8cc#64
 
 
@@ -63,12 +63,12 @@ open ArmStateNotation
 
 
 def pcs : List (BitVec 64) := [entry_start,
-  entry_end,
+  -- entry_end,
   then_start,
-  then_end,
+  -- then_end,
   else_start,
-  else_end,
-  merge_start,
+  -- else_end,
+  -- merge_start,
   merge_end]
 
 end PC
@@ -138,6 +138,7 @@ def post (s0 sf : ArmState) : Prop :=
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment si ∧
+  entry_end_inv s0 si ∧
   (s0.x0 ≤ s0.x1)
 
 @[simp] def else_end_inv (s0 si : ArmState) : Prop :=
@@ -174,13 +175,13 @@ def assert (s0 si : ArmState) : Prop :=
   -- readability).
   match (read_pc si) with
   | entry_start => entry_start_inv s0 si
-  | entry_end => entry_end_inv s0 si
+  -- | entry_end => entry_end_inv s0 si
   | then_start => then_start_inv s0 si
-  | then_end => then_end_inv s0 si
+  -- | then_end => then_end_inv s0 si
   | else_start => else_start_inv s0 si
-  | else_end => else_end_inv s0 si
-  | merge_start => merge_start_inv s0 si
-  | merge_end => merge_end_inv s0 si
+  -- | else_end => else_end_inv s0 si
+  -- | merge_start => merge_start_inv s0 si
+  -- | merge_end => merge_end_inv s0 si
   | _ => False
 
 instance : Spec' ArmState where
@@ -344,7 +345,11 @@ theorem program.stepi_0x8a4_cut (s sn : ArmState)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
+  sn[(sn.sp) + 8#64, 4] = s[s.sp + 8#64, 4] ∧
+  sn[(sn.sp) + 12#64, 4] = s[s.sp + 12#64, 4] ∧
   sn.x0 = BitVec.zeroExtend 64 (s[sn.sp + 8#64, 4])  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn.x1 = s.x1  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn.sp = s.sp ∧
   r StateField.PC sn = 0x8a8#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
@@ -354,7 +359,6 @@ theorem program.stepi_0x8a4_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
-  done
 
 /--
 info: 'MaxTandem.program.stepi_0x8a4_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -368,7 +372,7 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
-  cut sn = true ∧
+  cut sn = false ∧
   r StateField.PC sn = 0x8ac#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
@@ -380,6 +384,11 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
             (~~~BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s)) 1#1).snd.z ∧
   sn.N = (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 1#5) s))
             (~~~BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s)) 1#1).snd.n ∧
+  sn[(sn.sp) + 8#64, 4] = s[s.sp + 8#64, 4] ∧
+  sn[(sn.sp) + 12#64, 4] = s[s.sp + 12#64, 4] ∧
+  sn.x0 = s.x0  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn.x1 = s.x1  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn.sp = s.sp ∧
   CheckSPAlignment sn ∧
   sn.mem = s.mem := by
   have := program.stepi_eq_0x8a8 h_program h_pc h_err
@@ -387,8 +396,8 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
-  simp only [or_false, or_true]
-  -- simp [minimal_theory, bitvec_rules, memory_rules, state_simp_rules]
+  -- simp only [or_false, or_true]
+
 
 /--
 info: 'MaxTandem.program.stepi_0x8a8_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -473,7 +482,7 @@ theorem program.stepi_0x8b4_cut (s sn : ArmState)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
-  cut sn = true ∧
+  cut sn = false ∧
   r StateField.PC sn = 0x8b8#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
@@ -484,6 +493,7 @@ theorem program.stepi_0x8b4_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
+  simp only [not_false_eq_true]
 
 /--
 info: 'MaxTandem.program.stepi_0x8b4_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
@@ -499,7 +509,7 @@ theorem program.stepi_0x8b8_cut (s sn : ArmState)
   (h_step : sn = run 1 s) :
   r StateField.PC sn = 0x8c4#64 ∧
   r StateField.ERR sn = .None ∧
-  cut sn = true ∧ -- TODO: why do we speak about the *next* state being a cut?
+  cut sn = false ∧ -- TODO: why do we speak about the *next* state being a cut?
   sn.program = program ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8b8 h_program h_pc h_err
@@ -507,7 +517,7 @@ theorem program.stepi_0x8b8_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_false, or_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
-
+  simp only [not_false_eq_true]
 /--
 info: 'MaxTandem.program.stepi_0x8b8_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
@@ -520,7 +530,7 @@ theorem program.stepi_0x8bc_cut (s sn : ArmState)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
-  cut sn = true ∧
+  cut sn = false ∧
   r StateField.PC sn = 0x8c0#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
@@ -531,6 +541,7 @@ theorem program.stepi_0x8bc_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, or_false, or_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
+  simp only [not_false_eq_true]
 
 /--
 info: 'MaxTandem.program.stepi_0x8bc_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -544,7 +555,7 @@ theorem program.stepi_0x8c0_cut (s sn : ArmState)
   (h_err : r StateField.ERR s = StateError.None)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
-  cut sn = true ∧
+  cut sn = false ∧
   r StateField.PC sn = 0x8c4#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
@@ -801,7 +812,7 @@ theorem partial_correctness :
     -- Why do we see the hex values instead of PC notation?
     simp only [h_exit, merge_end_inv] at h_assert
     simp only [Spec.post]
-    simp_all only
+    simp_all
   case v4 =>
     intro s0 si h_assert h_not_exit
     simp only [Correctness.arm_run]
@@ -855,22 +866,40 @@ theorem partial_correctness :
       rw [Correctness.snd_cassert_of_not_cut h_s4_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s4 = run 1 s4 by rfl]
       replace h_s4_sp : s4.sp = s0.sp - 32 := by simp_all
-      replace h_s3_x0 : s4.x0 = s0.x0 := by simp_all
-      replace h_s3_x1 : s4.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
-      replace h_s3_sp : s4.sp = s0.sp - 32 := by simp_all
+      replace h_s4_x0 : s4.x0 = s0.x0 := by simp_all
+      replace h_s4_x1 : s4.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
+      replace h_s4_sp : s4.sp = s0.sp - 32 := by simp_all
+      replace h_s4_read_sp12 : read_mem_bytes 4 (s4.sp + 12#64) s4 = BitVec.truncate 32 s0.x0 := by simp_all
+      replace h_s4_read_sp8 : read_mem_bytes 4 (s4.sp + 8#64) s4 = BitVec.truncate 32 s0.x1 := by simp_all
       clear_named [h_s3]
 
       -- 5/15
       name h_run : s5 := run 1 s4
       obtain h := program.stepi_0x8a4_cut s4 s5 h_s4_program h_s4_pc h_s4_err h_s4_sp_aligned h_run.symm
-      -- obtain ⟨h_s5_cut, h_s5_read_sp_8, h_s5_read_sp_12, h_s5_x0, h_s4_x1, h_s4_sp, h_s4_pc, h_s4_err, h_s4_program, h_s4_sp_align⟩ := h
-      rw [Correctness.snd_cassert_of_not_cut h_s4_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
-      simp [show Sys.next s4 = run 1 s4 by rfl]
-      replace h_s4_sp : s4.sp = s0.sp - 32 := by simp_all
-      replace h_s3_x0 : s4.x0 = s0.x0 := by simp_all
-      replace h_s3_x1 : s4.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
-      replace h_s3_sp : s4.sp = s0.sp - 32 := by simp_all
+      obtain ⟨h_s5_cut, h_s5_read_sp_8, h_s5_read_sp_12, h_s5_x0, h_s5_x1, h_s5_sp, h_s5_pc, h_s5_err, h_s5_program, h_s5_sp_aligned⟩ := h
+      rw [Correctness.snd_cassert_of_not_cut h_s5_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      simp [show Sys.next s5 = run 1 s5 by rfl]
+      replace h_s5_sp : s5.sp = s0.sp - 32 := by simp_all
+      replace h_s5_x0 : s5.x0 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x1) := by simp_all
+      replace h_s5_x1 : s5.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
+      replace h_s5_sp : s5.sp = s0.sp - 32 := by simp_all
+      replace h_s5_read_sp12 : read_mem_bytes 4 (s5.sp + 12#64) s5 = BitVec.truncate 32 s0.x0 := by simp_all
+      replace h_s5_read_sp8 : read_mem_bytes 4 (s5.sp + 8#64) s5 = BitVec.truncate 32 s0.x1 := by simp_all
+      clear_named [h_s4]
 
+      -- 6/15
+      name h_run : s6 := run 1 s5
+      obtain h := program.stepi_0x8a8_cut s5 s6 h_s5_program h_s5_pc h_s5_err h_s5_sp_aligned h_run.symm
+      obtain ⟨h_s6_cut, h_s6_pc, h_s6_err, h_s6_program, h_s6_c, h_s6_v, h_s6_z, h_s6_n, h_s6_read_sp_8, h_s6_read_sp_12, h_s6_x0, h_s6_x1, h_s6_sp, h_s6_sp_aligned, h_s6_mem⟩ := h
+      rw [Correctness.snd_cassert_of_not_cut h_s6_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      simp [show Sys.next s6 = run 1 s6 by rfl]
+      replace h_s6_sp : s6.sp = s0.sp - 32 := by simp_all
+      replace h_s6_x0 : s6.x0 = BitVec.zeroExtend 65 (BitVec.truncate 32 s0.x1) := by simp_all
+      replace h_s6_x1 : s6.x1 = BitVec.zeroExtend 65 (BitVec.truncate 32 s0.x0) := by simp_all
+      replace h_s6_sp : s6.sp = s0.sp - 32 := by simp_all
+      replace h_s6_read_sp12 : read_mem_bytes 5 (s6.sp + 12#64) s6 = BitVec.truncate 32 s0.x0 := by simp_all
+      replace h_s6_read_sp8 : read_mem_bytes 5 (s6.sp + 8#64) s6 = BitVec.truncate 32 s0.x1 := by simp_all
+      clear_named [h_s5]
 
       -- replace h_read_sp_12 : read_mem_bytes 4 (s2.sp + 12#64) s3 = BitVec.truncate 32 s1.x0 := by
       --   exact h_read_sp_12
@@ -899,6 +928,13 @@ theorem partial_correctness :
       -- -- @bollu: I'm not sure why we need to do this.
       -- simp [cut, h_s3_pc, read_pc, pcs]
       done
+    · -- start @ then_start_inv
+      simp [then_start_inv] at h_assert
+      sorry
+    · -- start @ else_start_inv
+      simp [else_start_inv] at h_assert
+      sorry
+  /-
     · -- Next cutpoint from 0x8ac (B.LE instruction)
       --
       -- (FIXME @shilpi) Hack for awful sym_i_cassert tactic which expects a
@@ -1003,7 +1039,7 @@ theorem partial_correctness :
       simp at h_not_exit
 
     · exact False.elim h_assert
-
+-/
 
 /--
 info: 'MaxTandem.partial_correctness' depends on axioms: [propext, sorryAx, Classical.choice, Lean.ofReduceBool, Quot.sound]
