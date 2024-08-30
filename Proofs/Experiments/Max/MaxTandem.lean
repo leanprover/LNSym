@@ -209,6 +209,7 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
   (sn.x0) = (s.x0) ∧
   (sn.x1) = (s.x1) ∧
   (sn.sp) = (s.sp) - 0x20#64 ∧
+  sn.mem = s.mem ∧
   sn.program = program ∧
   CheckSPAlignment sn := by
   subst h_step
@@ -314,8 +315,10 @@ theorem program.stepi_0x8a0_cut (s sn : ArmState)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
-  sn.x1 = BitVec.zeroExtend 64 (s[sn.sp + 12, 4])  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn[(sn.sp) + 8#64, 4] = s[s.sp + 8#64, 4] ∧
+  sn[(sn.sp) + 12#64, 4] = s[s.sp + 12#64, 4] ∧
   sn.x0 = s.x0 ∧
+  sn.x1 = BitVec.zeroExtend 64 (s[sn.sp + 12#64, 4])  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
   sn.sp = s.sp ∧
   r StateField.PC sn = 0x8a4#64 ∧
   r StateField.ERR sn = .None ∧
@@ -341,7 +344,7 @@ theorem program.stepi_0x8a4_cut (s sn : ArmState)
   (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
-  sn.x0 = BitVec.zeroExtend 64 (s[sn.sp + 8, 4])  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn.x0 = BitVec.zeroExtend 64 (s[sn.sp + 8#64, 4])  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
   r StateField.PC sn = 0x8a8#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
@@ -748,11 +751,11 @@ open Lean Elab Meta Tactic in
 /-- If no name is supplied, then clears all inaccessible names.
 If a list of names is supplied, then clear all inaccessible names that have
 *any* one of the strings as prefixes. -/
-elab "clear_named" names:(ident)* : tactic =>  do
+elab "clear_named" "[" names:(ident),* "]": tactic =>  do
   withMainContext do
     for hyp in (← getLCtx) do
       trace[debug] "name: {hyp.userName}"
-      for name in names do
+      for name in names.getElems do
         if name.getId.toString.isPrefixOf hyp.userName.toString then
           replaceMainGoal [← (← getMainGoal).clear hyp.fvarId]
           continue
@@ -812,27 +815,62 @@ theorem partial_correctness :
     · -- Next cutpoint from 0x894#64 (1/15)
       subst si
       rename_i x h_pc
-      name h_run : s1 := run 1 s0
-      obtain ⟨h_cut, h_pc, h_err, h_x0, h_x1, h_sp, h_program, h_sp_aligned⟩ :=
-        program.stepi_0x894_cut s0 s1 h_s0_program h_pc h_s0_err h_s0_sp_aligned h_run.symm
-      rw [Correctness.snd_cassert_of_not_cut h_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      name h_s0_run : s1 := run 1 s0
+      obtain ⟨h_s1_cut, h_s1_pc, h_s1_err, h_s1_x0, h_s1_x1, h_s1_sp, h_s1_mem, h_s1_program, h_s1_sp_aligned⟩ :=
+        program.stepi_0x894_cut s0 s1 h_s0_program h_pc h_s0_err h_s0_sp_aligned h_s0_run.symm
+      rw [Correctness.snd_cassert_of_not_cut h_s1_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s1 = run 1 s1 by rfl]
+      clear_named [h_s0]
+
       -- 2/15
-      name h_run : s2 := run 1 s1
-      obtain ⟨h_cut, h_pc, h_err, h_program, h_read_sp_12, h_x0, h_x1, h_sp, h_sp_aligned⟩ :=
-        program.stepi_0x898_cut s1 s2 h_program h_pc h_err h_sp_aligned _ h_run.symm
-      rw [Correctness.snd_cassert_of_not_cut h_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      name h_s1_run : s2 := run 1 s1
+      obtain ⟨h_s2_cut, h_s2_pc, h_s2_err, h_s2_program, h_s2_read_sp_8, h_s2_read_sp_12, h_s2_x0, h_s2_x1, h_s2_sp, h_s2_sp_aligned⟩ :=
+        program.stepi_0x898_cut s1 s2 h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned _ h_s1_run.symm
+      rw [Correctness.snd_cassert_of_not_cut h_s2_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s2 = run 1 s2 by rfl]
-      replace h_sp : s2.sp = (s0.sp - 32#64) := by simp_all
-      replace h_x0 : s2.x0 = s0.x0 := by simp_all
-      replace h_x1 : s2.x1 = s0.x1 := by simp_all
+      replace h_s2_sp : s2.sp = (s0.sp - 32#64) := by simp_all
+      replace h_s2_x0 : s2.x0 = s0.x0 := by simp_all
+      replace h_s2_x1 : s2.x1 = s0.x1 := by simp_all
+      replace h_s2_read_sp12 : read_mem_bytes 4 (s2.sp + 12#64) s2 = BitVec.truncate 32 s0.x0 := by simp_all
+      clear_named [h_s1]
+
       -- 3/15
       name h_run : s3 := run 1 s2
-      obtain h := program.stepi_0x89c_cut s2 s3 h_program h_pc h_err h_sp_aligned _ h_run.symm
-      obtain ⟨h_cut, h_read_sp_8, h_read_sp_12, h_x0, h_x1, h_sp, h_pc, h_err, h_program, h_sp_align⟩ := h
-      replace h_x0 : s3.x0 = s0.x0 := by simp_all
-      replace h_x1 : s3.x1 = s0.x1 := by simp_all
-      replace h_sp : s3.sp = s0.sp - 32 := by simp_all
+      obtain h := program.stepi_0x89c_cut s2 s3 h_s2_program h_s2_pc h_s2_err h_s2_sp_aligned _ h_run.symm
+      obtain ⟨h_s3_cut, h_s3_read_sp_8, h_s3_read_sp_12, h_s3_x0, h_s3_x1, h_s3_sp, h_s3_pc, h_s3_err, h_s3_program, h_s3_sp_aligned⟩ := h
+      rw [Correctness.snd_cassert_of_not_cut h_s3_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      simp [show Sys.next s3 = run 1 s3 by rfl]
+      replace h_s3_x0 : s3.x0 = s0.x0 := by simp_all
+      replace h_s3_x1 : s3.x1 = s0.x1 := by simp_all
+      replace h_s3_sp : s3.sp = s0.sp - 32 := by simp_all
+      /- TODO: this should be s0.x0-/
+      replace h_s3_read_sp12 : read_mem_bytes 4 (s3.sp + 12#64) s3 = BitVec.truncate 32 s0.x0 := by simp_all
+      replace h_s3_read_sp8 : read_mem_bytes 4 (s3.sp + 8#64) s3 = BitVec.truncate 32 s0.x1 := by simp_all
+      clear_named [h_s2]
+
+      -- 4/15
+      name h_run : s4 := run 1 s3
+      obtain h := program.stepi_0x8a0_cut s3 s4 h_s3_program h_s3_pc h_s3_err h_s3_sp_aligned h_run.symm
+      obtain ⟨h_s4_cut, h_s4_read_sp_8, h_s4_read_sp_12, h_s4_x0, h_s4_x1, h_s4_sp, h_s4_pc, h_s4_err, h_s4_program, h_s4_sp_aligned⟩ := h
+      rw [Correctness.snd_cassert_of_not_cut h_s4_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      simp [show Sys.next s4 = run 1 s4 by rfl]
+      replace h_s4_sp : s4.sp = s0.sp - 32 := by simp_all
+      replace h_s3_x0 : s4.x0 = s0.x0 := by simp_all
+      replace h_s3_x1 : s4.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
+      replace h_s3_sp : s4.sp = s0.sp - 32 := by simp_all
+      clear_named [h_s3]
+
+      -- 5/15
+      name h_run : s5 := run 1 s4
+      obtain h := program.stepi_0x8a4_cut s4 s5 h_s4_program h_s4_pc h_s4_err h_s4_sp_aligned h_run.symm
+      -- obtain ⟨h_s5_cut, h_s5_read_sp_8, h_s5_read_sp_12, h_s5_x0, h_s4_x1, h_s4_sp, h_s4_pc, h_s4_err, h_s4_program, h_s4_sp_align⟩ := h
+      rw [Correctness.snd_cassert_of_not_cut h_s4_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      simp [show Sys.next s4 = run 1 s4 by rfl]
+      replace h_s4_sp : s4.sp = s0.sp - 32 := by simp_all
+      replace h_s3_x0 : s4.x0 = s0.x0 := by simp_all
+      replace h_s3_x1 : s4.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
+      replace h_s3_sp : s4.sp = s0.sp - 32 := by simp_all
+
 
       -- replace h_read_sp_12 : read_mem_bytes 4 (s2.sp + 12#64) s3 = BitVec.truncate 32 s1.x0 := by
       --   exact h_read_sp_12
