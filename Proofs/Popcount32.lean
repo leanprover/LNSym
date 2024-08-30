@@ -99,6 +99,26 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   -- bv_decide
   sorry
 
+-- (0xffffffff#32, false)
+#eval
+(let x0 := 0xffffffffffffffff#64
+ let sp := 0x00000000ffffffff#64
+ let s0 :=  { gpr := (fun (i : BitVec 5) =>
+                      match i with
+                      | 0#5 => x0
+                      | 31#5 => sp
+                      | _ => 0#64),
+              sfp := (fun (_ : BitVec 5) => 0#128),
+              pc  := 0x4005b4#64,
+              pstate := PState.zero,
+              mem := (fun (_ : BitVec 64) => 0#8),
+              program := popcount32_program,
+              error := StateError.None }
+  let sf := run popcount32_program.length s0
+  let out := read_gpr 32 0#5 sf
+  let spec := popcount32_spec (BitVec.truncate 32 x0)
+  (out, out == spec))
+
 /-! ## Tests for step theorem generation -/
 section Tests
 
