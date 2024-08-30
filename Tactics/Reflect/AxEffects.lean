@@ -491,6 +491,33 @@ def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
 where `left.initialState = right.currentState`.
 That is, compose the effect of "`left` after `right`" -/
 
+/-! ## Validation -/
+
+/-- type check all expressions stored in `eff`,
+throwing an error if one is not type-correct.
+
+NOTE: does not necessarily validate *which* type an expression has,
+validation will still pass if types are different to those we claim in the
+docstrings -/
+def validate (eff : AxEffects) : MetaM Unit := do
+  let msg := "validating that the axiomatic effects are well-formed"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    eff.traceCurrentState
+
+    assertHasType eff.initialState mkArmState
+    assertHasType eff.currentState mkArmState
+
+    for ⟨_field, fieldEff⟩ in eff.fields do
+      check fieldEff.value
+      check fieldEff.proof
+
+    check eff.nonEffectProof
+    check eff.memoryEffect
+    check eff.memoryEffectProof
+    check eff.programProof
+    if let some h := eff.stackAlignmentProof? then
+      check h
+
 /-! ## Tactic Environment -/
 section Tactic
 open Elab.Tactic
