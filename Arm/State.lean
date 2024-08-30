@@ -332,6 +332,35 @@ def ArmState.Z (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.Z) s
 @[state_simp_rules]
 def ArmState.N (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.N) s
 
+
+@[pretty_rules]
+def ArmState.r_GPR_0_eq_x0 (s : ArmState) : r (StateField.GPR 0) s = s.x0 := by
+  simp only [ArmState.x0]
+
+@[pretty_rules]
+def ArmState.r_GPR_1_eq_x1 (s : ArmState) : r (StateField.GPR 1) s = s.x1 := by
+  simp only [ArmState.x1]
+
+@[pretty_rules]
+def ArmState.r_GPR_31_eq_sp (s : ArmState) : r (StateField.GPR 31) s = s.sp := by
+  simp only [ArmState.sp]
+
+@[pretty_rules]
+def ArmState.r_FLAG_V_eq_V (s : ArmState) : r (StateField.FLAG PFlag.V) s = s.V := by
+  simp only [ArmState.V]
+
+@[pretty_rules]
+def ArmState.r_FLAG_C_eq_C (s : ArmState) : r (StateField.FLAG PFlag.C) s = s.C := by
+  simp only [ArmState.C]
+
+@[pretty_rules]
+def ArmState.r_FLAG_Z_eq_Z (s : ArmState) : r (StateField.FLAG PFlag.Z) s = s.Z := by
+  simp only [ArmState.Z]
+
+@[pretty_rules]
+def ArmState.r_FLAG_N_eq_N (s : ArmState) : r (StateField.FLAG PFlag.N) s = s.N := by
+  simp only [ArmState.N]
+
 @[irreducible]
 def w (fld : StateField) (v : (state_value fld)) (s : ArmState) : ArmState :=
   open StateField in

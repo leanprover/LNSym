@@ -69,7 +69,8 @@ def pcs : List (BitVec 64) := [entry_start,
   else_start,
   -- else_end,
   -- merge_start,
-  merge_end]
+  merge_end
+  ]
 
 end PC
 
@@ -91,13 +92,13 @@ def pre (s : ArmState) : Prop :=
 
 /-- Specification function. -/
 def spec (x0 x1 : BitVec 64) : BitVec 64 :=
-  if x0.zeroExtend 32 < x1.zeroExtend 32
+  if BitVec.slt (x0.zeroExtend 32)  (x1.zeroExtend 32)
   then (x1.zeroExtend 32).zeroExtend 64
   else (x0.zeroExtend 32).zeroExtend 64
 
 def post (s0 sf : ArmState) : Prop :=
-  sf.x0 = spec s0.x0 s0.x1 ∧
-  read_pc sf = 0x894#64 ∧
+  sf.x0 = BitVec.zeroExtend 64 (BitVec.zeroExtend 32 (spec s0.x0 s0.x1)) ∧
+  read_pc sf = 0x8cc#64 ∧
   read_err sf = StateError.None ∧
   sf.program = program ∧
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
@@ -114,22 +115,23 @@ def post (s0 sf : ArmState) : Prop :=
   -- (FIXME) We don't really need the stack pointer to be aligned, but the
   -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment si ∧
-  si[s0.sp - 20#64 + 12#64, 4] = s0.x0.zeroExtend 32 ∧
-  si[s0.sp - 20#64 + 8#64, 4] = s0.x1.zeroExtend 32 -- TODO: read flags.
+  si[s0.sp - 32#64 + 12#64, 4] = s0.x0.zeroExtend 32 ∧
+  si[s0.sp - 32#64 + 8#64, 4] = s0.x1.zeroExtend 32 ∧
+  si.sp = s0.sp - 32#64 -- TODO: read flags.
   -- ∧ read_mem_bytes 4 (r (Spec) si) si = 0x0#32
 
 @[simp] def then_start_inv (s0 si : ArmState): Prop :=
   entry_end_inv s0 si ∧
-  ¬ (s0.x0 ≤ s0.x1)
+  ¬ ((BitVec.zeroExtend 32 s0.x0).sle (BitVec.zeroExtend 32 s0.x1) = true)
 
 
-@[simp] def then_end_inv (s0 si : ArmState) : Prop :=
-  read_err si = .None ∧
-  si.program = program ∧
-  -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment si ∧
-  si[s0.sp - 20#64 + 28#64, 4] = (spec s0.x0 s0.x1).zeroExtend 32
+-- @[simp] def then_end_inv (s0 si : ArmState) : Prop :=
+--   read_err si = .None ∧
+--   si.program = program ∧
+--   -- (FIXME) We don't really need the stack pointer to be aligned, but the
+--   -- `sym_n` tactic expects this. Can we make this optional?
+--   CheckSPAlignment si ∧
+--   si[s0.sp - 30#64 + 28#64, 4] = (spec s0.x0 s0.x1).zeroExtend 32
 
 
 @[simp] def else_start_inv (s0 si : ArmState) : Prop :=
@@ -139,33 +141,34 @@ def post (s0 sf : ArmState) : Prop :=
   -- `sym_n` tactic expects this. Can we make this optional?
   CheckSPAlignment si ∧
   entry_end_inv s0 si ∧
-  (s0.x0 ≤ s0.x1)
+  ((BitVec.zeroExtend 32 s0.x0).sle (BitVec.zeroExtend 32 s0.x1) = true)
 
-@[simp] def else_end_inv (s0 si : ArmState) : Prop :=
-  read_err si = .None ∧
-  si.program = program ∧
-  -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment si ∧
-  si[s0.sp - 20#64 + 28#64, 4] = (spec s0.x0 s0.x1).zeroExtend 32
-
-
-
-@[simp] def merge_start_inv (s0 si : ArmState) : Prop :=
-  read_err si = .None ∧
-  si.program = program ∧
-  -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment si  ∧
-  si[s0.sp - 20#64 + 28#64, 4] = (spec s0.x0 s0.x1).zeroExtend 32
+-- @[simp] def else_end_inv (s0 si : ArmState) : Prop :=
+--   read_err si = .None ∧
+--   si.program = program ∧
+--   -- (FIXME) We don't really need the stack pointer to be aligned, but the
+--   -- `sym_n` tactic expects this. Can we make this optional?
+--   CheckSPAlignment si ∧
+--   si[s0.sp - 20#64 + 28#64, 4] = (spec s0.x0 s0.x1).zeroExtend 32
 
 
-@[simp] def merge_end_inv (s0 sf : ArmState): Prop := post s0 sf
+
+-- @[simp] def merge_start_inv (s0 si : ArmState) : Prop :=
+--   read_err si = .None ∧
+--   si.program = program ∧
+--   -- (FIXME) We don't really need the stack pointer to be aligned, but the
+--   -- `sym_n` tactic expects this. Can we make this optional?
+--   CheckSPAlignment si  ∧
+--   si[s0.sp - 20#64 + 28#64, 4] = (spec s0.x0 s0.x1).zeroExtend 32
+
+
+-- @[simp] def merge_end_inv (s0 sf : ArmState): Prop := post s0 sf
 
 def exit (s : ArmState) : Prop :=
   -- (FIXME) Let's consider the state where we are poised to execute `ret` as an
   -- exit state for now.
   read_pc s = 0x8cc#64
+
 end Invariants
 
 
@@ -181,7 +184,7 @@ def assert (s0 si : ArmState) : Prop :=
   | else_start => else_start_inv s0 si
   -- | else_end => else_end_inv s0 si
   -- | merge_start => merge_start_inv s0 si
-  -- | merge_end => merge_end_inv s0 si
+  | merge_end => post s0 si -- why do I need an `assert` here, if it's tracked by `post`? Confusing.
   | _ => False
 
 instance : Spec' ArmState where
@@ -376,14 +379,10 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
   r StateField.PC sn = 0x8ac#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
-  sn.C = (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 1#5) s))
-            (~~~BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s)) 1#1).snd.c ∧
-  sn.V = (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 1#5) s))
-            (~~~BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s)) 1#1).snd.v ∧
-  sn.Z = (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 1#5) s))
-            (~~~BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s)) 1#1).snd.z ∧
-  sn.N = (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 1#5) s))
-            (~~~BitVec.zeroExtend 32 (r (StateField.GPR 0#5) s)) 1#1).snd.n ∧
+  sn.C = (AddWithCarry (s.x1.zeroExtend 32) (~~~s.x0.zeroExtend 32) 1#1).snd.c ∧
+  sn.V = (AddWithCarry (s.x1.zeroExtend 32) (~~~s.x0.zeroExtend 32) 1#1).snd.v ∧
+  sn.Z = (AddWithCarry (s.x1.zeroExtend 32) (~~~s.x0.zeroExtend 32) 1#1).snd.z ∧
+  sn.N = (AddWithCarry (s.x1.zeroExtend 32) (~~~s.x0.zeroExtend 32) 1#1).snd.n ∧
   sn[(sn.sp) + 8#64, 4] = s[s.sp + 8#64, 4] ∧
   sn[(sn.sp) + 12#64, 4] = s[s.sp + 12#64, 4] ∧
   sn.x0 = s.x0  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
@@ -415,12 +414,18 @@ theorem program.stepi_0x8ac_cut (s sn : ArmState)
   (h_step : sn = run 1 s) :
   cut sn = true ∧
   r StateField.PC sn =
-  (if ¬(r (StateField.FLAG PFlag.N) s = r (StateField.FLAG PFlag.V) s ∧ r (StateField.FLAG PFlag.Z) s = 0#1)
+  (if ¬(s.N = s.V ∧ s.Z = 0#1)
   then 2236#64 -- takes the branch
   else 0x8b0#64) ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
-  CheckSPAlignment sn
+  sn[(sn.sp) + 8#64, 4] = s[s.sp + 8#64, 4] ∧
+  sn[(sn.sp) + 12#64, 4] = s[s.sp + 12#64, 4] ∧
+  sn.x0 = s.x0  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn.x1 = s.x1  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn.sp = s.sp ∧
+  CheckSPAlignment sn ∧
+  sn.mem = s.mem
   := by
   have := program.stepi_eq_0x8ac h_program h_pc h_err
   simp only [minimal_theory] at this
@@ -429,17 +434,21 @@ theorem program.stepi_0x8ac_cut (s sn : ArmState)
     decide_eq_true_eq, state_value]
   split
   case isTrue h =>
-    simp [h] at this
     have : sn = w StateField.PC (2236#64) s := by
-      rw [h_step, ← this]
+      simp only [state_simp_rules] at h
+      rw [h_step]
+      simp [h] at this
+      rw [← this]
       rfl
     simp [this, state_simp_rules, h_sp_aligned, h_err, h_program]
   case isFalse h =>
-    simp [h] at this
     /- TODO: we have too many layers of abstraction. We need to choose a simp normal form
     between `run` and `step`. -/
     have : sn = w StateField.PC (2224#64) s := by
-      rw [h_step, ← this]
+      simp only [state_simp_rules] at h
+      rw [h_step]
+      simp [h] at this
+      rw [← this]
       rfl
     simp [this, state_simp_rules, h_sp_aligned, h_err, h_program]
 
@@ -458,8 +467,13 @@ theorem program.stepi_0x8b0_cut (s sn : ArmState)
   cut sn = false ∧
   r StateField.PC sn = 0x8b4#64 ∧
   r StateField.ERR sn = .None ∧
+  sn[(sn.sp) + 8#64, 4] = s[s.sp + 8#64, 4] ∧
+  sn[(sn.sp) + 12#64, 4] = s[s.sp + 12#64, 4] ∧
+  sn.x0 = BitVec.zeroExtend 64 s[sn.sp + 12#64, 4]  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn.x1 = s.x1  ∧ -- TODO: change notation to work on Memory, rather than ArmSTate + read_bytes
+  sn.sp = s.sp ∧
   sn.program = program ∧
-  sn.x0 = BitVec.zeroExtend 64 s[sn.sp + 12, 4] ∧
+  sn.mem = s.mem ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8b0 h_program h_pc h_err
   simp only [minimal_theory] at this
@@ -486,7 +500,9 @@ theorem program.stepi_0x8b4_cut (s sn : ArmState)
   r StateField.PC sn = 0x8b8#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
-  sn[sn.sp + 28, 4] = sn.x0.zeroExtend 32 ∧
+  sn.x0 = s.x0 ∧
+  sn[sn.sp + 28#64, 4] = sn.x0.zeroExtend 32 ∧
+  sn.sp = s.sp ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8b4 h_program h_pc h_err
   simp only [minimal_theory] at this
@@ -511,6 +527,9 @@ theorem program.stepi_0x8b8_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   cut sn = false ∧ -- TODO: why do we speak about the *next* state being a cut?
   sn.program = program ∧
+  sn.mem = s.mem ∧
+  sn[sn.sp + 28#64, 4] = s[s.sp + 28#64, 4] ∧
+  sn.sp = s.sp ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8b8 h_program h_pc h_err
   simp only [minimal_theory] at this
@@ -581,8 +600,11 @@ theorem program.stepi_0x8c4_cut (s sn : ArmState)
   r StateField.PC sn = 0x8c8#64 ∧
   r StateField.ERR sn = .None ∧
   sn.program = program ∧
+  sn.mem = s.mem ∧
   cut sn = false ∧
-  sn.x0 = BitVec.zeroExtend 64 (sn[sn.sp + 28, 4])  ∧
+  sn.sp = s.sp ∧
+  sn[sn.sp + 28#64, 4] = s[s.sp + 28#64, 4]  ∧
+  sn.x0 = BitVec.zeroExtend 64 (sn[sn.sp + 28#64, 4])  ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8c4 h_program h_pc h_err
   simp only [minimal_theory] at this
@@ -605,6 +627,7 @@ theorem program.stepi_0x8c8_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   cut sn = true ∧
   sn.program = program ∧
+  sn.x0 = s.x0 ∧
   sn.sp = s.sp + 0x20#64 ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8c8 h_program h_pc h_err
@@ -677,61 +700,61 @@ end CutTheorems
 -- --   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
 -- --   done
 
--------------------------------------------------------------------------------
+-- -------------------------------------------------------------------------------
 
--- Throwaway tactic to do symbolic simulation in the context of
--- Correctness.partial_correctness_from_assertions.
-open Lean (FVarId TSyntax logWarning) in
-open Lean.Elab.Tactic (TacticM evalTactic withMainContext) in
-def sym1_cassert (curr_state_number : Nat)
-                 (cassert_eq : Lean.Name)
-                 (cut_eq : Lean.Name)
-                 : TacticM Unit :=
-  withMainContext do
-    let n_str := toString curr_state_number
-    let n'_str := toString (curr_state_number + 1)
-    let mk_name (s : String) : Lean.Name :=
-      Lean.Name.mkStr Lean.Name.anonymous s
-    -- h_st_*: name of the hypothesis about projections from state st.
-    let h_st_program := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_program"))
-    let h_st_pc := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_pc"))
-    let h_st_err := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_err"))
-    let h_st_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_sp_aligned"))
-    -- st: name of the current state
-    let st := Lean.mkIdent (mk_name ("s" ++ n_str))
-    -- stn: name of the next state
-    let stn := Lean.mkIdent (mk_name ("s" ++ n'_str))
-    -- stn': temporary name of the next state
-    let stn' := Lean.mkIdent (mk_name ("s" ++ n'_str ++ "'"))
-    -- h_st_run: name of the hypothesis with the `run` function
-    let h_st_run := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_run"))
-    -- stepi_st: name of the hypothesis which associates st and stn with a stepi
-    -- function.
-    let stepi_st := Lean.mkIdent (mk_name ("stepi_s" ++ n_str))
-    -- cassert_eq lemma
-    let cassert_eq_lemma := Lean.mkIdent cassert_eq
-    -- cut_lemma
-    let cut_lemma := Lean.mkIdent cut_eq
-    evalTactic (←
-      `(tactic|
-         (rw [$cassert_eq_lemma:ident]
-          generalize $h_st_run:ident : run 1 $st:ident = $stn':ident
-          replace $h_st_run:ident := ($h_st_run:ident).symm
-          sym_n 1 at $st:ident
-          have h_cut := $cut_lemma:ident $st:ident $stn:ident
-                         $h_st_program:ident $h_st_pc:ident
-                         $h_st_err:ident $h_st_sp_aligned:ident
-                         (by simp only [run, $stepi_st:ident])
-          simp only [run_opener_zero] at $h_st_run:ident
-          rw [$h_st_run:ident] at *
-          simp only [h_cut, Nat.reduceAdd, minimal_theory]
-          clear $stn':ident h_cut $h_st_run:ident $stepi_st:ident
-      )))
+-- -- Throwaway tactic to do symbolic simulation in the context of
+-- -- Correctness.partial_correctness_from_assertions.
+-- open Lean (FVarId TSyntax logWarning) in
+-- open Lean.Elab.Tactic (TacticM evalTactic withMainContext) in
+-- def sym1_cassert (curr_state_number : Nat)
+--                  (cassert_eq : Lean.Name)
+--                  (cut_eq : Lean.Name)
+--                  : TacticM Unit :=
+--   withMainContext do
+--     let n_str := toString curr_state_number
+--     let n'_str := toString (curr_state_number + 1)
+--     let mk_name (s : String) : Lean.Name :=
+--       Lean.Name.mkStr Lean.Name.anonymous s
+--     -- h_st_*: name of the hypothesis about projections from state st.
+--     let h_st_program := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_program"))
+--     let h_st_pc := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_pc"))
+--     let h_st_err := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_err"))
+--     let h_st_sp_aligned := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_sp_aligned"))
+--     -- st: name of the current state
+--     let st := Lean.mkIdent (mk_name ("s" ++ n_str))
+--     -- stn: name of the next state
+--     let stn := Lean.mkIdent (mk_name ("s" ++ n'_str))
+--     -- stn': temporary name of the next state
+--     let stn' := Lean.mkIdent (mk_name ("s" ++ n'_str ++ "'"))
+--     -- h_st_run: name of the hypothesis with the `run` function
+--     let h_st_run := Lean.mkIdent (mk_name ("h_s" ++ n_str ++ "_run"))
+--     -- stepi_st: name of the hypothesis which associates st and stn with a stepi
+--     -- function.
+--     let stepi_st := Lean.mkIdent (mk_name ("stepi_s" ++ n_str))
+--     -- cassert_eq lemma
+--     let cassert_eq_lemma := Lean.mkIdent cassert_eq
+--     -- cut_lemma
+--     let cut_lemma := Lean.mkIdent cut_eq
+--     evalTactic (←
+--       `(tactic|
+--          (rw [$cassert_eq_lemma:ident]
+--           generalize $h_st_run:ident : run 1 $st:ident = $stn':ident
+--           replace $h_st_run:ident := ($h_st_run:ident).symm
+--           sym_n 1 at $st:ident
+--           have h_cut := $cut_lemma:ident $st:ident $stn:ident
+--                          $h_st_program:ident $h_st_pc:ident
+--                          $h_st_err:ident $h_st_sp_aligned:ident
+--                          (by simp only [run, $stepi_st:ident])
+--           simp only [run_opener_zero] at $h_st_run:ident
+--           rw [$h_st_run:ident] at *
+--           simp only [h_cut, Nat.reduceAdd, minimal_theory]
+--           clear $stn':ident h_cut $h_st_run:ident $stepi_st:ident
+--       )))
 
--- sym_i_assert tactic symbolically simulates 1 instruction from the state
--- number `i`.
-elab "sym_i_cassert" i:num cassert_eq:ident cut_eq:ident : tactic => do
-  sym1_cassert i.getNat cassert_eq.getId cut_eq.getId
+-- -- sym_i_assert tactic symbolically simulates 1 instruction from the state
+-- -- number `i`.
+-- elab "sym_i_cassert" i:num cassert_eq:ident cut_eq:ident : tactic => do
+--   sym1_cassert i.getNat cassert_eq.getId cut_eq.getId
 
 theorem cassert_eq (s0 si : ArmState) (i : Nat) :
   Correctness.cassert s0 si i = if cut si then (i, assert s0 si)
@@ -765,12 +788,25 @@ If a list of names is supplied, then clear all inaccessible names that have
 elab "clear_named" "[" names:(ident),* "]": tactic =>  do
   withMainContext do
     for hyp in (← getLCtx) do
-      trace[debug] "name: {hyp.userName}"
+      -- trace[debug] "name: {hyp.userName}"
       for name in names.getElems do
         if name.getId.toString.isPrefixOf hyp.userName.toString then
           replaceMainGoal [← (← getMainGoal).clear hyp.fvarId]
           continue
 
+
+
+section ForLean
+
+theorem BitVec.not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
+  simp only [BitVec.slt, BitVec.sle]
+  by_cases h : a.toInt < b.toInt
+  · simp [h]
+    exact Int.not_le.mpr h
+  · simp [h]
+    exact Int.not_lt.mp h
+
+end ForLean
 
 /-
 open Lean Meta Elab in
@@ -810,7 +846,7 @@ theorem partial_correctness :
     simp only [Spec'.assert, assert] at h_assert
     simp only [Spec.exit, exit] at h_exit
     -- Why do we see the hex values instead of PC notation?
-    simp only [h_exit, merge_end_inv] at h_assert
+    simp only [h_exit] at h_assert
     simp only [Spec.post]
     simp_all
   case v4 =>
@@ -894,43 +930,120 @@ theorem partial_correctness :
       rw [Correctness.snd_cassert_of_not_cut h_s6_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s6 = run 1 s6 by rfl]
       replace h_s6_sp : s6.sp = s0.sp - 32 := by simp_all
-      replace h_s6_x0 : s6.x0 = BitVec.zeroExtend 65 (BitVec.truncate 32 s0.x1) := by simp_all
-      replace h_s6_x1 : s6.x1 = BitVec.zeroExtend 65 (BitVec.truncate 32 s0.x0) := by simp_all
+      replace h_s6_x0 : s6.x0 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x1) := by simp_all
+      replace h_s6_x1 : s6.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
       replace h_s6_sp : s6.sp = s0.sp - 32 := by simp_all
-      replace h_s6_read_sp12 : read_mem_bytes 5 (s6.sp + 12#64) s6 = BitVec.truncate 32 s0.x0 := by simp_all
-      replace h_s6_read_sp8 : read_mem_bytes 5 (s6.sp + 8#64) s6 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace h_s6_read_sp12 : read_mem_bytes 4 (s6.sp + 12#64) s6 = BitVec.truncate 32 s0.x0 := by simp_all
+      replace h_s6_read_sp8 : read_mem_bytes 4 (s6.sp + 8#64) s6 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace h_s6_c : s6.C = (AddWithCarry (s0.x0.zeroExtend 32) (~~~s0.x1.zeroExtend 32) 1#1).snd.c := by simp_all
+      replace h_s6_n : s6.N = (AddWithCarry (s0.x0.zeroExtend 32) (~~~s0.x1.zeroExtend 32) 1#1).snd.n := by simp_all
+      replace h_s6_v : s6.V = (AddWithCarry (s0.x0.zeroExtend 32) (~~~s0.x1.zeroExtend 32) 1#1).snd.v := by simp_all
+      replace h_s6_z : s6.Z = (AddWithCarry (s0.x0.zeroExtend 32) (~~~s0.x1.zeroExtend 32) 1#1).snd.z := by simp_all
+
       clear_named [h_s5]
 
-      -- replace h_read_sp_12 : read_mem_bytes 4 (s2.sp + 12#64) s3 = BitVec.truncate 32 s1.x0 := by
-      --   exact h_read_sp_12
-        -- clear_named h_program -- TODO: stick to naming discipline of h_s3_... to be able to clear via this tactic.
-      -- -- Begin: Symbolic simulation
-      -- sym_i_cassert 0 cassert_eq program.stepi_0x894_cut
-      -- case h_s1_sp_aligned =>
-      --   simp (config := {decide := true, ground := true}) only []
-      --   apply Aligned_BitVecSub_64_4
-      --   · assumption
-      --   · decide
-      -- sym_i_cassert 1 cassert_eq program.stepi_0x898_cut
-      -- simp only [h_s1_sp_aligned, minimal_theory] at h_step_2
-      -- sym_i_cassert 2 cassert_eq program.stepi_0x89c_cut
-      -- simp only [h_s2_sp_aligned, minimal_theory] at h_step_3
-      -- sym_i_cassert 3 cassert_eq program.stepi_0x8a0_cut
-      -- simp only [h_s3_sp_aligned, minimal_theory] at h_step_4
-      -- sym_i_cassert 4 cassert_eq program.stepi_0x8a4_cut
-      -- simp only [h_s4_sp_aligned, minimal_theory] at h_step_5
-      -- sym_i_cassert 5 cassert_eq program.stepi_0x8a8_cut
-      -- -- End: Symbolic simulation
-      -- simp only [assert, h_pre, h_s6_pc,
-      --            state_simp_rules, bitvec_rules, minimal_theory]
-      -- simp only [h_s6_pc, h_s6_program, h_s6_err, h_s6_sp_aligned,
-      --            entry_end_inv, state_simp_rules, minimal_theory]
-      -- -- @bollu: I'm not sure why we need to do this.
-      -- simp [cut, h_s3_pc, read_pc, pcs]
-      done
+    -- 7/16
+      name h_run : s7 := run 1 s6
+      obtain h := program.stepi_0x8ac_cut s6 (by trivial) (by trivial) (by trivial) (by trivial) (by trivial) (by simp [*])
+      obtain ⟨h_s7_cut, h_s7_pc, h_s7_err, h_s7_program, h_s7_read_sp_8, h_s7_read_sp_12, h_s7_x0, h_s7_x1, h_s7_sp, h_s7_sp_aligned, h_s7_mem⟩ := h
+      rw [Correctness.snd_cassert_of_cut h_s7_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      replace h_s7_sp : s7.sp = s0.sp - 32 := by simp_all
+      replace h_s7_x0 : s7.x0 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x1) := by simp_all
+      replace h_s7_x1 : s7.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
+      replace h_s7_sp : s7.sp = s0.sp - 32 := by simp_all
+      replace h_s7_read_sp12 : read_mem_bytes 4 ((s0.sp - 32#64) + 12#64) s7 = BitVec.truncate 32 s0.x0 := by simp_all
+      replace h_s7_read_sp8 : read_mem_bytes 4 ((s0.sp - 32#64) + 8#64) s7 = BitVec.truncate 32 s0.x1 := by simp_all
+      have h_s7_s6_c := h_s6_c
+      have h_s7_s6_n := h_s6_n
+      have h_s7_s6_v := h_s6_v
+      have h_s7_s6_z := h_s6_z
+      clear_named [h_run, h_s6] -- TODO: I clear h_run here. Is this a good idea?
+      split at h_s7_pc
+      case isTrue h => -- branch taken
+        simp only [Spec'.assert, assert, h_pre, read_pc, h_s7_pc, else_start_inv, read_err,
+          h_s7_err, h_s7_program, h_s7_sp_aligned, entry_end_inv, Nat.reduceMul, h_s7_read_sp12,
+          h_s7_read_sp8, and_self, true_and, h_s7_sp, BitVec.ofNat_eq_ofNat, true_and]
+        have h_s7_sle := sle_iff_not_n_eq_v_and_z_eq_0_32 (BitVec.zeroExtend 32 s0.x0) (BitVec.zeroExtend 32 s0.x1)
+        rw [← h_s7_s6_n, ← h_s7_s6_v, ← h_s7_s6_z] at h_s7_sle
+        replace h_s7_sle := h_s7_sle.mp h
+        exact h_s7_sle
+      case isFalse h =>  -- branch not taken
+        simp only [Spec'.assert, assert, h_pre, read_pc, h_s7_pc, then_start_inv, entry_end_inv,
+          read_err, h_s7_err, h_s7_program, h_s7_sp_aligned, Nat.reduceMul, h_s7_read_sp12,
+          h_s7_read_sp8, and_self, Bool.not_eq_true, true_and, h_s7_sp, BitVec.ofNat_eq_ofNat, true_and]
+        have h_s7_sgt := sgt_iff_n_eq_v_and_z_eq_0_32 (BitVec.zeroExtend 32 s0.x0) (BitVec.zeroExtend 32 s0.x1)
+        simp only [not_and, not_imp, Decidable.not_not] at h
+        rw [← h_s7_s6_n, ← h_s7_s6_v, ← h_s7_s6_z] at h_s7_sgt
+        replace h_s7_sgt := h_s7_sgt.mp h
+        bv_decide
     · -- start @ then_start_inv
       simp [then_start_inv] at h_assert
-      sorry
+      rename_i x h_s1_pc
+      rename si to s1
+      obtain ⟨⟨h_s1_err, h_s1_program, h_s1_sp_aligned, h_s1_read_sp_12, h_s1_read_sp_8, h_s1_sp⟩, h_KEEP_x0_x1⟩ := h_assert
+      clear_named [h_assert]
+      name h_s1_run : s2 := run 1 s1
+      obtain ⟨h_s2_cut, h_s2_pc, h_s2_err, h_s2_read_sp_8, h_s2_read_sp_12, h_s2_x0, h_s2_x1, h_s2_sp, h_s2_program, h_s2_mem, h_s2_sp_aligned⟩ :=
+        program.stepi_0x8b0_cut s1 s2 h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned h_s1_run.symm
+      rw [Correctness.snd_cassert_of_not_cut h_s2_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      simp [show Sys.next s2 = run 1 s2 by rfl]
+      replace h_s2_x0 : s2.x0 = BitVec.zeroExtend 64 (BitVec.zeroExtend 32 s0.x0) := by simp_all
+      replace h_s2_x0 : s2.x0 = spec s0.x0 s0.x1 := by
+        simp [spec, h_s2_x0]
+        split  <;> bv_decide
+      clear_named [h_s0]
+
+      -- 3/15
+      name h_run : s3 := run 1 s2
+      obtain h := program.stepi_0x8b4_cut s2 s3 (by trivial) (by trivial) (by trivial) (by trivial) (h_run.symm)
+      obtain ⟨h_s3_cut, h_s3_pc, h_s3_err, h_s3_program, h_s3_x0, h_s3_sp_28, h_s3_sp, h_s3_sp_aliged⟩ := h
+      rw [Correctness.snd_cassert_of_not_cut h_s3_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      simp [show Sys.next _ = run 1 _ by rfl]
+      replace h_s3_sp_28 : read_mem_bytes 4 (s3.sp + 28#64) s3 = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
+      replace h_s3_sp : s3.sp = s0.sp - 32#64 := by simp_all
+      -- /- TODO: this should be s0.x0-/
+      -- replace h_s3_read_sp12 : read_mem_bytes 4 (s3.sp + 12#64) s3 = BitVec.truncate 32 s0.x0 := by simp_all
+      -- replace h_s3_read_sp8 : read_mem_bytes 4 (s3.sp + 8#64) s3 = BitVec.truncate 32 s0.x1 := by simp_all
+      clear_named [h_s2, h_s1]
+
+      -- 4/15
+      name h_run : s4 := run 1 s3
+      obtain h_s4 := program.stepi_0x8b8_cut s3 s4 (by trivial) (by trivial) (by trivial) (by trivial) (h_run.symm)
+      rw [Correctness.snd_cassert_of_not_cut (si := s4) (by simp_all [Spec'.cut])];
+      simp [show Sys.next _ = run 1 _ by rfl]
+      have h_s4_sp : s4.sp = s0.sp - 32#64 := by simp_all
+      have h_s4_sp_28 : read_mem_bytes 4 (s4.sp + 28#64) s4 = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
+      clear_named [h_s3]
+
+      -- 5/15
+      name h_run : s5 := run 1 s4
+      obtain h_s5 := program.stepi_0x8c4_cut s4 s5 (by simp_all) (by simp_all) (by simp_all) (by simp_all) (h_run.symm)
+      rw [Correctness.snd_cassert_of_not_cut (si := s5) (by simp_all [Spec'.cut])];
+      have h_s5_x0 : s5.x0 = BitVec.zeroExtend 64 (BitVec.zeroExtend 32 (spec s0.x0 s0.x1)) := by
+        simp only [show s5.x0 = BitVec.zeroExtend 64 (read_mem_bytes 4 (s5.sp + 28#64) s5) by simp_all]
+        simp only [Nat.reduceMul]
+        /- Damn, that the rewrite system is not confluent really fucks me over here ;_;
+        `simp` winds up rewriting `s5.sp` into `s4.sp` first because of the rule, and
+        fails to match `read_mem_bytes... (s5.sp + ...) = read_mem_bytes ... (s4.sp + ...)`.
+        One might say that this entire proof is stupid, but really, I 'just' want it to build an
+        e-graph and figure it out~
+         -/
+        have : (read_mem_bytes 4 (s5.sp + 28#64) s5) = read_mem_bytes 4 (s4.sp + 28#64) s4 := by
+          obtain ⟨_, _, _, _, _, _, h, _⟩ := h_s5
+          exact h
+        simp [this]
+        rw [h_s4_sp_28]
+      --   simp only [show s5.x0 = BitVec.zeroExtend 64 (read_mem_bytes 4 (s5.sp + 28) s5) by simp_all]
+      --   simp only [show (read_mem_bytes 4 (s5.sp + 28) s5) = read_mem_bytes 4 (s4.sp + 28#64) s4 by simp_all]
+      simp [show Sys.next _ = run 1 _ by rfl]
+      -- clear_named [h_s4]
+
+      -- 6/15
+      name h_run : s6 := run 1 s5
+      obtain h_s6 := program.stepi_0x8c8_cut s5 s6 (by simp_all) (by simp_all) (by simp_all) (by simp_all) (h_run.symm)
+      rw [Correctness.snd_cassert_of_cut (si := s6) (by simp_all [Spec'.cut])];
+      simp [Spec'.assert, assert, read_pc, h_s6, h_pre, post, read_err]
+      simp [h_s5_x0]
     · -- start @ else_start_inv
       simp [else_start_inv] at h_assert
       sorry

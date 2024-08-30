@@ -12,6 +12,9 @@ register_simp_attr memory_rules
 -- Rules for memory aligned lemmas
 register_simp_attr aligned_rules
 
+-- Rules for making proof states look more compact.
+register_simp_attr pretty_rules
+
 /-
 syntax "state_simp" : tactic
 macro_rules
