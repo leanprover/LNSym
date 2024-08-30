@@ -132,13 +132,13 @@ def refpoly : BitVec 129 := 0x1C2000000000000000000000000000001#129
   See Remark 5 in paper
     "A New Interpretation for the GHASH Authenticator of AES-GCM"
 -/
-private def gcm_init_H (H : BitVec 128) : BitVec 128 :=
+protected def gcm_init_H (H : BitVec 128) : BitVec 128 :=
   pmod (H ++ 0b0#1) refpoly (by omega)
 
-private def gcm_polyval_mul (x : BitVec 128) (y : BitVec 128) : BitVec 256 :=
+protected def gcm_polyval_mul (x : BitVec 128) (y : BitVec 128) : BitVec 256 :=
   0b0#1 ++ pmult x y
 
-private def gcm_polyval_red (x : BitVec 256) : BitVec 128 :=
+protected def gcm_polyval_red (x : BitVec 256) : BitVec 128 :=
   reverse $ pmod (reverse x) irrepoly (by omega)
 
 /--
@@ -150,7 +150,7 @@ private def gcm_polyval_red (x : BitVec 256) : BitVec 128 :=
     "A New Interpretation for the GHASH Authenticator of AES-GCM"
   2. Lemma: reverse (pmult x y) = pmult (reverse x) (reverse y)
 -/
-private def gcm_polyval (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
+protected def gcm_polyval (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
   GCMV8.gcm_polyval_red $ GCMV8.gcm_polyval_mul x y
 
 /-- GCMInitV8 specification:
@@ -216,6 +216,15 @@ example : GCMGmultV8 0x1099f4b39468565ccdd297a9df145877#128
   [ 0xa2#8, 0xc9#8, 0x9c#8, 0x56#8, 0xeb#8, 0xa7#8, 0x91#8, 0xf6#8,
     0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ] := by rfl
 
+
+/-- GCMGmultV8 specification:
+    H  : [128] -- the first element in Htable, not the initial H input to GCMInitV8
+    Xi : [16][8] -- current hash value
+    output : [16][8] -- next hash value
+-/
+def GCMGmultV8' (H : BitVec 128) (Xi : BitVec 128) : BitVec 128 :=
+  let H := (lo H) ++ (hi H)
+  (GCMV8.gcm_polyval H Xi)
 
 private def gcm_ghash_block (H : BitVec 128) (Xi : BitVec 128)
   (inp : BitVec 128) : BitVec 128 :=
