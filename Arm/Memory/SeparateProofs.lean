@@ -5,7 +5,7 @@ Author(s): Shilpi Goel
 -/
 import Arm.State
 import Arm.Memory.Separate
-import LeanSAT
+import Std.Tactic.BVDecide
 
 ----------------------------------------------------------------------
 
