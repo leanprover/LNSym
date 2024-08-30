@@ -68,15 +68,26 @@ def exit (s : ArmState) : Prop :=
   -- exit state for now.
   read_pc s = 0x4005bc#64
 
+-- def cut (s : ArmState) : Bool :=
+--   -- First instruction
+--   read_pc s = 0x4005a4#64 ||
+--   -- Loop guard (branch instruction)
+--   read_pc s = 0x4005b4#64 ||
+--   -- First instruction following the loop
+--   read_pc s = 0x4005b8#64 ||
+--   -- Last instruction
+--   read_pc s = 0x4005bc#64
 def cut (s : ArmState) : Bool :=
+  match (read_pc s) with
   -- First instruction
-  read_pc s = 0x4005a4#64 ||
+  | 0x4005a4#64
   -- Loop guard (branch instruction)
-  read_pc s = 0x4005b4#64 ||
+  | 0x4005b4#64
   -- First instruction following the loop
-  read_pc s = 0x4005b8#64 ||
+  | 0x4005b8#64
   -- Last instruction
-  read_pc s = 0x4005bc#64
+  | 0x4005bc#64 => true
+  | _ => false
 
 def loop_inv (s0 si : ArmState) : Prop :=
   let x0 := read_gpr 64 0#5 s0
@@ -217,14 +228,11 @@ theorem program.stepi_0x4005b4_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005b4 h_program h_pc h_err
-  simp only [minimal_theory] at this
-  simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
-  split
-  · rename_i h
-    simp_all only [state_simp_rules, bitvec_rules, minimal_theory]
-  · rename_i h; simp only [minimal_theory] at h
-    simp_all only [state_simp_rules, minimal_theory]
-    done
+  simp only [run] at h_step
+  simp only [minimal_theory, ←h_step] at this
+  split <;>
+  simp_all only [-h_step, run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  done
 
 theorem program.stepi_0x4005b8_cut (s sn : ArmState)
   (h_program : s.program = program)
@@ -355,7 +363,7 @@ def sym1_cassert (curr_state_number : Nat)
           simp only [run_opener_zero] at $h_st_run:ident
           rw [$h_st_run:ident] at *
           simp only [h_cut, Nat.reduceAdd, minimal_theory]
-          clear $stn':ident h_cut $h_st_run:ident $stepi_st:ident
+          clear $stn':ident h_cut $h_st_run:ident -- $stepi_st:ident
       )))
 
 -- sym_i_assert tactic symbolically simulates 1 instruction from the state
@@ -533,7 +541,7 @@ theorem partial_correctness :
   done
 
 -------------------------------------------------------------------------------
-
+/-
 def loop_clock (x0 : BitVec 64) : Nat :=
   if h : x0 = 0#64 then
     1
@@ -599,14 +607,6 @@ theorem loop_clk_plus_one_lt_clock :
   unfold loop_clock
   split <;> omega
 
-theorem rank_decreases_eq (si sn : ArmState) (i : Nat) :
-  Correctness.rank_decreases rank si sn i =
-    if cut sn then (i, rank sn < rank si)
-              else Correctness.rank_decreases rank si (run 1 sn) (i + 1) := by
-  rw [Correctness.rank_decreases_eq]
-  simp only [Spec'.cut, Sys.next, run]
-  done
-
 -- (FIXME) The termination proof looks very similar to the partial correctness
 -- one, and we ought to do them in one swoop.
 theorem termination :
@@ -614,13 +614,44 @@ theorem termination :
   apply Correctness.termination_from_decreasing_rank rank
   case v1 =>
     intro s0 h_pre
+    simp_all only [Spec.pre, pre, Spec'.cut, cut,
+                    minimal_theory]
+  case v2 =>
+    intro s h_cut h_not_exit
+    simp only [Spec'.cut, cut, Spec.exit, exit, state_simp_rules] at h_cut h_not_exit
+    split at h_cut
+    ·
+      sorry
+    ·
+      sorry
+    ·
+      sorry
+    ·
+      sorry
+    · contradiction
+  done
+
+theorem correctness :
+  Correctness ArmState := by
+  apply Correctness.by_the_method rank
+  case v1 =>
+    intro s0 h_pre
     simp_all only [Spec.pre, pre, Spec'.assert, assert,
                     minimal_theory]
   case v2 =>
-    intro s0 si h_assert h_not_exit
+    intro sf h_exit
+    simp_all only [Spec.exit, exit, Spec'.cut, cut,
+                    state_simp_rules, minimal_theory]
+  case v3 =>
+    intro s0 sf h_assert h_exit
+    -- (FIXME) Remove Spec.post to replicate bug where simp_all somehow
+    -- aggressively makes the goal unprovable.
+    simp_all only [Spec'.assert, Spec.exit, assert, exit, Spec.post]
+  case v4 =>
+    intro s0 si h_assert h_exit
     simp only [Correctness.arm_run]
-    simp [Spec.exit, exit] at h_not_exit
-    simp only [Spec'.assert, assert, h_not_exit, minimal_theory] at h_assert
+    simp [Spec.exit, exit] at h_exit
+    simp only [Spec'.assert, assert, h_exit, minimal_theory] at h_assert
     obtain ⟨h_pre, h_assert⟩ := h_assert
     have ⟨h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned⟩ := h_pre
     simp_all only [Spec'.assert, Spec.exit, assert, exit,
@@ -629,13 +660,26 @@ theorem termination :
     · -- Next cutpoint from 0x4005a4#64 (first instruction)
       subst si
       -- Begin: Symbolic simulation
-      sym_i_cassert 0 rank_decreases_eq program.stepi_0x4005a4_cut
-      sym_i_cassert 1 rank_decreases_eq program.stepi_0x4005b0_cut
+      sym_i_cassert 0 cassert_eq program.stepi_0x4005a4_cut
+      sym_i_cassert 1 cassert_eq program.stepi_0x4005b0_cut
       -- End: Symbolic simulation
-      simp only [rank, h_s0_pc, h_s2_pc, state_simp_rules]
-      simp (config := {ground := true}) only at h_step_2
-      simp only [h_step_2, h_step_1, loop_clk_plus_one_lt_clock,
+      simp only [assert, h_pre, loop_inv,
+                 h_s2_pc, h_s2_err, h_s2_program, h_s2_sp_aligned,
                  state_simp_rules, bitvec_rules, minimal_theory]
+      simp only [h_step_2, h_step_1,
+                 state_simp_rules, bitvec_rules, minimal_theory]
+      simp (config := {ground := true}) only
+      rw [AddWithCarry.all_ones_zero_flag_64]
+      simp only [minimal_theory]
+      apply Exists.intro 2
+      simp only [Spec'.cut, cut,
+                 state_simp_rules, bitvec_rules, minimal_theory]
+      have : run 2 s0 = s2 := by
+              simp only [←stepi_s1, ←stepi_s0, run]
+      simp only [this, h_s2_pc, minimal_theory]
+      simp only [rank, h_s2_pc, h_s0_pc,
+                 state_simp_rules, minimal_theory, bitvec_rules]
+      sorry
       done
     · -- Next cutpoint from 0x4005b4#64 (loop guard)
       --
@@ -656,7 +700,7 @@ theorem termination :
           assumption
         -- Begin: Symbolic simulation
         -- Instruction 1 (branch instruction)
-        rw [rank_decreases_eq]
+        rw [cassert_eq]
         generalize h_run : run 1 si = s1
         replace h_run := (h_run).symm
         -- (TODO) Better handling of branch instructions.
@@ -681,21 +725,24 @@ theorem termination :
          (all_goals (try assumption)))
         clear h_cut h_cut'
         -- Instruction 2
-        sym_i_cassert 1 rank_decreases_eq program.stepi_0x4005a8_cut
-        sym_i_cassert 2 rank_decreases_eq program.stepi_0x4005ac_cut
-        sym_i_cassert 3 rank_decreases_eq program.stepi_0x4005b0_cut
+        sym_i_cassert 1 cassert_eq program.stepi_0x4005a8_cut
+        sym_i_cassert 2 cassert_eq program.stepi_0x4005ac_cut
+        sym_i_cassert 3 cassert_eq program.stepi_0x4005b0_cut
         -- End: Symbolic simulation
-        simp only [rank,
-                   h_s4_pc, h_inv_pc,
+        simp only [assert, loop_inv, h_pre,
+                   h_s4_pc, h_s4_err, h_s4_program, h_s4_sp_aligned,
                    state_simp_rules, bitvec_rules, minimal_theory]
         -- Aggregate program effects here.
         simp (config := {ground := true}) only at h_step_4 h_step_3 h_step_2
         simp only [h_step_4, h_step_3, h_step_2, h_step_1,
                    state_simp_rules, bitvec_rules, minimal_theory]
         clear h_step_4 h_step_3 h_step_2 h_step_1
-        rw [AddWithCarry.sub_one_64]
-        have := loop_clock_inv_lemma h_inv_x0_nz
-        omega
+        rw [AddWithCarry.sub_one_64,
+            AddWithCarry.all_ones_zero_flag_64,
+            AddWithCarry.add_one_64]
+        -- cse (config := { processHyps := .allHyps })
+        simp only [h_inv_x1, crock_lemma, minimal_theory]
+        apply loop_inv_x0_le h_inv_x0_lt h_inv_x0_nz
         done
       case neg =>
         have h_inv_zf : r (StateField.FLAG PFlag.Z) si = 1#1 := by
@@ -705,7 +752,7 @@ theorem termination :
         simp only [h_inv_zf, minimal_theory] at h_inv_zf_x0
         -- Begin: Symbolic simulation
         -- Instruction 1 (branch instruction)
-        rw [rank_decreases_eq]
+        rw [cassert_eq]
         generalize h_run : run 1 si = s1
         replace h_run := (h_run).symm
         -- (TODO) Better handling of branch instructions.
@@ -724,10 +771,12 @@ theorem termination :
         (intro_fetch_decode_lemmas h_step_1 h_inv_program "h_inv";
           all_goals (try assumption))
         -- End: Symbolic simulation
-        simp only [rank,
-                   h_s1_pc, h_inv_pc, h_inv_zf_x0,
+        simp only [assert, loop_post,
+                   h_pre, h_s1_pc, h_s1_err, h_s1_program, h_s1_sp_aligned,
                    state_simp_rules, bitvec_rules, minimal_theory]
-        simp (config := {ground := true}) only
+        -- Aggregate program effects here.
+        simp only [h_step_1, state_simp_rules, bitvec_rules, minimal_theory]
+        simp only [spec, h_inv_x1, h_inv_zf_x0, bitvec_rules, BitVec.add_comm]
         done
     · -- Next cutpoint from 0x4005b8#64 (first instruction after loop)
       --
@@ -739,9 +788,12 @@ theorem termination :
       obtain ⟨h_s1_x1, h_s1_err, h_s1_program, h_s1_sp_aligned⟩ := h_assert
       simp only [state_simp_rules, bitvec_rules, minimal_theory] at *
       -- Begin: Symbolic simulation
-      sym_i_cassert 1 rank_decreases_eq program.stepi_0x4005b8_cut
+      sym_i_cassert 1 cassert_eq program.stepi_0x4005b8_cut
       -- End: Symbolic simulation
-      simp only [rank, h_s2_pc, h_s1_pc,
+      simp only [assert, post,
+                 h_pre, h_s2_pc, h_s2_err, h_s2_sp_aligned, h_s2_program,
+                 state_simp_rules, bitvec_rules, minimal_theory]
+      simp only [h_step_2, spec, h_s1_x1,
                  state_simp_rules, bitvec_rules, minimal_theory]
       done
     · -- Next cutpoint from 0x4005bc#64 (last instruction)
@@ -750,5 +802,6 @@ theorem termination :
     · -- No further cutpoints exist.
       simp_all only
   done
+-/
 
 end AddLoopTandem

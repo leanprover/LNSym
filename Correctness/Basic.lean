@@ -11,6 +11,9 @@ class Sys (σ : Type) where
   some : σ -- σ is not the empty type
   next : σ → σ
 
+instance [Sys σ]: Inhabited σ where
+  default := Sys.some
+
 def Sys.run [Sys σ] (s : σ) (n : Nat) : σ :=
   match n with
   | 0 => s
@@ -71,3 +74,10 @@ reaches an `exit` state.
 def Termination (σ : Type) [Sys σ] [Spec σ] : Prop :=
   open Spec in
   ∀ (s : σ), pre s → ∃ n, exit (run s n)
+
+/--
+Correctness: refers to total correctness, i.e., both `PartialCorrectness` and
+`Termination` hold.
+-/
+def Correctness (σ : Type) [Sys σ] [Spec σ] : Prop :=
+  PartialCorrectness σ ∧ Termination σ

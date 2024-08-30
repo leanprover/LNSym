@@ -8,6 +8,9 @@ Author(s): Leonardo de Moura, Shilpi Goel
 Lean4 Formalization of the ACL2 paper
 "Verification Condition Generation via Theorem Proving"
 (https://link.springer.com/chapter/10.1007/11916277_25)
+Also see the JAR'08 paper:
+"A Mechanical Analysis of Program Verification Strategies"
+(https://link.springer.com/article/10.1007/s10817-008-9098-1)
 -/
 
 import Correctness.Iterate
@@ -30,7 +33,7 @@ theorem not_forall_eq_exists_not (p : α → Prop) : (¬ ∀ x, p x) = ∃ x, ¬
     apply byContradiction
     intro h₂
     have := Iff.mp not_exists h₂
-    simp at this
+    simp only [Decidable.not_not] at this
     contradiction
   · intro h₁ h₂
     have ⟨a, ha⟩ := h₁
@@ -91,7 +94,7 @@ theorem csteps_eq [Sys σ] [Spec' σ] (s : σ) (i : Nat)
                        else csteps (next s) (i + 1) := by
   unfold csteps
   conv => lhs; rw [iterate_eq]
-  by_cases cut s <;> simp [*]
+  by_cases cut s <;> simp only [Bool.false_eq_true, ↓reduceIte, *]
 
 /--
 Helper theorem for defining `d` described in the paper.
@@ -125,12 +128,12 @@ noncomputable def nextc [Sys σ] [Spec' σ] (s : σ) : σ :=
 theorem csteps_cut [Sys σ] [Spec' σ] {s : σ} (h : cut s) (i : Nat) :
   csteps s i = i := by
   rw [csteps_eq]
-  simp [*]
+  simp only [↓reduceIte, h]
 
 theorem csteps_not_cut [Sys σ] [Spec' σ] {s : σ} (h₁ : ¬ cut s)
   (h₂ : csteps (next s) (i+1) = j) : csteps s i = j := by
   rw [csteps_eq]
-  simp [h₁]
+  simp only [h₁, Bool.false_eq_true, ↓reduceIte]
   assumption
 
 /--
@@ -199,7 +202,7 @@ theorem partial_correctness_from_verification_conditions [Sys σ] [Spec' σ]
           have h' : assert s0 (run s0 (i + 1 + k)) := by
             rw [run_run] at hck
             rw [nextc, next_run, hk, run_run] at this
-            simp [hck] at this
+            simp only [hck, ↓reduceIte] at this
             assumption
           have : n - (i + 1 + k) < n - i := by
             apply Nat.sub_lt_sub_left; assumption; simp_arith
@@ -221,27 +224,33 @@ theorem partial_correctness_from_verification_conditions [Sys σ] [Spec' σ]
 -- terminate.
 
 /--
-`cassert s0 si i`: if this function terminates, it returns a pair,
-whose first element is a `Nat = (i + the number of steps simulated
-from `si` to reach the next cutpoint)`, and the second element is a
+`cassert s0 si i`: if this function terminates, it returns a pair
+whose first element is a `Nat` that is `(i + the number of steps simulated
+from si to reach the next cutpoint)`, and the second element is a
 `Prop` that checks whether `assert` holds at that cutpoint state.
 -/
 noncomputable def cassert [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat) : Nat × Prop :=
-  iterate (fun (si, i) => if cut si then .inl (i, assert s0 si) else .inr (next si, i + 1)) (si, i)
+  iterate
+    (fun (si, i) =>
+        if cut si then
+          .inl (i, assert s0 si)
+        else
+          .inr (next si, i + 1))
+    (si, i)
 
 theorem cassert_eq [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat)
         : cassert s0 si i = if cut si then (i, assert s0 si)
                        else cassert s0 (next si) (i + 1) := by
   unfold cassert
   conv => lhs; rw [iterate_eq]
-  by_cases cut si <;> simp [*]
+  by_cases cut si <;> simp only [↓reduceIte, *]
   done
 
 theorem cassert_cut [Sys σ] [Spec' σ] {s0 si : σ} (h : cut si) (i : Nat) :
   (cassert s0 si i).fst = i ∧
   (cassert s0 si i).snd = assert s0 si := by
   rw [cassert_eq]
-  simp [*]
+  simp only [↓reduceIte, and_self, h]
   done
 
 theorem cassert_not_cut [Sys σ] [Spec' σ] {s0 si : σ} (h₁ : ¬ cut si)
@@ -249,7 +258,7 @@ theorem cassert_not_cut [Sys σ] [Spec' σ] {s0 si : σ} (h₁ : ¬ cut si)
   (cassert s0 si i).fst = j ∧
   (cassert s0 si i).snd = (cassert s0 (next si) (i + 1)).snd := by
   rw [cassert_eq]
-  simp [h₁]
+  simp only [h₁, Bool.false_eq_true, ↓reduceIte, and_true]
   assumption
   done
 
@@ -271,6 +280,25 @@ theorem cassert_lower_bound [Sys σ] [Spec' σ] {s0 si : σ} (n : Nat)
     · have h_inv' := @h_inv (i + 1) (next si) h0 h1
       omega
   done
+
+theorem cassert_upper_bound [Sys σ] [Spec' σ] (s0 si : σ) (n : Nat)
+  (h_cut : cut (run si n)) :
+  (cassert s0 si i).fst <= i + n := by
+  induction n generalizing si i
+  case zero =>
+    rw [cassert_eq]
+    simp only [run] at h_cut
+    simp only [h_cut, ↓reduceIte, Nat.add_zero, Nat.le_refl]
+  case succ =>
+    rename_i n h_inv
+    rw [cassert_eq]
+    split
+    · simp only [Nat.le_add_right]
+    · have h_cut : cut (run (next si) n) := by
+        rw [← run_succ]
+        simp only [h_cut]
+      have h_inv' := @h_inv (i + 1) (next si) h_cut
+      omega
 
 theorem find_next_cut_for_cassert [Sys σ] [Spec' σ] (s0 si : σ) (hc : cut (run si n)) :
   ∃ k : Nat, (cassert s0 si 0).fst = k ∧
@@ -311,9 +339,9 @@ theorem find_next_cut_for_cassert [Sys σ] [Spec' σ] (s0 si : σ) (hc : cut (ru
           split
           · contradiction
           · rename_i x y h_k_i_y
-            simp at h_k_i_y
+            simp only [Nat.succ_eq_add_one] at h_k_i_y
             have : (k - (i + 1)) = k - i - 1 := by omega
-            simp [this, h_k_i_y]
+            simp only [this, h_k_i_y, Nat.add_one_sub_one]
           done
          ⟨k, (cassert_not_cut hc hs).left, this, hck.left, hck.right⟩
      else
@@ -333,7 +361,6 @@ theorem find_next_cut_for_cassert [Sys σ] [Spec' σ] (s0 si : σ) (hc : cut (ru
        ⟨n, h_left, h_right, Nat.le_refl .., by assumption⟩
   loop si 0 (Nat.zero_le ..) rfl
 
-
 /--
 Prove partial correctness from inductive assertions using `cassert`
 function.
@@ -347,6 +374,13 @@ symbolic simulation and open `cassert` in tandem.
 -/
 theorem partial_correctness_from_assertions [Sys σ] [Spec' σ]
     (v1 : ∀ s0 : σ, pre s0 → assert s0 s0)
+    -- (FIXME) Is it possible to remove v2 and combine v3 and v4 into
+    -- a single verification condition as follows?
+    -- As @bollu noted, this has the benefit of not having `post` be a
+    -- callee of `assert`.
+    --
+    --  ∀ s0 si : σ, assert s0 si → (cassert s0 (run si 1) 0).snd ∨
+    --                              (exit si → post s0 si)
     (v2 : ∀ sf : σ, exit sf → cut sf)
     (v3 : ∀ s0 sf : σ, assert s0 sf → exit sf → post s0 sf)
     (v4 : ∀ s0 si : σ, assert s0 si → ¬ exit si → (cassert s0 (run si 1) 0).snd)
@@ -361,7 +395,6 @@ theorem partial_correctness_from_assertions [Sys σ] [Spec' σ]
           have : cut (run (run s0 (i + 1)) (n - Nat.succ i)) := by
             rw [run_run, Nat.add_one, Nat.add_sub_cancel' hn]
             exact v2 _ hexit
-
           have ⟨k, _hk, hlek, hck⟩ := find_next_cut_for_cassert s0 (run s0 (i+1)) this
           have hle' : i + 1 + k ≤ n := by
             omega
@@ -385,7 +418,21 @@ theorem partial_correctness_from_assertions [Sys σ] [Spec' σ]
 
 ----------------------------------------------------------------------
 
-noncomputable def rank_decreases [Sys σ] [Spec' σ] (rank : σ → Nat) (si sn : σ) (i : Nat) : Nat × Prop :=
+-- Method to prove Termination
+
+-- We follow the same formalism for the termination proof like we did for
+-- `partial_correctness_from_assertions`; i.e., we reuse `cassert`. The goal is
+-- to be able to prove partial correctness and termination at the same time.
+
+/-
+`rank_decreases rank si sn i`: if this function terminates, it returns a pair
+whose first element is a `Nat` that is `(i + the number of steps simulated
+from si to reach the next cutpoint)`, and the second element is a
+`Prop` that checks whether the `rank` of the next cutpoint state is strictly
+less than the `rank` of `si`.
+-/
+noncomputable def rank_decreases [Sys σ] [Spec' σ] (rank : σ → Nat) (si sn : σ) (i : Nat)
+  : Nat × Prop :=
   iterate (fun (sn, i) =>
     if cut sn then
       .inl (i, rank sn < rank si)
@@ -399,13 +446,200 @@ theorem rank_decreases_eq [Sys σ] [Spec' σ] (rank : σ → Nat) (si sn : σ) (
               else rank_decreases rank si (next sn) (i + 1) := by
   unfold rank_decreases
   conv => lhs; rw [iterate_eq]
-  by_cases cut sn <;> simp [*]
+  by_cases cut sn <;> simp only [↓reduceIte, *]
   done
 
+/-
+If a cutpoint is reachable from `si` in some `n` steps (i.e.,`cut (run si n)`)
+and `(cassert s0 si i).snd`, then we know that `assert` holds from `si` after
+`((cassert s0 si i).fst - i)` steps.
+-/
+theorem cassert_when_cut_exists [Sys σ] [Spec' σ] (s0 si : σ) (n i : Nat)
+  (h_cut : cut (run si n))
+  (h_cassert : (cassert s0 si i).snd) :
+  assert s0 (run si ((cassert s0 si i).fst - i)) := by
+  induction n generalizing si i
+  case zero =>
+    simp only [run] at h_cut
+    simp only [cassert_eq, h_cut, ↓reduceIte] at h_cassert
+    simp only [cassert_eq, h_cut, ↓reduceIte, h_cassert, Nat.sub_self, run]
+  case succ =>
+    rename_i n h_inv
+    have h_inv' := h_inv (run si 1) (i + 1)
+    simp only [run_run, Nat.add_comm, h_cut, true_implies] at h_inv'
+    rw [cassert_eq] at h_cassert
+    split at h_cassert
+    · rename_i h_cut_true
+      rw [cassert_eq]
+      simp only at h_cassert
+      simp only [h_cut_true, ↓reduceIte, h_cassert, Nat.sub_self, run]
+    · rename_i h_cut_false
+      have h_inv'' := h_inv' h_cassert
+      have : (1 + ((cassert s0 (run si 1) (i + 1)).fst - (i + 1))) =
+              (cassert s0 (run si 1) (i + 1)).fst - i := by
+        have : cut (run (run si 1) n) := by
+          simp only [run_run, Nat.add_comm, h_cut]
+        have := @cassert_lower_bound σ (i+1)
+                (cassert s0 (run si 1) (i + 1)).fst _ _ s0 (run si 1)
+                n this (by rfl)
+        omega
+      rw [this] at h_inv''
+      rw [cassert_eq]
+      simp only [run] at h_inv''
+      simp only [h_cut_false, Bool.false_eq_true, ↓reduceIte, h_inv'']
+  done
+
+private theorem term_helper_aux [Sys σ] [Spec' σ] (s0 si : σ) (n : Nat)
+  (h_cut: cut (run si n))
+  (v1 : ∀ (s0 si : σ), assert s0 si → ¬ exit si → (cassert s0 (run si 1) 0).snd)
+  (v2 : ∀ n, ¬ exit (run si n))
+  (v2 : assert s0 si) :
+  assert s0 (run si n) := by
+  induction n using Nat.strongInductionOn generalizing si
+  rename_i n h_inv h_not_exit
+  by_cases h_gt_0 : n - (cassert s0 (run si 1) 0).fst - 1 > 0
+  case neg =>
+    simp only [gt_iff_lt, Nat.not_lt, Nat.le_zero_eq] at h_gt_0
+    by_cases n = 0
+    case pos => -- n = 0
+      subst n
+      simp only [run, v2]
+    case neg => -- n != 0
+      have : 1 + (n - 1) = n := by omega
+      have : (cut (run (run si 1) (n - 1))) := by
+        simp only [run_run, this, h_cut]
+      have := @cassert_upper_bound σ 0 _ _ s0 (run si 1) (n - 1) this
+      simp only [Nat.zero_add] at this
+      have h1 : (cassert s0 (run si 1) 0).fst = n - 1 := by omega
+      have h2 := @cassert_when_cut_exists σ _ _ s0 (run si 1) (n - 1) 0
+      have h3 : (1 + (n-1)) = n := by omega
+      have : ¬ exit si := by
+        have := h_not_exit 0
+        simp only [run] at this
+        assumption
+      have h4 := v1 s0 si v2 this
+      simp only [run_run, h3, h_cut, h4, h1, Nat.sub_zero, true_implies] at h2
+      exact h2
+  case pos =>
+    have h0 : (1 + (cassert s0 (run si 1) 0).fst + (n - (cassert s0 (run si 1) 0).fst - 1))
+              = n := by omega
+    have h_cut_true : cut (run (run si (1 + (cassert s0 (run si 1) 0).fst))
+                               (n - (cassert s0 (run si 1) 0).fst - 1)) := by
+      simp only [run_run, h0, h_cut]
+    have h_not_exit' : ∀ (n : Nat),
+                        ¬exit (run (run si (1 + (cassert s0 (run si 1) 0).fst)) n) := by
+      intro m
+      simp only [run_run]
+      exact h_not_exit (1 + (cassert s0 (run si 1) 0).fst + m)
+    have h_assert_when_cut : assert s0 (run si (1 + (cassert s0 (run si 1) 0).fst)) := by
+      have h1 : 1 + (n - 1) = n := by omega
+      have h2 : cut (run (run si 1) (n - 1)) := by
+        simp only [run_run, h1, h_cut]
+      have h3 : (cassert s0 (run si 1) 0).snd := by
+        apply v1
+        · exact v2
+        · have := h_not_exit 0
+          simp only [run] at this
+          simp only [this, not_false_eq_true]
+        done
+      have := @cassert_when_cut_exists σ _ _ s0 (run si 1) (n-1) 0 h2 h3
+      simp only [Nat.sub_zero, run_run] at this
+      simp only [this]
+    have h_inv' := h_inv (n - (cassert s0 (run si 1) 0).fst - 1) (by omega)
+                   (run si (1+ (cassert s0 (run si 1) 0).fst))
+                   h_cut_true h_not_exit' h_assert_when_cut
+    simp only [run_run, h0] at h_inv'
+    exact h_inv'
+    done
+
+private theorem term_helper [Sys σ] [Spec' σ] (rank : σ → Nat) (s0 si : σ)
+    (v2 : ∀ s0 si : σ,
+               assert s0 si → ¬ exit si →
+               (cassert s0 (run si 1) 0).snd ∧
+               (∃ n, cut (run si n) ∧ rank (run si n) < rank si))
+    (h_assert : assert s0 si)
+    (h_not_exit : ∀ n, ¬ exit (run si n)) :
+    ∃ n, assert s0 (run si n) ∧ (rank (run si n) < rank si) := by
+  have v2' : ∀ (s0 si : σ), assert s0 si → ¬ exit si → (cassert s0 (run si 1) 0).snd := by
+    intro s0 si h_assert h_si_not_exit
+    exact (v2 s0 si h_assert h_si_not_exit).left
+  have h_si_not_exit : ¬ exit si := by
+    exact (h_not_exit 0)
+  have ⟨n, h_cut, h_rank⟩ := (v2 s0 si h_assert h_si_not_exit).right
+  have := @term_helper_aux σ _ _ s0 si n h_cut v2' h_not_exit h_assert
+  apply Exists.intro n
+  exact ⟨this, h_rank⟩
+  done
+
+/-
+Termination holds if `v1` and `v2` are true. Note the similarities with
+`partial_correctness_from_assertions`: `v1` of both these theorems match, and
+`v2` of this theorem is very similar to `v4` of the other.
+-/
 theorem termination_from_decreasing_rank [Sys σ] [Spec' σ] (rank : σ → Nat)
     (v1 : ∀ s0 : σ, pre s0 → assert s0 s0)
-    (v2 : ∀ s0 si : σ, assert s0 si → ¬ exit si → (rank_decreases rank si (run si 1) 0).snd)
+    (v2 : ∀ s0 si : σ, assert s0 si → ¬ exit si →
+                      (cassert s0 (run si 1) 0).snd ∧
+                      (∃ n, cut (run si n) ∧ rank (run si n) < rank si))
     : Termination σ := by
-    sorry
+    rw [Termination]
+    intro s0 h_pre_s0
+    have h_assert_s := v1 s0 h_pre_s0
+    -- We'd like the conclusion to be in terms of a freevar instead of `s0`, so
+    -- we generalize.
+    generalize h_s : s0 = s
+    -- Let's do this proof by contradiction. Say, the program never
+    -- terminates. Can we prove `False` now?
+    apply byContradiction
+    intro h_not_exit
+    simp only [not_exists] at h_not_exit
+    have h_assert_s' : assert s0 s := by simpa only [← h_s]
+    -- Retain `s0` for the first arg. of `assert`, but throw away `s0 = s` for
+    -- cleaner induction.
+    clear h_assert_s h_pre_s0 h_s
+    generalize h_rank : rank s = n
+    induction n using Nat.strongInductionOn generalizing s
+    rename_i n h_inv
+    have ⟨n', h_term_helper⟩ := @term_helper σ _ _ rank s0 s
+                                 v2 h_assert_s' h_not_exit
+    -- At this point, we have a state reachable from `s` in `n'` steps (i.e.,
+    -- `run s n'`) for which `assert` holds and whose rank is also less than
+    -- `s`. Now we just use `h_inv`!
+    have h_exit_assump : (∀ (x : Nat), ¬exit (run (run s n') x)) := by
+      simp only [run_run]
+      intro x
+      exact h_not_exit (n' + x)
+    exact h_inv (rank (run s n')) (h_rank ▸ h_term_helper.right) (run s n')
+                 h_exit_assump (h_term_helper.left) (by rfl)
+    done
+
+----------------------------------------------------------------------
+
+/-
+A method to prove total correctness (`PartialCorrectness` + `Termination`) in
+one go.
+-/
+protected theorem by_the_method [Sys σ] [Spec' σ] (rank : σ → Nat)
+  (v1 : ∀ s0 : σ, pre s0 → assert s0 s0)
+  (v2 : ∀ sf : σ, exit sf → cut sf)
+  (v3 : ∀ s0 sf : σ, assert s0 sf → exit sf → post s0 sf)
+  (v4 : ∀ s0 si : σ, assert s0 si → ¬ exit si →
+                          (cassert s0 (run si 1) 0).snd ∧
+                          (∃ n, cut (run si n) ∧ rank (run si n) < rank si)) :
+   Correctness σ := by
+   unfold Correctness
+   have h1 := partial_correctness_from_assertions v1 v2 v3
+              (fun s0 si h_assert h_not_exit => (v4 s0 si h_assert h_not_exit).left)
+   have h2 := termination_from_decreasing_rank rank v1 v4
+   -- (FIXME) Why does assumption not work here? Typeclass nonsense?
+   --  assumption
+   simp only [h1, h2, and_self]
+   done
+
+/--
+info: 'Correctness.by_the_method' depends on axioms: [propext, Classical.choice,
+Quot.sound]
+-/
+#guard_msgs in #print axioms Correctness.by_the_method
 
 end Correctness
