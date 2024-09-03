@@ -590,7 +590,7 @@ def Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
   (ha : mems.get? i = some a) (hb : mems.get? j = some b) :
     mem_separate' a.fst a.snd b.fst b.snd := by
   induction h generalizing a b i j
-  case nil => simp only [List.get?_eq_getElem?, List.getElem?_nil] at ha
+  case nil => simp only [List.get?_eq_getElem?, List.getElem?_nil, reduceCtorEq] at ha
   case cons x xs ihx _ihxs ihxs' =>
     simp only [List.get?_eq_getElem?] at ha hb
     rcases i with rfl | i'

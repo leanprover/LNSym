@@ -10,8 +10,8 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
-set_option trace.simp_mem true
-set_option trace.simp_mem.info true
+-- set_option trace.simp_mem true
+-- set_option trace.simp_mem.info true
 
 namespace MemLegal
 /-- Show reflexivity of legality. -/
@@ -98,25 +98,21 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
 /-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_6
 
-/-- constant shift for base pointer. -/
-theorem separate_7 (hm : m ≠ 0)
+/-- error: ❌️ simp_mem failed to make any progress. -/
+#guard_msgs in theorem separate_7 (hm : m ≠ 0)
     (l : mem_separate' a 100 b m)
     (l : mem_separate' (a+100) 100 b m)  :
     mem_separate' a 200 b m := by
-  simp_mem
-  sorry /- Need better address normalization. -/
+  simp_mem /- Need better address normalization. -/
+  trace_state
 
-/-- symbolic shift for base pointer. -/
-theorem separate_8 {n : Nat} (hn : n ≠ 0) (hm : m ≠ 0)
+/-- error: ❌️ simp_mem failed to make any progress. -/
+#guard_msgs in theorem separate_8 {n : Nat} (hn : n ≠ 0) (hm : m ≠ 0)
     (l : mem_separate' a n b m)
     (l : mem_separate' (a+n) n b m)  :
     mem_separate' a (2*n) b m := by
-  simp_mem
-  sorry  /- Need better address normalization. -/
-
-/-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
-#guard_msgs in #print axioms separate_6
-
+  simp_mem /- Need better address normalization. -/
+  trace_state
 
 end MemSeparate
 
@@ -179,7 +175,7 @@ theorem mem_automation_test_4
       (write_mem_bytes 48 src_addr val s0)) =
    val.extractLsBytes 1 10 := by
   simp only [memory_rules]
-  simp_mem; simp_mem -- TODO: repeat on change.
+  simp_mem -- TODO: repeat on change.
   congr 1
   bv_omega' -- TODO: address normalization.
 
@@ -284,7 +280,7 @@ theorem test_write_zero (hlegalw : mem_legal' write_addr 0)
     (hlegalr : mem_legal' read_addr read_n) :
     Memory.read_bytes read_n read_addr (Memory.write_bytes 0 write_addr write_val mem) =
     mem.read_bytes read_n read_addr := by
-  simp_mem
+  try simp_mem
   sorry
 
 end ReadOverlappingWrite
@@ -400,3 +396,43 @@ section PairwiseSeparate
     simp_mem
 
 end PairwiseSeparate
+
+namespace MemOptions
+
+set_option trace.simp_mem true
+set_option trace.simp_mem.info true
+
+
+/--
+error: unsolved goals
+⊢ False
+---
+info: [simp_mem.info] Searching for Hypotheses
+[simp_mem.info] Summary: Found 0 hypotheses
+[simp_mem.info] ⚙️ Matching on ⊢ False
+[simp_mem.info] Performing Rewrite At Main Goal
+  [simp_mem.info] Simplifying goal.
+[simp_mem.info] ❌️ No progress made in this iteration. halting.
+---
+info: ⊢ False
+-/
+#guard_msgs in theorem test_no_fail_if_unchanged : False := by
+  simp_mem (config := { failIfUnchanged := false })
+  trace_state
+
+/--
+error: ❌️ simp_mem failed to make any progress.
+---
+info: [simp_mem.info] Searching for Hypotheses
+[simp_mem.info] Summary: Found 0 hypotheses
+[simp_mem.info] ⚙️ Matching on ⊢ False
+[simp_mem.info] Performing Rewrite At Main Goal
+  [simp_mem.info] Simplifying goal.
+[simp_mem.info] ❌️ No progress made in this iteration. halting.
+-/
+#guard_msgs in theorem test_fail_if_unchanged : False := by
+  simp_mem
+  trace_state
+
+
+end MemOptions

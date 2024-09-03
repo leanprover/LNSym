@@ -7,7 +7,7 @@ We define a utility monad for generating random instructions.
 This is used for cosimulation testing.
 -/
 
-import LeanSAT
+import Std.Tactic.BVDecide
 import Arm.BitVec
 import Arm.State
 

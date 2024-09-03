@@ -542,7 +542,7 @@ example (h : flag1 ≠ flag2) :
   simp_all only [state_simp_rules, minimal_theory]
 
 example :
-  read_gpr width idx (write_flag flag2 val s) = read_gpr width idx s := by
+    read_gpr width idx (write_flag flag2 val s) = read_gpr width idx s := by
   simp only [state_simp_rules, minimal_theory]
 
 end State
