@@ -85,9 +85,7 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
 
 /-- `Aligned x a` witnesses that the bitvector `x` is `a`-bit aligned. -/
 def Aligned (x : BitVec n) (a : Nat) : Prop :=
-  match a with
-  | 0 => True
-  | a' + 1 => extractLsb a' 0 x = BitVec.zero _
+  extractLsb' 0 a x = 0#a
 
 /-- We need to prove why the Aligned predicate is Decidable. -/
 instance : Decidable (Aligned x a) := by
@@ -97,7 +95,7 @@ theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
   (x_aligned : Aligned x 4)
   (y_aligned : Aligned y 4)
   : Aligned (x + y) 4 := by
-  simp_all [Aligned]
+  simp_all [Aligned, extractLsb'_eq_extractLsb]
   bv_decide
 
 theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : BitVec 1)
@@ -105,8 +103,12 @@ theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : Bi
   (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
   : Aligned (AddWithCarry x y carry_in).fst 4 := by
   unfold AddWithCarry Aligned at *
-  simp_all
+  simp_all [extractLsb'_eq_extractLsb]
   bv_decide
+
+@[bv_normalize]
+theorem Aligned_succ : Aligned x (n+1) ↔ (x.extractLsb n 0 = 0#_) := by
+  simp [Aligned, extractLsb]
 
 /-- Check correct stack pointer (SP) alignment for AArch64 state; returns
 true when sp is aligned. -/
@@ -155,6 +157,11 @@ theorem CheckSPAlignment_of_r_sp_aligned {s : ArmState} {value}
     (h_aligned : Aligned value 4) :
     CheckSPAlignment s := by
   simp only [CheckSPAlignment, read_gpr, h_eq, zeroExtend_eq, h_aligned]
+
+@[bv_normalize]
+theorem CheckSPALignment_iff {s : ArmState} :
+    CheckSPAlignment s ↔ (r (.GPR 31#5) s).extractLsb 3 0 = 0#4 := by
+  rfl
 
 ----------------------------------------------------------------------
 
