@@ -110,6 +110,45 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   else
     result
 
+-- https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/instruction.ml#L543C36-L543C62
+/- `x > y` iff `(N = V) ∧ Z = 0` . -/
+theorem sgt_iff_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
+  (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
+   (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.slt y x := by
+  simp [AddWithCarry, make_pstate]
+  split
+  · bv_decide
+  · bv_decide
+
+-- https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/instruction.ml#L543C36-L543C62
+/- `x > y` iff `(N = V) ∧ Z = 0` . -/
+theorem sgt_iff_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
+  (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
+   (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.slt y x := by
+  simp [AddWithCarry, make_pstate]
+  split
+  · bv_decide
+  · bv_decide
+
+/- `x ≤ y` iff `¬ ((N = V) ∧ (Z = 0))`. -/
+theorem sle_iff_not_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
+  (¬(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
+   (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
+  simp [AddWithCarry, make_pstate]
+  split
+  · bv_decide
+  · bv_decide
+
+/- `x ≤ y` iff `¬ ((N = V) ∧ (Z = 0))`. -/
+theorem sle_iff_not_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
+  (¬(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
+   (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
+  simp [AddWithCarry, make_pstate]
+  split
+  · bv_decide
+  · bv_decide
+
+
 /-- `Aligned x a` witnesses that the bitvector `x` is `a`-bit aligned. -/
 def Aligned (x : BitVec n) (a : Nat) : Prop :=
   match a with
