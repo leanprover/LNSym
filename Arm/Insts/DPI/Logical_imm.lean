@@ -39,7 +39,7 @@ def exec_logical_imm_op (op : LogicalImmType) (op1 : BitVec n) (op2 : BitVec n)
     let result := op1 &&& op2
     (op1 &&& op2, some (update_logical_imm_pstate result))
 
-/-!
+/--
 Return `TRUE` if a bitmask immediate encoding would generate an
 immediate value that could also be represented by a single `MOVZ` or
 `MOVN` instruction.  Used as a condition for the preferred `MOV<-ORR`
