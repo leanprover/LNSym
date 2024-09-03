@@ -242,9 +242,10 @@ noncomputable def cassert [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat) : Nat × Pr
           .inr (next si, i + 1))
     (si, i)
 
-theorem cassert_eq [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat)
-        : cassert s0 si i = if cut si then (i, assert s0 si)
-                       else cassert s0 (next si) (i + 1) := by
+theorem cassert_eq [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat) :
+    cassert s0 si i 
+    = if cut si then (i, assert s0 si)
+       else cassert s0 (next si) (i + 1) := by
   unfold cassert
   conv => lhs; rw [iterate_eq]
   by_cases cut si <;> simp only [Bool.false_eq_true, ↓reduceIte, *]
