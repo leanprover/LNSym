@@ -90,19 +90,17 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   -- Symbolic Simulation
   sym_n 27
 
-  generalize r (.GPR 0#5) s0  = x
-  generalize r (.GPR 31#5) s0 = y
-  simp (config := {ground := true}) only [popcount32_spec, popcount32_spec_rec, AddWithCarry,
-    bitvec_rules, minimal_theory]
+  simp (config := {ground := true}) only [popcount32_spec, popcount32_spec_rec,
+    AddWithCarry, bitvec_rules, minimal_theory]
   -- TODO: remove once bv_decide understands extractLsb'
   simp [BitVec.extractLsb'_eq_extractLsb _ _ _ (by omega : 1 > 0)]
   -- bv_decide
   sorry
 
--- (0xffffffff#32, false)
+-- (true, 0x00000007#32, false)
 #eval
 (let x0 := 0xffffffffffffffff#64
- let sp := 0x00000000ffffffff#64
+ let sp := 0x00000000000000A0#64
  let s0 :=  { gpr := (fun (i : BitVec 5) =>
                       match i with
                       | 0#5 => x0
@@ -117,7 +115,7 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   let sf := run popcount32_program.length s0
   let out := read_gpr 32 0#5 sf
   let spec := popcount32_spec (BitVec.truncate 32 x0)
-  (out, out == spec))
+  (decide (Aligned sp 4), out, out == spec))
 
 /-! ## Tests for step theorem generation -/
 section Tests
