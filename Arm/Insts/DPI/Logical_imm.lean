@@ -120,10 +120,10 @@ def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
       let operand1 :=
         match op with
         | .ORR =>
-          if inst.Rn = 31#5 ∧
-            -- (TODO): a `dsimproc` for MoveWidePreferred?
-             ¬ MoveWidePreferred inst.sf inst.N inst.imms inst.immr then
-             -- MOV (bitmask immediate) is an alias of ORR.
+          -- (TODO): a `dsimproc` for MoveWidePreferred?
+          if  ¬ MoveWidePreferred inst.sf inst.N inst.imms inst.immr then
+             -- MOV (bitmask immediate) is an alias of ORR when
+             -- Rd == '11111' and Move Wide is not preferred.
              read_gpr_zr datasize inst.Rn s
           else
             read_gpr datasize inst.Rn s
