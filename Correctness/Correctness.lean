@@ -454,7 +454,7 @@ theorem rank_decreases_eq [Sys σ] [Spec' σ] (rank : σ → Nat) (si sn : σ) (
   by_cases cut sn <;> simp only [Bool.false_eq_true, ↓reduceIte, *]
   done
 
-/-
+/--
 If a cutpoint is reachable from `si` in some `n` steps (i.e.,`cut (run si n)`)
 and `(cassert s0 si i).snd`, then we know that `assert` holds from `si` after
 `((cassert s0 si i).fst - i)` steps.
