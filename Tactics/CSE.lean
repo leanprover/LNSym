@@ -162,13 +162,13 @@ def CSEM.hasFuelSearch : CSEM Bool := do
 def CSEM.consumeFuelSearch : CSEM Unit :=
   modify fun s => { s with currentFuelSearch := s.currentFuelSearch - 1 }
 
-def CSEM.hasFuelEliminate? : CSEM Bool := do
+def CSEM.hasFuelEliminate : CSEM Bool := do
   return (← getState).currentFuelEliminate > 0
 
 def CSEM.consumeFuelEliminate : CSEM Unit :=
   modify fun s => { s with currentFuelEliminate := s.currentFuelEliminate - 1 }
 
-def CSEM.isDryRun? : CSEM Bool := do
+def CSEM.isDryRun : CSEM Bool := do
   return (← getConfig).dryRun?
 
 /-- create a trace node in trace class (i.e. `set_option traceClass true`),
