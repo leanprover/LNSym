@@ -576,7 +576,7 @@ private theorem term_helper [Sys σ] [Spec' σ] (rank : σ → Nat) (s0 si : σ)
   exact ⟨this, h_rank⟩
   done
 
-/-
+/--
 Termination holds if `v1` and `v2` are true. Note the similarities with
 `partial_correctness_from_assertions`: `v1` of both these theorems match, and
 `v2` of this theorem is very similar to `v4` of the other.
