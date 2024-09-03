@@ -11,7 +11,7 @@ class Sys (σ : Type) where
   some : σ -- σ is not the empty type
   next : σ → σ
 
-instance [Sys σ]: Inhabited σ where
+instance [Sys σ] : Inhabited σ where
   default := Sys.some
 
 def Sys.run [Sys σ] (s : σ) (n : Nat) : σ :=
