@@ -435,6 +435,8 @@ whose first element is a `Nat` that is `(i + the number of steps simulated
 from si to reach the next cutpoint)`, and the second element is a
 `Prop` that checks whether the `rank` of the next cutpoint state is strictly
 less than the `rank` of `si`.
+
+We may eventually want to generalize from `Nat` to any `WellFounded`. This is particularly useful for nested loops, whose termination arguments often involve tuples of naturals with lexicographic ordering (i.e. https://en.wikipedia.org/wiki/Loop_dependence_analysis)
 -/
 noncomputable def rank_decreases [Sys σ] [Spec' σ] (rank : σ → Nat) (si sn : σ) (i : Nat)
   : Nat × Prop :=
