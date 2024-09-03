@@ -620,7 +620,7 @@ theorem termination_from_decreasing_rank [Sys σ] [Spec' σ] (rank : σ → Nat)
 
 ----------------------------------------------------------------------
 
-/-
+/--
 A method to prove total correctness (`PartialCorrectness` + `Termination`) in
 one go.
 -/
