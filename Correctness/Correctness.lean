@@ -429,7 +429,7 @@ theorem partial_correctness_from_assertions [Sys σ] [Spec' σ]
 -- `partial_correctness_from_assertions`; i.e., we reuse `cassert`. The goal is
 -- to be able to prove partial correctness and termination at the same time.
 
-/-
+/--
 `rank_decreases rank si sn i`: if this function terminates, it returns a pair
 whose first element is a `Nat` that is `(i + the number of steps simulated
 from si to reach the next cutpoint)`, and the second element is a
