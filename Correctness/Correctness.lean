@@ -80,11 +80,13 @@ theorem partial_correctness_by_stepwise_invariants [Sys σ] [Spec σ] (inv : σ 
 
 ----------------------------------------------------------------------
 
--- Prove partial correctness using inductive assertions using the
--- functions `csteps` (to characterize the number of steps to reach
--- the next cutpoint) and `nextc` (to characterize the next cutpoint
--- state). Note that the function `csteps` is partial: if no cutpoint
--- is reachable from `s`, then the recursion does not terminate.
+/-!
+Prove partial correctness using inductive assertions using the
+functions `csteps` (to characterize the number of steps to reach
+the next cutpoint) and `nextc` (to characterize the next cutpoint
+state). Note that the function `csteps` is partial: if no cutpoint
+is reachable from `s`, then the recursion does not terminate.
+-/
 
 noncomputable def csteps [Sys σ] [Spec' σ] (s : σ) (i : Nat) : Nat :=
   iterate (fun (s, i) => if cut s then .inl i else .inr (next s, i + 1)) (s, i)
