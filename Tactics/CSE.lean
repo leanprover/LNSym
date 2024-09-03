@@ -156,7 +156,7 @@ def State.ofConfig (cfg : CSEConfig) : State := {
 def CSEM.run (val : CSEM α) (config : CSEConfig) : TacticM α :=
    val.run' (State.ofConfig config) |>.run config
 
-def CSEM.hasFuelSearch? : CSEM Bool := do
+def CSEM.hasFuelSearch : CSEM Bool := do
   return (← getState).currentFuelSearch > 0
 
 def CSEM.consumeFuelSearch : CSEM Unit :=
