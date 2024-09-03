@@ -162,7 +162,7 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
                  state_simp_rules, bitvec_rules, minimal_theory, pcs]
   simp only [List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
-  rw [fst_AddWithCarry_eq_sub_neg]
+  simp only [fst_AddWithCarry_eq_sub_neg, BitVec.reduceNot, true_and]
   repeat first
   | simp (config := { ground := true, decide := true}) [aligned_rules, state_simp_rules]
   | apply Aligned_BitVecSub_64_4;
