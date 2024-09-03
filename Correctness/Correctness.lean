@@ -219,11 +219,13 @@ theorem partial_correctness_from_verification_conditions [Sys σ] [Spec' σ]
 
 ----------------------------------------------------------------------
 
--- Prove partial correctness using inductive assertions using the
--- function `cassert` that checks if `assert` holds if at a cutpoint
--- state, or else recurs until it hits one. This function is also
--- partial: if no cutpoint is reachable, the recursion doesn't
--- terminate.
+/-!
+Prove partial correctness using inductive assertions using the
+function `cassert` that checks if `assert` holds if at a cutpoint
+state, or else recurs until it hits one. This function is also
+partial: if no cutpoint is reachable, the recursion doesn't
+terminate.
+-/
 
 /--
 `cassert s0 si i`: if this function terminates, it returns a pair
