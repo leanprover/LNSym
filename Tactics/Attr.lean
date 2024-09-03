@@ -11,5 +11,7 @@ initialize
 
   registerOption `Tactic.sym.debug {
     defValue := true
-    descr := "enable/disable extra validation of `sym_n` internal state"
+    descr := "enable/disable type-checking of internal state during execution \
+      of the `sym_n` tactic, throwing an error if mal-formed expressions were \
+      created"
   }

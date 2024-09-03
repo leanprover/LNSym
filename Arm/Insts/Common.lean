@@ -144,12 +144,14 @@ theorem CheckSPAlignment_AddWithCarry_64_4 (st : ArmState) (y : BitVec 64) (carr
   simp_all only [CheckSPAlignment, read_gpr, zeroExtend_eq, Nat.sub_zero, add_eq,
     Aligned_AddWithCarry_64_4]
 
+@[state_simp_rules]
 theorem CheckSPAlignment_of_r_sp_eq {s s' : ArmState}
     (h_eq : r (StateField.GPR 31#5) s' = r (StateField.GPR 31#5) s)
     (h_sp : CheckSPAlignment s) :
     CheckSPAlignment s' := by
   simpa only [CheckSPAlignment, read_gpr, h_eq] using h_sp
 
+@[state_simp_rules]
 theorem CheckSPAlignment_of_r_sp_aligned {s : ArmState} {value}
     (h_eq : r (StateField.GPR 31#5) s = value)
     (h_aligned : Aligned value 4) :
