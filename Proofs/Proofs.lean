@@ -17,5 +17,5 @@ import Proofs.Experiments.Abs.AbsVCG
 import Proofs.Experiments.Abs.AbsVCGTandem
 import Proofs.Experiments.AddLoop.AddLoop
 import Proofs.Experiments.AddLoop.AddLoopTandem
--- import Proofs.Experiments.Max.MaxTandem
+import Proofs.Experiments.Max.MaxTandem
 import Proofs.Experiments.MemCpyVCG

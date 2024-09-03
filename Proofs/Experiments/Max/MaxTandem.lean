@@ -171,8 +171,6 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
   | apply Aligned_AddWithCarry_64_4'
 
   repeat solve
-  | apply Aligned_of_extractLsb_eq_zero; bv_decide
-  | apply Aligned_of_toNat_mod_eq_zero; bv_omega
   | decide
   | bv_omega
   | assumption
@@ -573,6 +571,7 @@ theorem program.stepi_0x8c8_cut (s sn : ArmState)
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp (config := {ground := true, decide := true})
+  simp only [fst_AddWithCarry_eq_add, true_and]
   apply Aligned_BitVecAdd_64_4
   · assumption
   · decide
