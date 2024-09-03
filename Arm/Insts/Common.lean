@@ -120,6 +120,13 @@ def Aligned (x : BitVec n) (a : Nat) : Prop :=
 instance : Decidable (Aligned x a) := by
   cases a <;> simp [Aligned] <;> infer_instance
 
+theorem Aligned_BitVecSub_64_4 {x : BitVec 64} {y : BitVec 64}
+  (x_aligned : Aligned x 4)
+  (y_aligned : Aligned y 4)
+  : Aligned (x - y) 4 := by
+  simp_all only [Aligned, Nat.sub_zero, zero_eq]
+  bv_decide
+
 theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
   (x_aligned : Aligned x 4)
   (y_aligned : Aligned y 4)
