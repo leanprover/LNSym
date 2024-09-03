@@ -15,7 +15,7 @@ open BitVec
 
 ----------------------------------------------------------------------
 
-/--
+/-!
 `GPRIndex.rand` picks a safe GPR index for Arm-based Apple platforms
 i.e., one not reserved on them. Use this function instead of
 `BitVec.rand` to pick an appropriate random index for a source and
@@ -314,7 +314,7 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
 --   https://developer.arm.com/documentation/dui0802/b/A64-General-Instructions/MOV--bitmask-immediate-
 --   https://kddnewton.com/2022/08/11/aarch64-bitmask-immediates.html
 -- Arm Implementation:
---   https://tiny.amazon.com/c57v7i1u/devearmdocuddi02023Sharaarc
+--   https://developer.arm.com/documentation/ddi0602/2023-12/Shared-Pseudocode/aarch64-functions-bitmasks?lang=en#impl-aarch64.DecodeBitMasks.5
 def decode_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immr : BitVec 6)
   (immediate : Bool) (M : Nat) : Option (BitVec M × BitVec M) :=
   if h0 : invalid_bit_masks immN imms immediate M then none

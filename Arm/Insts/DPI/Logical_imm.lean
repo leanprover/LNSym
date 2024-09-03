@@ -39,7 +39,7 @@ def exec_logical_imm_op (op : LogicalImmType) (op1 : BitVec n) (op2 : BitVec n)
     let result := op1 &&& op2
     (op1 &&& op2, some (update_logical_imm_pstate result))
 
-/--
+/-!
 Return `TRUE` if a bitmask immediate encoding would generate an
 immediate value that could also be represented by a single `MOVZ` or
 `MOVN` instruction.  Used as a condition for the preferred `MOV<-ORR`
@@ -144,33 +144,34 @@ def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
 
 ----------------------------------------------------------------------
 
-/-- Generate random instructions of the DPI.Logical_imm class. -/
+/-! Generate random instructions of the DPI.Logical_imm class. -/
 partial def Logical_imm_cls.inst.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let opc := ← BitVec.rand 2
-  let op  := decode_op opc
   let sf ← BitVec.rand 1
   let N ← BitVec.rand 1
-  let immr ← BitVec.rand 6
   let imms ← BitVec.rand 6
-  -- (FIXME) We do not want to read from or write to SP (GPR index 31) since our
-  -- cosimulation framework does not account for effects to SP. However, we do
-  -- want to use GPR index 31 when the semantics dictate that it be treated as
-  -- ZR.
-  let Rn_hi := if (op == .ORR ∧ ! MoveWidePreferred sf N imms immr) then 31 else 30
-  let Rd_hi := if (op == .ANDS) then 31 else 30
-  let (inst : Logical_imm_cls) :=
-    { sf    := sf,
-      opc   := opc,
-      N     := N,
-      immr  := immr,
-      imms  := imms,
-      Rn    := ← GPRIndex.rand (lo := 0) (hi := Rn_hi),
-      Rd    := ← GPRIndex.rand (lo := 0) (hi := Rd_hi)
-    }
-  let datasize := 32 <<< inst.sf.toNat
-  if inst.sf = 0#1 ∧ inst.N = 1#1 ∨ invalid_bit_masks inst.N inst.imms true datasize then
+  let datasize := 32 <<< sf.toNat
+  if sf = 0#1 ∧ N = 1#1 ∨ invalid_bit_masks N imms true datasize then
+    -- Try again to generate a legal instruction of this class.
     Logical_imm_cls.inst.rand
   else
+    let immr ← BitVec.rand 6
+    let opc ← BitVec.rand 2
+    let op := decode_op opc
+    -- (FIXME) We do not want to read from or write to SP (GPR index 31) since
+    -- our cosimulation framework does not account for effects to SP. However,
+    -- we do want to use GPR index 31 when the semantics dictate that it be
+    -- treated as ZR.
+    let Rn_hi := if (op == .ORR ∧ ! MoveWidePreferred sf N imms immr) then 31 else 30
+    let Rd_hi := if (op == .ANDS) then 31 else 30
+    let (inst : Logical_imm_cls) :=
+      { sf    := sf,
+        opc   := opc,
+        N     := N,
+        immr  := immr,
+        imms  := imms,
+        Rn    := ← GPRIndex.rand (lo := 0) (hi := Rn_hi),
+        Rd    := ← GPRIndex.rand (lo := 0) (hi := Rd_hi)
+      }
     pure (some (inst.toBitVec32))
 
 def Logical_imm_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
