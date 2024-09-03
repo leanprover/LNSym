@@ -39,7 +39,7 @@ def exec_logical_imm_op (op : LogicalImmType) (op1 : BitVec n) (op2 : BitVec n)
     let result := op1 &&& op2
     (op1 &&& op2, some (update_logical_imm_pstate result))
 
-/-!
+/--
 Return `TRUE` if a bitmask immediate encoding would generate an
 immediate value that could also be represented by a single `MOVZ` or
 `MOVN` instruction.  Used as a condition for the preferred `MOV<-ORR`
@@ -82,7 +82,7 @@ def MoveWidePreferred (sf immN : BitVec 1) (imms immr : BitVec 6) : Bool :=
     else
       false
 
-/-!
+/--
 Instruction semantics for `Logical_imm_cls` instructions
 `AND, ORR, EOR, ANDS (immediate): 32- and 64-bit versions`.
 
@@ -144,7 +144,7 @@ def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
 
 ----------------------------------------------------------------------
 
-/-! Generate random instructions of the DPI.Logical_imm class. -/
+/-- Generate random instructions of the DPI.Logical_imm class. -/
 partial def Logical_imm_cls.inst.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let sf ← BitVec.rand 1
   let N ← BitVec.rand 1

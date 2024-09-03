@@ -15,7 +15,7 @@ open BitVec
 
 ----------------------------------------------------------------------
 
-/-!
+/--
 `GPRIndex.rand` picks a safe GPR index for Arm-based Apple platforms
 i.e., one not reserved on them. Use this function instead of
 `BitVec.rand` to pick an appropriate random index for a source and
