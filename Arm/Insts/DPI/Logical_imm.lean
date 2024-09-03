@@ -82,6 +82,30 @@ def MoveWidePreferred (sf immN : BitVec 1) (imms immr : BitVec 6) : Bool :=
     else
       false
 
+/-!
+Instruction semantics for `Logical_imm_cls` instructions
+`AND, ORR, EOR, ANDS (immediate): 32- and 64-bit versions`.
+
+Note that `ORR` and `ANDS` have aliases, as follows:
+
+```
+MOV <Wd|WSP>, #<imm> / MOV <Xd|SP>, #<imm>
+```
+is equivalent to
+`ORR <Wd|WSP>, WZR, #<imm> / ORR <Xd|SP>, XZR, #<imm>`
+and
+`TST <Wn>, #<imm> / TST <Xn>, #<imm>`
+is equivalent to
+`ANDS WZR, <Wn>, #<imm> / ANDS XZR, <Xn>, #<imm>`
+
+Sources:
+https://developer.arm.com/documentation/ddi0602/2023-03/Base-Instructions/ANDS--immediate---Bitwise-AND--immediate---setting-flags-?lang=en
+https://developer.arm.com/documentation/ddi0602/2023-03/Base-Instructions/TST--immediate---Test-bits--immediate---an-alias-of-ANDS--immediate--?lang=en
+https://developer.arm.com/documentation/ddi0602/2023-03/Base-Instructions/ORR--immediate---Bitwise-OR--immediate--?lang=en
+https://developer.arm.com/documentation/ddi0602/2023-03/Base-Instructions/MOV--bitmask-immediate---Move--bitmask-immediate---an-alias-of-ORR--immediate--?lang=en
+https://developer.arm.com/documentation/ddi0602/2023-03/Base-Instructions/EOR--immediate---Bitwise-Exclusive-OR--immediate--?lang=en
+https://developer.arm.com/documentation/ddi0602/2023-03/Base-Instructions/AND--immediate---Bitwise-AND--immediate--?lang=en
+-/
 @[state_simp_rules]
 def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
   if inst.sf = 0#1 ∧ inst.N ≠ 0#1 then
@@ -93,24 +117,29 @@ def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
     | none => write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
     | some (imm, _) =>
       let op := decode_op inst.opc
-      let operand1 := read_gpr datasize inst.Rn s
       let operand1 :=
         match op with
         | .ORR =>
           if inst.Rn = 31#5 ∧
             -- (TODO): a `dsimproc` for MoveWidePreferred?
              ¬ MoveWidePreferred inst.sf inst.N inst.imms inst.immr then
-             BitVec.zero datasize
+             -- MOV (bitmask immediate) is an alias of ORR.
+             read_gpr_zr datasize inst.Rn s
           else
-            operand1
-        | _ => operand1
+            read_gpr datasize inst.Rn s
+        | _ => read_gpr datasize inst.Rn s
       let (result, maybe_pstate) := exec_logical_imm_op op operand1 imm
       -- State Updates
       let s'            := write_pc ((read_pc s) + 4#64) s
       let s'            := match maybe_pstate with
                            | none => s'
                            | some pstate => write_pstate pstate s'
-      let s'            := write_gpr datasize inst.Rd result s'
+      let s'            := match op with
+                           | .ANDS =>
+                              -- TST (immediate) is an alias of ANDS when
+                              -- Rd == '11111'.
+                              write_gpr_zr datasize inst.Rd result s'
+                           | _ => write_gpr datasize inst.Rd result s'
       s'
 
 ----------------------------------------------------------------------
@@ -119,18 +148,24 @@ def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
 partial def Logical_imm_cls.inst.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let opc := ← BitVec.rand 2
   let op  := decode_op opc
-  -- (FIXME) We want to avoid use of SP (i.e., register index
-  -- 31) for AND ORR and EOR since our simulation framework doesn't
-  -- work in such cases.
-  let hi  := if op = LogicalImmType.ANDS then 31 else 30
+  let sf ← BitVec.rand 1
+  let N ← BitVec.rand 1
+  let immr ← BitVec.rand 6
+  let imms ← BitVec.rand 6
+  -- (FIXME) We do not want to read from or write to SP (GPR index 31) since our
+  -- cosimulation framework does not account for effects to SP. However, we do
+  -- want to use GPR index 31 when the semantics dictate that it be treated as
+  -- ZR.
+  let Rn_hi := if (op == .ORR ∧ ! MoveWidePreferred sf N imms immr) then 31 else 30
+  let Rd_hi := if (op == .ANDS) then 31 else 30
   let (inst : Logical_imm_cls) :=
-    { sf    := ← BitVec.rand 1,
+    { sf    := sf,
       opc   := opc,
-      N     := ← BitVec.rand 1,
-      immr  := ← BitVec.rand 6,
-      imms  := ← BitVec.rand 6,
-      Rn    := ← GPRIndex.rand (lo := 0) (hi := hi),
-      Rd    := ← GPRIndex.rand (lo := 0) (hi := hi)
+      N     := N,
+      immr  := immr,
+      imms  := imms,
+      Rn    := ← GPRIndex.rand (lo := 0) (hi := Rn_hi),
+      Rd    := ← GPRIndex.rand (lo := 0) (hi := Rd_hi)
     }
   let datasize := 32 <<< inst.sf.toNat
   if inst.sf = 0#1 ∧ inst.N = 1#1 ∨ invalid_bit_masks inst.N inst.imms true datasize then
