@@ -257,9 +257,48 @@ inductive StateField where
   | ERR    : StateField
 deriving DecidableEq, Repr, Hashable
 
+namespace StateField
+
 /-- general purpose register `x31` is used as stack pointer -/
 @[state_simp_rules]
-abbrev StateField.SP := StateField.GPR 31#5
+abbrev SP := GPR 31#5
+
+/- Might eventually be used to maintain a `O(1)` access `StateField` map,
+by using `StateField.toFin` to index into a sparse array. -/
+/-- `StateField` is equivalent to `Fin (32 + 32 + 1 + 4 + 1)` -/
+def toFin : StateField → Fin 70
+  | .GPR x    => x.toFin.castAdd 38
+  | .SFP x    => (x.toFin.addNat 32).castAdd 6
+  | .PC       => 64
+  | .FLAG .N  => 65
+  | .FLAG .Z  => 66
+  | .FLAG .C  => 67
+  | .FLAG .V  => 68
+  | .ERR      => 69
+
+section ToExpr
+open Lean PFlag
+
+instance : ToExpr PFlag where
+  toTypeExpr := mkConst ``PFlag
+  toExpr := fun
+    | N => mkConst ``N
+    | V => mkConst ``V
+    | C => mkConst ``C
+    | Z => mkConst ``Z
+
+instance : ToExpr StateField where
+  toTypeExpr := mkConst ``StateField
+  toExpr := fun
+    | GPR x    => mkApp (mkConst ``GPR) (toExpr x)
+    | SFP x    => mkApp (mkConst ``SFP) (toExpr x)
+    | PC       => mkConst ``PC
+    | FLAG fl  => mkApp (mkConst ``FLAG) (toExpr fl)
+    | ERR      => mkConst ``ERR
+
+end ToExpr
+
+end StateField
 
 instance : ToString StateField :=
   ⟨fun s => match s with
@@ -483,47 +522,6 @@ def write_err (v : StateError) (s : ArmState) : ArmState :=
 end Accessor_updater_functions
 
 ----------------------------------------------------------------------
----- `StateField` is equivalent to `Fin (32 + 32 + 1 + 4 + 1)` -------
-
-namespace StateField
-
-/- Might eventually be used to maintain a `O(1)` access `StateField` map, 
-by using `StateField.toFin` to index into a sparse array. -/
-def toFin : StateField → Fin 70
-  | .GPR x    => x.toFin.castAdd 38
-  | .SFP x    => (x.toFin.addNat 32).castAdd 6
-  | .PC       => 64
-  | .FLAG .N  => 65
-  | .FLAG .Z  => 66
-  | .FLAG .C  => 67
-  | .FLAG .V  => 68
-  | .ERR      => 69
-
-section ToExpr
-open Lean PFlag
-
-instance : ToExpr PFlag where
-  toTypeExpr := mkConst ``PFlag
-  toExpr := fun
-    | N => mkConst ``N
-    | V => mkConst ``V
-    | C => mkConst ``C
-    | Z => mkConst ``Z
-
-instance : ToExpr StateField where
-  toTypeExpr := mkConst ``StateField
-  toExpr := fun
-    | GPR x    => mkApp (mkConst ``GPR) (toExpr x)
-    | SFP x    => mkApp (mkConst ``SFP) (toExpr x)
-    | PC       => mkConst ``PC
-    | FLAG fl  => mkApp (mkConst ``FLAG) (toExpr fl)
-    | ERR      => mkConst ``ERR
-
-end ToExpr
-
-end StateField
-
-----------------------------------------------------------------------
 
 section Load_program_and_fetch_inst
 
@@ -690,6 +688,7 @@ theorem read_mem_bytes_of_w :
     rw [n_ih]
   done
 
+@[state_simp_rules]
 theorem read_mem_bytes_w_of_read_mem_eq
     (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
     (fld val n₁ addr₁) :
@@ -1077,6 +1076,7 @@ end Memory
 
 /-! ## Helper lemma for `AxEffects` -/
 
+@[state_simp_rules]
 theorem Memory.eq_of_read_mem_bytes_eq {m₁ m₂ : Memory}
     (h : ∀ n addr, m₁.read_bytes n addr = m₂.read_bytes n addr) :
     m₁ = m₂ := by
