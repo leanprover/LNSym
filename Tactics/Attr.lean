@@ -9,7 +9,7 @@ initialize
   -- enable tracing for `sym_n` tactic and related components
   registerTraceClass `Tactic.sym
 
-  -- enable extra checks for debuggins `sym_n`,
+  -- enable extra checks for debugging `sym_n`,
   -- see `AxEffects.validate` for more detail on what is being type-checked
   registerOption `Tactic.sym.debug {
     defValue := true
