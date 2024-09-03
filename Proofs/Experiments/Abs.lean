@@ -38,17 +38,18 @@ theorem correct
   (h_s0_program : s0.program = program)
   (h_s0_err : read_err s0 = StateError.None)
   (h_s0_sp : CheckSPAlignment s0)
-  (h_run : sf = run (program.length - 1) s0) :
+  (h_run : sf = run (program.length) s0) :
   read_gpr 32 0 sf = spec (read_gpr 32 0 s0) ∧
   read_err sf = StateError.None := by
   simp (config := {ground := true}) at h_run
 
-  sym_n 4
+  sym_n 5
   simp only [run] at h_run
   subst sf
   apply And.intro
   · simp only [read_gpr, BitVec.ofNat_eq_ofNat]
     simp (config := {decide := true}) only [
+      h_s5_non_effects,
       h_s4_x0,
       h_s3_x1, h_s3_non_effects,
       h_s2_x0, h_s2_non_effects,
