@@ -373,7 +373,7 @@ function.
 We use `s0`, `si`, and `sf` to refer to initial, intermediate, and
 final (exit) states respectively.
 
-This is more convenient to use that
+This is more convenient to use than
 `partial_correctness_from_inductive_assertions` because we can do
 symbolic simulation and open `cassert` in tandem.
 -/
