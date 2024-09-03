@@ -252,8 +252,8 @@ theorem cassert_eq [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat) :
   done
 
 theorem cassert_cut [Sys σ] [Spec' σ] {s0 si : σ} (h : cut si) (i : Nat) :
-  (cassert s0 si i).fst = i ∧
-  (cassert s0 si i).snd = assert s0 si := by
+    (cassert s0 si i).fst = i ∧
+    (cassert s0 si i).snd = assert s0 si := by
   rw [cassert_eq]
   simp only [↓reduceIte, and_self, h]
   done
