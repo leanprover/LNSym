@@ -14,11 +14,11 @@ open BitVec
 
 ----------------------------------------------------------------------
 
-/-- 
+/--
 `GPRIndex.rand` picks a safe GPR index for Arm-based Apple platforms
 i.e., one not reserved on them. Use this function instead of
 `BitVec.rand` to pick an appropriate random index for a source and
-destination GPR during cosimulations. 
+destination GPR during cosimulations.
 
 See "NOTE: Considerations for running cosimulations on Arm-based Apple
 platforms" in Arm/Cosim.lean for details.
@@ -57,6 +57,30 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   let C := if zeroExtend (n + 1) result = unsigned_sum then 0#1 else 1#1
   let V := if signExtend (n + 1) result = signed_sum then 0#1 else 1#1
   (result, (make_pstate N Z C V))
+
+theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
+  (AddWithCarry x y 0#1).fst = x + y := by
+  simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
+  apply BitVec.eq_of_toNat_eq
+  simp only [toNat_truncate, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod]
+  have : 2^n < 2^(n + 1) := by
+    refine Nat.pow_lt_pow_of_lt (by omega) (by omega)
+  have : x.toNat + y.toNat < 2^(n + 1) := by omega
+  rw [Nat.mod_eq_of_lt this]
+
+theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
+  (AddWithCarry x y 1#1).fst = x - ~~~y := by
+  simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
+  apply BitVec.eq_of_toNat_eq
+  simp only [toNat_truncate, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod, toNat_ofNat, Nat.pow_one,
+    Nat.reduceMod, toNat_sub, toNat_not]
+  simp only [show 2 ^ n - (2 ^ n - 1 - y.toNat) = 1 + y.toNat by omega]
+  have : 2^n < 2^(n + 1) := by
+    refine Nat.pow_lt_pow_of_lt (by omega) (by omega)
+  have : x.toNat + y.toNat + 1 < 2^(n + 1) := by omega
+  rw [Nat.mod_eq_of_lt this]
+  congr 1
+  omega
 
 -- TODO: Is this rule helpful at all?
 @[bitvec_rules]
