@@ -39,9 +39,52 @@ def exec_logical_imm_op (op : LogicalImmType) (op1 : BitVec n) (op2 : BitVec n)
     let result := op1 &&& op2
     (op1 &&& op2, some (update_logical_imm_pstate result))
 
+/-!
+Return `TRUE` if a bitmask immediate encoding would generate an
+immediate value that could also be represented by a single `MOVZ` or
+`MOVN` instruction.  Used as a condition for the preferred `MOV<-ORR`
+alias.
+
+Source:
+https://developer.arm.com/documentation/ddi0602/2023-03/Shared-Pseudocode/aarch64-functions-movwpreferred?lang=en#impl-aarch64.MoveWidePreferred.4
+-/
+@[state_simp_rules]
+def MoveWidePreferred (sf immN : BitVec 1) (imms immr : BitVec 6) : Bool :=
+    -- NOTE: we need s and r to be integers, and not nats, because we
+    -- perform int modulo operations here (see (0 - r % 16)).
+    let s := imms.toInt
+    let r := immr.toInt
+    let width := if sf = 1#1 then 64 else 32
+
+    -- element size must equal total immediate size
+    -- NOTE: the second disjunct below is semantically equivalent to the ASL code
+    -- !((immN:imms) IN {'1xxxxxx'})
+    if sf = 1#1 ∧ immN ≠ 1#1 then
+      false
+    -- NOTE: the second conjunct below is semantically equivalent to the ASL code
+    -- !((immN:imms) IN {'00xxxxx'})
+    else if sf = 0#1 ∧ ¬(immN = 0#1 ∧ imms.extractLsb 5 5 = 0#1) then
+      false
+
+    -- for MOVZ must contain no more than 16 ones
+    else if s < 16 then
+        -- ones must not span halfword boundary when rotated
+     let r' := (0 - r) % 16
+     let s' := 15 - s
+     r' <= s'
+
+    -- for MOVN must contain no more than 16 zeros
+    else if s >= width - 15 then
+        -- zeros must not span halfword boundary when rotated
+        let r' := r % 16
+        let s' := s - (width - 15)
+        r' <= s'
+    else
+      false
+
 @[state_simp_rules]
 def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
-  if inst.sf = 0#1 ∧ inst.N ≠ 0 then
+  if inst.sf = 0#1 ∧ inst.N ≠ 0#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let datasize := 32 <<< inst.sf.toNat
@@ -49,8 +92,18 @@ def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
     match imm with
     | none => write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
     | some (imm, _) =>
-      let operand1 := read_gpr datasize inst.Rn s
       let op := decode_op inst.opc
+      let operand1 := read_gpr datasize inst.Rn s
+      let operand1 :=
+        match op with
+        | .ORR =>
+          if inst.Rn = 31#5 ∧
+            -- (TODO): a `dsimproc` for MoveWidePreferred?
+             ¬ MoveWidePreferred inst.sf inst.N inst.imms inst.immr then
+             BitVec.zero datasize
+          else
+            operand1
+        | _ => operand1
       let (result, maybe_pstate) := exec_logical_imm_op op operand1 imm
       -- State Updates
       let s'            := write_pc ((read_pc s) + 4#64) s
