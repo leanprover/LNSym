@@ -9,10 +9,12 @@ import Tactics.StepThms
 
 namespace GCMInitV8Program
 
+set_option maxHeartbeats 1000000 in
 #genStepEqTheorems gcm_init_v8_program
 
 set_option maxRecDepth 1000000 in
 set_option diagnostics true in
+set_option profiler true in
 theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_init_v8_program)
     (h_s0_err : read_err s0 = .None)
