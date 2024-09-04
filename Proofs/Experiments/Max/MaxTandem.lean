@@ -3,9 +3,8 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel
 
-Experimental: Use the Correctness module to prove that this program computes the
-following via a naive loop that iterates over `x0`:
-`x0 := x0 + x1`
+Experimental: Use the Correctness module to prove that this program
+computes the maximum of two numbers.
 -/
 import Arm
 import Tactics.CSE

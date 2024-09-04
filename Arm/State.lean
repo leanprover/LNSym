@@ -290,29 +290,29 @@ def r (fld : StateField) (s : ArmState) : (state_value fld) :=
   | FLAG i  => read_base_flag i s
   | ERR     => read_base_error s
 
-@[state_simp_rules]
-def ArmState.x0 (s : ArmState) : BitVec 64 := r (StateField.GPR 0) s
+/-!
 
-@[state_simp_rules]
-def ArmState.x1 (s : ArmState) : BitVec 64 := r (StateField.GPR 1) s
+We define helpers for reading and writing registers on the `ArmState` with the colloquial
+names. For example, the stack pointer (`sp`) refers to register 31. 
+These mnemonics make it much easier to read and write theorems about assembly programs.
 
-@[state_simp_rules]
-def ArmState.x2 (s : ArmState) : BitVec 64 := r (StateField.GPR 2) s
+-/
 
-@[state_simp_rules]
-def ArmState.sp (s : ArmState) : BitVec 64 := r (StateField.GPR 31) s
+@[state_simp_rules] abbrev ArmState.x0 (s : ArmState) : BitVec 64 := r (StateField.GPR 0) s
 
-@[state_simp_rules]
-def ArmState.V (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.V) s
+@[state_simp_rules] abbrev ArmState.x1 (s : ArmState) : BitVec 64 := r (StateField.GPR 1) s
 
-@[state_simp_rules]
-def ArmState.C (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.C) s
+@[state_simp_rules] abbrev ArmState.x2 (s : ArmState) : BitVec 64 := r (StateField.GPR 2) s
 
-@[state_simp_rules]
-def ArmState.Z (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.Z) s
+@[state_simp_rules] abbrev ArmState.sp (s : ArmState) : BitVec 64 := r (StateField.GPR 31) s
 
-@[state_simp_rules]
-def ArmState.N (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.N) s
+@[state_simp_rules] abbrev ArmState.V (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.V) s
+
+@[state_simp_rules] abbrev ArmState.C (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.C) s
+
+@[state_simp_rules] abbrev ArmState.Z (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.Z) s
+
+@[state_simp_rules] abbrev ArmState.N (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.N) s
 
 def ArmState.r_GPR_0_eq_x0 (s : ArmState) : r (StateField.GPR 0) s = s.x0 := by rfl
 
