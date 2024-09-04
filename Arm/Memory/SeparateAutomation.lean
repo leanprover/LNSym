@@ -373,6 +373,9 @@ def getConfig : SimpMemM SimpMemConfig := do
   let ctx ← read
   return ctx.cfg
 
+/-- info: state_value (fld : StateField) : Type -/
+#guard_msgs in #check state_value
+
 /-
 Introduce a new definition into the local context, simplify it using `simp`,
 and return the FVarId of the new definition in the goal.
@@ -385,9 +388,20 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     let hdefTy ← inferType hdefVal
 
     /- Simp to gain some more juice out of the defn.. -/
-    let (simpCtx, simprocs) ← LNSymSimpContext
-      (config := { decide := false, failIfUnchanged := false })
-    let (simpResult, _stats) ← simp hdefTy simpCtx simprocs
+    let mut simpTheorems : Array SimpTheorems := #[]
+    for a in #[`minimal_theory, `bitvec_rules] do
+      let some ext ← (getSimpExtension? a)
+        | throwError m!"[simp_mem] Internal error: simp attribute {a} not found!"
+      simpTheorems := simpTheorems.push (← ext.getTheorems)
+
+    -- unfold `state_value.
+    simpTheorems := simpTheorems.push <| ← ({} : SimpTheorems).addDeclToUnfold `state_value
+    let simpCtx : Simp.Context := { 
+      simpTheorems,
+      config := { decide := true, failIfUnchanged := false },
+      congrTheorems := (← Meta.getSimpCongrTheorems)
+    }
+    let (simpResult, _stats) ← simp hdefTy simpCtx (simprocs := #[])
     let hdefVal ← simpResult.mkCast hdefVal
     let hdefTy ← inferType hdefVal
 
