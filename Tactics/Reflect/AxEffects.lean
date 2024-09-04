@@ -24,6 +24,9 @@ i.e., `AxEffects` transforms a description of an `ArmState` written as
 a sequence of `w` and `write_mem`s to some initial state
 into a set of hypotheses that relates reading fields from the final state
 to the initial state.
+Note that as soon as an unsupported expression  (e.g., an `if`) is encountered,
+the whole expression is taken to be the initial state,
+even if there might be more `w`/`write_mem`s in sub-expressions.
 
 `AxEffects` contains a hashmap from `StateField` to an expression,
 in terms of the fixed initial state,
@@ -87,10 +90,12 @@ def initial (state : Expr) : AxEffects where
   currentState      := state
   fields            := .empty
   nonEffectProof    :=
+    -- `fun f => rfl`
     mkLambda `f .default (mkConst ``StateField) <|
       mkEqReflArmState <| mkApp2 (mkConst ``r) (.bvar 0) state
   memoryEffect      := state
   memoryEffectProof :=
+    -- `fun n addr => rfl`
     mkLambda `n .default (mkConst ``Nat) <|
       let bv64 := mkApp (mkConst ``BitVec) (toExpr 64)
       mkLambda `addr .default bv64 <|
@@ -98,6 +103,7 @@ def initial (state : Expr) : AxEffects where
           (mkApp (mkConst ``BitVec) <| mkNatMul (.bvar 1) (toExpr 8))
           (mkApp3 (mkConst ``read_mem_bytes) (.bvar 1) (.bvar 0) state)
   programProof      :=
+    -- `rfl`
     mkAppN (.const ``Eq.refl [1]) #[
       mkConst ``Program,
       mkApp (mkConst ``ArmState.program) state]
@@ -219,11 +225,13 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
                     f n addr val eff.currentState
     let proof ← mkEqTrans r_of_w proof
     mkLambdaFVars args proof
+    --^^ `fun f ... => Eq.trans (@r_of_write_mem_bytes f n addr val <currentState>) <proof>`
 
   -- Update the memory effects proof
   let memoryEffectProof :=
     mkAppN (mkConst ``read_mem_bytes_write_mem_bytes_of_read_mem_eq)
       #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, n, addr, val]
+    --^^ `read_mem_bytes_write_mem_bytes_of_read_mem_eq <memoryEffectProof> n addr val`
 
   -- Update the program proof
   let programProof ← mkEqTrans
@@ -337,7 +345,10 @@ private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to the some state `s`,
 return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
--/
+
+Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
+the whole expression is taken to be the initial state,
+even if there might be more `w`/`write_mem`s in sub-expressions. -/
 partial def fromExpr (e : Expr) : MetaM AxEffects := do
   let msg := m!"Building effects with writes from: {e}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
