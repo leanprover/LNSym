@@ -225,22 +225,26 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
                     f n addr val eff.currentState
     let proof ← mkEqTrans r_of_w proof
     mkLambdaFVars args proof
-    --^^ `fun f ... => Eq.trans (@r_of_write_mem_bytes f n addr val <currentState>) <proof>`
+    -- ^^ `fun f ... => Eq.trans (@r_of_write_mem_bytes f ...) <proof>`
 
   -- Update the memory effects proof
   let memoryEffectProof :=
+    -- `read_mem_bytes_write_mem_bytes_of_read_mem_eq <memoryEffectProof> ...`
     mkAppN (mkConst ``read_mem_bytes_write_mem_bytes_of_read_mem_eq)
       #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, n, addr, val]
-    --^^ `read_mem_bytes_write_mem_bytes_of_read_mem_eq <memoryEffectProof> n addr val`
 
   -- Update the program proof
-  let programProof ← mkEqTrans
-    (mkAppN (mkConst ``write_mem_bytes_program) #[
-      eff.currentState, n, addr, val])
-    eff.programProof
+  let programProof ←
+    -- `Eq.trans (@write_mem_bytes_program <currentState> ...) <programProof>`
+    mkEqTrans
+      (mkAppN (mkConst ``write_mem_bytes_program)
+        #[eff.currentState, n, addr, val])
+      eff.programProof
 
   -- Assemble the result
-  let addWrite (e : Expr) := mkApp4 (mkConst ``write_mem_bytes) n addr val e
+  let addWrite (e : Expr) :=
+    -- `@write_mem_bytes <n> <addr> <val> <e>`
+    mkApp4 (mkConst ``write_mem_bytes) n addr val e
   let eff := { eff with
     currentState    := addWrite eff.currentState
     fields          := .ofList fields
@@ -283,7 +287,9 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
   -- Update the main field
   let newField : FieldEffect := {
     value := val
-    proof := mkApp3 (mkConst ``r_of_w_same) fld val eff.currentState
+    proof :=
+      -- `r_of_w_same <fld> <val> <currentState>`
+      mkApp3 (mkConst ``r_of_w_same) fld val eff.currentState
   }
   let fields := (rField, newField) :: fields
 
@@ -291,14 +297,20 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
   let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
     let f := args[0]!
 
+    /- First, assume we have a proof `h_neq : <f> ≠ <fld>`, and use that
+    to compute the new `nonEffectProof` -/
     let k := fun args h_neq => do
-    -- ^^ monadic continuation
       let r_of_w := mkApp5 (mkConst ``r_of_w_different)
                     f fld val eff.currentState h_neq
       let proof ← mkEqTrans r_of_w proof
       mkLambdaFVars args proof
+      -- ^^ `fun f ... => Eq.trans (r_of_w_different ... <h_neq>) <proof>`
 
-    -- Then, determine `h_neq` so that we can pass it to `k`
+    /- Then, determine `h_neq` so that we can pass it to `k`.
+    Notice how we have to modify the environment, to add `h_neq` as a new local
+    hypothesis if it wan't present yet, but only in some branches.
+    This is why we had to define `k` as a monadic continuation,
+    so we can nest `k` under a `withLocalDeclD` -/
     let h_neq_type := mkApp3 (.const ``Ne [1]) (mkConst ``StateField) f fld
     let h_neq? ← args.findM? fun h => do
         let hTy ← inferType h
@@ -312,13 +324,16 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
 
   -- Update the memory effect proof
   let memoryEffectProof :=
+    -- `read_mem_bytes_w_of_read_mem_eq ...`
     mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
       #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, fld, val]
 
   -- Update the program proof
-  let programProof ← mkEqTrans
-    (mkAppN (mkConst ``w_program) #[fld, val, eff.currentState])
-    eff.programProof
+  let programProof ←
+    -- `Eq.trans (w_program ...) <programProof>`
+    mkEqTrans
+      (mkAppN (mkConst ``w_program) #[fld, val, eff.currentState])
+      eff.programProof
 
   -- Assemble the result
   let eff := { eff with
