@@ -115,3 +115,4 @@ attribute [minimal_theory] Fin.zero_eta
 attribute [minimal_theory] Fin.mk.injEq
 
 -- attribute [minimal_theory] ↓reduceIte
+attribute [minimal_theory] reduceCtorEq

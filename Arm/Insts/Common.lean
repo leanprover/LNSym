@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Yan Peng, Nathan Wetzler
 -/
 
-import LeanSAT
+import Std.Tactic.BVDecide
 import Arm.BitVec
 import Arm.State
 import Arm.Insts.CosimM
@@ -15,11 +15,11 @@ open BitVec
 
 ----------------------------------------------------------------------
 
-/-- 
+/--
 `GPRIndex.rand` picks a safe GPR index for Arm-based Apple platforms
 i.e., one not reserved on them. Use this function instead of
 `BitVec.rand` to pick an appropriate random index for a source and
-destination GPR during cosimulations. 
+destination GPR during cosimulations.
 
 See "NOTE: Considerations for running cosimulations on Arm-based Apple
 platforms" in Arm/Cosim.lean for details.
@@ -300,20 +300,21 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
     unfold invalid_bit_masks
     simp only [Nat.lt_one_iff, ite_not, Bool.not_eq_true]
     split
-    · simp only [Nat.reduceAdd, false_implies]
+    · simp only [Nat.reduceAdd, false_implies, Bool.true_eq_false]
     . simp_all only [Bool.ite_eq_false_distrib, ite_eq_left_iff, imp_false]
       split
-      . simp only [false_implies]
+      . simp only [Bool.true_eq_false, Nat.reduceAdd, false_implies]
       . split
-        . simp only [false_implies]
-        . simp only [Decidable.not_not, imp_self]
+        . simp only [Bool.true_eq_false, Nat.reduceAdd, false_implies]
+        . simp only [Nat.reduceAdd, Bool.true_eq_false, imp_false,
+            Decidable.not_not, imp_self]
     done
 
 -- Resources on Arm bitmask immediate:
 --   https://developer.arm.com/documentation/dui0802/b/A64-General-Instructions/MOV--bitmask-immediate-
 --   https://kddnewton.com/2022/08/11/aarch64-bitmask-immediates.html
 -- Arm Implementation:
---   https://tiny.amazon.com/c57v7i1u/devearmdocuddi02023Sharaarc
+--   https://developer.arm.com/documentation/ddi0602/2023-12/Shared-Pseudocode/aarch64-functions-bitmasks?lang=en#impl-aarch64.DecodeBitMasks.5
 def decode_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immr : BitVec 6)
   (immediate : Bool) (M : Nat) : Option (BitVec M × BitVec M) :=
   if h0 : invalid_bit_masks immN imms immediate M then none
