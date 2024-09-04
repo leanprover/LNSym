@@ -5,7 +5,7 @@ Author(s): Shilpi Goel
 -/
 import Arm.Insts.DPSFP.Insts
 import Specs.SHA512
-import LeanSAT
+import Std.Tactic.BVDecide
 
 set_option sat.timeout 60
 

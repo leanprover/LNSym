@@ -159,7 +159,7 @@ theorem mem_automation_test_4
       (write_mem_bytes 48 src_addr val s0)) =
    val.extractLsBytes 1 10 := by
   simp only [memory_rules]
-  simp_mem; simp_mem -- TODO: repeat on change.
+  simp_mem; -- TODO: repeat on change.
   congr 1
   bv_omega' -- TODO: address normalization.
 
@@ -264,7 +264,7 @@ theorem test_write_zero (hlegalw : mem_legal' write_addr 0)
     (hlegalr : mem_legal' read_addr read_n) :
     Memory.read_bytes read_n read_addr (Memory.write_bytes 0 write_addr write_val mem) =
     mem.read_bytes read_n read_addr := by
-  simp_mem
+  try simp_mem
   sorry
 
 end ReadOverlappingWrite
@@ -365,3 +365,37 @@ theorem mem_separate_move_of_lt_of_le  (h : mem_separate' a an b bn)
   (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a').toNat) b bn := by simp_mem
 
 end MathProperties
+
+namespace MemOptions
+
+/--
+error: unsolved goals
+⊢ False
+---
+info: [simp_mem.info] Searching for Hypotheses
+[simp_mem.info] Summary: Found 0 hypotheses
+[simp_mem.info] Performing Rewrite At Main Goal
+  [simp_mem.info] ⚙️ Matching on ⊢ False
+  [simp_mem.info] Simplifying goal.
+---
+info: ⊢ False
+-/
+#guard_msgs in theorem test_no_fail_if_unchanged : False := by
+  simp_mem (config := { failIfUnchanged := false })
+  trace_state
+
+/--
+error: ❌️ simp_mem failed to make progress.
+---
+info: [simp_mem.info] Searching for Hypotheses
+[simp_mem.info] Summary: Found 0 hypotheses
+[simp_mem.info] Performing Rewrite At Main Goal
+  [simp_mem.info] ⚙️ Matching on ⊢ False
+  [simp_mem.info] Simplifying goal.
+-/
+#guard_msgs in theorem test_fail_if_unchanged : False := by
+  simp_mem
+  trace_state
+
+
+end MemOptions

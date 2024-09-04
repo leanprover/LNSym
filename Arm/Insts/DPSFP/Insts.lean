@@ -22,7 +22,7 @@ import Arm.Insts.DPSFP.Conversion_between_FP_and_Int
 
 /-- List of functions to generate random instructions of the
 DPSFP class. -/
-def DPSFP.rand : List (IO (Option (BitVec 32))) :=
+def DPSFP.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   DPSFP.Advanced_simd_copy_cls.rand ++
   DPSFP.Advanced_simd_extract_cls.rand ++
   DPSFP.Advanced_simd_permute_cls.rand ++

@@ -12,10 +12,10 @@ import Proofs.Popcount32
 import Proofs.Experiments.Summary1
 import Proofs.Experiments.MemoryAliasing
 import Proofs.Experiments.SHA512MemoryAliasing
+import Proofs.Experiments.Max.MaxTandem
 import Proofs.Experiments.Abs.Abs
 import Proofs.Experiments.Abs.AbsVCG
 import Proofs.Experiments.Abs.AbsVCGTandem
 import Proofs.Experiments.AddLoop.AddLoop
 import Proofs.Experiments.AddLoop.AddLoopTandem
-import Proofs.Experiments.Max.MaxTandem
 import Proofs.Experiments.MemCpyVCG

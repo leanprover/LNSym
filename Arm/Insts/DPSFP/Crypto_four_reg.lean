@@ -9,6 +9,7 @@ import Arm.Decode
 import Arm.State
 import Arm.Insts.Common
 import Arm.BitVec
+import Arm.Insts.CosimM
 
 ----------------------------------------------------------------------
 
@@ -34,12 +35,8 @@ def exec_crypto_four_reg (inst : Crypto_four_reg_cls) (s : ArmState) : ArmState 
 
 ----------------------------------------------------------------------
 
-def Crypto_four_reg_cls.eor3.rand : IO (Option (BitVec 32)) := do
-  let feat_check ←
-      IO.Process.output
-      { cmd  := "Arm/Insts/Cosim/platform_check.sh",
-        args := #["-f", "sha3"] }
-  if feat_check.exitCode = 1 then
+def Crypto_four_reg_cls.eor3.rand : Cosim.CosimM (Option (BitVec 32)) := do
+  if ← Cosim.sha3? then
     -- SHA3 feature supported.
     let (inst : Crypto_four_reg_cls) :=
       { Op0    := ← pure 0b00#2,
@@ -52,7 +49,7 @@ def Crypto_four_reg_cls.eor3.rand : IO (Option (BitVec 32)) := do
     pure none
 
 /-- Generate random instructions of Crypto_four_reg_cls class. -/
-def Crypto_four_reg_cls.rand : List (IO (Option (BitVec 32))) :=
+def Crypto_four_reg_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [Crypto_four_reg_cls.eor3.rand]
 
 
