@@ -177,7 +177,7 @@ partial def mkAppNonEffect (eff : AxEffects) (field : Expr) : MetaM Expr := do
       return nonEffectProof
 
 /-- Get the value for a field, if one is stored in `eff.fields`,
-or assemble an instantiation of the memory non-effects proof -/
+or assemble an instantiation of the non-effects proof -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
   let msg := m!"getField {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
