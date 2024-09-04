@@ -25,7 +25,7 @@ a sequence of `w` and `write_mem`s to some initial state
 into a set of hypotheses that relates reading fields from the final state
 to the initial state.
 
-`AxEffectx` contains a hashmap from `StateField` to an expression,
+`AxEffects` contains a hashmap from `StateField` to an expression,
 in terms of the fixed initial state,
 that describes the value of the given field *after* the writes.
 Additionally, each field carries a proof that it is indeed the right value.
