@@ -144,12 +144,14 @@ theorem CheckSPAlignment_AddWithCarry_64_4 (st : ArmState) (y : BitVec 64) (carr
   simp_all only [CheckSPAlignment, read_gpr, zeroExtend_eq, Nat.sub_zero, add_eq,
     Aligned_AddWithCarry_64_4]
 
+@[state_simp_rules]
 theorem CheckSPAlignment_of_r_sp_eq {s s' : ArmState}
     (h_eq : r (StateField.GPR 31#5) s' = r (StateField.GPR 31#5) s)
     (h_sp : CheckSPAlignment s) :
     CheckSPAlignment s' := by
   simpa only [CheckSPAlignment, read_gpr, h_eq] using h_sp
 
+@[state_simp_rules]
 theorem CheckSPAlignment_of_r_sp_aligned {s : ArmState} {value}
     (h_eq : r (StateField.GPR 31#5) s = value)
     (h_aligned : Aligned value 4) :
@@ -326,7 +328,7 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
 --   https://developer.arm.com/documentation/dui0802/b/A64-General-Instructions/MOV--bitmask-immediate-
 --   https://kddnewton.com/2022/08/11/aarch64-bitmask-immediates.html
 -- Arm Implementation:
---   https://tiny.amazon.com/c57v7i1u/devearmdocuddi02023Sharaarc
+--   https://developer.arm.com/documentation/ddi0602/2023-12/Shared-Pseudocode/aarch64-functions-bitmasks?lang=en#impl-aarch64.DecodeBitMasks.5
 def decode_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immr : BitVec 6)
   (immediate : Bool) (M : Nat) : Option (BitVec M × BitVec M) :=
   if h0 : invalid_bit_masks immN imms immediate M then none

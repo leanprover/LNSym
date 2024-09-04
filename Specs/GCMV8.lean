@@ -8,8 +8,8 @@ import Specs.GCM
 
 -- References:
 -- https://github.com/GaloisInc/cryptol/blob/master/lib/Cryptol/Reference.cry
--- https://tiny.amazon.com/12296d03c/githGalocrypblob1e31PrimSymm
--- https://tiny.amazon.com/3edw4edm/githawslawslblob02aaSAWspec
+-- https://github.com/GaloisInc/cryptol-specs/blob/1e31efb619f4c328845e254577dedeca66669068/Primitive/Symmetric/Cipher/Authenticated/AES_256_GCM.cry#L20
+-- https://github.com/awslabs/aws-lc-verification/blob/02aa15c93ed9d2ddc1f7c4742ff05b3e7f05c592/SAW/spec/AES/AES-GCM.cry#L75
 -- https://github.com/awslabs/aws-lc-verification/blob/master/SAW/proof/AES/GHASH.saw
 -- https://link.springer.com/chapter/10.1007/978-3-031-34671-2_30
 -- https://www.rfc-editor.org/rfc/rfc8452.txt

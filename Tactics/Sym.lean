@@ -187,6 +187,10 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
     let mut eff ← AxEffects.fromEq hStep
 
     let stateExpr ← c.stateExpr
+    /- Assert that the initial state of the obtained `AxEffects` is equal to
+    the state tracked by `c`.
+    This will catch and throw an error if the semantics of the current
+    instruction still contains unsupported constructs (e.g., an `if`) -/
     if !(← isDefEq eff.initialState stateExpr) then
       throwError "[explodeStep] expected initial state {stateExpr}, but found:\n  \
         {eff.initialState}\nin\n\n{eff}"

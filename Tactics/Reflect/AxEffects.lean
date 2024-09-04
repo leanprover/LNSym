@@ -24,8 +24,11 @@ i.e., `AxEffects` transforms a description of an `ArmState` written as
 a sequence of `w` and `write_mem`s to some initial state
 into a set of hypotheses that relates reading fields from the final state
 to the initial state.
+Note that as soon as an unsupported expression  (e.g., an `if`) is encountered,
+the whole expression is taken to be the initial state,
+even if there might be more `w`/`write_mem`s in sub-expressions.
 
-`AxEffectx` contains a hashmap from `StateField` to an expression,
+`AxEffects` contains a hashmap from `StateField` to an expression,
 in terms of the fixed initial state,
 that describes the value of the given field *after* the writes.
 Additionally, each field carries a proof that it is indeed the right value.
@@ -87,10 +90,12 @@ def initial (state : Expr) : AxEffects where
   currentState      := state
   fields            := .empty
   nonEffectProof    :=
+    -- `fun f => rfl`
     mkLambda `f .default (mkConst ``StateField) <|
       mkEqReflArmState <| mkApp2 (mkConst ``r) (.bvar 0) state
   memoryEffect      := state
   memoryEffectProof :=
+    -- `fun n addr => rfl`
     mkLambda `n .default (mkConst ``Nat) <|
       let bv64 := mkApp (mkConst ``BitVec) (toExpr 64)
       mkLambda `addr .default bv64 <|
@@ -98,6 +103,7 @@ def initial (state : Expr) : AxEffects where
           (mkApp (mkConst ``BitVec) <| mkNatMul (.bvar 1) (toExpr 8))
           (mkApp3 (mkConst ``read_mem_bytes) (.bvar 1) (.bvar 0) state)
   programProof      :=
+    -- `rfl`
     mkAppN (.const ``Eq.refl [1]) #[
       mkConst ``Program,
       mkApp (mkConst ``ArmState.program) state]
@@ -177,7 +183,7 @@ partial def mkAppNonEffect (eff : AxEffects) (field : Expr) : MetaM Expr := do
       return nonEffectProof
 
 /-- Get the value for a field, if one is stored in `eff.fields`,
-or assemble an instantiation of the memory non-effects proof -/
+or assemble an instantiation of the non-effects proof -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
   let msg := m!"getField {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -219,20 +225,26 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
                     f n addr val eff.currentState
     let proof ← mkEqTrans r_of_w proof
     mkLambdaFVars args proof
+    -- ^^ `fun f ... => Eq.trans (@r_of_write_mem_bytes f ...) <proof>`
 
   -- Update the memory effects proof
   let memoryEffectProof :=
+    -- `read_mem_bytes_write_mem_bytes_of_read_mem_eq <memoryEffectProof> ...`
     mkAppN (mkConst ``read_mem_bytes_write_mem_bytes_of_read_mem_eq)
       #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, n, addr, val]
 
   -- Update the program proof
-  let programProof ← mkEqTrans
-    (mkAppN (mkConst ``write_mem_bytes_program) #[
-      eff.currentState, n, addr, val])
-    eff.programProof
+  let programProof ←
+    -- `Eq.trans (@write_mem_bytes_program <currentState> ...) <programProof>`
+    mkEqTrans
+      (mkAppN (mkConst ``write_mem_bytes_program)
+        #[eff.currentState, n, addr, val])
+      eff.programProof
 
   -- Assemble the result
-  let addWrite (e : Expr) := mkApp4 (mkConst ``write_mem_bytes) n addr val e
+  let addWrite (e : Expr) :=
+    -- `@write_mem_bytes <n> <addr> <val> <e>`
+    mkApp4 (mkConst ``write_mem_bytes) n addr val e
   let eff := { eff with
     currentState    := addWrite eff.currentState
     fields          := .ofList fields
@@ -275,7 +287,9 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
   -- Update the main field
   let newField : FieldEffect := {
     value := val
-    proof := mkApp3 (mkConst ``r_of_w_same) fld val eff.currentState
+    proof :=
+      -- `r_of_w_same <fld> <val> <currentState>`
+      mkApp3 (mkConst ``r_of_w_same) fld val eff.currentState
   }
   let fields := (rField, newField) :: fields
 
@@ -283,14 +297,20 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
   let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
     let f := args[0]!
 
+    /- First, assume we have a proof `h_neq : <f> ≠ <fld>`, and use that
+    to compute the new `nonEffectProof` -/
     let k := fun args h_neq => do
-    -- ^^ monadic continuation
       let r_of_w := mkApp5 (mkConst ``r_of_w_different)
                     f fld val eff.currentState h_neq
       let proof ← mkEqTrans r_of_w proof
       mkLambdaFVars args proof
+      -- ^^ `fun f ... => Eq.trans (r_of_w_different ... <h_neq>) <proof>`
 
-    -- Then, determine `h_neq` so that we can pass it to `k`
+    /- Then, determine `h_neq` so that we can pass it to `k`.
+    Notice how we have to modify the environment, to add `h_neq` as a new local
+    hypothesis if it wan't present yet, but only in some branches.
+    This is why we had to define `k` as a monadic continuation,
+    so we can nest `k` under a `withLocalDeclD` -/
     let h_neq_type := mkApp3 (.const ``Ne [1]) (mkConst ``StateField) f fld
     let h_neq? ← args.findM? fun h => do
         let hTy ← inferType h
@@ -304,13 +324,16 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
 
   -- Update the memory effect proof
   let memoryEffectProof :=
+    -- `read_mem_bytes_w_of_read_mem_eq ...`
     mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
       #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, fld, val]
 
   -- Update the program proof
-  let programProof ← mkEqTrans
-    (mkAppN (mkConst ``w_program) #[fld, val, eff.currentState])
-    eff.programProof
+  let programProof ←
+    -- `Eq.trans (w_program ...) <programProof>`
+    mkEqTrans
+      (mkAppN (mkConst ``w_program) #[fld, val, eff.currentState])
+      eff.programProof
 
   -- Assemble the result
   let eff := { eff with
@@ -337,7 +360,10 @@ private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to the some state `s`,
 return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
--/
+
+Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
+the whole expression is taken to be the initial state,
+even if there might be more `w`/`write_mem`s in sub-expressions. -/
 partial def fromExpr (e : Expr) : MetaM AxEffects := do
   let msg := m!"Building effects with writes from: {e}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
@@ -496,6 +522,14 @@ That is, compose the effect of "`left` after `right`" -/
 
 /-- type check all expressions stored in `eff`,
 throwing an error if one is not type-correct.
+
+In principle, the various `AxEffects` definitions should return only well-formed
+expressions, making `validate` a no-op.
+In practice, however, running `validate` is helpful for catching bugs in those
+definitions. Do note that typechecking might be a bit expensive, so we generally
+only call `validate` while debugging, not during normal execution.
+See also the `Tactic.sym.debug` option, which controls whether `validate` is
+called for each step of the `sym_n` tactic.
 
 NOTE: does not necessarily validate *which* type an expression has,
 validation will still pass if types are different to those we claim in the

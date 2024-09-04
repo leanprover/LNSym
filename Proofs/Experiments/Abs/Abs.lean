@@ -38,12 +38,12 @@ theorem correct
   (h_s0_program : s0.program = program)
   (h_s0_err : read_err s0 = StateError.None)
   (h_s0_sp : CheckSPAlignment s0)
-  (h_run : sf = run (program.length - 1) s0) :
+  (h_run : sf = run (program.length) s0) :
   read_gpr 32 0 sf = spec (read_gpr 32 0 s0) ∧
   read_err sf = StateError.None := by
   simp (config := {ground := true}) only at h_run
 
-  sym_n 4
+  sym_n 5
 
   simp only [spec, AddWithCarry]
   split <;> bv_decide
