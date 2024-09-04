@@ -289,6 +289,7 @@ def r (fld : StateField) (s : ArmState) : (state_value fld) :=
   | PC      => read_base_pc s
   | FLAG i  => read_base_flag i s
   | ERR     => read_base_error s
+
 @[state_simp_rules]
 def ArmState.x0 (s : ArmState) : BitVec 64 := r (StateField.GPR 0) s
 

@@ -22,6 +22,8 @@ open Max
 
 section PC
 
+/--# We define scoped notation for our cutpoint PCs to use in pattern matching. -/
+
 scoped notation "entry_start" => 0x894#64
 scoped notation "then_start" => 0x8b0#64
 scoped notation "else_start" => 0x8bc#64
@@ -29,21 +31,19 @@ scoped notation "merge_end" => 0x8cc#64
 
 
 namespace ArmStateNotation
+
+/-! We build a notation for `read_mem_bytes $n $base $s` as `$s[$base, $n]` -/
 @[inherit_doc read_mem_bytes]
 syntax:max term noWs "[" withoutPosition(term)  ","  withoutPosition(term) noWs "]" : term
 macro_rules | `($s[$base,$n]) => `(read_mem_bytes $n $base $s)
 end ArmStateNotation
+
 open ArmStateNotation
 
-
-
-def pcs : List (BitVec 64) := [entry_start,
-  -- entry_end,
+def pcs : List (BitVec 64) := [
+  entry_start,
   then_start,
-  -- then_end,
   else_start,
-  -- else_end,
-  -- merge_start,
   merge_end
   ]
 
@@ -52,7 +52,6 @@ end PC
 def cut (s : ArmState) : Bool := decide (read_pc s ∈ pcs)
 
 section Invariants
--- variable (s0 si : ArmState)
 
 /-- Precondition for the correctness of the Add program. -/
 def pre (s : ArmState) : Prop :=
@@ -64,7 +63,6 @@ def pre (s : ArmState) : Prop :=
   CheckSPAlignment s ∧
   s.sp ≥ 32 ∧
   mem_legal' s.sp 80 -- TODO: find the correct smallest bound we need here.
-
 
 /-- Specification function. -/
 def spec (x0 x1 : BitVec 64) : BitVec 64 :=
@@ -83,6 +81,7 @@ def post (s0 sf : ArmState) : Prop :=
 
 def entry_start_inv (s0 si : ArmState) : Prop := si = s0
 
+/-- Invariant right at the conditional branch -/
 def entry_end_inv (s0 si : ArmState): Prop :=
   read_err si = .None ∧
   si.program = program ∧
@@ -91,10 +90,14 @@ def entry_end_inv (s0 si : ArmState): Prop :=
   CheckSPAlignment si ∧
   si[s0.sp - 32#64 + 12#64, 4] = s0.x0.zeroExtend 32 ∧
   si[s0.sp - 32#64 + 8#64, 4] = s0.x1.zeroExtend 32 ∧
-  si.sp = s0.sp - 32#64 -- TODO: read flags.
-  -- ∧ read_mem_bytes 4 (r (Spec) si) si = 0x0#32
+  si.sp = s0.sp - 32#64 
 
-def then_start_inv (s0 si : ArmState): Prop :=
+/-!
+Notice the pattern: The invariant after the conditional branch
+is the invariant before the conditional branch, plus what the conditional branch taught us
+-/
+
+def then_start_inv (s0 si : ArmState) : Prop :=
   entry_end_inv s0 si ∧
   ¬ ((BitVec.zeroExtend 32 s0.x0).sle (BitVec.zeroExtend 32 s0.x1) = true)
 
@@ -112,17 +115,12 @@ end Invariants
 
 def assert (s0 si : ArmState) : Prop :=
   pre s0 ∧
-  -- Using `match` is preferable to `if` for the `split` tactic (and for
-  -- readability).
+  -- Using `match` is preferable to `if` for the `split` tactic (and for readability).
   match (read_pc si) with
   | entry_start => entry_start_inv s0 si
-  -- | entry_end => entry_end_inv s0 si
   | then_start => then_start_inv s0 si
-  -- | then_end => then_end_inv s0 si
   | else_start => else_start_inv s0 si
-  -- | else_end => else_end_inv s0 si
-  -- | merge_start => merge_start_inv s0 si
-  | merge_end => post s0 si -- why do I need an `assert` here, if it's tracked by `post`? Confusing.
+  | merge_end => post s0 si -- @bollu: why do I need an `assert` here, if it's tracked by `post`? We should change VCG.
   | _ => False
 
 instance : Spec' ArmState where
@@ -163,13 +161,13 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
   simp only [List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
   simp only [fst_AddWithCarry_eq_sub_neg, BitVec.reduceNot, true_and]
+  /- Toy automation for deciding Aligned, will be converted to a decision procedure in a follow up PR -/
   repeat first
   | simp (config := { ground := true, decide := true}) [aligned_rules, state_simp_rules]
   | apply Aligned_BitVecSub_64_4;
   | apply Aligned_BitVecAdd_64_4;
   | apply Aligned_AddWithCarry_64_4;
   | apply Aligned_AddWithCarry_64_4'
-
   repeat solve
   | decide
   | bv_omega
@@ -208,14 +206,12 @@ theorem program.stepi_0x898_cut (s sn : ArmState)
   simp_mem
   rfl
 
-
 /--
 info: 'MaxTandem.program.stepi_0x898_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
 -/
 #guard_msgs in #print axioms program.stepi_0x898_cut
 
 -- 3/15: str  w1, [sp, #8]   ; sp[8] = w1_a
-set_option trace.simp_mem.info true in
 theorem program.stepi_0x89c_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x89c#64)
@@ -332,8 +328,6 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
-  -- simp only [or_false, or_true]
-
 
 /--
 info: 'MaxTandem.program.stepi_0x8a8_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -341,8 +335,6 @@ info: 'MaxTandem.program.stepi_0x8a8_cut' depends on axioms: [propext, Classical
 #guard_msgs in #print axioms program.stepi_0x8a8_cut
 
 -- 7/15
--- @bollu: this is useless? we were able to make progress even without this? (branch.)
--- b.le 8bc
 theorem program.stepi_0x8ac_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x8ac#64)
@@ -476,7 +468,7 @@ info: 'MaxTandem.program.stepi_0x8b8_cut' depends on axioms: [propext, Classical
 -/
 #guard_msgs in #print axioms program.stepi_0x8b8_cut
 
--- ldr  w0, [sp, #8]
+-- 11/15: ldr  w0, [sp, #8]
 theorem program.stepi_0x8bc_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x8bc#64)
@@ -503,7 +495,7 @@ info: 'MaxTandem.program.stepi_0x8bc_cut' depends on axioms: [propext, Classical
 -/
 #guard_msgs in #print axioms program.stepi_0x8bc_cut
 
---- str  w0, [sp, #28]
+--- 12/15: str  w0, [sp, #28]
 theorem program.stepi_0x8c0_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x8c0#64)
@@ -527,7 +519,7 @@ info: 'MaxTandem.program.stepi_0x8c0_cut' depends on axioms: [propext, Classical
 -/
 #guard_msgs in #print axioms program.stepi_0x8c0_cut
 
--- ldr  w0, [sp, #28]
+-- 13/15: ldr  w0, [sp, #28]
 theorem program.stepi_0x8c4_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x8c4#64)
@@ -553,7 +545,7 @@ info: 'MaxTandem.program.stepi_0x8c4_cut' depends on axioms: [propext, Classical
 -/
 #guard_msgs in #print axioms program.stepi_0x8c4_cut
 
--- add  sp, sp, #0x20
+-- 14/15: add  sp, sp, #0x20
 theorem program.stepi_0x8c8_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x8c8#64)
@@ -629,26 +621,13 @@ theorem BitVec.not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
 
 end ForLean
 
-/-
-open Lean Meta Elab in
-dsimproc [vcg_rules] reduce_snd_cassert_of_cut
-  (Correctness.cassert _ _ _) := fun e => do
-  let_expr Correctness.cassert s0 si i := e | return .continue
-  for hyp in (← getLCtx) do
-    -- cut si = true
-    -- match_expr hyp.type with
-    -- | cut s2 = true
-    pure ()
-  return .continue
--/
-set_option trace.debug true in
 theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions
   case v1 =>
     intro s0 h_pre
     simp only [Spec.pre] at h_pre
-    have ⟨h_pre_pc, h2⟩ := h_pre
+    have ⟨h_pre_pc, _h2⟩ := h_pre
     simp only [Spec'.assert, assert, minimal_theory]
     rw [h_pre_pc]
     constructor
@@ -766,7 +745,7 @@ theorem partial_correctness :
     -- 7/16
       name h_run : s7 := run 1 s6
       obtain h := program.stepi_0x8ac_cut s6 (by trivial) (by trivial) (by trivial) (by trivial) (by trivial) (by simp [*])
-      obtain ⟨h_s7_cut, h_s7_pc, h_s7_err, h_s7_program, h_s7_read_sp_8, h_s7_read_sp_12, h_s7_x0, h_s7_x1, h_s7_sp, h_s7_sp_aligned, h_s7_mem⟩ := h
+      obtain ⟨h_s7_cut, h_s7_pc, h_s7_err, h_s7_program, h_s7_read_sp_8, h_s7_read_sp_12, h_s7_x0, h_s7_x1, h_s7_sp, h_s7_sp_aligned, _h_s7_mem⟩ := h
       rw [Correctness.snd_cassert_of_cut h_s7_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       replace h_s7_sp : s7.sp = s0.sp - 32 := by simp_all
       replace h_s7_x0 : s7.x0 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x1) := by simp_all
@@ -806,9 +785,9 @@ theorem partial_correctness :
       obtain ⟨⟨h_s1_err, h_s1_program, h_s1_sp_aligned, h_s1_read_sp_12, h_s1_read_sp_8, h_s1_sp⟩, h_KEEP_x0_x1⟩ := h_assert
       clear_named [h_assert]
       name h_s1_run : s2 := run 1 s1
-      obtain ⟨h_s2_cut, h_s2_pc, h_s2_err, h_s2_read_sp_8, h_s2_read_sp_12, h_s2_x0, h_s2_x1, h_s2_sp, h_s2_program, h_s2_mem, h_s2_sp_aligned⟩ :=
+      obtain ⟨h_s2_cut, h_s2_pc, h_s2_err, h_s2_read_sp_8, h_s2_read_sp_12, h_s2_x0, h_s2_x1, h_s2_sp, h_s2_program, _h_s2_mem, h_s2_sp_aligned⟩ :=
         program.stepi_0x8b0_cut s1 s2 h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned h_s1_run.symm
-      rw [Correctness.snd_cassert_of_not_cut h_s2_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
+      rw [Correctness.snd_cassert_of_not_cut h_s2_cut];
       simp [show Sys.next s2 = run 1 s2 by rfl]
       replace h_s2_x0 : s2.x0 = BitVec.zeroExtend 64 (BitVec.zeroExtend 32 s0.x0) := by
         rw [h_s2_x0]
@@ -829,9 +808,6 @@ theorem partial_correctness :
       simp [show Sys.next _ = run 1 _ by rfl]
       replace h_s3_sp_28 : read_mem_bytes 4 (s3.sp + 28#64) s3 = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
       replace h_s3_sp : s3.sp = s0.sp - 32#64 := by simp_all
-      -- /- TODO: this should be s0.x0-/
-      -- replace h_s3_read_sp12 : read_mem_bytes 4 (s3.sp + 12#64) s3 = BitVec.truncate 32 s0.x0 := by simp_all
-      -- replace h_s3_read_sp8 : read_mem_bytes 4 (s3.sp + 8#64) s3 = BitVec.truncate 32 s0.x1 := by simp_all
       clear_named [h_s2, h_s1]
 
       -- 4/15
@@ -850,21 +826,18 @@ theorem partial_correctness :
       have h_s5_x0 : s5.x0 = BitVec.zeroExtend 64 (BitVec.zeroExtend 32 (spec s0.x0 s0.x1)) := by
         simp only [show s5.x0 = BitVec.zeroExtend 64 (read_mem_bytes 4 (s5.sp + 28#64) s5) by simp_all]
         simp only [Nat.reduceMul]
-        /- Damn, that the rewrite system is not confluent really fucks me over here ;_;
+        /- Damn, that the rewrite system is not confluent really messes me up over here ;_;
         `simp` winds up rewriting `s5.sp` into `s4.sp` first because of the rule, and
         fails to match `read_mem_bytes... (s5.sp + ...) = read_mem_bytes ... (s4.sp + ...)`.
         One might say that this entire proof is stupid, but really, I 'just' want it to build an
-        e-graph and figure it out~
+        e-graph and figure it out.
          -/
         have : (read_mem_bytes 4 (s5.sp + 28#64) s5) = read_mem_bytes 4 (s4.sp + 28#64) s4 := by
           obtain ⟨_, _, _, _, _, _, h, _⟩ := h_s5
           exact h
         simp [this]
         rw [h_s4_sp_28]
-      --   simp only [show s5.x0 = BitVec.zeroExtend 64 (read_mem_bytes 4 (s5.sp + 28) s5) by simp_all]
-      --   simp only [show (read_mem_bytes 4 (s5.sp + 28) s5) = read_mem_bytes 4 (s4.sp + 28#64) s4 by simp_all]
       simp [show Sys.next _ = run 1 _ by rfl]
-      -- clear_named [h_s4]
 
       -- 6/15
       name h_run : s6 := run 1 s5
@@ -897,9 +870,6 @@ theorem partial_correctness :
       simp [show Sys.next _ = run 1 _ by rfl]
       replace h_s3_sp_28 : read_mem_bytes 4 (s3.sp + 28#64) s3 = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
       replace h_s3_sp : s3.sp = s0.sp - 32#64 := by simp_all
-      -- /- TODO: this should be s0.x0-/
-      -- replace h_s3_read_sp12 : read_mem_bytes 4 (s3.sp + 12#64) s3 = BitVec.truncate 32 s0.x0 := by simp_all
-      -- replace h_s3_read_sp8 : read_mem_bytes 4 (s3.sp + 8#64) s3 = BitVec.truncate 32 s0.x1 := by simp_all
       clear_named [h_s2, h_s1]
 
       -- 4/15

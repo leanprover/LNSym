@@ -55,6 +55,7 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   let V := if signExtend (n + 1) result = signed_sum then 0#1 else 1#1
   (result, (make_pstate N Z C V))
 
+/-- When the carry bit is `0`, `AddWithCarry x y 0 = x + y` -/
 theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 0#1).fst = x + y := by
   simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
@@ -65,6 +66,7 @@ theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   have : x.toNat + y.toNat < 2^(n + 1) := by omega
   rw [Nat.mod_eq_of_lt this]
 
+/-- When the carry bit is `1`, `AddWithCarry x y 1 = x - ~~~y` -/
 theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 1#1).fst = x - ~~~y := by
   simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
@@ -107,8 +109,7 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   else
     result
 
--- https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/instruction.ml#L543C36-L543C62
-/- `x > y` iff `(N = V) ∧ Z = 0` . -/
+/-- `x > y` iff `(N = V) ∧ Z = 0` . -/
 theorem sgt_iff_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
   (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.slt y x := by
@@ -117,8 +118,7 @@ theorem sgt_iff_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
   · bv_decide
   · bv_decide
 
--- https://github.com/awslabs/s2n-bignum/blob/main/arm/proofs/instruction.ml#L543C36-L543C62
-/- `x > y` iff `(N = V) ∧ Z = 0` . -/
+/-- `x > y` iff `(N = V) ∧ Z = 0` . -/
 theorem sgt_iff_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
   (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.slt y x := by
@@ -127,7 +127,7 @@ theorem sgt_iff_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
   · bv_decide
   · bv_decide
 
-/- `x ≤ y` iff `¬ ((N = V) ∧ (Z = 0))`. -/
+/-- `x ≤ y` iff `¬ ((N = V) ∧ (Z = 0))`. -/
 theorem sle_iff_not_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
   (¬(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
@@ -136,7 +136,7 @@ theorem sle_iff_not_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
   · bv_decide
   · bv_decide
 
-/- `x ≤ y` iff `¬ ((N = V) ∧ (Z = 0))`. -/
+/-- `x ≤ y` iff `¬ ((N = V) ∧ (Z = 0))`. -/
 theorem sle_iff_not_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
   (¬(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
