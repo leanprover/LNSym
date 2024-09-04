@@ -175,7 +175,7 @@ theorem mem_automation_test_4
       (write_mem_bytes 48 src_addr val s0)) =
    val.extractLsBytes 1 10 := by
   simp only [memory_rules]
-  simp_mem -- TODO: repeat on change.
+  simp_mem
   congr 1
   bv_omega' -- TODO: address normalization.
 
