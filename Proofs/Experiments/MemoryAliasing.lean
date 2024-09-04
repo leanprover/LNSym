@@ -399,10 +399,8 @@ end PairwiseSeparate
 
 namespace MemOptions
 
-set_option trace.simp_mem true
-set_option trace.simp_mem.info true
-
-
+set_option trace.simp_mem true in
+set_option trace.simp_mem.info true in
 /--
 error: unsolved goals
 ⊢ False
@@ -420,6 +418,8 @@ info: ⊢ False
   simp_mem (config := { failIfUnchanged := false })
   trace_state
 
+set_option trace.simp_mem true in
+set_option trace.simp_mem.info true in
 /--
 error: ❌️ simp_mem failed to make any progress.
 ---
