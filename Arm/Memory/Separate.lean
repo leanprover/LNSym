@@ -498,7 +498,7 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
   · subst hxn
     exfalso
     have h := i.isLt
-    simp at h
+    simp only [Nat.reduceMul, Nat.zero_mul, Nat.not_lt_zero] at h
   · by_cases h₁ : ↑i < xn * 8
     · simp only [h₁]
       simp only [decide_True, Bool.true_and]
