@@ -745,13 +745,13 @@ theorem ArmState.read_mem_eq_mem_read : read_mem addr s = s.mem.read addr := rfl
 @[memory_rules, state_simp_rules]
 theorem ArmState.mem_w_eq_mem (fld : StateField) (v : state_value fld) (s : ArmState) :
     (w fld v s).mem = s.mem := by
-  cases fld <;>
-  unfold w write_base_error
-    write_base_gpr
-    write_base_sfp
-    write_base_pc
-    write_base_flag <;>
-    simp
+  cases fld <;> (
+    unfold w write_base_error
+      write_base_gpr
+      write_base_sfp
+      write_base_pc
+      write_base_flag
+    simp)
 
 /--
 A variant of `write_mem` that directly talks about writes to memory, instead of over the entire `ArmState`
