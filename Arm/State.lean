@@ -741,7 +741,7 @@ def Memory.read (addr : BitVec 64) (m : Memory) : BitVec 8 :=
 
 theorem ArmState.read_mem_eq_mem_read : read_mem addr s = s.mem.read addr := rfl
 
-/-- `w` does not effect memory. -/
+/-- `w` does not affect memory. -/
 @[memory_rules, state_simp_rules]
 theorem ArmState.mem_w_eq_mem (fld : StateField) (v : state_value fld) (s : ArmState) :
     (w fld v s).mem = s.mem := by
