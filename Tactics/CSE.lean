@@ -106,7 +106,10 @@ structure CSEConfig where
   failIfUnchanged : Bool := true
   /-- Number of steps the tactic should spend searching for subterms to gather information. -/
   fuelSearch : Nat := 1000
-  /-- Number of steps the tactic should spend performing subexpression elimination. -/
+  /-- Number of steps the tactic should spend performing subexpression elimination.
+   It can be useful to have large amounts of fuel for searching, and very little for eliminating,
+   to search for maximal subterm sharing, and to then eliminiate the most common occurrences.
+  -/
   fuelEliminate : Nat := 1000
   /-- Whether we are performing a dry run, where we will identify repeated
       subterms, and simulate the sharing algorithm, but perform no actual sharing. -/
@@ -133,9 +136,9 @@ structure State where
   -/
   gensymCount : Nat := 1
   /-- Number of steps the tactic should spend searching for subterms to gather information. -/
-  currentFuelSearch : Nat
+  currentSearchFuel : Nat
   /-- Number of steps the tactic should spend performing subexpression elimination. -/
-  currentFuelEliminate : Nat
+  currentEliminateFuel : Nat
 
 abbrev CSEM := StateRefT State (ReaderT CSEConfig TacticM)
 
@@ -149,24 +152,24 @@ def getState : CSEM State := get
 def setState : State → CSEM Unit := set
 
 def State.ofConfig (cfg : CSEConfig) : State := {
-  currentFuelSearch := cfg.fuelSearch,
-  currentFuelEliminate := cfg.fuelEliminate,
+  currentSearchFuel := cfg.fuelSearch,
+  currentEliminateFuel := cfg.fuelEliminate,
 }
 
 def CSEM.run (val : CSEM α) (config : CSEConfig) : TacticM α :=
    val.run' (State.ofConfig config) |>.run config
 
-def CSEM.hasFuelSearch : CSEM Bool := do
-  return (← getState).currentFuelSearch > 0
+def CSEM.hasSearchFuel : CSEM Bool := do
+  return (← getState).currentSearchFuel > 0
 
-def CSEM.consumeFuelSearch : CSEM Unit :=
-  modify fun s => { s with currentFuelSearch := s.currentFuelSearch - 1 }
+def CSEM.consumeSearchFuel : CSEM Unit :=
+  modify fun s => { s with currentSearchFuel := s.currentSearchFuel - 1 }
 
-def CSEM.hasFuelEliminate : CSEM Bool := do
-  return (← getState).currentFuelEliminate > 0
+def CSEM.hasEliminiateFuel : CSEM Bool := do
+  return (← getState).currentEliminateFuel > 0
 
-def CSEM.consumeFuelEliminate : CSEM Unit :=
-  modify fun s => { s with currentFuelEliminate := s.currentFuelEliminate - 1 }
+def CSEM.consumeEliminiateFuel : CSEM Unit :=
+  modify fun s => { s with currentEliminateFuel := s.currentEliminateFuel - 1 }
 
 def CSEM.isDryRun : CSEM Bool := do
   return (← getConfig).dryRun?
@@ -207,8 +210,8 @@ The function is partial because of the call to `tryAddExpr` that
 Lean does not infer is smaller in `e`.
 -/
 partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
-  consumeFuelSearch
-  unless (← hasFuelSearch) do
+  consumeSearchFuel
+  unless (← hasSearchFuel) do
     trace[Tactics.cse.summary] "⏸️ CSE ran out of fuel while looking for subexpressions. Increase `fuelSearch` in CSEConfig."
     return .none
 
@@ -271,8 +274,8 @@ partial def CSEM.planCSE (e : Expr): CSEM GeneralizeArg := do
 Plan to perform a CSE for this expression, by building a 'GeneralizeArg'.
 -/
 def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
-  consumeFuelEliminate
-  unless (← hasFuelEliminate) do
+  consumeEliminiateFuel
+  unless (← hasEliminiateFuel) do
     trace[Tactics.cse.summary] "⏸️ CSE ran out of fuel while performing subexpression elimination. increase `fuelEliminate`."
     return false
 
