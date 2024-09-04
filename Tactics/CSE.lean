@@ -208,7 +208,7 @@ Lean does not infer is smaller in `e`.
 -/
 partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
   consumeFuelSearch
-  unless (← hasFuelSearch?) do
+  unless (← hasFuelSearch) do
     trace[Tactics.cse.summary] "⏸️ CSE ran out of fuel while looking for subexpressions. Increase `fuelSearch` in CSEConfig."
     return .none
 
@@ -272,7 +272,7 @@ Plan to perform a CSE for this expression, by building a 'GeneralizeArg'.
 -/
 def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
   consumeFuelEliminate
-  unless (← hasFuelEliminate?) do
+  unless (← hasFuelEliminate) do
     trace[Tactics.cse.summary] "⏸️ CSE ran out of fuel while performing subexpression elimination. increase `fuelEliminate`."
     return false
 
@@ -286,7 +286,7 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
     traceLargeMsg m!"{tryEmoji} Generalizing {hname}: {xname} = ..."  m!"{e}"
     let checkpoint ← Tactic.saveState
     try
-      if ! (← isDryRun?) then
+      if ! (← isDryRun) then
         -- Implementation modeled after `Lean.MVarId.generalizeHyp`.
         let e ← instantiateMVars e
         let hyps := ((← getLCtx).getFVarIds)
