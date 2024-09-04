@@ -325,9 +325,9 @@ theorem effects_of_nextc_from_0x4005a4
   -- Aggregate block effects
   -- explode_step h_step_1
   -- explode_step h_step_2
-  simp only [run] at h_run
-  subst h_run
-  simp only [*, state_simp_rules, bitvec_rules, minimal_theory]
+  -- simp only [run] at h_run
+  -- subst h_run
+  simp (config := {ground := true}) only [*, state_simp_rules, bitvec_rules, minimal_theory]
   rw [AddWithCarry.all_ones_zero_flag_64]
   done
 
@@ -452,8 +452,7 @@ theorem effects_of_nextc_from_0x4005b4_cond_holds_true
   -- Aggregating the effects
   simp (config := {ground := true}) only
     at h_step_2 h_step_3 h_step_4
-  simp only [run] at h_run
-  simp only [*, AddWithCarry.sub_one_64,
+  simp (config := {ground := true}) only [*, AddWithCarry.sub_one_64,
     state_simp_rules, bitvec_rules, minimal_theory]
   done
 
@@ -533,10 +532,6 @@ theorem effects_of_nextc_from_0x4005b8 (_h_pre : pre s0)
   -- Symbolic simulation
   -- TODO: Why do we need `try assumption` here?
   sym_n 1 at si <;> try assumption
-  -- Aggregate effects.
-  simp only [run] at h_run
-  subst h_run
-  simp only [*, state_simp_rules, bitvec_rules, minimal_theory]
   done
 
 -------------------------------------------------------------------------------

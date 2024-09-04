@@ -182,7 +182,7 @@ def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
 /-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
 add hypotheses that axiomatically describe the effects in terms of
 reads from `s{i+1}` -/
-def explodeStep (c : SymContext) (hStep : Expr) : TacticM Unit :=
+def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
   withMainContext do
     let mut eff ← AxEffects.fromEq hStep
 
@@ -244,11 +244,12 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM Unit :=
                 #[eff.currentState, spEff.value, spEff.proof, hAligned]
             pure { eff with stackAlignmentProof? }
 
-    withMainContext <| do
+    let axHyps ← withMainContext <| do
       if ←(getBoolOption `Tactic.sym.debug) then
         eff.validate
 
       eff.addHypothesesToLContext s!"h_{c.next_state}_"
+    return { c with axHyps := axHyps ++ c.axHyps}
 
 /-- A tactic wrapper around `explodeStep`.
 Note the use of `SymContext.fromLocalContext`,
@@ -261,7 +262,7 @@ elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
   let stateDecl := (← getLCtx).get! stateFVar
   let c ← SymContext.fromLocalContext (some stateDecl.userName)
 
-  explodeStep c hStep
+  let _ ← explodeStep c hStep
 
 
 /--
@@ -312,7 +313,7 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
           skipping simplification step"
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
-    withMainContext <| do
+    let c ← withMainContext <| do
       let hStep ← SymContext.findFromUserName h_step.getId
       -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`
@@ -409,3 +410,39 @@ Did you remember to generate step theorems with:
     -- The main loop
     for _ in List.range n do
       c ← sym1 c whileTac
+
+    -- Check if we can substitute the final state
+    if c.runSteps? = some 0 then
+      let msg := do
+        let hRun ← userNameToMessageData c.h_run
+        pure m!"runSteps := 0, substituting along {hRun}"
+      withTraceNode `Tactic.sym (fun _ => msg) <| withMainContext do
+        let s ← SymContext.findFromUserName c.state
+        let sfEq ← mkEq s.toExpr c.finalState
+
+        let goal ← getMainGoal
+        trace[Tactic.sym] "original goal:\n{goal}"
+        let ⟨hEqId, goal⟩ ← do
+          let hRun ← SymContext.findFromUserName c.h_run
+          goal.note `this (← mkEqSymm hRun.toExpr) sfEq
+        goal.withContext <| do
+          trace[Tactic.sym] "added {← userNameToMessageData `this} of type \
+            {sfEq} in:\n{goal}"
+
+        let goal ← subst goal hEqId
+        trace[Tactic.sym] "performed subsitutition in:\n{goal}"
+
+        replaceMainGoal [goal]
+
+    -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
+    -- added while symbolically evaluating to `simp`
+    withMainContext <| do
+      let lctx ← getLCtx
+      let some axHyps := c.axHyps.toArray.mapM lctx.find?
+        | throwError "internal error: one of the following fvars could not \
+            be found:\n  {c.axHyps.map Expr.fvar}"
+      let (ctx, simprocs) ← LNSymSimpContext
+          (config := {decide := true, failIfUnchanged := false})
+          (decls := axHyps)
+      let goal? ← LNSymSimp (← getMainGoal) ctx simprocs
+      replaceMainGoal goal?.toList
