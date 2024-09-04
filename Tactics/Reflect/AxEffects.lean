@@ -78,6 +78,28 @@ structure AxEffects where
   stackAlignmentProof? : Option Expr
   deriving Repr
 
+/-- An `AxEffectsTree` adds support for `if-then-else` constructs,
+by constructing a tree of `AxEffects`. -/
+inductive AxEffectsTree
+  /--
+  A node in an `AxEffectTree` represents an `if-then-else`, by
+  storing a lean expression for the condifion, a left subtree
+  which describes the effects assuming the condition is true, and
+  a right subtree to describe the effects assuming the condition is false.
+  Both subtrees may depend on a proof of the condition being true (resp, false),
+  which is stored as a loose bvar. See `AxEffectsTree.fromExpr` for more detail
+  -/
+  | node (cond : Expr) (thenEff : AxEffectsTree) (elseEff : AxEffectsTree)
+  /-- A leaf in an `AxEffectsTree` is simply an instance of `AxEffects` -/
+  | leaf (effects : AxEffects)
+
+-- TODO: When checking the `SPAlignment` we don't really care about the else
+-- branch -- it throws an error.
+-- We could consider an optimization where the `elseEff` stores an `Option`,
+-- with `none` indicating that the semantics are malformed when the condition
+-- is not true
+
+
 namespace AxEffects
 
 /-! ## Initial Reflected State -/
@@ -203,9 +225,7 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
 /-- Execute `write_mem <n> <addr> <val>` against the state stored in `eff`
 That is, `currentState` of the returned struct will be
   `write_mem <n> <addr> <val> <eff.currentState>`
-and all other fields are updated accordingly.
-Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
--/
+and all other fields are updated accordingly. -/
 private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
     MetaM AxEffects := do
   trace[Tactic.sym] "adding write of {n} bytes of value {val} \
@@ -260,9 +280,7 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
 /-- Execute `w <fld> <val>` against the state stored in `eff`
 That is, `currentState` of the returned struct will be
   `w <fld> <val> <eff.currentState>`
-and all other fields are updated accordingly.
-Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
--/
+and all other fields are updated accordingly. -/
 private def update_w (eff : AxEffects) (fld val : Expr) :
     MetaM AxEffects := do
   let rField ← reflectStateField fld
@@ -411,9 +429,7 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
 where `?s` and `?s0` are arbitrary `ArmState`s,
 return an `AxEffect` with `?s0` as the initial state,
-the rhs of the equality as the current state, and
-`eq` stored as `currentStateEq`,
-so that `?s` is the public-facing current state -/
+and `?s` as the current state -/
 def fromEq (eq : Expr) : MetaM AxEffects :=
   let msg := m!"Building effects with equality: {eq}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -622,3 +638,86 @@ where
         return goal
 
 end Tactic
+
+end AxEffects
+
+/-! ## AxEffectsTree  -/
+
+namespace AxEffectsTree
+
+open AxEffects (assertHasType)
+
+/-- Execute `write_mem <n> <addr> <val>` against all states stored in `eff`
+That is, `currentState` of all leaves of the returned tree will be
+  `write_mem <n> <addr> <val> <eff.currentState>`
+and all other fields are updated accordingly. -/
+private def updateWriteMem (eff : AxEffectsTree) (n addr val : Expr) :
+    MetaM AxEffectsTree := go eff
+  where
+    go : AxEffectsTree → MetaM AxEffectsTree
+      | node c the els => do return node c (← go the) (← go els)
+      | leaf eff       => do return leaf <|← eff.update_write_mem n addr val
+
+/-- Execute `w <fld> <val>` against the state stored in `eff`
+That is, `currentState` of all leaves of the returned tree will be
+  `w <fld> <val> <eff.currentState>`
+and all other fields are updated accordingly. -/
+private def updateW (eff : AxEffectsTree) (fld val : Expr) :
+    MetaM AxEffectsTree := go eff
+  where
+    go : AxEffectsTree → MetaM AxEffectsTree
+      | node c the els => do return node c (← go the) (← go els)
+      | leaf eff       => do return leaf <|← eff.update_w fld val
+
+#check ite
+
+def updateIte (cond : Expr) (the els : AxEffectsTree) : MetaM AxEffectsTree := do
+  sorry
+
+-- TODO: thoroughly update all docstrings of `Tree` ops
+
+/-- Given an expression `e : ArmState`,
+which is a sequence of `w`/`write_mem`s to the some state `s`,
+return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
+
+Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
+the whole expression is taken to be the initial state,
+even if there might be more `w`/`write_mem`s in sub-expressions. -/
+partial def fromExpr (e : Expr) : MetaM AxEffectsTree := do
+  let msg := m!"Building effects with writes from: {e}"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
+    | write_mem_bytes n addr val e =>
+        let eff ← fromExpr e
+        eff.updateWriteMem n addr val
+
+    | w field value e =>
+        let eff ← fromExpr e
+        eff.updateW field value
+
+    | ite _α cond _instDecidable t e =>
+        let t ← fromExpr t
+        let e ← fromExpr e
+        sorry
+
+    | _ =>
+        return leaf (.initial e)
+
+/-- Given a proof `eq : ?s = <sequence of w/write_mem/ifs to ?s0>`,
+where `?s` and `?s0` are arbitrary `ArmState`s,
+return an `AxEffectsTree` where each leaf has `?s0` as the initial state,
+and `?s` as the current state
+
+Buils upon `AxEffects.fromEq` to add support for `if-then-else` constructs.
+-/
+def fromEq (eq : Expr) : MetaM AxEffects :=
+  let msg := m!"Building effects with equality: {eq}"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    let s ← mkFreshExprMVar mkArmState
+    let rhs ← mkFreshExprMVar mkArmState
+    assertHasType eq <| mkEqArmState s rhs
+
+    let eff ← fromExpr (← instantiateMVars rhs)
+    let eff ← eff.adjustCurrentStateWithEq s eq
+    withTraceNode `Tactic.sym (fun _ => pure "new state") do
+      trace[Tactic.sym] "{eff}"
+    return eff
