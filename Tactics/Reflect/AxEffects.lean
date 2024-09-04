@@ -497,6 +497,14 @@ That is, compose the effect of "`left` after `right`" -/
 /-- type check all expressions stored in `eff`,
 throwing an error if one is not type-correct.
 
+In principle, the various `AxEffects` definitions should return only well-formed
+expressions, making `validate` a no-op.
+In practice, however, running `validate` is helpful for catching bugs in those
+definitions. Do note that typechecking might be a bit expensive, so we generally
+only call `validate` while debugging, not during normal execution.
+See also the `Tactic.sym.debug` option, which controls whether `validate` is
+called for each step of the `sym_n` tactic.
+
 NOTE: does not necessarily validate *which* type an expression has,
 validation will still pass if types are different to those we claim in the
 docstrings -/

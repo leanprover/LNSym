@@ -15,5 +15,9 @@ initialize
     defValue := true
     descr := "enable/disable type-checking of internal state during execution \
       of the `sym_n` tactic, throwing an error if mal-formed expressions were \
-      created"
+      created, indicating a bug in the implementation of `sym_n`.
+
+      This is an internal option for debugging purposes, end users should \
+      generally not set this option, unless they are reporting a bug with \
+      `sym_n`"
   }
