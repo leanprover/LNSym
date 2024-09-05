@@ -181,8 +181,12 @@ def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
 
 /-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
 add hypotheses that axiomatically describe the effects in terms of
-reads from `s{i+1}` -/
-def explodeStep (c : SymContext) (hStep : Expr) : TacticM Unit :=
+reads from `s{i+1}`.
+
+Return the result of reflecting the new PC from the obtained effects,
+returning `none` is reflection failed -/
+def explodeStep (c : SymContext) (hStep : Expr) :
+    TacticM (Option <| BitVec 64) :=
   withMainContext do
     let mut eff ← AxEffects.fromEq hStep
 
@@ -250,6 +254,15 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM Unit :=
 
       eff.addHypothesesToLContext s!"h_{c.next_state}_"
 
+      let nextPc ← eff.getField .PC
+      try
+        let nextPc ← reflectBitVecLiteral 64 nextPc.value
+        return some nextPc
+      catch err =>
+        trace[Tactic.sym] "failed to reflect {nextPc.value}\n\n\
+          {err.toMessageData}"
+        return none
+
 /-- A tactic wrapper around `explodeStep`.
 Note the use of `SymContext.fromLocalContext`,
 so the local context is assumed to be of the same shape as for `sym_n` -/
@@ -261,7 +274,7 @@ elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
   let stateDecl := (← getLCtx).get! stateFVar
   let c ← SymContext.fromLocalContext (some stateDecl.userName)
 
-  explodeStep c hStep
+  let _ ← explodeStep c hStep
 
 
 /--
@@ -312,13 +325,13 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
           skipping simplification step"
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
-    withMainContext <| do
+    let nextPc? ← withMainContext <| do
       let hStep ← SymContext.findFromUserName h_step.getId
       -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`
       explodeStep c hStep.toExpr
 
-    return c.next
+    return c.next nextPc?
 
 /- used in `sym_n` tactic to specify an initial state -/
 syntax sym_at := "at" ident

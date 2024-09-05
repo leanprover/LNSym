@@ -317,9 +317,7 @@ theorem effects_of_nextc_from_0x4005a4
   but is expected to have type
   r StateField.PC s1 = 0x4005a8#64 : Prop
   -/
-  -- sym_n 2
-  sym_n 1 at s0
-  sym_n 1 at s1
+  sym_n 2
   -- (FIXME) better stepi lemma generation
   simp (config := {ground := true}) only at h_step_2
   -- Aggregate block effects
