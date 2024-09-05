@@ -122,11 +122,6 @@ abbrev key_addr   (s : ArmState) : BitVec 64 := r (StateField.GPR 2#5) s
 abbrev round_addr   (s : ArmState) : BitVec 64 := (r (StateField.GPR 2#5) s) + 240#64
 abbrev out_addr   (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 
-theorem crock (s : ArmState) (pc : BitVec 64) :
-  ∀ (f : StateField), f ≠ StateField.PC → r f (w StateField.PC pc s) = r f s := by
-  intro f h
-  exact r_of_w_different h
-
 theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
     (h_s0_program : s0.program = aes_hw_encrypt_program)
     (h_s0_err : read_err s0 = .None)
@@ -163,10 +158,6 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   simp (config := {ground := true}) only [h_rounds.symm, minimal_theory] at h_step_13
   (intro_fetch_decode_lemmas h_step_13 h_s12_program "h_s12")
   -- Add hypotheses that are needed for next loop iteration
-  have h_s13_non_effects : ∀ (f : StateField), f ≠ StateField.PC → r f s13 = r f s12 := by
-    intro f
-    simp only [h_step_13]
-    apply crock
   -- This is an aggregated result
   have h_s13_x3 : read_gpr 32 3#5 s13 = 10#32 := by
     simp only [h_s1_x3, h_s2_non_effects, h_s3_non_effects, h_s4_x3,
@@ -191,10 +182,6 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   simp (config := {ground := true}) only [minimal_theory] at h_step_21
   (intro_fetch_decode_lemmas h_step_21 h_s20_program "h_s20")
   -- Add hypotheses that are needed for next loop iteration
-  have h_s21_non_effects : ∀ (f : StateField), f ≠ StateField.PC → r f s21 = r f s20 := by
-    intro f
-    simp only [h_step_21]
-    apply crock
   -- This is an aggregated result
   have h_s21_x3 : read_gpr 32 3#5 s21 = 8#32 := by
     simp only [h_s20_non_effects, h_s19_non_effects, h_s18_non_effects,
@@ -218,10 +205,6 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   simp (config := {ground := true}) only [minimal_theory] at h_step_29
   (intro_fetch_decode_lemmas h_step_29 h_s28_program "h_s28")
   -- Add hypotheses that are needed for next loop iteration
-  have h_s29_non_effects : ∀ (f : StateField), f ≠ StateField.PC → r f s29 = r f s28 := by
-    intro f
-    simp only [h_step_29]
-    apply crock
   -- This is an aggregated result
   have h_s29_x3 : read_gpr 32 3#5 s29 = 6#32 := by
     simp only [h_s28_non_effects, h_s27_non_effects, h_s26_non_effects,
@@ -245,10 +228,6 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   simp (config := {ground := true}) only [minimal_theory] at h_step_37
   (intro_fetch_decode_lemmas h_step_37 h_s36_program "h_s36")
   -- Add hypotheses that are needed for next loop iteration
-  have h_s37_non_effects : ∀ (f : StateField), f ≠ StateField.PC → r f s37 = r f s36 := by
-    intro f
-    simp only [h_step_37]
-    apply crock
   -- This is an aggregated result
   have h_s37_x3 : read_gpr 32 3#5 s37 = 4#32 := by
     simp only [h_s36_non_effects, h_s35_non_effects, h_s34_non_effects,
@@ -272,10 +251,6 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   simp (config := {ground := true}) only [minimal_theory] at h_step_45
   (intro_fetch_decode_lemmas h_step_45 h_s44_program "h_s44")
   -- Add hypotheses that are needed for next loop iteration
-  have h_s45_non_effects : ∀ (f : StateField), f ≠ StateField.PC → r f s45 = r f s44 := by
-    intro f
-    simp only [h_step_45]
-    apply crock
   -- This is an aggregated result
   have h_s45_x3 : read_gpr 32 3#5 s45 = 2#32 := by
     simp only [h_s44_non_effects, h_s43_non_effects, h_s42_non_effects,
