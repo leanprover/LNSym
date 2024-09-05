@@ -183,8 +183,6 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   have h_s21_x3 : read_gpr 32 3#5 s21 = 8#32 := by sorry
   --
   sym_n 7 at s21
-<<<<<<< Updated upstream
-=======
   init_next_step h_run h_step_29 s29
   replace h_step_29 := h_step_29.symm
   rw [aes_hw_encrypt_program.stepi_eq_0x79f5d0] at h_step_29<;> try assumption
@@ -256,5 +254,4 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   sym_n 7 at s53
   subst h_run
   assumption
->>>>>>> Stashed changes
   done
