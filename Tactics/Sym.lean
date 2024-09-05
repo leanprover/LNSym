@@ -183,10 +183,10 @@ def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
 add hypotheses that axiomatically describe the effects in terms of
 reads from `s{i+1}`.
 
-Return the result of reflecting the new PC from the obtained effects,
-returning `none` is reflection failed -/
-def explodeStep (c : SymContext) (hStep : Expr) :
-    TacticM (Option <| BitVec 64) :=
+Return the context for the next step (see `SymContext.next`), where
+we attempt to determine the new PC by reflecting the obtained effects,
+falling back to incrementing the PC if reflaction failed. -/
+def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
   withMainContext do
     let mut eff ← AxEffects.fromEq hStep
 
@@ -253,16 +253,19 @@ def explodeStep (c : SymContext) (hStep : Expr) :
         eff.validate
 
       eff.addHypothesesToLContext s!"h_{c.next_state}_"
-    return { c with axHyps := axHyps ++ c.axHyps}
+    let c := { c with axHyps := axHyps ++ c.axHyps}
 
-      let nextPc ← eff.getField .PC
-      try
-        let nextPc ← reflectBitVecLiteral 64 nextPc.value
-        return some nextPc
-      catch err =>
-        trace[Tactic.sym] "failed to reflect {nextPc.value}\n\n\
-          {err.toMessageData}"
-        return none
+    -- Attempt to reflect the new PC
+    let nextPc ← eff.getField .PC
+    let nextPc? ← try
+      let nextPc ← reflectBitVecLiteral 64 nextPc.value
+      pure <| some nextPc
+    catch err =>
+      trace[Tactic.sym] "failed to reflect {nextPc.value}\n\n\
+        {err.toMessageData}"
+      pure none
+
+    return c.next nextPc?
 
 /-- A tactic wrapper around `explodeStep`.
 Note the use of `SymContext.fromLocalContext`,
@@ -330,7 +333,7 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
       let hStep ← SymContext.findFromUserName h_step.getId
       -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`
-      let c ← explodeStepAndNext c hStep.toExpr
+      let c ← explodeStep c hStep.toExpr
 
       let goal ← getMainGoal
       let goal ← goal.clear hStep.fvarId
