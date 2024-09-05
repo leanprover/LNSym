@@ -252,6 +252,4 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   (intro_fetch_decode_lemmas h_step_53 h_s52_program "h_s52")
   --
   sym_n 7 at s53
-  subst h_run
-  assumption
   done
