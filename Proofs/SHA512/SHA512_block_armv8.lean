@@ -43,10 +43,6 @@ theorem sha512_program_test_1_sym (s0 s_final : ArmState)
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
   sym_n 4
-  -- Final steps
-  unfold run at h_run
-  subst s_final
-  simp only [h_s4_err]
   done
 
 ----------------------------------------------------------------------
@@ -77,9 +73,6 @@ theorem sha512_program_test_2_sym (s0 s_final : ArmState)
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
   sym_n 6
-  -- Final steps
-  unfold run at h_run
-  simp only [h_run, h_s6_err]
   done
 
 ----------------------------------------------------------------------
@@ -111,10 +104,6 @@ theorem sha512_block_armv8_test_3_sym (s0 s_final : ArmState)
   -- Symbolic simulation
   sym_n 4
   case h_s1_sp_aligned => apply Aligned_BitVecAdd_64_4 h_s0_sp_aligned (by decide)
-  -- Final steps
-  unfold run at h_run
-  subst s_final
-  apply h_s4_err
   done
 
 ----------------------------------------------------------------------
