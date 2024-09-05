@@ -79,18 +79,6 @@ theorem popcount32_sym_no_error (s0 s_final : ArmState)
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation
   sym_n 27
-  try (clear h_step_1 h_step_2 h_step_3 h_step_4;
-       clear h_step_5 h_step_6 h_step_7 h_step_8;
-       clear h_step_9 h_step_10;
-       clear h_step_11 h_step_12 h_step_13 h_step_14;
-       clear h_step_15 h_step_16 h_step_17 h_step_18;
-       clear h_step_19 h_step_20;
-       clear h_step_21 h_step_22 h_step_23 h_step_24;
-       clear h_step_25 h_step_26)
-  -- Final Steps
-  unfold run at h_run
-  subst s_final
-  rw [h_s27_err]
   done
 
 -- theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
