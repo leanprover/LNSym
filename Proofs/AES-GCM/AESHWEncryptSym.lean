@@ -267,6 +267,4 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   (intro_fetch_decode_lemmas h_step_21 h_s20_program "h_s20")
   --
   sym_n 7 at s21
-  subst h_run
-  assumption
   done
