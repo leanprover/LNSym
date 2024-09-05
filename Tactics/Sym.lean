@@ -9,6 +9,7 @@ import Tactics.FetchAndDecode
 import Tactics.ExecInst
 import Tactics.ChangeHyps
 import Tactics.SymContext
+import Tactics.Reflect.AxEffectsTree
 
 import Lean
 
@@ -184,7 +185,9 @@ add hypotheses that axiomatically describe the effects in terms of
 reads from `s{i+1}` -/
 def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
   withMainContext do
-    let mut eff ← AxEffects.fromEq hStep
+    let eff ← AxEffectsTree.fromEq hStep
+    let mut some eff := eff.getLeaf?
+      | throwError "internal error: expected a leaf, but found a node"
 
     let stateExpr ← c.stateExpr
     /- Assert that the initial state of the obtained `AxEffects` is equal to

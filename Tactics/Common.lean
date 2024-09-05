@@ -259,3 +259,16 @@ def mkEqArmState (x y : Expr) : Expr :=
 /-- Return a proof of type `x = x`, where `x : ArmState` -/
 def mkEqReflArmState (x : Expr) : Expr :=
   mkApp2 (.const ``Eq.refl [1]) mkArmState x
+
+/-! ## Defeq helpers -/
+
+/-- Throw an error if `e` is not of type `expectedType` -/
+def assertHasType (e expectedType : Expr) : MetaM Unit := do
+  let eType ← inferType e
+  if !(←isDefEq eType expectedType) then
+    throwError "{e} {← mkHasTypeButIsExpectedMsg eType expectedType}"
+
+/-- Throw an error if `e` is not definitionally equal to `expected` -/
+def assertIsDefEq (e expected : Expr) : MetaM Unit := do
+  if !(←isDefEq e expected) then
+    throwError "expected:\n  {expected}\nbut found:\n  {e}"

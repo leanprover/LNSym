@@ -35,14 +35,7 @@ Additionally, each field carries a proof that it is indeed the right value.
 
 Furthermore, we maintain a few other invariants,
 see the docstrings on each field for more detail -/
-structure AxEffects where
-  /-- The initial state -/
-  initialState : Expr
-  /-- The current state, which may be expressed in either the "exploded form"
-  (a sequence of `w`/`write_mem` to the initial state), or as just a variable
-  which is (propositionally) equal to that exploded form -/
-  currentState : Expr
-
+protected structure AxEffects.Base where
   /-- A map from each statefield to the corresponding `FieldEffect`.
   If a field has no entry in this map, it has not been changed, and thus,
   its value can be retrieved from the `nonEffectProof` -/
@@ -78,27 +71,15 @@ structure AxEffects where
   stackAlignmentProof? : Option Expr
   deriving Repr
 
-/-- An `AxEffectsTree` adds support for `if-then-else` constructs,
-by constructing a tree of `AxEffects`. -/
-inductive AxEffectsTree
-  /--
-  A node in an `AxEffectTree` represents an `if-then-else`, by
-  storing a lean expression for the condifion, a left subtree
-  which describes the effects assuming the condition is true, and
-  a right subtree to describe the effects assuming the condition is false.
-  Both subtrees may depend on a proof of the condition being true (resp, false),
-  which is stored as a loose bvar. See `AxEffectsTree.fromExpr` for more detail
-  -/
-  | node (cond : Expr) (thenEff : AxEffectsTree) (elseEff : AxEffectsTree)
-  /-- A leaf in an `AxEffectsTree` is simply an instance of `AxEffects` -/
-  | leaf (effects : AxEffects)
-
--- TODO: When checking the `SPAlignment` we don't really care about the else
--- branch -- it throws an error.
--- We could consider an optimization where the `elseEff` stores an `Option`,
--- with `none` indicating that the semantics are malformed when the condition
--- is not true
-
+@[inherit_doc AxEffects.Base]
+structure AxEffects extends AxEffects.Base where
+  /-- The initial state -/
+  initialState : Expr
+  /-- The current state, which may be expressed in either the "exploded form"
+  (a sequence of `w`/`write_mem` to the initial state), or as just a variable
+  which is (propositionally) equal to that exploded form -/
+  currentState : Expr
+  deriving Repr
 
 namespace AxEffects
 
@@ -107,9 +88,7 @@ namespace AxEffects
 /-- An initial `AxEffects` state which has no writes.
 That is, the given `state` is assigned to be both the initial and the current
 state -/
-def initial (state : Expr) : AxEffects where
-  initialState      := state
-  currentState      := state
+def Base.initial (state : Expr) : AxEffects.Base where
   fields            := .empty
   nonEffectProof    :=
     -- `fun f => rfl`
@@ -131,6 +110,13 @@ def initial (state : Expr) : AxEffects where
       mkApp (mkConst ``ArmState.program) state]
   stackAlignmentProof? := none
 
+@[inherit_doc Base.initial]
+def initial (state : Expr) : AxEffects where
+  toBase        := .initial state
+  initialState  := state
+  currentState  := state
+
+
 /-! ## ToMessageData -/
 
 instance : ToMessageData FieldEffect where
@@ -140,6 +126,16 @@ instance : ToMessageData FieldEffect where
 instance : ToMessageData (Std.HashMap StateField FieldEffect) where
   toMessageData map :=
     toMessageData map.toList
+
+instance : ToMessageData AxEffects.Base where
+  toMessageData eff :=
+    m!"\
+    \{ fields := {eff.fields},
+      nonEffectProof := {eff.nonEffectProof},
+      memoryEffect := {eff.memoryEffect},
+      memoryEffectProof := {eff.memoryEffectProof},
+      programProof := {eff.programProof}
+    }"
 
 instance : ToMessageData AxEffects where
   toMessageData eff :=
@@ -222,19 +218,20 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
 
 /-! ## Update a Reflected State -/
 
-/-- Execute `write_mem <n> <addr> <val>` against the state stored in `eff`
-That is, `currentState` of the returned struct will be
-  `write_mem <n> <addr> <val> <eff.currentState>`
-and all other fields are updated accordingly. -/
-private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
-    MetaM AxEffects := do
-  trace[Tactic.sym] "adding write of {n} bytes of value {val} \
-    to memory address {addr}"
+/-- Return `write_mem_bytes <n> <addr> <val> <e>` -/
+def mkWriteMemBytes (n addr val e : Expr) : Expr :=
+  mkApp4 (mkConst ``write_mem_bytes) n addr val e
 
+/-- Execute `write_mem <n> <addr> <val>` against the state stored in `eff`
+That is, update all proofs to have a `currentState` of
+  `write_mem <n> <addr> <val> <currentState>`
+-/
+def Base.updateWriteMem (n addr val currentState : Expr) (eff : AxEffects.Base) :
+    MetaM AxEffects.Base := do
   -- Update each field
   let fields ← eff.fields.toList.mapM fun ⟨fld, {value, proof}⟩ => do
     let r_of_w := mkApp5 (mkConst ``r_of_write_mem_bytes)
-                    (toExpr fld) n addr val eff.currentState
+                    (toExpr fld) n addr val currentState
     let proof ← mkEqTrans r_of_w proof
     return ⟨fld, {value, proof}⟩
 
@@ -242,7 +239,7 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
   let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
     let f := args[0]!
     let r_of_w := mkApp5 (mkConst ``r_of_write_mem_bytes)
-                    f n addr val eff.currentState
+                    f n addr val currentState
     let proof ← mkEqTrans r_of_w proof
     mkLambdaFVars args proof
     -- ^^ `fun f ... => Eq.trans (@r_of_write_mem_bytes f ...) <proof>`
@@ -251,52 +248,61 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
   let memoryEffectProof :=
     -- `read_mem_bytes_write_mem_bytes_of_read_mem_eq <memoryEffectProof> ...`
     mkAppN (mkConst ``read_mem_bytes_write_mem_bytes_of_read_mem_eq)
-      #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, n, addr, val]
+      #[currentState, eff.memoryEffect, eff.memoryEffectProof, n, addr, val]
 
   -- Update the program proof
   let programProof ←
     -- `Eq.trans (@write_mem_bytes_program <currentState> ...) <programProof>`
     mkEqTrans
       (mkAppN (mkConst ``write_mem_bytes_program)
-        #[eff.currentState, n, addr, val])
+        #[currentState, n, addr, val])
       eff.programProof
 
   -- Assemble the result
-  let addWrite (e : Expr) :=
-    -- `@write_mem_bytes <n> <addr> <val> <e>`
-    mkApp4 (mkConst ``write_mem_bytes) n addr val e
+  return { eff with
+    fields := .ofList fields
+    memoryEffect := mkWriteMemBytes n addr val eff.memoryEffect
+    nonEffectProof, memoryEffectProof, programProof
+  }
+
+/-- Execute `write_mem <n> <addr> <val>` against the state stored in `eff`
+That is, `currentState` of the returned struct will be
+  `write_mem <n> <addr> <val> <eff.currentState>`
+and all other fields are updated accordingly. -/
+def updateWriteMem (eff : AxEffects) (n addr val : Expr) :
+    MetaM AxEffects := do
+  trace[Tactic.sym] "adding write of {n} bytes of value {val} \
+    to memory address {addr}"
+
   let eff := { eff with
-    currentState    := addWrite eff.currentState
-    fields          := .ofList fields
-    nonEffectProof
-    memoryEffect    := addWrite eff.memoryEffect
-    memoryEffectProof
-    programProof
+    currentState := mkWriteMemBytes n addr val eff.currentState
+    toBase :=← eff.toBase.updateWriteMem n addr val eff.currentState
   }
   withTraceNode `Tactic.sym (fun _ => pure "new state") <| do
       trace[Tactic.sym] "{eff}"
   return eff
 
+
+
 /-- Execute `w <fld> <val>` against the state stored in `eff`
-That is, `currentState` of the returned struct will be
-  `w <fld> <val> <eff.currentState>`
-and all other fields are updated accordingly. -/
-private def update_w (eff : AxEffects) (fld val : Expr) :
-    MetaM AxEffects := do
-  let rField ← reflectStateField fld
-  trace[Tactic.sym] "adding write of value {val} to register {rField}"
+That is, update all proofs to have a `currentState` of
+  `w <fld> <val> <eff.currentState>` -/
+def Base.updateW (field : StateField) (val currentState : Expr)
+    (eff : AxEffects.Base) :
+    MetaM AxEffects.Base := do
+  let fld := toExpr field
 
   -- Update all other fields
   let fields ←
     eff.fields.toList.filterMapM fun ⟨fld', {value, proof}⟩ => do
-      if fld' ≠ rField then
+      if fld' ≠ field then
         let proof : Expr ← do
           let fld' := toExpr fld'
           let h_neq : Expr ← -- h_neq : fld' ≠ fld
             mkDecideProof (mkApp3 (.const ``Ne [1])
               (mkConst ``StateField) fld' fld)
           let newProof := mkApp5 (mkConst ``r_of_w_different)
-                            fld' fld val eff.currentState h_neq
+                            fld' fld val currentState h_neq
           mkEqTrans newProof proof
         return some (fld', {value, proof})
       else
@@ -307,9 +313,9 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
     value := val
     proof :=
       -- `r_of_w_same <fld> <val> <currentState>`
-      mkApp3 (mkConst ``r_of_w_same) fld val eff.currentState
+      mkApp3 (mkConst ``r_of_w_same) fld val currentState
   }
-  let fields := (rField, newField) :: fields
+  let fields := (field, newField) :: fields
 
   -- Update the non-effects proof
   let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
@@ -319,7 +325,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
     to compute the new `nonEffectProof` -/
     let k := fun args h_neq => do
       let r_of_w := mkApp5 (mkConst ``r_of_w_different)
-                    f fld val eff.currentState h_neq
+                    f fld val currentState h_neq
       let proof ← mkEqTrans r_of_w proof
       mkLambdaFVars args proof
       -- ^^ `fun f ... => Eq.trans (r_of_w_different ... <h_neq>) <proof>`
@@ -336,7 +342,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
     match h_neq? with
       | some h_neq => k args h_neq
       | none =>
-        let name := Name.mkSimple s!"h_neq_{rField}"
+        let name := Name.mkSimple s!"h_neq_{field}"
         withLocalDeclD name h_neq_type fun h_neq =>
           k (args.push h_neq) h_neq
 
@@ -344,36 +350,46 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
   let memoryEffectProof :=
     -- `read_mem_bytes_w_of_read_mem_eq ...`
     mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
-      #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, fld, val]
+      #[currentState, eff.memoryEffect, eff.memoryEffectProof, fld, val]
 
   -- Update the program proof
   let programProof ←
     -- `Eq.trans (w_program ...) <programProof>`
     mkEqTrans
-      (mkAppN (mkConst ``w_program) #[fld, val, eff.currentState])
+      (mkAppN (mkConst ``w_program) #[fld, val, currentState])
       eff.programProof
 
   -- Assemble the result
-  let eff := { eff with
-    currentState    := mkApp3 (mkConst ``w) fld val eff.currentState
+  return { eff with
     fields := Std.HashMap.ofList fields
     nonEffectProof
     -- memory effects are unchanged
     memoryEffectProof
     programProof
   }
+
+/-- Return `w <field> <value> <state>` -/
+def mkW (field value state : Expr) : Expr :=
+  mkApp3 (mkConst ``w) field value state
+
+/-- Execute `w <fld> <val>` against the state stored in `eff`
+That is, `currentState` of the returned struct will be
+  `w <fld> <val> <eff.currentState>`
+and all other fields are updated accordingly. -/
+private def updateW (eff : AxEffects) (fld val : Expr) :
+    MetaM AxEffects := do
+  let field ← reflectStateField fld
+  trace[Tactic.sym] "adding write of value {val} to register {field}"
+
+  -- Assemble the result
+  let toBase ← eff.toBase.updateW field val eff.currentState
+  let eff := { eff with
+    toBase
+    initialState    := eff.initialState
+    currentState    := mkW fld val eff.currentState
+  }
   eff.traceCurrentState "new state"
   return eff
-
-/-- Throw an error if `e` is not of type `expectedType` -/
-private def assertHasType (e expectedType : Expr) : MetaM Unit := do
-  let eType ← inferType e
-  if !(←isDefEq eType expectedType) then
-    throwError "{e} {← mkHasTypeButIsExpectedMsg eType expectedType}"
-
-private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
-  if !(←isDefEq e expected) then
-    throwError "expected:\n  {expected}\nbut found:\n  {e}"
 
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to the some state `s`,
@@ -387,43 +403,52 @@ partial def fromExpr (e : Expr) : MetaM AxEffects := do
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
     | write_mem_bytes n addr val e =>
         let eff ← fromExpr e
-        eff.update_write_mem n addr val
+        eff.updateWriteMem n addr val
 
     | w field value e =>
         let eff ← fromExpr e
-        eff.update_w field value
+        eff.updateW field value
 
     | _ =>
         return initial e
+
+/-- Rewrite the type of all proofs along an equality `eq : <currentState> = s`,
+so that `s` becomes the new `currentState`
+
+Notice that the direction of the equality is flipped w.r.t.
+`AxEffects.adjustCurrentStateWithEq`-/
+def Base.adjustCurrentStateWithEq (eq : Expr) (eff : AxEffects.Base) :
+    MetaM AxEffects.Base := do
+  let fields ← eff.fields.toList.mapM fun (field, fieldEff) => do
+    withTraceNode `Tactic.sym (fun _ => pure m!"rewriting field {field}") do
+      trace[Tactic.sym] "original proof: {fieldEff.proof}"
+      let proof ← rewriteType fieldEff.proof eq
+      trace[Tactic.sym] "new proof: {proof}"
+      pure (field, {fieldEff with proof})
+  let fields := .ofList fields
+
+  let nonEffectProof ← rewriteType eff.nonEffectProof eq
+  let memoryEffectProof ← rewriteType eff.memoryEffectProof eq
+  -- ^^ TODO: what happens if `memoryEffect` is the same as `currentState`?
+  --    Presumably, we would *not* want to encapsulate `memoryEffect` here
+  let programProof ← rewriteType eff.programProof eq
+
+  return { eff with
+    fields, nonEffectProof, memoryEffectProof, programProof
+  }
 
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
 def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     MetaM AxEffects := do
-  withTraceNode `Tactic.sym (fun _ => pure "adjusting `currenstState`") do
+  withTraceNode `Tactic.sym (fun _ => pure "adjusting `currentState`") do
     eff.traceCurrentState
     trace[Tactic.sym] "rewriting along {eq}"
     assertHasType eq <| mkEqArmState s eff.currentState
-    let eq ← mkEqSymm eq
-
-    let currentState := s
-
-    let fields ← eff.fields.toList.mapM fun (field, fieldEff) => do
-      withTraceNode `Tactic.sym (fun _ => pure m!"rewriting field {field}") do
-        trace[Tactic.sym] "original proof: {fieldEff.proof}"
-        let proof ← rewriteType fieldEff.proof eq
-        trace[Tactic.sym] "new proof: {proof}"
-        pure (field, {fieldEff with proof})
-    let fields := .ofList fields
-
-    let nonEffectProof ← rewriteType eff.nonEffectProof eq
-    let memoryEffectProof ← rewriteType eff.memoryEffectProof eq
-    -- ^^ TODO: what happens if `memoryEffect` is the same as `currentState`?
-    --    Presumably, we would *not* want to encapsulate `memoryEffect` here
-    let programProof ← rewriteType eff.programProof eq
 
     return { eff with
-      currentState, fields, nonEffectProof, memoryEffectProof, programProof
+      toBase := ←eff.toBase.adjustCurrentStateWithEq (← mkEqSymm eq)
+      currentState := s
     }
 
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
@@ -643,101 +668,3 @@ where
 
 
 end Tactic
-
-end AxEffects
-
-/-! ## AxEffectsTree  -/
-
-namespace AxEffectsTree
-
-open AxEffects (assertHasType)
-
-/-- Execute `write_mem <n> <addr> <val>` against all states stored in `eff`
-That is, `currentState` of all leaves of the returned tree will be
-  `write_mem <n> <addr> <val> <eff.currentState>`
-and all other fields are updated accordingly. -/
-private def updateWriteMem (eff : AxEffectsTree) (n addr val : Expr) :
-    MetaM AxEffectsTree := go eff
-  where
-    go : AxEffectsTree → MetaM AxEffectsTree
-      | node c the els => do return node c (← go the) (← go els)
-      | leaf eff       => do return leaf <|← eff.update_write_mem n addr val
-
-/-- Execute `w <fld> <val>` against the state stored in `eff`
-That is, `currentState` of all leaves of the returned tree will be
-  `w <fld> <val> <eff.currentState>`
-and all other fields are updated accordingly. -/
-private def updateW (eff : AxEffectsTree) (fld val : Expr) :
-    MetaM AxEffectsTree := go eff
-  where
-    go : AxEffectsTree → MetaM AxEffectsTree
-      | node c the els => do return node c (← go the) (← go els)
-      | leaf eff       => do return leaf <|← eff.update_w fld val
-
-#check ite
-
-/-- Map a function over all leaf `AxEffects` in an `AxEffectsTree` -/
-def mapM [Monad m] (f : AxEffects → m AxEffects) :
-    AxEffectsTree → m AxEffectsTree
-  | node cond t e => do return node cond (← mapM f t) (← mapM f e)
-  | leaf eff      => do return leaf (← f eff)
-
-def updateIteThen (depth : Nat) (cond : Expr) :
-    AxEffectsTree → MetaM AxEffectsTree :=
-  sorry
-
-def updateIteElse (depth : Nat) (cond : Expr) :
-    AxEffectsTree → MetaM AxEffectsTree :=
-  sorry
-
--- TODO: thoroughly update all docstrings of `Tree` ops
-
-/-- Given an expression `e : ArmState`,
-which is a sequence of `w`/`write_mem`s to the some state `s`,
-return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
-
-Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
-the whole expression is taken to be the initial state,
-even if there might be more `w`/`write_mem`s in sub-expressions. -/
-partial def fromExpr (e : Expr) (depth : Nat := 0) : MetaM AxEffectsTree := do
-  let msg := m!"Building effects with writes from: {e}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
-    | write_mem_bytes n addr val e =>
-        let eff ← fromExpr e
-        eff.updateWriteMem n addr val
-
-    | w field value e =>
-        let eff ← fromExpr e
-        eff.updateW field value
-
-    | ite _α cond _instDecidable t e =>
-        let t ← updateIteThen depth cond <|← fromExpr t (depth + 1)
-        let e ← updateIteElse depth cond <|← fromExpr e (depth + 1)
-        return node cond t e
-
-    | _ =>
-        return leaf (.initial e)
-
-/-- Given a proof `eq : ?s = <sequence of w/write_mem/ifs to ?s0>`,
-where `?s` and `?s0` are arbitrary `ArmState`s,
-return an `AxEffectsTree` where each leaf has `?s0` as the initial state,
-and `?s` as the current state
-
-Buils upon `AxEffects.fromEq` to add support for `if-then-else` constructs.
--/
-def fromEq (eq : Expr) : MetaM AxEffects :=
-  let msg := m!"Building effects with equality: {eq}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-    let s ← mkFreshExprMVar mkArmState
-    let rhs ← mkFreshExprMVar mkArmState
-    assertHasType eq <| mkEqArmState s rhs
-
-    let eff ← fromExpr (← instantiateMVars rhs)
-    let eff ← eff.adjustCurrentStateWithEq s eq
-    withTraceNode `Tactic.sym (fun _ => pure "new state") do
-      trace[Tactic.sym] "{eff}"
-    return eff
-
-#check mkId
-#eval do
-  Meta.check (← mkId <| .bvar 0)
