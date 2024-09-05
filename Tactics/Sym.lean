@@ -185,7 +185,7 @@ reads from `s{i+1}`.
 
 Return the context for the next step (see `SymContext.next`), where
 we attempt to determine the new PC by reflecting the obtained effects,
-falling back to incrementing the PC if reflaction failed. -/
+falling back to incrementing the PC if reflection failed. -/
 def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
   withMainContext do
     let mut eff ← AxEffects.fromEq hStep
