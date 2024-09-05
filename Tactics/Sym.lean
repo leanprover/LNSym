@@ -259,6 +259,8 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
     let nextPc ← eff.getField .PC
     let nextPc? ← try
       let nextPc ← reflectBitVecLiteral 64 nextPc.value
+      -- NOTE: `reflectBitVecLiteral` is fast when the value is a literal,
+      -- but might involve an expensive reduction when it is not
       pure <| some nextPc
     catch err =>
       trace[Tactic.sym] "failed to reflect {nextPc.value}\n\n\
