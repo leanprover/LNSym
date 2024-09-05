@@ -676,7 +676,18 @@ private def updateW (eff : AxEffectsTree) (fld val : Expr) :
 
 #check ite
 
-def updateIte (cond : Expr) (the els : AxEffectsTree) : MetaM AxEffectsTree := do
+/-- Map a function over all leaf `AxEffects` in an `AxEffectsTree` -/
+def mapM [Monad m] (f : AxEffects → m AxEffects) :
+    AxEffectsTree → m AxEffectsTree
+  | node cond t e => do return node cond (← mapM f t) (← mapM f e)
+  | leaf eff      => do return leaf (← f eff)
+
+def updateIteThen (depth : Nat) (cond : Expr) :
+    AxEffectsTree → MetaM AxEffectsTree :=
+  sorry
+
+def updateIteElse (depth : Nat) (cond : Expr) :
+    AxEffectsTree → MetaM AxEffectsTree :=
   sorry
 
 -- TODO: thoroughly update all docstrings of `Tree` ops
@@ -688,7 +699,7 @@ return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
 Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
 the whole expression is taken to be the initial state,
 even if there might be more `w`/`write_mem`s in sub-expressions. -/
-partial def fromExpr (e : Expr) : MetaM AxEffectsTree := do
+partial def fromExpr (e : Expr) (depth : Nat := 0) : MetaM AxEffectsTree := do
   let msg := m!"Building effects with writes from: {e}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
     | write_mem_bytes n addr val e =>
@@ -700,9 +711,9 @@ partial def fromExpr (e : Expr) : MetaM AxEffectsTree := do
         eff.updateW field value
 
     | ite _α cond _instDecidable t e =>
-        let t ← fromExpr t
-        let e ← fromExpr e
-        sorry
+        let t ← updateIteThen depth cond <|← fromExpr t (depth + 1)
+        let e ← updateIteElse depth cond <|← fromExpr e (depth + 1)
+        return node cond t e
 
     | _ =>
         return leaf (.initial e)
@@ -726,3 +737,7 @@ def fromEq (eq : Expr) : MetaM AxEffects :=
     withTraceNode `Tactic.sym (fun _ => pure "new state") do
       trace[Tactic.sym] "{eff}"
     return eff
+
+#check mkId
+#eval do
+  Meta.check (← mkId <| .bvar 0)
