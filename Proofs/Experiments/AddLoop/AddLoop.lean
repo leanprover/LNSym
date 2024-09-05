@@ -307,7 +307,7 @@ theorem effects_of_nextc_from_0x4005a4
   obtain ⟨h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned⟩ := h_pre
   -- Symbolic simulation
   sym_n 2
-  simp (config := {ground := true}) only [*, state_simp_rules, bitvec_rules, minimal_theory]
+  simp (config := {ground := true}) only []
   rw [AddWithCarry.all_ones_zero_flag_64]
   done
 
