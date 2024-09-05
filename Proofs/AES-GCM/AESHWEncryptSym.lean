@@ -162,7 +162,14 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
     intro f
     simp only [h_step_13, state_simp_rules, bitvec_rules, minimal_theory]
     sorry
-  have h_s13_x3 : read_gpr 32 3#5 s13 = 10#32 := by sorry
+  -- This is an aggregated result
+  have h_s13_x3 : read_gpr 32 3#5 s13 = 10#32 := by
+    simp only [h_s1_x3, h_s2_non_effects, h_s3_non_effects, h_s4_x3,
+               h_s5_non_effects, h_s6_non_effects, h_s7_non_effects,
+               h_s8_non_effects, h_s9_x3, h_s10_non_effects,
+               h_s11_non_effects, h_s12_non_effects, h_step_13,
+               state_simp_rules, bitvec_rules, minimal_theory]
+    simp (config := {ground := true}) only [h_rounds.symm, minimal_theory]
   --
   sym_n 7 at s13
   init_next_step h_run h_step_21 s21
@@ -180,7 +187,13 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   (intro_fetch_decode_lemmas h_step_21 h_s20_program "h_s20")
   -- Add hypotheses that are needed for next loop iteration
   have h_s21_non_effects : ∀ (f : StateField), f ≠ StateField.PC → r f s21 = r f s20 := by sorry
-  have h_s21_x3 : read_gpr 32 3#5 s21 = 8#32 := by sorry
+  -- This is an aggregated result
+  have h_s21_x3 : read_gpr 32 3#5 s21 = 8#32 := by
+    simp only [h_s20_non_effects, h_s19_non_effects, h_s18_non_effects,
+               h_s17_x3, h_s16_non_effects, h_s15_non_effects,
+               h_s14_non_effects, h_step_21,
+               state_simp_rules, bitvec_rules, minimal_theory]
+    simp (config := {ground := true}) only [h_s13_x3, minimal_theory]
   --
   sym_n 7 at s21
   init_next_step h_run h_step_29 s29
@@ -198,7 +211,13 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   (intro_fetch_decode_lemmas h_step_29 h_s28_program "h_s28")
   -- Add hypotheses that are needed for next loop iteration
   have h_s29_non_effects : ∀ (f : StateField), f ≠ StateField.PC → r f s29 = r f s28 := by sorry
-  have h_s29_x3 : read_gpr 32 3#5 s29 = 6#32 := by sorry
+  -- This is an aggregated result
+  have h_s29_x3 : read_gpr 32 3#5 s29 = 6#32 := by
+    simp only [h_s28_non_effects, h_s27_non_effects, h_s26_non_effects,
+               h_s25_x3, h_s24_non_effects, h_s23_non_effects,
+               h_s22_non_effects, h_step_29,
+               state_simp_rules, bitvec_rules, minimal_theory]
+    simp (config := {ground := true}) only [h_s21_x3, minimal_theory]
   --
   sym_n 7 at s29
   init_next_step h_run h_step_37 s37
@@ -216,7 +235,13 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   (intro_fetch_decode_lemmas h_step_37 h_s36_program "h_s36")
   -- Add hypotheses that are needed for next loop iteration
   have h_s37_non_effects : ∀ (f : StateField), f ≠ StateField.PC → r f s37 = r f s36 := by sorry
-  have h_s37_x3 : read_gpr 32 3#5 s37 = 4#32 := by sorry
+  -- This is an aggregated result
+  have h_s37_x3 : read_gpr 32 3#5 s37 = 4#32 := by
+    simp only [h_s36_non_effects, h_s35_non_effects, h_s34_non_effects,
+               h_s33_x3, h_s32_non_effects, h_s31_non_effects,
+               h_s30_non_effects, h_step_37,
+               state_simp_rules, bitvec_rules, minimal_theory]
+    simp (config := {ground := true}) only [h_s29_x3, minimal_theory]
   --
   sym_n 7 at s37
   init_next_step h_run h_step_45 s45
@@ -234,7 +259,13 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   (intro_fetch_decode_lemmas h_step_45 h_s44_program "h_s44")
   -- Add hypotheses that are needed for next loop iteration
   have h_s45_non_effects : ∀ (f : StateField), f ≠ StateField.PC → r f s45 = r f s44 := by sorry
-  have h_s45_x3 : read_gpr 32 3#5 s45 = 2#32 := by sorry
+  -- This is an aggregated result
+  have h_s45_x3 : read_gpr 32 3#5 s45 = 2#32 := by
+    simp only [h_s44_non_effects, h_s43_non_effects, h_s42_non_effects,
+               h_s41_x3, h_s40_non_effects, h_s39_non_effects,
+               h_s38_non_effects, h_step_45,
+               state_simp_rules, bitvec_rules, minimal_theory]
+    simp (config := {ground := true}) only [h_s37_x3, minimal_theory]
   --
   sym_n 7 at s45
   init_next_step h_run h_step_53 s53
