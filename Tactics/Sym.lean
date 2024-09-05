@@ -179,6 +179,91 @@ def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
           replaceMainGoal [newGoal]
           return newHyp
 
+/-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
+add hypotheses that axiomatically describe the effects in terms of
+reads from `s{i+1}` -/
+def explodeStep (c : SymContext) (hStep : Expr) : TacticM Unit :=
+  withMainContext do
+    let mut eff ← AxEffects.fromEq hStep
+
+    let stateExpr ← c.stateExpr
+    /- Assert that the initial state of the obtained `AxEffects` is equal to
+    the state tracked by `c`.
+    This will catch and throw an error if the semantics of the current
+    instruction still contains unsupported constructs (e.g., an `if`) -/
+    if !(← isDefEq eff.initialState stateExpr) then
+      throwError "[explodeStep] expected initial state {stateExpr}, but found:\n  \
+        {eff.initialState}\nin\n\n{eff}"
+
+    let hProgram ← SymContext.findFromUserName c.h_program
+    eff ← eff.withProgramEq hProgram.toExpr
+
+    let hErr ← SymContext.findFromUserName c.h_err
+    eff ← eff.withField hErr.toExpr
+
+    if let some h_sp := c.h_sp? then
+      let hSp ← SymContext.findFromUserName h_sp
+      -- let effWithSp?
+      eff ← match ← eff.withStackAlignment? hSp.toExpr with
+        | some newEff => pure newEff
+        | none => do
+            trace[Tactic.sym] "failed to show stack alignment"
+            -- FIXME: in future, we'd like to detect when the `sp_aligned`
+            -- hypothesis is actually necessary, and add the proof obligation
+            -- on-demand. For now, however, we over-approximate, and say that
+            -- if the original state was known to be aligned, and something
+            -- writes to the SP, then we eagerly add the obligation to proof
+            -- that the result is aligned as well.
+            -- If you don't want this obligation, simply remove the hypothesis
+            -- that the original state is aligned
+            let spEff ← eff.getField .SP
+            let subGoal ← mkFreshMVarId
+            -- subGoal.setTag <|
+            let hAligned ← do
+              let name := Name.mkSimple s!"h_{c.next_state}_sp_aligned"
+              mkFreshExprMVarWithId subGoal (userName := name) <|
+                mkAppN (mkConst ``Aligned) #[toExpr 64, spEff.value, toExpr 4]
+
+            trace[Tactic.sym] "created subgoal to show alignment:\n{subGoal}"
+
+            let subGoal? ← do
+              let (ctx, simprocs) ←
+                LNSymSimpContext
+                  (config := {failIfUnchanged := false, decide := true})
+                  (decls := #[hSp])
+              LNSymSimp subGoal ctx simprocs
+
+            if let some subGoal := subGoal? then
+              trace[Tactic.sym] "subgoal got simplified to:\n{subGoal}"
+              appendGoals [subGoal]
+            else
+              trace[Tactic.sym] "subgoal got closed by simplification"
+
+            let stackAlignmentProof? := some <|
+              mkAppN (mkConst ``CheckSPAlignment_of_r_sp_aligned)
+                #[eff.currentState, spEff.value, spEff.proof, hAligned]
+            pure { eff with stackAlignmentProof? }
+
+    withMainContext <| do
+      if ←(getBoolOption `Tactic.sym.debug) then
+        eff.validate
+
+      eff.addHypothesesToLContext s!"h_{c.next_state}_"
+
+/-- A tactic wrapper around `explodeStep`.
+Note the use of `SymContext.fromLocalContext`,
+so the local context is assumed to be of the same shape as for `sym_n` -/
+elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
+  let hStep ← elabTerm h_step none
+  let state ← elabTerm state mkArmState
+  let .fvar stateFVar := state
+    | throwError "Expected fvar, found {state}"
+  let stateDecl := (← getLCtx).get! stateFVar
+  let c ← SymContext.fromLocalContext (some stateDecl.userName)
+
+  explodeStep c hStep
+
+
 /--
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
@@ -191,7 +276,6 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
 
     let stepi_eq := Lean.mkIdent (.mkSimple s!"stepi_{c.state}")
     let h_step   := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
-    -- let stepi_eq := h_step
 
     unfoldRun c (fun _ => evalTacticAndTrace whileTac)
     -- Add new state to local context
@@ -202,15 +286,39 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
     -- Apply relevant pre-generated `stepi` lemma
     stepiTac stepi_eq h_step c
 
-    -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
-    let h_st_prefix := Lean.Syntax.mkStrLit s!"h_{c.state}"
-    -- Ensure we run `intro_fetch_decode_lemmas` without `stepi_eq`
-    let _ ← withoutHyp stepi_eq.getId <| evalTacticAndTrace <|← `(tactic|
-      intro_fetch_decode_lemmas
-        $h_step:ident $c.h_program_ident:ident $h_st_prefix:str
-    )
-    return c.next
+    -- WORKAROUND: eventually we'd like to eagerly simp away `if`s in the
+    -- pre-generation of instruction semantics. For now, though, we keep a
+    -- `simp` here
+    withMainContext <| do
+      let hStep ← SymContext.findFromUserName h_step.getId
+      let lctx ← getLCtx
+      let decls := (c.h_sp?.bind lctx.findFromUserName?).toArray
+      -- If we know SP is aligned, `simp` with that fact
 
+      if !decls.isEmpty then
+        trace[Tactic.sym] "simplifying {hStep.toExpr} \
+          with {decls.map (·.toExpr)}"
+        -- If `decls` is empty, we have no more knowledge than before, so
+        -- everything that could've been `simp`ed, already should have been
+        let some goal ← do
+            let (ctx, simprocs) ← LNSymSimpContext
+              (config := {decide := false}) (decls := decls)
+            let goal ← getMainGoal
+            LNSymSimp goal ctx simprocs hStep.fvarId
+          | throwError "internal error: simp closed goal unexpectedly"
+        replaceMainGoal [goal]
+      else
+        trace[Tactic.sym] "we have no relevant local hypotheses, \
+          skipping simplification step"
+
+    -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
+    withMainContext <| do
+      let hStep ← SymContext.findFromUserName h_step.getId
+      -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
+      --    changed by `simp`
+      explodeStep c hStep.toExpr
+
+    return c.next
 
 /- used in `sym_n` tactic to specify an initial state -/
 syntax sym_at := "at" ident

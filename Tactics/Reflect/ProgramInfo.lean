@@ -179,7 +179,9 @@ initialize programInfoExt : PersistentEnvExtension (ProgramInfo) (ProgramInfo) (
   registerPersistentEnvExtension {
     name            := `programInfo
     mkInitial       := pure {}
-    addImportedFn   := fun _ _ => pure {}
+    addImportedFn   := fun pis =>
+                        pis.flatten.foldlM (init := ∅) fun map p =>
+                          return map.insert p.name p
     addEntryFn      := fun s p => s.insert p.name p
     exportEntriesFn := fun m =>
       let r : Array (ProgramInfo) :=

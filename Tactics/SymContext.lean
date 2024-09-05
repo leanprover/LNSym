@@ -9,6 +9,8 @@ import Lean.Meta
 import Arm.Exec
 import Tactics.Common
 import Tactics.Attr
+import Tactics.Reflect.ProgramInfo
+import Tactics.Reflect.AxEffects
 
 /-!
 This files defines the `SymContext` structure,
@@ -55,6 +57,9 @@ structure SymContext where
   program : Name
   /-- `h_program` is a local hypothesis of the form `state.program = program` -/
   h_program : Name
+  /-- `programInfo` is the relevant cached `ProgramInfo` -/
+  programInfo : ProgramInfo
+
   /-- `pc` is the *concrete* value of the program counter
 
   Note that for now we only support symbolic evaluation of programs
@@ -84,7 +89,6 @@ structure SymContext where
   and used together with `curr_state_number`
   to determine the name of the next state variable that is added by `sym` -/
   curr_state_number : Nat := 0
-  deriving Repr
 
 namespace SymContext
 
@@ -113,7 +117,7 @@ def h_sp_ident        : Ident := mkIdent c.h_sp
 
 /-- Find the local declaration that corresponds to a given name,
 or throw an error if no local variable of that name exists -/
-private def findFromUserName (name : Name) : MetaM LocalDecl := do
+def findFromUserName (name : Name) : MetaM LocalDecl := do
   let some decl := (← getLCtx).findFromUserName? name
     | throwError "Unknown local variable `{name}`"
   return decl
@@ -256,9 +260,15 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   if h_sp?.isNone then
     trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
 
+  -- Finally, retrieve the programInfo from the environment
+  let some programInfo ← ProgramInfo.lookup? program
+    | throwError "Could not find program info for `{program}`.
+        Did you remember to generate step theorems with:
+          #generateStepEqTheorems {program}"
+
   return inferStatePrefixAndNumber {
     state, finalState, h_run, runSteps?, program, h_program, pc, h_pc,
-    h_err?, h_sp?
+    h_err?, h_sp?, programInfo
   }
 where
   findLocalDeclUsernameOfType? (expectedType : Expr) : MetaM (Option Name) := do
@@ -281,7 +291,8 @@ where
 /-- If `h_sp` or `h_err` are missing from the `SymContext`,
 add new goals of the expected types,
 and use these to add `h_sp` and `h_err` to the main goal context -/
-def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
+def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
+    TacticM SymContext :=
   let msg := "Adding goals for missing hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
     let mut ctx := ctx
@@ -314,20 +325,24 @@ def addGoalsForMissingHypotheses (ctx : SymContext) : TacticM SymContext :=
 
     match ctx.h_sp? with
       | none =>
-          trace[Tactic.sym] "h_sp? is none, adding a new goal"
+          if addHSp then
+            trace[Tactic.sym] "h_sp? is none, adding a new goal"
 
-          let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
-          let newGoal ← mkFreshMVarId
+            let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
+            let newGoal ← mkFreshMVarId
 
-          goal := ← do
-            let h_sp_type := h_sp_type stateExpr
-            let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
-            let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
-            let ⟨_, goal'⟩ ← goal'.intro1P
-            return goal'
+            goal := ← do
+              let h_sp_type := h_sp_type stateExpr
+              let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
+              let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
+              let ⟨_, goal'⟩ ← goal'.intro1P
+              return goal'
 
-          newGoals := newGoal :: newGoals
-          ctx := { ctx with h_sp? }
+            newGoals := newGoal :: newGoals
+            ctx := { ctx with h_sp? }
+          else
+            trace[Tactic.sym] "h_sp? is none, but addHSp is false, \
+              so no new goal is added"
       | some h_sp =>
           let h_sp ← userNameToMessageData h_sp
           trace[Tactic.sym] "h_sp? is {h_sp}, no new goal needed"
@@ -380,10 +395,11 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     h_run       := c.h_run
     h_program   := .mkSimple s!"h_{s}_program"
     h_pc        := .mkSimple s!"h_{s}_pc"
-    h_err?      := some <| .mkSimple s!"h_{s}_err"
-    h_sp?       := some <| .mkSimple s!"h_{s}_sp"
+    h_err?      := c.h_err?.map (fun _ => .mkSimple s!"h_{s}_err")
+    h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")
     runSteps?   := (· - 1) <$> c.runSteps?
     program     := c.program
+    programInfo := c.programInfo
     pc          := nextPc?.getD (c.pc + 4#64)
     curr_state_number
     state_prefix := c.state_prefix
