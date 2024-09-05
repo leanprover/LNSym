@@ -317,7 +317,13 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
       let hStep ← SymContext.findFromUserName h_step.getId
       -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`
-      explodeStep c hStep.toExpr
+      let c ← explodeStep c hStep.toExpr
+
+      let goal ← getMainGoal
+      let goal ← goal.clear hStep.fvarId
+      replaceMainGoal [goal]
+
+      return c
 
     return c.next
 

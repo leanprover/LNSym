@@ -320,13 +320,6 @@ theorem effects_of_nextc_from_0x4005a4
   -- sym_n 2
   sym_n 1 at s0
   sym_n 1 at s1
-  -- (FIXME) better stepi lemma generation
-  simp (config := {ground := true}) only at h_step_2
-  -- Aggregate block effects
-  -- explode_step h_step_1
-  -- explode_step h_step_2
-  -- simp only [run] at h_run
-  -- subst h_run
   simp (config := {ground := true}) only [*, state_simp_rules, bitvec_rules, minimal_theory]
   rw [AddWithCarry.all_ones_zero_flag_64]
   done
@@ -450,8 +443,6 @@ theorem effects_of_nextc_from_0x4005b4_cond_holds_true
   --
   sym_n 3 at s1
   -- Aggregating the effects
-  simp (config := {ground := true}) only
-    at h_step_2 h_step_3 h_step_4
   simp (config := {ground := true}) only [*, AddWithCarry.sub_one_64,
     state_simp_rules, bitvec_rules, minimal_theory]
   done
