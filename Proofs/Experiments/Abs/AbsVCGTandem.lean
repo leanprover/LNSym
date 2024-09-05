@@ -11,6 +11,7 @@ definitions in Correctness, if needed.
 import Arm
 import Tactics.StepThms
 import Tactics.Sym
+import Tactics.Aggregate
 import Correctness.ArmSpec
 
 namespace AbsVCGTandem
@@ -262,12 +263,10 @@ theorem partial_correctness :
 
     -- End: Symbolic Simulation
 
-    simp only [abs_assert]
-    simp only [h_pre, h_s4_pc, h_s4_err, h_s4_sp_aligned,
-               abs_post, state_simp_rules, bitvec_rules, minimal_theory]
+    simp only [abs_assert, abs_post, h_pre, minimal_theory]
     -- Aggregate program effects here to obtain the value of x0(s4).
-    simp only [h_step_4, h_step_3, h_step_2, h_step_1,
-               state_simp_rules, bitvec_rules, minimal_theory]
+    sym_aggregate
+
     simp (config := {ground := true}) only [AddWithCarry, spec]
     split <;> bv_decide
     done
