@@ -563,62 +563,67 @@ by default):
 - `eff.nonEffectProof`,
 - `eff.memoryEffectProof`,
 - `eff.programProof`, and
-- `eff.stackAlignmentProof?` (if the field is not `none`) -/
+- `eff.stackAlignmentProof?` (if the field is not `none`)
+
+Return a list of fvar ids of the newly added hypotheses -/
 def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
-    (mvar : Option MVarId := none):
-    TacticM Unit :=
+    (mvar : Option MVarId := none) :
+    TacticM (List FVarId) :=
   let msg := m!"adding hypotheses to local context"
   withTraceNode `Tactic.sym (fun _ => pure msg) do
     eff.traceCurrentState
     let mut goal ← mvar.getDM getMainGoal
+    let mut fvars := []
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
       let msg := m!"adding field {field}"
-      goal ← withTraceNode `Tactic.sym (fun _ => pure msg) <| goal.withContext do
-        trace[Tactic.sym] "raw proof: {proof}"
-        let name := Name.mkSimple (s!"{hypPrefix}{field}")
-        replaceOrNote goal name proof
+      ⟨fvars, goal⟩ ← withTraceNode `Tactic.sym (fun _ => pure msg) <| goal.withContext do
+          trace[Tactic.sym] "raw proof: {proof}"
+          let name := Name.mkSimple (s!"{hypPrefix}{field}")
+          replaceOrNote fvars goal name proof
 
     trace[Tactic.sym] "adding non-effects with {eff.nonEffectProof}"
-    goal ← goal.withContext do
+    ⟨fvars, goal⟩ ← goal.withContext do
       let name := .mkSimple s!"{hypPrefix}non_effects"
       let proof := eff.nonEffectProof
-      replaceOrNote goal name proof
+      replaceOrNote fvars goal name proof
 
     trace[Tactic.sym] "adding memory effects with {eff.memoryEffectProof}"
-    goal ← goal.withContext do
+    ⟨fvars, goal⟩ ← goal.withContext do
       let name := .mkSimple s!"{hypPrefix}memory_effects"
       let proof := eff.memoryEffectProof
-      replaceOrNote goal name proof
+      replaceOrNote fvars goal name proof
 
     trace[Tactic.sym] "adding program hypothesis with {eff.programProof}"
-    goal ← goal.withContext do
+    ⟨fvars, goal⟩ ← goal.withContext do
       let name := .mkSimple s!"{hypPrefix}program"
       let proof := eff.programProof
-      replaceOrNote goal name proof
+      replaceOrNote fvars goal name proof
 
     trace[Tactic.sym] "stackAlignmentProof? is {eff.stackAlignmentProof?}"
     if let some stackAlignmentProof := eff.stackAlignmentProof? then
       trace[Tactic.sym] "adding stackAlignment hypothesis"
-      goal ← goal.withContext do
+      ⟨fvars, goal⟩ ← goal.withContext do
         let name := .mkSimple s!"{hypPrefix}sp_aligned"
-        replaceOrNote goal name stackAlignmentProof
+        replaceOrNote fvars goal name stackAlignmentProof
     else
       trace[Tactic.sym] "skipping stackAlignment hypothesis"
 
     replaceMainGoal [goal]
+    return fvars
 where
-  replaceOrNote (goal : MVarId) (h : Name) (v : Expr)
-      (t? : Option Expr := none) :
-      MetaM MVarId :=
+  replaceOrNote (fvars : List FVarId) (goal : MVarId)
+      (h : Name) (v : Expr) (t? : Option Expr := none) :
+      MetaM (List FVarId × MVarId) :=
     let msg := m!"adding {h} to the local context"
     withTraceNode `Tactic.sym (fun _ => pure msg) <| do
       trace[Tactic.sym] "with value {v} and type {t?}"
       if let some decl := (← getLCtx).findFromUserName? h then
-        let ⟨_, goal, _⟩ ← goal.replace decl.fvarId v t?
-        return goal
+        let ⟨fvar, goal, _⟩ ← goal.replace decl.fvarId v t?
+        return ⟨fvar :: fvars, goal⟩
       else
-        let ⟨_, goal⟩ ← goal.note h v t?
-        return goal
+        let ⟨fvar, goal⟩ ← goal.note h v t?
+        return ⟨fvar :: fvars, goal⟩
+
 
 end Tactic
