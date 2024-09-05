@@ -6,3 +6,4 @@ Author(s): Alex Keizer
 import Proofs.«AES-GCM».GCMGmultV8Sym
 import Proofs.«AES-GCM».GCMInitV8Sym
 import Proofs.«AES-GCM».AESHWEncryptSym
+import Proofs.«AES-GCM».AESGCMEncKernelSym
