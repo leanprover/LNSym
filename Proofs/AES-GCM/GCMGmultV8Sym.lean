@@ -11,7 +11,6 @@ namespace GCMGmultV8Program
 
 #genStepEqTheorems gcm_gmult_v8_program
 
-set_option diagnostics true in
 theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_gmult_v8_program)
     (h_s0_err : read_err s0 = .None)
