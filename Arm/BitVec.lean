@@ -555,6 +555,11 @@ protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
   simp_all
   omega
 
+@[bitvec_rules, simp]
+theorem zero_append {w} (x : BitVec 0) (y : BitVec w) :
+    x ++ y = y.cast (by simp) := by
+  apply eq_of_getLsb_eq; simp; omega
+
 @[bitvec_rules]
 theorem empty_bitvector_append_left
   (x : BitVec n) (h : 0 + n = n) :

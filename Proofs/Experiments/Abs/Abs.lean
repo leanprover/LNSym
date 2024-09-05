@@ -8,7 +8,7 @@ The goal is to prove that this program implements absolute value correctly.
 import Arm
 import Tactics.StepThms
 import Tactics.Sym
-
+import Tactics.CSE
 namespace Abs
 
 def program : Program :=
@@ -19,7 +19,16 @@ def program : Program :=
     (0x4005dc#64, 0x4a000020#32), --  eor w0, w1, w0
     (0x4005e0#64, 0xd65f03c0#32)] --  ret
 
-def spec (x : BitVec 32) : BitVec 32 := BitVec.ofNat 32 x.toInt.natAbs
+def spec (x : BitVec 32) : BitVec 32 :=
+  -- We prefer the current definition as opposed to:
+  -- BitVec.ofNat 32 x.toInt.natAbs
+  -- because the above has functions like `toInt` that do not play well with
+  -- bitblasting/LeanSAT.
+  let msb := BitVec.extractLsb 31 31 x
+  if msb == 0#1 then
+    x
+  else
+    (0#32 - x)
 
 #genStepEqTheorems program
 
@@ -29,15 +38,19 @@ theorem correct
   (h_s0_program : s0.program = program)
   (h_s0_err : read_err s0 = StateError.None)
   (h_s0_sp : CheckSPAlignment s0)
-  (h_run : sf = run program.length s0) :
+  (h_run : sf = run (program.length) s0) :
   read_gpr 32 0 sf = spec (read_gpr 32 0 s0) ∧
   read_err sf = StateError.None := by
-  simp (config := {ground := true}) at h_run
+  simp (config := {ground := true}) only at h_run
 
   sym_n 5
-  sorry
 
-/-- info: 'Abs.correct' depends on axioms: [propext, sorryAx, Classical.choice, Quot.sound] -/
+  simp only [spec, AddWithCarry]
+  split <;> bv_decide
+
+/--
+info: 'Abs.correct' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
 #guard_msgs in #print axioms correct
 
 end Abs

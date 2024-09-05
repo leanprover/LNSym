@@ -138,6 +138,28 @@ def reflectBitVecLiteral (w : Nat) (e : Expr) : MetaM (BitVec w) := do
   else
     throwError "Expected a bitvector of width {w}, but\n\t{e}\nhas width {n}"
 
+def reflectPFLag (e : Expr) : MetaM PFlag :=
+  match_expr e with
+    | PFlag.N => pure .N
+    | PFlag.Z => pure .Z
+    | PFlag.C => pure .C
+    | PFlag.V => pure .V
+    | _ =>
+      let pflag := mkConst ``PFlag
+      throwError "Expected a `{pflag}` constructor, found:\n  {e}"
+
+/-- Reflect a concrete `StateField` -/
+def reflectStateField (e : Expr) : MetaM StateField :=
+  match_expr e with
+    | StateField.GPR x  => StateField.GPR <$> reflectBitVecLiteral _ x
+    | StateField.SFP x  => StateField.SFP <$> reflectBitVecLiteral _ x
+    | StateField.PC     => pure StateField.PC
+    | StateField.FLAG f => StateField.FLAG <$> reflectPFLag f
+    | StateField.ERR    => pure StateField.ERR
+    | _ =>
+      let sf := mkConst ``StateField
+      throwError "Expected a `{sf}` constructor, found:\n  {e}"
+
 /-! ## Hypothesis types -/
 namespace SymContext
 
@@ -224,3 +246,16 @@ def findProgramHyp (state : Expr) : MetaM (LocalDecl × Name) := do
         throwError "Expected a constant, found:\n\t{program}"
 
   return ⟨h_program, program⟩
+
+/-! ## Expr Builders -/
+
+/-- Return the expression for `ArmState` -/
+def mkArmState : Expr := mkConst ``ArmState
+
+/-- Return `x = y`, given expressions `x` and `y` of type `ArmState` -/
+def mkEqArmState (x y : Expr) : Expr :=
+  mkApp3 (.const ``Eq [1]) mkArmState x y
+
+/-- Return a proof of type `x = x`, where `x : ArmState` -/
+def mkEqReflArmState (x : Expr) : Expr :=
+  mkApp2 (.const ``Eq.refl [1]) mkArmState x

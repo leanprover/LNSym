@@ -98,7 +98,7 @@ inductive PFlag where
   | Z : PFlag
   | C : PFlag
   | V : PFlag
-deriving DecidableEq, Repr
+deriving DecidableEq, Repr, Hashable
 
 instance : ToString PFlag :=
   ⟨fun p => match p with
@@ -255,7 +255,50 @@ inductive StateField where
   | PC     : StateField
   | FLAG   : PFlag → StateField
   | ERR    : StateField
-deriving DecidableEq, Repr
+deriving DecidableEq, Repr, Hashable
+
+namespace StateField
+
+/-- general purpose register `x31` is used as stack pointer -/
+@[state_simp_rules]
+abbrev SP := GPR 31#5
+
+/- Might eventually be used to maintain a `O(1)` access `StateField` map,
+by using `StateField.toFin` to index into a sparse array. -/
+/-- `StateField` is equivalent to `Fin (32 + 32 + 1 + 4 + 1)` -/
+def toFin : StateField → Fin 70
+  | .GPR x    => x.toFin.castAdd 38
+  | .SFP x    => (x.toFin.addNat 32).castAdd 6
+  | .PC       => 64
+  | .FLAG .N  => 65
+  | .FLAG .Z  => 66
+  | .FLAG .C  => 67
+  | .FLAG .V  => 68
+  | .ERR      => 69
+
+section ToExpr
+open Lean PFlag
+
+instance : ToExpr PFlag where
+  toTypeExpr := mkConst ``PFlag
+  toExpr := fun
+    | N => mkConst ``N
+    | V => mkConst ``V
+    | C => mkConst ``C
+    | Z => mkConst ``Z
+
+instance : ToExpr StateField where
+  toTypeExpr := mkConst ``StateField
+  toExpr := fun
+    | GPR x    => mkApp (mkConst ``GPR) (toExpr x)
+    | SFP x    => mkApp (mkConst ``SFP) (toExpr x)
+    | PC       => mkConst ``PC
+    | FLAG fl  => mkApp (mkConst ``FLAG) (toExpr fl)
+    | ERR      => mkConst ``ERR
+
+end ToExpr
+
+end StateField
 
 instance : ToString StateField :=
   ⟨fun s => match s with
@@ -685,6 +728,14 @@ theorem read_mem_bytes_of_w :
   done
 
 @[state_simp_rules]
+theorem read_mem_bytes_w_of_read_mem_eq
+    (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
+    (fld val n₁ addr₁) :
+    read_mem_bytes n₁ addr₁ (w fld val s₁)
+    = read_mem_bytes n₁ addr₁ s₂ := by
+  simp only [read_mem_bytes_of_w, h]
+
+@[state_simp_rules]
 theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n * 8)):
     (write_mem_bytes n addr bytes s).program = s.program := by
   intros
@@ -1073,3 +1124,33 @@ by_cases h : ix < base
   · simp only [h₂, ↓reduceIte, BitVec.getLsb_extractLsByte]
 
 end Memory
+
+/-! ## Helper lemma for `AxEffects` -/
+
+@[state_simp_rules]
+theorem Memory.eq_of_read_mem_bytes_eq {m₁ m₂ : Memory}
+    (h : ∀ n addr, m₁.read_bytes n addr = m₂.read_bytes n addr) :
+    m₁ = m₂ := by
+  funext i
+  specialize (h 1 i)
+  simp only [Nat.reduceMul, read_bytes, Nat.reduceAdd, read, read_store,
+    BitVec.cast_eq] at h
+  rw [BitVec.zero_append, BitVec.zero_append] at h
+  simpa only [Nat.reduceAdd, BitVec.cast_eq] using h
+
+theorem mem_eq_iff_read_mem_bytes_eq {s₁ s₂ : ArmState} :
+    s₁.mem = s₂.mem
+    ↔ ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂ := by
+  simp only [memory_rules]
+  constructor
+  · intro h _ _; rw[h]
+  · exact Memory.eq_of_read_mem_bytes_eq
+
+theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq
+    (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
+    (n₂ addr₂ val n₁ addr₁) :
+    read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₁)
+    = read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₂) := by
+  revert n₁ addr₁
+  simp only [← mem_eq_iff_read_mem_bytes_eq] at h ⊢
+  simp only [memory_rules, h]
