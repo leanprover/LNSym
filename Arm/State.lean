@@ -1125,9 +1125,13 @@ by_cases h : ix < base
 
 end Memory
 
-/-! ## Helper lemma for `AxEffects` -/
 
-@[state_simp_rules]
+/-! ## Equality of `ArmState`s and their Components -/
+
+section StateEq
+
+/- Helper lemma for `AxEffects` -/
+
 theorem Memory.eq_of_read_mem_bytes_eq {m₁ m₂ : Memory}
     (h : ∀ n addr, m₁.read_bytes n addr = m₂.read_bytes n addr) :
     m₁ = m₂ := by
@@ -1154,3 +1158,95 @@ theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq
   revert n₁ addr₁
   simp only [← mem_eq_iff_read_mem_bytes_eq] at h ⊢
   simp only [memory_rules, h]
+
+/- Helper lemma for `state_eq_iff_components_eq` -/
+
+private theorem reads_equal_implies_gpr_equal (s1 s2 : ArmState)
+  (h : ∀ (f : StateField), r f s1 = r f s2) :
+  ArmState.gpr s1 = ArmState.gpr s2 := by
+  funext i
+  simpa only [r, read_base_gpr, read_store] using h (.GPR i)
+
+private theorem reads_equal_implies_sfp_equal (s1 s2 : ArmState)
+  (h : ∀ (f : StateField), r f s1 = r f s2) :
+  ArmState.sfp s1 = ArmState.sfp s2 := by
+  funext i
+  simpa only [r, read_base_sfp, read_store] using h (.SFP i)
+
+private theorem reads_equal_implies_pc_equal (s1 s2 : ArmState)
+  (h : ∀ (f : StateField), r f s1 = r f s2) :
+  ArmState.pc s1 = ArmState.pc s2 := by
+  funext
+  simpa only [r, read_base_pc, read_store] using h (.PC)
+
+private theorem reads_equal_implies_pstate_equal (s1 s2 : ArmState)
+  (h : ∀ (f : StateField), r f s1 = r f s2) :
+  ArmState.pstate s1 = ArmState.pstate s2 := by
+  rw [@PState.ext_iff s1.pstate s2.pstate]
+  have h_n := by simpa only [r, read_base_flag, read_store] using h (.FLAG .N)
+  have h_z := by simpa only [r, read_base_flag, read_store] using h (.FLAG .Z)
+  have h_c := by simpa only [r, read_base_flag, read_store] using h (.FLAG .C)
+  have h_v := by simpa only [r, read_base_flag, read_store] using h (.FLAG .V)
+  simp_all only [and_true]
+
+private theorem reads_equal_implies_error_equal (s1 s2 : ArmState)
+  (h : ∀ (f : StateField), r f s1 = r f s2) :
+  ArmState.error s1 = ArmState.error s2 := by
+  funext
+  simpa only [r, read_base_error, read_store] using h (.ERR)
+
+private theorem read_mem_equal_implies_mem_equal (s1 s2 : ArmState)
+  (h_mem : ∀ (addr : BitVec 64), read_mem addr s1 = read_mem addr s2) :
+  s1.mem = s2.mem := by
+  funext i
+  simpa only [read_mem, read_store] using h_mem i
+
+private theorem read_mem_bytes_equal_implies_read_mem_equal (s1 s2 : ArmState)
+  (h_mem : ∀ (n : Nat) (addr : BitVec 64),
+              read_mem_bytes n addr s1 = read_mem_bytes n addr s2) :
+  ∀ (addr : BitVec 64), read_mem addr s1 = read_mem addr s2 := by
+  intro addr
+  have h_read_mem_bytes_all := h_mem 1 addr
+  simp only [read_mem_bytes, bitvec_rules] at h_read_mem_bytes_all
+  have h1 := @BitVec.empty_bitvector_append_left 8 (read_mem addr s1)
+  have h2 := @BitVec.empty_bitvector_append_left 8 (read_mem addr s2)
+  simp_all only
+
+private theorem read_mem_bytes_equal_implies_mem_equal (s1 s2 : ArmState)
+  (h_mem : ∀ (n : Nat) (addr : BitVec 64),
+              read_mem_bytes n addr s1 = read_mem_bytes n addr s2) :
+  s1.mem = s2.mem := by
+  funext i
+  rw [read_mem_equal_implies_mem_equal]
+  intro addr
+  rwa [read_mem_bytes_equal_implies_read_mem_equal]
+
+/--
+Two `ArmState`s are equal iff their components, accessed via canonical
+accessor functions, are equal.
+-/
+theorem state_eq_iff_components_eq {s1 s2 : ArmState} :
+  (s1 = s2) ↔
+  ((∀ (f : StateField), r f s1 = r f s2) ∧
+   (s1.program = s2.program) ∧
+   (∀ (n : Nat) (addr : BitVec 64),
+      read_mem_bytes n addr s1 = read_mem_bytes n addr s2)) := by
+  constructor
+  case mp =>
+    intro h
+    subst_vars
+    simp only [implies_true, and_self]
+  case mpr =>
+    intro h
+    obtain ⟨h_fields, h_program, h_mem⟩ := h
+    apply ArmState.ext
+    case gpr => rwa [reads_equal_implies_gpr_equal]
+    case sfp => rwa [reads_equal_implies_sfp_equal]
+    case pc  => rwa [reads_equal_implies_pc_equal]
+    case pstate => rwa [reads_equal_implies_pstate_equal]
+    case error => rwa [reads_equal_implies_error_equal]
+    case program => assumption
+    case mem => rwa [read_mem_bytes_equal_implies_mem_equal]
+  done
+
+end StateEq
