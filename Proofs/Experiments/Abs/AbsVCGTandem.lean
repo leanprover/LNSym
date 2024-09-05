@@ -11,6 +11,7 @@ definitions in Correctness, if needed.
 import Arm
 import Tactics.StepThms
 import Tactics.Sym
+import Tactics.Aggregate
 import Correctness.ArmSpec
 
 namespace AbsVCGTandem
@@ -217,13 +218,9 @@ theorem partial_correctness :
     have h_s1_cut := @program.stepi_0x4005d0_cut s0 s1
                       h_s0_program h_s0_pc h_s0_err h_s0_sp_aligned
                       (by simp only [run, stepi_s0])
-    -- Prove `s1'` and `s1` refer to the same state, and elide references to
-    -- `s1'`.
-    simp only [run_opener_zero] at h_s0_run
-    rw [h_s0_run] at *
     -- Simplify the conclusion.
     simp only [h_s1_cut, Nat.reduceAdd, minimal_theory]
-    clear s1' h_s0_run h_s1_cut stepi_s0
+    clear h_s0_run h_s1_cut stepi_s0
 
     -- Instruction 2
     rw [Abs.cassert_eq]
@@ -234,13 +231,9 @@ theorem partial_correctness :
     have h_s2_cut := @program.stepi_0x4005d4_cut s1 s2
                      h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned
                      (by simp only [run, stepi_s1])
-    -- Prove `s2'` and `s2` refer to the same state, and elide references to
-    -- `s2'`.
-    simp only [run_opener_zero] at h_s1_run
-    rw [h_s1_run] at *
     -- Simplify the conclusion.
     simp only [h_s2_cut, Nat.reduceAdd, minimal_theory]
-    clear s2' h_s1_run h_s2_cut stepi_s1
+    clear h_s1_run h_s2_cut stepi_s1
 
     -- Instruction 3
     rw [Abs.cassert_eq]
@@ -250,10 +243,9 @@ theorem partial_correctness :
     have h_s3_cut := @program.stepi_0x4005d8_cut s2 s3
                      h_s2_program h_s2_pc h_s2_err h_s2_sp_aligned
                      (by simp only [run, stepi_s2])
-    simp only [run_opener_zero] at h_s2_run
-    rw [h_s2_run] at *
+
     simp only [h_s3_cut, Nat.reduceAdd, minimal_theory]
-    clear s3' h_s2_run h_s3_cut stepi_s2
+    clear h_s2_run h_s3_cut stepi_s2
 
     -- Instruction 4
     rw [Abs.cassert_eq]
@@ -263,22 +255,18 @@ theorem partial_correctness :
     have h_s4_cut := @program.stepi_0x4005dc_cut s3 s4
                       h_s3_program h_s3_pc h_s3_err h_s3_sp_aligned
                       (by simp only [run, stepi_s3])
-    simp only [run_opener_zero] at h_s3_run
-    rw [h_s3_run] at *
     -- Note: from the conclusion, we see that we simulated 3 steps from s1 (or 4
     -- steps from s0) to reach the next cutpoint. We can use this to help
     -- us come up with a clock in the termination proof.
     simp only [h_s4_cut, Nat.reduceAdd, minimal_theory]
-    clear s4' h_s3_run h_s4_cut stepi_s3
+    clear h_s3_run h_s4_cut stepi_s3
 
     -- End: Symbolic Simulation
 
-    simp only [abs_assert]
-    simp only [h_pre, h_s4_pc, h_s4_err, h_s4_sp_aligned,
-               abs_post, state_simp_rules, bitvec_rules, minimal_theory]
+    simp only [abs_assert, abs_post, h_pre, minimal_theory]
     -- Aggregate program effects here to obtain the value of x0(s4).
-    simp only [h_step_4, h_step_3, h_step_2, h_step_1,
-               state_simp_rules, bitvec_rules, minimal_theory]
+    sym_aggregate
+
     simp (config := {ground := true}) only [AddWithCarry, spec]
     split <;> bv_decide
     done
@@ -301,9 +289,6 @@ theorem termination :
   generalize h_run : run 4 s = sf
   replace h_run := h_run.symm
   sym_n 4
-  simp only [run] at h_run
-  subst h_run
-  simp only [h_s4_pc]
   done
 
 end AbsVCGTandem

@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Shilpi Goel
+Author(s): Shilpi Goel, Alex Keizer
 -/
 import Arm.Exec
 import Arm.Memory.MemoryProofs
@@ -248,11 +248,12 @@ def explodeStep (c : SymContext) (hStep : Expr) :
                 #[eff.currentState, spEff.value, spEff.proof, hAligned]
             pure { eff with stackAlignmentProof? }
 
-    withMainContext <| do
+    let axHyps ← withMainContext <| do
       if ←(getBoolOption `Tactic.sym.debug) then
         eff.validate
 
       eff.addHypothesesToLContext s!"h_{c.next_state}_"
+    return { c with axHyps := axHyps ++ c.axHyps}
 
       let nextPc ← eff.getField .PC
       try
@@ -325,13 +326,17 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
           skipping simplification step"
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
-    let nextPc? ← withMainContext <| do
+    withMainContext <| do
       let hStep ← SymContext.findFromUserName h_step.getId
       -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`
-      explodeStep c hStep.toExpr
+      let c ← explodeStepAndNext c hStep.toExpr
 
-    return c.next nextPc?
+      let goal ← getMainGoal
+      let goal ← goal.clear hStep.fvarId
+      replaceMainGoal [goal]
+
+      return c
 
 /- used in `sym_n` tactic to specify an initial state -/
 syntax sym_at := "at" ident
@@ -422,3 +427,39 @@ Did you remember to generate step theorems with:
     -- The main loop
     for _ in List.range n do
       c ← sym1 c whileTac
+
+    -- Check if we can substitute the final state
+    if c.runSteps? = some 0 then
+      let msg := do
+        let hRun ← userNameToMessageData c.h_run
+        pure m!"runSteps := 0, substituting along {hRun}"
+      withTraceNode `Tactic.sym (fun _ => msg) <| withMainContext do
+        let s ← SymContext.findFromUserName c.state
+        let sfEq ← mkEq s.toExpr c.finalState
+
+        let goal ← getMainGoal
+        trace[Tactic.sym] "original goal:\n{goal}"
+        let ⟨hEqId, goal⟩ ← do
+          let hRun ← SymContext.findFromUserName c.h_run
+          goal.note `this (← mkEqSymm hRun.toExpr) sfEq
+        goal.withContext <| do
+          trace[Tactic.sym] "added {← userNameToMessageData `this} of type \
+            {sfEq} in:\n{goal}"
+
+        let goal ← subst goal hEqId
+        trace[Tactic.sym] "performed subsitutition in:\n{goal}"
+
+        replaceMainGoal [goal]
+
+    -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
+    -- added while symbolically evaluating to `simp`
+    withMainContext <| do
+      let lctx ← getLCtx
+      let some axHyps := c.axHyps.toArray.mapM lctx.find?
+        | throwError "internal error: one of the following fvars could not \
+            be found:\n  {c.axHyps.map Expr.fvar}"
+      let (ctx, simprocs) ← LNSymSimpContext
+          (config := {decide := true, failIfUnchanged := false})
+          (decls := axHyps)
+      let goal? ← LNSymSimp (← getMainGoal) ctx simprocs
+      replaceMainGoal goal?.toList
