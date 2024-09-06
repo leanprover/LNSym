@@ -306,21 +306,8 @@ theorem effects_of_nextc_from_0x4005a4
   -- TODO: Tactic to "explode" conjunctions?
   obtain ⟨h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned⟩ := h_pre
   -- Symbolic simulation
-  -- (FIXME) sym_n doesn't play well with unconditional branches.
-  /-
-  application type mismatch
-  program.stepi_0x4005a8 s1 s2 h_s1_program h_s1_pc
-  argument
-  h_s1_pc
-  has type
-  r StateField.PC s1 = 0x4005b0#64 : Prop
-  but is expected to have type
-  r StateField.PC s1 = 0x4005a8#64 : Prop
-  -/
-  -- sym_n 2
-  sym_n 1 at s0
-  sym_n 1 at s1
-  simp (config := {ground := true}) only [*, state_simp_rules, bitvec_rules, minimal_theory]
+  sym_n 2
+  simp (config := {ground := true}) only []
   rw [AddWithCarry.all_ones_zero_flag_64]
   done
 
