@@ -45,10 +45,7 @@ def program : Program :=
 def pre (s : ArmState) : Prop :=
   read_pc s = 0x4005a4#64 ∧
   s.program = program ∧
-  read_err s = StateError.None ∧
-  -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment s
+  read_err s = StateError.None
 
 /-- Specification function. -/
 def spec (x0 x1 : BitVec 64) : BitVec 64 :=
@@ -58,10 +55,7 @@ def post (s0 sf : ArmState) : Prop :=
   read_gpr 64 0#5 sf = spec (read_gpr 64 0#5 s0) (read_gpr 64 1#5 s0) ∧
   read_pc sf = 0x4005bc#64 ∧
   read_err sf = StateError.None ∧
-  sf.program = program ∧
-  -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment sf
+  sf.program = program
 
 def exit (s : ArmState) : Prop :=
   -- (FIXME) Let's consider the state where we are poised to execute `ret` as an
@@ -90,18 +84,12 @@ def loop_inv (s0 si : ArmState) : Prop :=
   ((curr_zf = 1#1) ↔ (curr_x0 = 0#64)) ∧
   (curr_x1 = x1 + (x0 - curr_x0)) ∧
   read_err si = .None ∧
-  si.program = program ∧
-  -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment si
+  si.program = program
 
 def loop_post (s0 si : ArmState) : Prop :=
   read_gpr 64 1#5 si = spec (read_gpr 64 0#5 s0) (read_gpr 64 1#5 s0) ∧
   read_err si = .None ∧
-  si.program = program ∧
-  -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment si
+  si.program = program
 
 def assert (s0 si : ArmState) : Prop :=
   pre s0 ∧
@@ -166,7 +154,6 @@ theorem program.stepi_0x4005a4_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005a4#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
   r (StateField.GPR 0#5) sn = r (StateField.GPR 0#5) s ∧
@@ -174,8 +161,7 @@ theorem program.stepi_0x4005a4_cut (s sn : ArmState)
   r (StateField.FLAG PFlag.Z) sn = r (StateField.FLAG PFlag.Z) s ∧
   r StateField.PC sn = 0x4005b0#64 ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program := by
   have := program.stepi_eq_0x4005a4 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this,
@@ -186,15 +172,13 @@ theorem program.stepi_0x4005a8_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005a8#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
   r (StateField.GPR 0#5) sn = r (StateField.GPR 0#5) s ∧
   r (StateField.GPR 1#5) sn = (r (StateField.GPR 0x1#5) s) + 1#64 ∧
   r StateField.PC sn = 0x4005ac#64 ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program := by
   have := program.stepi_eq_0x4005a8 h_program h_pc h_err
   simp only [minimal_theory, bitvec_rules] at this
   simp_all (config := {ground := true}) only
@@ -206,15 +190,13 @@ theorem program.stepi_0x4005ac_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005ac#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
   r (StateField.GPR 0#5) sn = r (StateField.GPR 0#5) s - 1#64 ∧
   r (StateField.GPR 1#5) sn = (r (StateField.GPR 0x1#5) s) ∧
   r StateField.PC sn = 0x4005b0#64 ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program := by
   have := program.stepi_eq_0x4005ac h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all (config := {ground := true}) only
@@ -226,7 +208,6 @@ theorem program.stepi_0x4005b0_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005b0#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = true ∧
   -- NOTE: We relate the value of x0 in state s to ZF in state sn here.
@@ -236,8 +217,7 @@ theorem program.stepi_0x4005b0_cut (s sn : ArmState)
   r (StateField.GPR 1#5) sn = r (StateField.GPR 1#5) s ∧
   r StateField.PC sn = 0x4005b4#64 ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program := by
   have := program.stepi_eq_0x4005b0 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all (config := {ground := true}) only
@@ -251,7 +231,6 @@ theorem program.stepi_0x4005b4_cut_zf_1 (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005b4#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_zf_1 : r (StateField.FLAG PFlag.Z) s = 1#1)
   (h_step : sn = run 1 s) :
   cut sn = true ∧
@@ -259,8 +238,7 @@ theorem program.stepi_0x4005b4_cut_zf_1 (s sn : ArmState)
   r (StateField.GPR 0#5) sn = r (StateField.GPR 0#5) s ∧
   r (StateField.GPR 1#5) sn = r (StateField.GPR 1#5) s ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program := by
   have := program.stepi_eq_0x4005b4 h_program h_pc h_err
   simp only [run] at h_step
   simp only [minimal_theory, ←h_step] at this
@@ -273,7 +251,6 @@ theorem program.stepi_0x4005b4_cut_zf_0 (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005b4#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_zf_0 : r (StateField.FLAG PFlag.Z) s = 0#1)
   (h_step : sn = run 1 s) :
   cut sn = false ∧
@@ -281,8 +258,7 @@ theorem program.stepi_0x4005b4_cut_zf_0 (s sn : ArmState)
   r (StateField.GPR 0#5) sn = r (StateField.GPR 0#5) s ∧
   r (StateField.GPR 1#5) sn = r (StateField.GPR 1#5) s ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program := by
   have := program.stepi_eq_0x4005b4 h_program h_pc h_err
   simp only [run] at h_step
   simp only [minimal_theory, ←h_step] at this
@@ -294,14 +270,12 @@ theorem program.stepi_0x4005b8_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005b8#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   cut sn = true ∧
   r (StateField.GPR 0#5) sn = r (StateField.GPR 1#5) s ∧
   r StateField.PC sn = 0x4005bc#64 ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program := by
   have := program.stepi_eq_0x4005b8 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
@@ -457,24 +431,22 @@ theorem correctness :
       subst si
       -- Begin: Symbolic simulation
       -- Instruction 1
-      rw [cassert_eq]
       generalize h_s0_run_1 : run 1 s0 = s1
       have h_s1 := @program.stepi_0x4005a4_cut s0 s1
                     (by simp only [*])
                     (by simp only [*])
                     (by simp only [*])
                     (by simp only [*])
-                    (by simp only [*])
+      rw [cassert_eq]
       simp only [h_s1, Nat.reduceAdd, minimal_theory]
       -- Instruction 2
-      rw [cassert_eq]
       generalize h_s1_run_1 : run 1 s1 = s2
       have h_s2 := @program.stepi_0x4005b0_cut s1 s2
                     (by simp only [*])
                     (by simp only [*])
                     (by simp only [*])
                     (by simp only [*])
-                    (by simp only [*])
+      rw [cassert_eq]
       simp only [h_s2, Nat.reduceAdd, minimal_theory]
       -- Effects Aggregation
       simp only [h_s1] at h_s2
@@ -500,7 +472,6 @@ theorem correctness :
           simp only [h_branch, minimal_theory] at h_assert
           simp only [h_assert]
         -- Instruction 1
-        rw [cassert_eq]
         generalize h_si_run_1 : run 1 si = s1
         have h_s1 := @program.stepi_0x4005b4_cut_zf_1 si s1
                       (by simp only [*])
@@ -508,7 +479,7 @@ theorem correctness :
                       (by simp only [*])
                       (by simp only [*])
                       (by simp only [*])
-                      (by simp only [*])
+        rw [cassert_eq]
         simp only [h_s1, Nat.reduceAdd, minimal_theory]
         -- End: Symbolic simulation
         simp only [assert, h_pre, h_s1, loop_post, spec, h_assert,
@@ -527,7 +498,6 @@ theorem correctness :
           simp only [h_assert, minimal_theory]
         -- Begin: Symbolic Simulation
         -- Instruction 1
-        rw [cassert_eq]
         generalize h_si_run_1 : run 1 si = s1
         have h_s1 := @program.stepi_0x4005b4_cut_zf_0 si s1
                       (by simp only [*])
@@ -535,37 +505,34 @@ theorem correctness :
                       (by simp only [*])
                       (by simp only [*])
                       (by simp only [*])
-                      (by simp only [*])
+        rw [cassert_eq]
         simp only [h_s1, Nat.reduceAdd, minimal_theory]
         -- Instruction 2
-        rw [cassert_eq]
         generalize h_s1_run_1 : run 1 s1 = s2
         have h_s2 := @program.stepi_0x4005a8_cut s1 s2
                       (by simp only [*])
                       (by simp only [*])
                       (by simp only [*])
                       (by simp only [*])
-                      (by simp only [*])
+        rw [cassert_eq]
         simp only [h_s2, Nat.reduceAdd, minimal_theory]
         -- Instruction 3
-        rw [cassert_eq]
         generalize h_s2_run_1 : run 1 s2 = s3
         have h_s3 := @program.stepi_0x4005ac_cut s2 s3
                       (by simp only [*])
                       (by simp only [*])
                       (by simp only [*])
                       (by simp only [*])
-                      (by simp only [*])
+        rw [cassert_eq]
         simp only [h_s3, Nat.reduceAdd, minimal_theory]
         -- Instruction 4
-        rw [cassert_eq]
         generalize h_s3_run_1 : run 1 s3 = s4
         have h_s4 := @program.stepi_0x4005b0_cut s3 s4
                      (by simp only [*])
                      (by simp only [*])
                      (by simp only [*])
                      (by simp only [*])
-                     (by simp only [*])
+        rw [cassert_eq]
         simp only [h_s4, Nat.reduceAdd, minimal_theory]
         -- Effects Aggregation
         simp only [h_s1, h_s2, h_s3] at h_s4
@@ -589,14 +556,13 @@ theorem correctness :
       rename_i h_assert_pc
       simp only [loop_post, state_simp_rules] at h_assert
       -- Begin: Symbolic Simulation
-      rw [cassert_eq]
       generalize h_s1_run_1 : run 1 si = s1
       have h_s1 := @program.stepi_0x4005b8_cut si s1
                     (by simp only [*])
                     (by simp only [*])
                     (by simp only [*])
                     (by simp only [*])
-                    (by simp only [*])
+      rw [cassert_eq]
       simp only [h_s1, Nat.reduceAdd, minimal_theory]
       -- End: Symbolic Simulation
       simp only [assert, h_pre, h_s1, post, h_assert,

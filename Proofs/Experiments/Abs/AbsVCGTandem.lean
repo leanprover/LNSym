@@ -29,10 +29,7 @@ def program : Program :=
 def abs_pre (s : ArmState) : Prop :=
   read_pc s = 0x4005d0#64 ∧
   s.program = program ∧
-  read_err s = StateError.None ∧
-  -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym_n` tactic expects this. Can we make this optional?
-  CheckSPAlignment s
+  read_err s = StateError.None
 
 /-- Specification of the absolute value computation for a 32-bit bitvector. -/
 def spec (x : BitVec 32) : BitVec 32 :=
@@ -50,8 +47,7 @@ def spec (x : BitVec 32) : BitVec 32 :=
 def abs_post (s0 sf : ArmState) : Prop :=
   read_gpr 32 0#5 sf = spec (read_gpr 32 0#5 s0) ∧
   read_pc sf = 0x4005e0#64 ∧
-  read_err sf = StateError.None ∧
-  CheckSPAlignment sf
+  read_err sf = StateError.None
 
 /-- Function identifying the exit state(s) of the program. -/
 def abs_exit (s : ArmState) : Prop :=
@@ -61,9 +57,12 @@ def abs_exit (s : ArmState) : Prop :=
 
 /-- Function identifying the cutpoints of the program. -/
 def abs_cut (s : ArmState) : Bool :=
-  read_pc s = 0x4005d0#64 -- First instruction
-  ||
-  read_pc s = 0x4005e0#64 -- Last instruction
+  match (read_pc s) with
+  -- First instruction
+  | 0x4005d0#64 => true
+  -- Last instruction
+  | 0x4005e0#64 => true
+  | _ => false
 
 /-- Function that attaches assertions at the cutpoints of this program. -/
 def abs_assert (s0 si : ArmState) : Prop :=
@@ -101,13 +100,16 @@ theorem program.stepi_0x4005d0_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005d0#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   abs_cut sn = false ∧
+  r (StateField.GPR 1#5) sn =
+    (BitVec.zeroExtend 64
+      (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s))) ∧
+  (∀ (f : StateField), f ≠ StateField.PC → f ≠ (StateField.GPR 1#5) →
+                        r f sn = r f s) ∧
   r StateField.PC sn = 0x4005d4#64 ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program:= by
   have := program.stepi_eq_0x4005d0 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
@@ -118,13 +120,19 @@ theorem program.stepi_0x4005d4_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005d4#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   abs_cut sn = false  ∧
+  r (StateField.GPR 0#5) sn =
+    (BitVec.zeroExtend 64
+            (BitVec.replicate 32 (BitVec.extractLsb 31 31 (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s)))) &&&
+          0xfffffffe#64 |||
+        BitVec.zeroExtend 64 ((BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s)).rotateRight 31) &&& 0xffffffff#64 &&&
+          0x1#64) ∧
+  (∀ (f : StateField), f ≠ StateField.PC → f ≠ (StateField.GPR 0#5) →
+                        r f sn = r f s) ∧
   r StateField.PC sn = 0x4005d8#64 ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program := by
   have := program.stepi_eq_0x4005d4 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
@@ -135,13 +143,17 @@ theorem program.stepi_0x4005d8_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005d8#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   abs_cut sn = false  ∧
+  r (StateField.GPR 1#5) sn =
+    (BitVec.zeroExtend 64
+      (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 0x1#5) s))
+          (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s)) 0x0#1).fst) ∧
+  (∀ (f : StateField), f ≠ StateField.PC → f ≠ (StateField.GPR 1#5) →
+                        r f sn = r f s) ∧
   r StateField.PC sn = 0x4005dc#64 ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program := by
   have := program.stepi_eq_0x4005d8 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
@@ -152,13 +164,16 @@ theorem program.stepi_0x4005dc_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x4005dc#64)
   (h_err : r StateField.ERR s = StateError.None)
-  (h_sp_aligned : CheckSPAlignment s)
   (h_step : sn = run 1 s) :
   abs_cut sn = true  ∧
+  r (StateField.GPR 0#5) sn =
+    (BitVec.zeroExtend 64 (BitVec.zeroExtend 32 (r (StateField.GPR 0x1#5) s)) ^^^
+      BitVec.zeroExtend 64 (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s))) ∧
+  (∀ (f : StateField), f ≠ StateField.PC → f ≠ (StateField.GPR 0#5) →
+                        r f sn = r f s) ∧
   r StateField.PC sn = 0x4005e0#64 ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program ∧
-  CheckSPAlignment sn := by
+  sn.program = program := by
   have := program.stepi_eq_0x4005dc h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
@@ -167,9 +182,16 @@ theorem program.stepi_0x4005dc_cut (s sn : ArmState)
 
 -------------------------------------------------------------------------------
 
-theorem partial_correctness :
-  PartialCorrectness ArmState := by
-  apply Correctness.partial_correctness_from_assertions
+def rank (s : ArmState) : Nat :=
+  match (read_pc s) with
+  -- First instruction
+  | 0x4005d0#64 => 1
+  -- Last instruction
+  | _ => 0
+
+theorem correctness :
+  Correctness ArmState := by
+  apply Correctness.by_the_method rank
   case v1 =>
     intros s0 h_pre
     simp only [Spec'.assert, abs_assert]
@@ -191,7 +213,8 @@ theorem partial_correctness :
     simp [Spec.exit, abs_exit] at h_exit
     simp only [Spec'.assert, abs_assert, h_exit, minimal_theory] at h_assert
     obtain ⟨h_pre, h_assert_pc, h_assert_si_s0⟩ := h_assert
-    have ⟨h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned⟩ := h_pre
+    have ⟨h_s0_pc, h_s0_program, h_s0_err⟩ := h_pre
+    simp only [state_simp_rules] at *
     subst si
     clear h_exit
 
@@ -216,7 +239,7 @@ theorem partial_correctness :
     replace h_s0_run := h_s0_run.symm
     sym_n 1 at s0
     have h_s1_cut := @program.stepi_0x4005d0_cut s0 s1
-                      h_s0_program h_s0_pc h_s0_err h_s0_sp_aligned
+                      h_s0_program h_s0_pc h_s0_err
                       (by simp only [run, stepi_s0])
     -- Simplify the conclusion.
     simp only [h_s1_cut, Nat.reduceAdd, minimal_theory]
@@ -229,7 +252,7 @@ theorem partial_correctness :
     replace h_s1_run := h_s1_run.symm
     sym_n 1 at s1
     have h_s2_cut := @program.stepi_0x4005d4_cut s1 s2
-                     h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned
+                     h_s1_program h_s1_pc h_s1_err
                      (by simp only [run, stepi_s1])
     -- Simplify the conclusion.
     simp only [h_s2_cut, Nat.reduceAdd, minimal_theory]
@@ -241,7 +264,7 @@ theorem partial_correctness :
     replace h_s2_run := h_s2_run.symm
     sym_n 1 at s2
     have h_s3_cut := @program.stepi_0x4005d8_cut s2 s3
-                     h_s2_program h_s2_pc h_s2_err h_s2_sp_aligned
+                     h_s2_program h_s2_pc h_s2_err
                      (by simp only [run, stepi_s2])
 
     simp only [h_s3_cut, Nat.reduceAdd, minimal_theory]
@@ -253,7 +276,7 @@ theorem partial_correctness :
     replace h_s3_run := h_s3_run.symm
     sym_n 1 at s3
     have h_s4_cut := @program.stepi_0x4005dc_cut s3 s4
-                      h_s3_program h_s3_pc h_s3_err h_s3_sp_aligned
+                      h_s3_program h_s3_pc h_s3_err
                       (by simp only [run, stepi_s3])
     -- Note: from the conclusion, we see that we simulated 3 steps from s1 (or 4
     -- steps from s0) to reach the next cutpoint. We can use this to help
@@ -261,34 +284,27 @@ theorem partial_correctness :
     simp only [h_s4_cut, Nat.reduceAdd, minimal_theory]
     clear h_s3_run h_s4_cut stepi_s3
 
-    -- End: Symbolic Simulation
-
     simp only [abs_assert, abs_post, h_pre, minimal_theory]
     -- Aggregate program effects here to obtain the value of x0(s4).
     sym_aggregate
+    -- End: Symbolic Simulation
 
     simp (config := {ground := true}) only [AddWithCarry, spec]
-    split <;> bv_decide
+    constructor
+    · -- Partial Correctness Proof
+      split <;> bv_decide
+    · -- Termination Proof
+      apply Exists.intro 4
+      simp only [Spec'.cut, abs_cut, rank,
+                 state_simp_rules]
+      have h_run : run 4 s0 = s4 := by
+        -- (TODO @alex) If we kept track of the number of steps we took during
+        -- symbolic simulation to reach the final state, then we could re-use
+        -- the symbolic simulation done for partial correctness to prove
+        -- termination as well.
+        sorry
+      simp only [h_run, h_s4_pc, h_s0_pc, minimal_theory]
+      decide
     done
-
-theorem termination :
-  Termination ArmState := by
-  simp [Termination, Spec.pre, Spec.exit, abs_exit,
-        state_simp_rules, bitvec_rules, minimal_theory]
-  intro s h_pre
-  have ⟨h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned⟩ := h_pre
-  -- While doing the partial correctness proof, we discovered that we need to
-  -- simulate 4 steps to reach an exit state.
-  apply Exists.intro 4
-  simp only [Correctness.arm_run]
-  -- Unfortunately, after symbolically simulating the program to prove partial
-  -- correctness, we need to do that again to prove termination.
-  -- However, we can avoid this by providing a measure function and proving
-  -- that it decreases at each cutpoint. It'd be nice to have a more general
-  -- proof that having such a measure implies the `Termination` statement.
-  generalize h_run : run 4 s = sf
-  replace h_run := h_run.symm
-  sym_n 4
-  done
 
 end AbsVCGTandem
