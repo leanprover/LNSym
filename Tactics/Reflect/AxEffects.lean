@@ -514,37 +514,9 @@ def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
 
 /-! ## Composition -/
 
-#check write_mem
-
-/-- Compose two effects `left` and `right`,
+/- TODO: write a function that combines two effects `left` and `right`,
 where `left.initialState = right.currentState`.
-That is, compute the effect of "`left` after `right`" -/
-partial def AxEffects.compose (left right : AxEffects) : MetaM AxEffects := do
-  assertIsDefEq left.initialState right.currentState
-  let eq := -- `eq : <left.initialState> = <right.currentState>`
-    mkApp2 (.const ``id [1])
-      (mkEqArmState left.initialState right.initialState)
-      (← mkEqRefl left.initialState)
-
-  -- let
-
-  sorry
-  -- return {
-  --   initialState := right.initialState
-  --   currentState := left.currentState
-  --   fields := sorry
-  --   nonEffectProof := sorry
-  --   memoryEffect :=← replaceMemoryEffect left.memoryEffect
-  -- }
-where
-  replaceMemoryEffect (memoryEffect : Expr) : MetaM Expr :=
-    match_expr memoryEffect with
-      | write_mem _addr _val e => replaceMemoryEffect e
-      | _ => do
-          -- if (← )
-          assertIsDefEq memoryEffect left.initialState
-          return right.memoryEffect
-
+That is, compose the effect of "`left` after `right`" -/
 
 /-! ## Validation -/
 
