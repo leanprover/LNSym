@@ -23,6 +23,12 @@ private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
     evalTactic tactic
     trace[Tactic.sym] "new goal state:\n{← getGoals}"
 
+private def traceHeartbeats (header : Option String := none) : MetaM Unit := do
+  let header := (header.map (· ++ ": ")).getD ""
+  let heartbeats ← IO.getNumHeartbeats
+  trace[Tactic.sym.heartbeats] "{header}used {heartbeats} heartbeats \
+    ({← heartbeatsPercent}% of maximum)"
+
 /-- `init_next_step h_run stepi_eq sn` splits the hypothesis
   `h_run: s_final = run (n+1) s`
 by adding a new state variable, `sn`, and two new hypotheses:
@@ -348,6 +354,7 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
       let goal ← goal.clear hStep.fvarId
       replaceMainGoal [goal]
 
+      traceHeartbeats
       return c
 
 /- used in `sym_n` tactic to specify an initial state -/
@@ -380,6 +387,8 @@ in which case a new goal of the appropriate type will be added.
 The other hypotheses *must* be present,
 since we infer required information from their types. -/
 elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
+  traceHeartbeats "initial heartbeats"
+
   let s ← s.mapM fun
     | `(sym_at|at $s:ident) => pure s.getId
     | _ => Lean.Elab.throwUnsupportedSyntax
@@ -440,6 +449,7 @@ Did you remember to generate step theorems with:
     for _ in List.range n do
       c ← sym1 c whileTac
 
+    traceHeartbeats "symbolic simulation total"
     -- Check if we can substitute the final state
     if c.runSteps? = some 0 then
       let msg := do
@@ -460,11 +470,17 @@ Did you remember to generate step theorems with:
 
         let goal ← subst goal hEqId
         trace[Tactic.sym] "performed subsitutition in:\n{goal}"
+        traceHeartbeats
 
         replaceMainGoal [goal]
 
     -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
     -- added while symbolically evaluating to `simp`
-    withMainContext <| do
+    let msg := m!"aggregating (non-)effects"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
+      traceHeartbeats "pre"
       let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
       replaceMainGoal goal?.toList
+
+
+    traceHeartbeats "final usage"
