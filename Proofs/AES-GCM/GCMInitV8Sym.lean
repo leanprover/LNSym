@@ -57,7 +57,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       -- program is unchanged
     ∧ sf.program = gcm_init_v8_program
       -- SP is still aligned
-    ∧ CheckSPAlignment s0
+    ∧ CheckSPAlignment sf
       -- PC is updated
     ∧ read_pc sf = 0x79f5ec#64
       -- First 12 elemets in Htable is correct
@@ -72,12 +72,12 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     -- Memory safety: memory location that should not change did
     -- not change
     -- The addr exclude output region Htable
-    ∧ (∀ (n : Nat) (addr : BitVec 64) (h: addr < (Htable_addr sf) ∧ addr >= (Htable_addr sf) + 128*12),
+    ∧ (∀ (n : Nat) (addr : BitVec 64) (h: addr < (Htable_addr sf) ∨ addr >= (Htable_addr sf) + 128*12),
         read_mem_bytes n addr sf = read_mem_bytes n addr s0)
     := by
   simp (config := {ground := true}) only at h_s0_pc
   -- ^^ Still needed, because `gcm_init_v8_program.min` is somehow
   --    unable to be reflected
   sym_n 152
-  sym_aggregate
+  -- sym_aggregate
   sorry
