@@ -12,10 +12,10 @@ namespace AESHWEncryptProgram
 
 #genStepEqTheorems aes_hw_encrypt_program
 
-abbrev in_addr   (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
-abbrev key_addr   (s : ArmState) : BitVec 64 := r (StateField.GPR 2#5) s
-abbrev round_addr   (s : ArmState) : BitVec 64 := (r (StateField.GPR 2#5) s) + 240#64
-abbrev out_addr   (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
+abbrev in_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
+abbrev key_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 2#5) s
+abbrev round_addr (s : ArmState) : BitVec 64 := (r (StateField.GPR 2#5) s) + 240#64
+abbrev out_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 
 theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
     (h_s0_program : s0.program = aes_hw_encrypt_program)
