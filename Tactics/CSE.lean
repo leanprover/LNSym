@@ -111,8 +111,10 @@ structure CSEConfig where
    to search for maximal subterm sharing, and to then eliminiate the most common occurrences.
   -/
   fuelEliminate : Nat := 1000
-  /-- Whether we are performing a dry run, where we will identify repeated
-      subterms, and simulate the sharing algorithm, but perform no actual sharing. -/
+  /--
+  Whether we are performing a dry run, where we will identify repeated
+  subterms, and simulate the sharing algorithm, but perform no actual sharing.
+  This is used for debugging tactics. -/
   dryRun? : Bool := false
 
 structure ExprData where
