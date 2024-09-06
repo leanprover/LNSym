@@ -10,8 +10,8 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
-set_option trace.simp_mem true
-set_option trace.simp_mem.info true
+-- set_option trace.simp_mem true
+-- set_option trace.simp_mem.info true
 
 namespace MemLegal
 /-- Show reflexivity of legality. -/
@@ -98,6 +98,22 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
 /-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_6
 
+/-- error: ❌️ simp_mem failed to make any progress. -/
+#guard_msgs in theorem separate_7 (hm : m ≠ 0)
+    (l : mem_separate' a 100 b m)
+    (l : mem_separate' (a+100) 100 b m)  :
+    mem_separate' a 200 b m := by
+  simp_mem /- Need better address normalization. -/
+  trace_state
+
+/-- error: ❌️ simp_mem failed to make any progress. -/
+#guard_msgs in theorem separate_8 {n : Nat} (hn : n ≠ 0) (hm : m ≠ 0)
+    (l : mem_separate' a n b m)
+    (l : mem_separate' (a+n) n b m)  :
+    mem_separate' a (2*n) b m := by
+  simp_mem /- Need better address normalization. -/
+  trace_state
+
 end MemSeparate
 
 
@@ -159,7 +175,7 @@ theorem mem_automation_test_4
       (write_mem_bytes 48 src_addr val s0)) =
    val.extractLsBytes 1 10 := by
   simp only [memory_rules]
-  simp_mem; -- TODO: repeat on change.
+  simp_mem
   congr 1
   bv_omega' -- TODO: address normalization.
 
@@ -366,17 +382,35 @@ theorem mem_separate_move_of_lt_of_le  (h : mem_separate' a an b bn)
 
 end MathProperties
 
+
+
+section PairwiseSeparate
+  /- Check that a direct implication of the pairwise separation is proven. -/
+  theorem pairwise_direct (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
+    mem_separate' a 100 b 200 := by
+    simp_mem
+
+  /- Check that a direct implication of the pairwise separation is proven. -/
+  theorem pairwise_subset (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
+    mem_separate' a 80 b 100 := by
+    simp_mem
+
+end PairwiseSeparate
+
 namespace MemOptions
 
+set_option trace.simp_mem true in
+set_option trace.simp_mem.info true in
 /--
 error: unsolved goals
 ⊢ False
 ---
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
+[simp_mem.info] ⚙️ Matching on ⊢ False
 [simp_mem.info] Performing Rewrite At Main Goal
-  [simp_mem.info] ⚙️ Matching on ⊢ False
   [simp_mem.info] Simplifying goal.
+[simp_mem.info] ❌️ No progress made in this iteration. halting.
 ---
 info: ⊢ False
 -/
@@ -384,14 +418,17 @@ info: ⊢ False
   simp_mem (config := { failIfUnchanged := false })
   trace_state
 
+set_option trace.simp_mem true in
+set_option trace.simp_mem.info true in
 /--
-error: ❌️ simp_mem failed to make progress.
+error: ❌️ simp_mem failed to make any progress.
 ---
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
+[simp_mem.info] ⚙️ Matching on ⊢ False
 [simp_mem.info] Performing Rewrite At Main Goal
-  [simp_mem.info] ⚙️ Matching on ⊢ False
   [simp_mem.info] Simplifying goal.
+[simp_mem.info] ❌️ No progress made in this iteration. halting.
 -/
 #guard_msgs in theorem test_fail_if_unchanged : False := by
   simp_mem
