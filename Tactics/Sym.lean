@@ -181,7 +181,11 @@ def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
 
 /-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
 add hypotheses that axiomatically describe the effects in terms of
-reads from `s{i+1}` -/
+reads from `s{i+1}`.
+
+Return the context for the next step (see `SymContext.next`), where
+we attempt to determine the new PC by reflecting the obtained effects,
+falling back to incrementing the PC if reflection failed. -/
 def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
   withMainContext do
     let mut eff ← AxEffects.fromEq hStep
@@ -249,7 +253,21 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
         eff.validate
 
       eff.addHypothesesToLContext s!"h_{c.next_state}_"
-    return { c with axHyps := axHyps ++ c.axHyps}
+    let c := { c with axHyps := axHyps ++ c.axHyps}
+
+    -- Attempt to reflect the new PC
+    let nextPc ← eff.getField .PC
+    let nextPc? ← try
+      let nextPc ← reflectBitVecLiteral 64 nextPc.value
+      -- NOTE: `reflectBitVecLiteral` is fast when the value is a literal,
+      -- but might involve an expensive reduction when it is not
+      pure <| some nextPc
+    catch err =>
+      trace[Tactic.sym] "failed to reflect {nextPc.value}\n\n\
+        {err.toMessageData}"
+      pure none
+
+    return c.next nextPc?
 
 /-- A tactic wrapper around `explodeStep`.
 Note the use of `SymContext.fromLocalContext`,
@@ -313,7 +331,7 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
           skipping simplification step"
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
-    let c ← withMainContext <| do
+    withMainContext <| do
       let hStep ← SymContext.findFromUserName h_step.getId
       -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`
@@ -324,8 +342,6 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
       replaceMainGoal [goal]
 
       return c
-
-    return c.next
 
 /- used in `sym_n` tactic to specify an initial state -/
 syntax sym_at := "at" ident
