@@ -514,9 +514,37 @@ def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
 
 /-! ## Composition -/
 
-/- TODO: write a function that combines two effects `left` and `right`,
+#check write_mem
+
+/-- Compose two effects `left` and `right`,
 where `left.initialState = right.currentState`.
-That is, compose the effect of "`left` after `right`" -/
+That is, compute the effect of "`left` after `right`" -/
+partial def AxEffects.compose (left right : AxEffects) : MetaM AxEffects := do
+  assertIsDefEq left.initialState right.currentState
+  let eq := -- `eq : <left.initialState> = <right.currentState>`
+    mkApp2 (.const ``id [1])
+      (mkEqArmState left.initialState right.initialState)
+      (← mkEqRefl left.initialState)
+
+  -- let
+
+  sorry
+  -- return {
+  --   initialState := right.initialState
+  --   currentState := left.currentState
+  --   fields := sorry
+  --   nonEffectProof := sorry
+  --   memoryEffect :=← replaceMemoryEffect left.memoryEffect
+  -- }
+where
+  replaceMemoryEffect (memoryEffect : Expr) : MetaM Expr :=
+    match_expr memoryEffect with
+      | write_mem _addr _val e => replaceMemoryEffect e
+      | _ => do
+          -- if (← )
+          assertIsDefEq memoryEffect left.initialState
+          return right.memoryEffect
+
 
 /-! ## Validation -/
 
@@ -565,65 +593,123 @@ by default):
 - `eff.programProof`, and
 - `eff.stackAlignmentProof?` (if the field is not `none`)
 
-Return a list of fvar ids of the newly added hypotheses -/
+Return an `AxEffect` where these expression have been replaced by a reference
+to the newly created fvar -/
 def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
     (mvar : Option MVarId := none) :
-    TacticM (List FVarId) :=
+    TacticM AxEffects :=
   let msg := m!"adding hypotheses to local context"
   withTraceNode `Tactic.sym (fun _ => pure msg) do
     eff.traceCurrentState
     let mut goal ← mvar.getDM getMainGoal
-    let mut fvars := []
 
-    for ⟨field, {proof, ..}⟩ in eff.fields do
-      let msg := m!"adding field {field}"
-      ⟨fvars, goal⟩ ← withTraceNode `Tactic.sym (fun _ => pure msg) <| goal.withContext do
-          trace[Tactic.sym] "raw proof: {proof}"
-          let name := Name.mkSimple (s!"{hypPrefix}{field}")
-          replaceOrNote fvars goal name proof
+    let fields ← do
+      let mut fields := []
+      for ⟨field, {value, proof}⟩ in eff.fields do
+        let msg := m!"adding field {field}"
+        let ⟨fvar, goal'⟩ ← withTraceNode `Tactic.sym (fun _ => pure msg) <| goal.withContext do
+            trace[Tactic.sym] "raw proof: {proof}"
+            let name := Name.mkSimple s!"{hypPrefix}{field}"
+            replaceOrNote goal name proof
+        goal := goal'
+        let fieldEff := FieldEffect.mk value (Expr.fvar fvar)
+        fields := (field, fieldEff) :: fields
+      pure (Std.HashMap.ofList fields)
 
     trace[Tactic.sym] "adding non-effects with {eff.nonEffectProof}"
-    ⟨fvars, goal⟩ ← goal.withContext do
+    let ⟨nonEffectProof, goal'⟩ ← goal.withContext do
       let name := .mkSimple s!"{hypPrefix}non_effects"
       let proof := eff.nonEffectProof
-      replaceOrNote fvars goal name proof
+      replaceOrNote goal name proof
+    let nonEffectProof := Expr.fvar nonEffectProof
+    goal := goal'
 
     trace[Tactic.sym] "adding memory effects with {eff.memoryEffectProof}"
-    ⟨fvars, goal⟩ ← goal.withContext do
+    let ⟨memoryEffectProof, goal'⟩ ← goal.withContext do
       let name := .mkSimple s!"{hypPrefix}memory_effects"
       let proof := eff.memoryEffectProof
-      replaceOrNote fvars goal name proof
+      replaceOrNote goal name proof
+    let memoryEffectProof := Expr.fvar memoryEffectProof
+    goal := goal'
 
     trace[Tactic.sym] "adding program hypothesis with {eff.programProof}"
-    ⟨fvars, goal⟩ ← goal.withContext do
+    let ⟨programProof, goal'⟩ ← goal.withContext do
       let name := .mkSimple s!"{hypPrefix}program"
       let proof := eff.programProof
-      replaceOrNote fvars goal name proof
+      replaceOrNote goal name proof
+    let programProof := Expr.fvar programProof
+    goal := goal'
 
     trace[Tactic.sym] "stackAlignmentProof? is {eff.stackAlignmentProof?}"
-    if let some stackAlignmentProof := eff.stackAlignmentProof? then
-      trace[Tactic.sym] "adding stackAlignment hypothesis"
-      ⟨fvars, goal⟩ ← goal.withContext do
-        let name := .mkSimple s!"{hypPrefix}sp_aligned"
-        replaceOrNote fvars goal name stackAlignmentProof
-    else
-      trace[Tactic.sym] "skipping stackAlignment hypothesis"
+    let (stackAlignmentProof?, goal') ← do
+      if let some stackAlignmentProof := eff.stackAlignmentProof? then
+        trace[Tactic.sym] "adding stackAlignment hypothesis"
+        let ⟨fvar, goal'⟩ ← goal.withContext do
+          let name := .mkSimple s!"{hypPrefix}sp_aligned"
+          replaceOrNote goal name stackAlignmentProof
+        pure (some (Expr.fvar fvar), goal')
+      else
+        trace[Tactic.sym] "skipping stackAlignment hypothesis"
+        pure (none, goal)
+    goal := goal'
 
     replaceMainGoal [goal]
-    return fvars
+    return {eff with
+      fields, nonEffectProof, memoryEffectProof, programProof,
+      stackAlignmentProof?
+    }
 where
-  replaceOrNote (fvars : List FVarId) (goal : MVarId)
+  replaceOrNote (goal : MVarId)
       (h : Name) (v : Expr) (t? : Option Expr := none) :
-      MetaM (List FVarId × MVarId) :=
+      MetaM (FVarId × MVarId) :=
     let msg := m!"adding {h} to the local context"
     withTraceNode `Tactic.sym (fun _ => pure msg) <| do
       trace[Tactic.sym] "with value {v} and type {t?}"
       if let some decl := (← getLCtx).findFromUserName? h then
         let ⟨fvar, goal, _⟩ ← goal.replace decl.fvarId v t?
-        return ⟨fvar :: fvars, goal⟩
+        return ⟨fvar, goal⟩
       else
         let ⟨fvar, goal⟩ ← goal.note h v t?
-        return ⟨fvar :: fvars, goal⟩
+        return ⟨fvar, goal⟩
 
+/-- Return a `SimpTheorems` with the proofs contained in the given `AxEffects`
+
+Note this adds *only* the (non-)effect proofs, to get a simp configuration with
+more default simp-lemmas, see `AxEffects.toSimp` -/
+def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
+  let msg := m!"computing SimpTheorems for (non-)effect hypotheses"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    let lctx ← getLCtx
+    let baseName? :=
+      if eff.currentState.isFVar then
+        (lctx.find? eff.currentState.fvarId!).map fun decl =>
+          Name.str decl.userName "AxEffects"
+      else
+        none
+    let baseName := baseName?.getD (Name.mkSimple "AxEffects")
+
+    let add (thms : SimpTheorems) (e : Expr) (name : String) := do
+      trace[Tactic.sym] "adding {e} with name {name}"
+      let origin : Origin :=
+        if e.isFVar then
+          .fvar e.fvarId!
+        else
+          .other <| Name.str baseName name
+      thms.add origin #[] e
+
+    let mut thms : SimpTheorems := {}
+
+    for ⟨field, {proof, ..}⟩ in eff.fields do
+      thms ← add thms proof s!"field_{field}"
+
+    thms ← add thms eff.nonEffectProof "nonEffectProof"
+    thms ← add thms eff.memoryEffectProof "memoryEffectProof"
+    thms ← add thms eff.programProof "programProof"
+    if let some stackAlignmentProof := eff.stackAlignmentProof? then
+      thms ← add thms stackAlignmentProof "stackAlignmentProof"
+
+    trace[Tactic.sym] "done"
+
+    pure thms
 
 end Tactic
