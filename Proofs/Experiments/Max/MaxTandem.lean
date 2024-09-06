@@ -606,20 +606,6 @@ elab "clear_named" "[" names:(ident),* "]": tactic =>  do
           replaceMainGoal [← (← getMainGoal).clear hyp.fvarId]
           continue
 
-
-
-section ForLean
-
-theorem BitVec.not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
-  simp only [BitVec.slt, BitVec.sle]
-  by_cases h : a.toInt < b.toInt
-  · simp [h]
-    exact Int.not_le.mpr h
-  · simp [h]
-    exact Int.not_lt.mp h
-
-end ForLean
-
 theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions
