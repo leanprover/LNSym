@@ -26,14 +26,11 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
     -- AES256 rounds = 14, the address of rounds is stored in x2
     (h_rounds : 14 = read_mem_bytes 4 (round_addr s0) s0)
     -- memory separation
-    (h_s0_in_key_separate :
-      mem_separate' (in_addr s0) 128 (key_addr s0) 304)
-    (h_s0_out_key_separate :
-      mem_separate' (out_addr s0) 128 (key_addr s0) 304)
-    (h_s0_in_out_separate :
-      mem_separate' (in_addr s0) 128 (out_addr s0) 128)
-     :
-    read_err sf = .None := by
+    (h_mem : Memory.Region.pairwiseSeparate
+      [⟨(in_addr s0), 128⟩,
+       ⟨(key_addr s0), 1984⟩, -- 240*8 bits key schedule and 64 bits rounds
+       ⟨(out_addr s0), 128⟩ ])
+    : read_err sf = .None := by
   simp (config := {ground := true}) only at h_s0_pc
   -- ^^ Still needed, because `aes_hw_encrypt_program.min` is somehow
   --    unable to be reflected
