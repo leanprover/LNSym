@@ -11,18 +11,6 @@ import Tactics.StepThms
 import Tactics.Sym
 import Correctness.ArmSpec
 
-/-- Helper projections for registers `xn` -/
-@[state_simp_rules]
-def ArmState.x (n : Nat) : ArmState → BitVec 64
-| s => read_gpr 64 n s
-
-@[state_simp_rules]
-def ArmState.x0 := ArmState.x 0
-@[state_simp_rules]
-def ArmState.x1 := ArmState.x 1
-@[state_simp_rules]
-def ArmState.x2 := ArmState.x 2
-
 namespace Memcpy
 
 /-

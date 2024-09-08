@@ -1052,6 +1052,16 @@ theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   apply BitVec.getLsb_ge
   omega
 
+/-- TODO: upstream -/
+theorem not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
+  simp only [BitVec.slt, BitVec.sle]
+  by_cases h : a.toInt < b.toInt
+  · simp [h]
+    exact Int.not_le.mpr h
+  · simp [h]
+    exact Int.not_lt.mp h
+
+
 /-! ## `Quote` instance -/
 
 instance (w : Nat) : Quote (BitVec w) `term where
