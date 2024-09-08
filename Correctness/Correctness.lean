@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Leonardo de Moura, Shilpi Goel
+Author(s): Leonardo de Moura, Shilpi Goel, Siddharth Bhat
 -/
 
 /-
@@ -87,7 +87,6 @@ the next cutpoint) and `nextc` (to characterize the next cutpoint
 state). Note that the function `csteps` is partial: if no cutpoint
 is reachable from `s`, then the recursion does not terminate.
 -/
-
 noncomputable def csteps [Sys σ] [Spec' σ] (s : σ) (i : Nat) : Nat :=
   iterate (fun (s, i) => if cut s then .inl i else .inr (next s, i + 1)) (s, i)
 
@@ -257,6 +256,17 @@ theorem cassert_cut [Sys σ] [Spec' σ] {s0 si : σ} (h : cut si) (i : Nat) :
   rw [cassert_eq]
   simp only [↓reduceIte, and_self, h]
   done
+
+/-- If `si` is a cut-point, then `(cassert s0 si i).snd` is to verify the assertion for `si`. -/
+theorem snd_cassert_of_cut [Sys σ] [Spec' σ] {s0 si : σ} (h : cut si) (i : Nat) : (cassert s0 si i).snd = assert s0 si := by
+  rw [cassert_eq]
+  simp [*]
+
+/-- If `si` is not a cut-point, then `(cassert s0 si i).snd` is to run the next state. -/
+theorem snd_cassert_of_not_cut [Sys σ] [Spec' σ] {s0 si : σ} (h : cut si = false) (i : Nat) :
+  (cassert s0 si i).snd = (cassert s0 (next si) (i + 1)).snd  := by
+  rw [cassert_eq]
+  simp [*]
 
 theorem cassert_not_cut [Sys σ] [Spec' σ] {s0 si : σ} (h₁ : ¬ cut si)
   (h₂ : (cassert s0 (next si) (i+1)).fst = j) :
