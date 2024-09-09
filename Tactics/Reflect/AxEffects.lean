@@ -645,6 +645,7 @@ where
         let ⟨fvar, goal⟩ ← goal.note h v t?
         return ⟨fvar, goal⟩
 
+open Meta.DiscrTree in
 /-- Return a `SimpTheorems` with the proofs contained in the given `AxEffects`
 
 Note this adds *only* the (non-)effect proofs, to get a simp configuration with
@@ -661,14 +662,41 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
         none
     let baseName := baseName?.getD (Name.mkSimple "AxEffects")
 
-    let add (thms : SimpTheorems) (e : Expr) (name : String) := do
-      trace[Tactic.sym] "adding {e} with name {name}"
-      let origin : Origin :=
-        if e.isFVar then
-          .fvar e.fvarId!
-        else
-          .other <| Name.str baseName name
-      thms.add origin #[] e
+    let add (thms : SimpTheorems) (e : Expr) (name : String) :=
+      let msg := "adding {e} with name {name}"
+      withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+        let origin : Origin :=
+          if e.isFVar then
+            .fvar e.fvarId!
+          else
+            .other <| Name.str baseName name
+        let newThms ← mkSimpTheorems origin #[] e
+        let newThms ← newThms.mapM (fun thm => do
+          /- `mkSimpTheorems` sets `noIndexAtArgs := true`, meaning that all
+          our (non-effects) theorems will have `[r, *, *]` as key.
+          causing many unneeded attempts at unification.
+          The following code fixes up the keys, so that for example
+            `h_x0_s10 : r (.GPR 0#5) s10`
+          will get a key that includes the state and statefield constant
+
+          FIXME: we should suggest a PR upstream that adds `noIndexAtArgs` as
+          an optional argument to `mkSimpTheorems`, so that we can control
+          this properly -/
+          let type ← inferType thm.proof
+          let ⟨_, _, type⟩ ← forallMetaTelescope type
+          match type.eq? with
+            | none =>
+                trace[Tactic.sym] "{Lean.crossEmoji} {type} is not an equality\
+                  , giving up on fixing the discrtree keys.
+
+                  Currently, the keys are:\n{thm.keys}"
+                pure thm
+            | some (_eqType, lhs, _rhs) =>
+                let keys ← mkPath lhs simpDtConfig (noIndexAtArgs := false)
+                pure { thm with keys }
+        )
+
+        pure <| newThms.foldl addSimpTheoremEntry thms
 
     let mut thms : SimpTheorems := {}
 
