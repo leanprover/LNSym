@@ -262,8 +262,7 @@ def mkEqReflArmState (x : Expr) : Expr :=
 
 /-! ## Tracing helpers -/
 
-def traceHeartbeats (header : Option String := none)
-    (cls : Name := `Tactic.sym.heartbeats) :
+def traceHeartbeats (cls : Name) (header : Option String := none) :
     MetaM Unit := do
   let header := (header.map (· ++ ": ")).getD ""
   let heartbeats ← IO.getNumHeartbeats

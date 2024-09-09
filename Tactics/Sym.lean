@@ -23,6 +23,10 @@ private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
     evalTactic tactic
     trace[Tactic.sym] "new goal state:\n{← getGoals}"
 
+private def Sym.traceHeartbeats (header : Option String := none) :=
+  _root_.traceHeartbeats `Tactic.sym.heartbeats header
+open Sym (traceHeartbeats)
+
 /-- `init_next_step h_run stepi_eq sn` splits the hypothesis
   `h_run: s_final = run (n+1) s`
 by adding a new state variable, `sn`, and two new hypotheses:
