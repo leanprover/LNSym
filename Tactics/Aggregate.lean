@@ -12,7 +12,7 @@ open Lean Meta Elab.Tactic
 namespace Sym
 
 /-- Given an array of (non-)effects hypotheses, aggregate these effects by
-`simp`ing the main goals -/
+`simp`ing at the specified location -/
 def aggregate (axHyps : Array LocalDecl) (location : Location) : TacticM Unit :=
   let msg := m!"aggregating (non-)effects"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -39,7 +39,11 @@ open Parser.Tactic (location) in
 /--
 `sym_aggregate` will search for all local hypotheses of the form
   `r ?fld ?state = _` or `∀ f ..., r ?fld ?state = _`,
-and use those hypotheses to simplify the goal -/
+and use those hypotheses to simplify the goal
+
+`sym_aggregate at ...` will use those same hypotheses to simplify at the
+specified locations, using the same syntax as `simp at ...`
+-/
 elab "sym_aggregate" loc:(location)? : tactic => withMainContext do
   let msg := m!"aggregating local (non-)effect hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
