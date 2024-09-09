@@ -663,7 +663,7 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
     let baseName := baseName?.getD (Name.mkSimple "AxEffects")
 
     let add (thms : SimpTheorems) (e : Expr) (name : String) :=
-      let msg := "adding {e} with name {name}"
+      let msg := m!"adding {e} with name {name}"
       withTraceNode `Tactic.sym (fun _ => pure msg) <| do
         let origin : Origin :=
           if e.isFVar then
