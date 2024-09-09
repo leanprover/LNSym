@@ -242,7 +242,7 @@ noncomputable def cassert [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat) : Nat × Pr
     (si, i)
 
 theorem cassert_eq [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat) :
-    cassert s0 si i 
+    cassert s0 si i
     = if cut si then (i, assert s0 si)
        else cassert s0 (next si) (i + 1) := by
   unfold cassert
@@ -446,7 +446,10 @@ from si to reach the next cutpoint)`, and the second element is a
 `Prop` that checks whether the `rank` of the next cutpoint state is strictly
 less than the `rank` of `si`.
 
-We may eventually want to generalize from `Nat` to any `WellFounded`. This is particularly useful for nested loops, whose termination arguments often involve tuples of naturals with lexicographic ordering (i.e. https://en.wikipedia.org/wiki/Loop_dependence_analysis)
+We may eventually want to generalize from `Nat` to any `WellFounded`. This is
+particularly useful for nested loops, whose termination arguments often involve
+tuples of naturals with lexicographic ordering (i.e.
+https://en.wikipedia.org/wiki/Loop_dependence_analysis).
 -/
 noncomputable def rank_decreases [Sys σ] [Spec' σ] (rank : σ → Nat) (si sn : σ) (i : Nat)
   : Nat × Prop :=
