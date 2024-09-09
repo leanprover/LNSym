@@ -243,7 +243,7 @@ theorem correctness :
                       (by simp only [run, stepi_s0])
     -- Simplify the conclusion.
     simp only [h_s1_cut, Nat.reduceAdd, minimal_theory]
-    clear h_s0_run h_s1_cut stepi_s0
+    clear h_s0_run h_s1_cut
 
     -- Instruction 2
     rw [Abs.cassert_eq]
@@ -256,7 +256,7 @@ theorem correctness :
                      (by simp only [run, stepi_s1])
     -- Simplify the conclusion.
     simp only [h_s2_cut, Nat.reduceAdd, minimal_theory]
-    clear h_s1_run h_s2_cut stepi_s1
+    clear h_s1_run h_s2_cut
 
     -- Instruction 3
     rw [Abs.cassert_eq]
@@ -268,7 +268,7 @@ theorem correctness :
                      (by simp only [run, stepi_s2])
 
     simp only [h_s3_cut, Nat.reduceAdd, minimal_theory]
-    clear h_s2_run h_s3_cut stepi_s2
+    clear h_s2_run h_s3_cut
 
     -- Instruction 4
     rw [Abs.cassert_eq]
@@ -282,7 +282,7 @@ theorem correctness :
     -- steps from s0) to reach the next cutpoint. We can use this to help
     -- us come up with a clock in the termination proof.
     simp only [h_s4_cut, Nat.reduceAdd, minimal_theory]
-    clear h_s3_run h_s4_cut stepi_s3
+    clear h_s3_run h_s4_cut
 
     simp only [abs_assert, abs_post, h_pre, minimal_theory]
     -- Aggregate program effects here to obtain the value of x0(s4).
@@ -298,11 +298,7 @@ theorem correctness :
       simp only [Spec'.cut, abs_cut, rank,
                  state_simp_rules]
       have h_run : run 4 s0 = s4 := by
-        -- (TODO @alex) If we kept track of the number of steps we took during
-        -- symbolic simulation to reach the final state, then we could re-use
-        -- the symbolic simulation done for partial correctness to prove
-        -- termination as well.
-        sorry
+        simp only [run, stepi_s0, stepi_s1, stepi_s2, stepi_s3]
       simp only [h_run, h_s4_pc, h_s0_pc, minimal_theory]
       decide
     done
