@@ -8,10 +8,10 @@ attribute [minimal_theory] ite_false
 attribute [minimal_theory] dite_true
 attribute [minimal_theory] dite_false
 attribute [minimal_theory] ite_self
-attribute [minimal_theory] and_true
-attribute [minimal_theory] true_and
-attribute [minimal_theory] and_false
-attribute [minimal_theory] false_and
+attribute [minimal_theory high] and_true
+attribute [minimal_theory high] true_and
+attribute [minimal_theory high] and_false
+attribute [minimal_theory high] false_and
 attribute [minimal_theory] and_self
 attribute [minimal_theory] and_not_self
 attribute [minimal_theory] not_and_self
