@@ -109,7 +109,7 @@ theorem program.stepi_0x4005d0_cut (s sn : ArmState)
                         r f sn = r f s) ∧
   r StateField.PC sn = 0x4005d4#64 ∧
   r StateField.ERR sn = .None ∧
-  sn.program = program:= by
+  sn.program = program := by
   have := program.stepi_eq_0x4005d0 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
