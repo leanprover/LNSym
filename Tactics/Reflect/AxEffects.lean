@@ -565,8 +565,9 @@ by default):
 - `eff.programProof`, and
 - `eff.stackAlignmentProof?` (if the field is not `none`)
 
-Return an `AxEffect` where these expression have been replaced by a reference
-to the newly created fvar -/
+Return an `AxEffect` where the expressions mentioned above have been replaced by
+`Expr.fvar <fvarId>`, with `fvarId` the id of the corresponding hypothesis
+that was just added to the local context -/
 def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
     (mvar : Option MVarId := none) :
     TacticM AxEffects :=
