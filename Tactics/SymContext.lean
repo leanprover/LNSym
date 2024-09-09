@@ -11,6 +11,7 @@ import Tactics.Common
 import Tactics.Attr
 import Tactics.Reflect.ProgramInfo
 import Tactics.Reflect.AxEffects
+import Tactics.Simp
 
 /-!
 This files defines the `SymContext` structure,
@@ -82,9 +83,14 @@ structure SymContext where
   `CheckSPAlignment state` -/
   h_sp?  : Option Name
 
-  /-- The list of all axiomatic-effect hypotheses added by `AxEffect`
-  throughout the current `sym_n` run -/
-  axHyps : List FVarId
+  /-- The `simp` context used for effect aggregation.
+  This collects references to all (non-)effect hypotheses of the intermediate
+  states, together with sensible default simp-lemmas used for
+  effect aggregation -/
+  aggregateSimpCtx : Simp.Context
+  /-- Simprocs used for aggregation. This is stored for performance benefits,
+  but should not be modified during the course of a `sym_n` call -/
+  aggregateSimprocs : Simp.SimprocsArray
 
   /-- `state_prefix` is used together with `curr_state_number`
   to determine the name of the next state variable that is added by `sym` -/
@@ -270,8 +276,11 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
           #generateStepEqTheorems {program}"
 
   -- Initialize the axiomatic hypotheses with hypotheses for the initial state
-  let axHyps := [h_program, h_pc] ++ h_err?.toList ++ h_sp?.toList
-  let axHyps := axHyps.map (·.fvarId)
+  let axHyps := #[h_program, h_pc] ++ h_err?.toArray ++ h_sp?.toArray
+  let (aggregateSimpCtx, aggregateSimprocs) ←
+    LNSymSimpContext
+      (config := {decide := true, failIfUnchanged := false})
+      (decls := axHyps)
 
   return inferStatePrefixAndNumber {
     state, finalState, runSteps?, program, pc,
@@ -281,7 +290,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     h_err? := (·.userName) <$> h_err?,
     h_sp? := (·.userName) <$> h_sp?,
     programInfo,
-    axHyps
+    aggregateSimpCtx, aggregateSimprocs
   }
 where
   findLocalDeclOfType? (expectedType : Expr) : MetaM (Option LocalDecl) := do
@@ -402,19 +411,13 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     SymContext :=
   let curr_state_number := c.curr_state_number + 1
   let s := c.next_state
-  {
+  { c with
     state       := s
-    finalState  := c.finalState
-    h_run       := c.h_run
     h_program   := .mkSimple s!"h_{s}_program"
     h_pc        := .mkSimple s!"h_{s}_pc"
     h_err?      := c.h_err?.map (fun _ => .mkSimple s!"h_{s}_err")
     h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")
     runSteps?   := (· - 1) <$> c.runSteps?
-    program     := c.program
-    programInfo := c.programInfo
     pc          := nextPc?.getD (c.pc + 4#64)
-    axHyps      := c.axHyps
     curr_state_number
-    state_prefix := c.state_prefix
   }

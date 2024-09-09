@@ -7,6 +7,9 @@ initialize
   -- enable tracing for `sym_n` tactic and related components
   registerTraceClass `Tactic.sym
 
+  -- enable tracing for heartbeat usage of `sym_n`
+  registerTraceClass `Tactic.sym.heartbeats
+
   -- enable extra checks for debugging `sym_n`,
   -- see `AxEffects.validate` for more detail on what is being type-checked
   registerOption `Tactic.sym.debug {

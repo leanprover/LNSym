@@ -23,6 +23,10 @@ private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
     evalTactic tactic
     trace[Tactic.sym] "new goal state:\n{← getGoals}"
 
+private def Sym.traceHeartbeats (header : Option String := none) :=
+  _root_.traceHeartbeats `Tactic.sym.heartbeats header
+open Sym (traceHeartbeats)
+
 /-- `init_next_step h_run stepi_eq sn` splits the hypothesis
   `h_run: s_final = run (n+1) s`
 by adding a new state variable, `sn`, and two new hypotheses:
@@ -248,12 +252,19 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
                 #[eff.currentState, spEff.value, spEff.proof, hAligned]
             pure { eff with stackAlignmentProof? }
 
-    let axHyps ← withMainContext <| do
+    -- Add new (non-)effect hyps to the context
+    let simpThms ← withMainContext <| do
       if ←(getBoolOption `Tactic.sym.debug) then
         eff.validate
 
-      eff.addHypothesesToLContext s!"h_{c.next_state}_"
-    let c := { c with axHyps := axHyps ++ c.axHyps}
+      let eff ← eff.addHypothesesToLContext s!"h_{c.next_state}_"
+      withMainContext <| eff.toSimpTheorems
+
+    -- Add the new (non-)effect hyps to the aggregation simp context
+    let aggregateSimpCtx := { c.aggregateSimpCtx with
+      simpTheorems := c.aggregateSimpCtx.simpTheorems.push simpThms
+    }
+    let c := { c with aggregateSimpCtx}
 
     -- Attempt to reflect the new PC
     let nextPc ← eff.getField .PC
@@ -341,6 +352,7 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
       let goal ← goal.clear hStep.fvarId
       replaceMainGoal [goal]
 
+      traceHeartbeats
       return c
 
 /- used in `sym_n` tactic to specify an initial state -/
@@ -373,6 +385,8 @@ in which case a new goal of the appropriate type will be added.
 The other hypotheses *must* be present,
 since we infer required information from their types. -/
 elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
+  traceHeartbeats "initial heartbeats"
+
   let s ← s.mapM fun
     | `(sym_at|at $s:ident) => pure s.getId
     | _ => Lean.Elab.throwUnsupportedSyntax
@@ -433,6 +447,7 @@ Did you remember to generate step theorems with:
     for _ in List.range n do
       c ← sym1 c whileTac
 
+    traceHeartbeats "symbolic simulation total"
     -- Check if we can substitute the final state
     if c.runSteps? = some 0 then
       let msg := do
@@ -453,18 +468,16 @@ Did you remember to generate step theorems with:
 
         let goal ← subst goal hEqId
         trace[Tactic.sym] "performed subsitutition in:\n{goal}"
+        traceHeartbeats
 
         replaceMainGoal [goal]
 
     -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
     -- added while symbolically evaluating to `simp`
-    withMainContext <| do
-      let lctx ← getLCtx
-      let some axHyps := c.axHyps.toArray.mapM lctx.find?
-        | throwError "internal error: one of the following fvars could not \
-            be found:\n  {c.axHyps.map Expr.fvar}"
-      let (ctx, simprocs) ← LNSymSimpContext
-          (config := {decide := true, failIfUnchanged := false})
-          (decls := axHyps)
-      let goal? ← LNSymSimp (← getMainGoal) ctx simprocs
+    let msg := m!"aggregating (non-)effects"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
+      traceHeartbeats "pre"
+      let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
       replaceMainGoal goal?.toList
+
+    traceHeartbeats "final usage"
