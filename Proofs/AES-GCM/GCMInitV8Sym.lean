@@ -38,7 +38,6 @@ def revflat (x : List (BitVec n)) : BitVec (n * x.length) :=
   have h : n * x.reverse.length = n * x.length := by simp only [List.length_reverse]
   BitVec.cast h $ BitVec.flatten (List.reverse x)
 
-
 set_option maxRecDepth 1000000 in
 set_option maxHeartbeats 2000000 in
 set_option profiler true in
@@ -59,18 +58,21 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       -- SP is still aligned
     ∧ CheckSPAlignment sf
       -- PC is updated
-    ∧ read_pc sf = 0x79f5ec#64
+    ∧ read_pc sf = read_gpr 64 30#5 s0
+    -- Htable_ptr is moved to the start of the 10th element
+    ∧ Htable_addr sf = Htable_addr s0 + (9 * 16#64)
     -- TODO: Commenting out memory related conjuncts since it seems
     -- to make symbolic execution stuck
-    --   -- First 12 elemets in Htable is correct
-    -- ∧ read_mem_bytes 192 (Htable_addr sf) sf
+    --   -- First 12 elements in Htable is correct
+    -- ∧ read_mem_bytes 192 (Htable_addr s0) sf
     --   = revflat (GCMV8.GCMInitV8 (read_mem_bytes 16 (H_addr s0) s0))
+    --
     -- non-effects
     -- State values that shouldn't change do not change
     -- TODO: figure out all registers that are used ...
-    ∧ (∀ (f : StateField), ¬ (f = StateField.PC) ∧
-                           ¬ (f = (StateField.GPR 29#5)) →
-        r f sf = r f s0)
+    -- ∧ (∀ (f : StateField), ¬ (f = StateField.PC) ∧
+    --                        ¬ (f = (StateField.GPR 29#5)) →
+    --     r f sf = r f s0)
     -- -- Memory safety: memory location that should not change did
     -- -- not change
     -- -- The addr exclude output region Htable
@@ -81,5 +83,5 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   -- ^^ Still needed, because `gcm_init_v8_program.min` is somehow
   --    unable to be reflected
   sym_n 152
-  -- sym_aggregate
-  sorry
+  simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
+  bv_decide
