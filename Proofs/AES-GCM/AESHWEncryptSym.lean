@@ -6,6 +6,7 @@ Author(s): Yan Peng
 import Tests.«AES-GCM».AESHWEncryptProgram
 import Tactics.Sym
 import Tactics.StepThms
+import Tactics.Aggregate
 import Correctness.ArmSpec
 
 namespace AESHWEncryptProgram
@@ -40,37 +41,26 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
   init_next_step h_run h_step_13 s13
   replace h_step_13 := h_step_13.symm
   rw [aes_hw_encrypt_program.stepi_eq_0x79f5d0] at h_step_13<;> try assumption
-  simp only [h_s1_x3, h_s2_non_effects, h_s3_non_effects, h_s4_x3,
-             h_s5_non_effects, h_s6_non_effects, h_s7_non_effects,
-             h_s8_non_effects, h_s9_flagN, h_s9_flagV, h_s9_flagZ,
-             h_s9_flagC, h_s10_non_effects, h_s11_non_effects,
-             h_s12_non_effects, state_simp_rules, bitvec_rules,
-             minimal_theory] at h_step_13
   simp only [round_addr] at h_rounds
+  sym_aggregate at h_step_13
   simp (config := {ground := true}) only [h_rounds.symm, minimal_theory] at h_step_13
   (intro_fetch_decode_lemmas h_step_13 h_s12_program "h_s12")
-  -- Add hypotheses that are needed for next loop iteration
-  -- This is an aggregated result
-  have h_s13_x3 : read_gpr 32 3#5 s13 = 10#32 := by
-    simp only [h_s1_x3, h_s2_non_effects, h_s3_non_effects, h_s4_x3,
-               h_s5_non_effects, h_s6_non_effects, h_s7_non_effects,
-               h_s8_non_effects, h_s9_x3, h_s10_non_effects,
-               h_s11_non_effects, h_s12_non_effects, h_step_13,
-               state_simp_rules, bitvec_rules, minimal_theory]
-    simp (config := {ground := true}) only [h_rounds.symm, minimal_theory]
+  -- -- Add hypotheses that are needed for next loop iteration
+  -- -- This is an aggregated result
+  -- have h_s13_x3 : read_gpr 32 3#5 s13 = 10#32 := by
+  --   simp only [h_s1_x3, h_s2_non_effects, h_s3_non_effects, h_s4_x3,
+  --              h_s5_non_effects, h_s6_non_effects, h_s7_non_effects,
+  --              h_s8_non_effects, h_s9_x3, h_s10_non_effects,
+  --              h_s11_non_effects, h_s12_non_effects, h_step_13,
+  --              state_simp_rules, bitvec_rules, minimal_theory]
+  --   simp (config := {ground := true}) only [h_rounds.symm, minimal_theory]
   --
   sym_n 7 at s13
   init_next_step h_run h_step_21 s21
   replace h_step_21 := h_step_21.symm
   rw [aes_hw_encrypt_program.stepi_eq_0x79f5d0] at h_step_21<;> try assumption
-  simp only [state_simp_rules] at h_s13_x3
-  simp only [h_s20_non_effects, h_s19_non_effects, h_s18_non_effects,
-             h_s17_flagN, h_s17_flagV, h_s17_flagZ,
-             h_s17_flagC, h_s16_non_effects, h_s15_non_effects,
-             h_s14_non_effects, state_simp_rules, bitvec_rules,
-             minimal_theory,
-             -- hypothesis that states x3's value
-             h_s13_x3] at h_step_21
+  -- simp only [state_simp_rules] at h_s13_x3
+  sym_aggregate at h_step_21
   simp (config := {ground := true}) only [minimal_theory] at h_step_21
   (intro_fetch_decode_lemmas h_step_21 h_s20_program "h_s20")
   -- Add hypotheses that are needed for next loop iteration
