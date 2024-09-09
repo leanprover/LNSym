@@ -23,12 +23,6 @@ private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
     evalTactic tactic
     trace[Tactic.sym] "new goal state:\n{← getGoals}"
 
-private def traceHeartbeats (header : Option String := none) : MetaM Unit := do
-  let header := (header.map (· ++ ": ")).getD ""
-  let heartbeats ← IO.getNumHeartbeats
-  trace[Tactic.sym.heartbeats] "{header}used {heartbeats} heartbeats \
-    ({← heartbeatsPercent}% of maximum)"
-
 /-- `init_next_step h_run stepi_eq sn` splits the hypothesis
   `h_run: s_final = run (n+1) s`
 by adding a new state variable, `sn`, and two new hypotheses:
@@ -481,6 +475,5 @@ Did you remember to generate step theorems with:
       traceHeartbeats "pre"
       let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
       replaceMainGoal goal?.toList
-
 
     traceHeartbeats "final usage"

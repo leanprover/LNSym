@@ -259,3 +259,14 @@ def mkEqArmState (x y : Expr) : Expr :=
 /-- Return a proof of type `x = x`, where `x : ArmState` -/
 def mkEqReflArmState (x : Expr) : Expr :=
   mkApp2 (.const ``Eq.refl [1]) mkArmState x
+
+/-! ## Tracing helpers -/
+
+def traceHeartbeats (header : Option String := none)
+    (cls : Name := `Tactic.sym.heartbeats) :
+    MetaM Unit := do
+  let header := (header.map (· ++ ": ")).getD ""
+  let heartbeats ← IO.getNumHeartbeats
+  let percent ← heartbeatsPercent
+  trace cls fun _ =>
+    m!"{header}used {heartbeats} heartbeats ({percent}% of maximum)"
