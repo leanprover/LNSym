@@ -55,6 +55,7 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   let V := if signExtend (n + 1) result = signed_sum then 0#1 else 1#1
   (result, (make_pstate N Z C V))
 
+
 /-- When the carry bit is `0`, `AddWithCarry x y 0 = x + y` -/
 theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 0#1).fst = x + y := by
