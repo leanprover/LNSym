@@ -6,7 +6,6 @@ Author(s): Yan Peng
 import Arm.BitVec
 import Arm.Exec
 import Arm.Cfg.Cfg
-import Tests.Common
 import Tests.«AES-GCM».AESGCMEncKernelProgram
 import Tests.«AES-GCM».AESGCMDecKernelProgram
 

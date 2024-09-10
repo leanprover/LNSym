@@ -3,11 +3,9 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Yan Peng
 -/
+import Arm.Memory.Separate
 import Proofs.«AES-GCM».AESGCMEncKernelPre
 import Tactics.Sym
-import Tactics.StepThms
-import Correctness.ArmSpec
-import Arm.Memory.Separate
 
 namespace AESGCMEncKernelProgram
 
@@ -42,7 +40,7 @@ theorem aes_gcm_enc_kernel_program_run_xx (s0 sf : ArmState)
     case h_s1_sp_aligned =>
       apply Aligned_BitVecAdd_64_4
       · assumption
-      · simp (config := {ground := true})
+      · simp only (config := {ground := true})
     init_next_step h_run h_step_139 s139
     replace h_step_139 := h_step_139.symm
     rw [aes_gcm_enc_kernel_program.stepi_eq_0x7cf838] at h_step_139<;> try assumption

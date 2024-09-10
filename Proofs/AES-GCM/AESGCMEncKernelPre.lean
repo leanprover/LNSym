@@ -4,9 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Yan Peng
 -/
 import Tests.«AES-GCM».AESGCMEncKernelProgram
-import Tactics.Sym
 import Tactics.StepThms
-import Correctness.ArmSpec
 
 namespace AESGCMEncKernelProgram
 

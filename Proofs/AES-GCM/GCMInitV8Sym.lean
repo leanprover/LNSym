@@ -3,6 +3,7 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Yan Peng
 -/
+import Arm.BitVec
 import Proofs.«AES-GCM».GCMInitV8Pre
 import Tactics.Sym
 import Tactics.Aggregate
@@ -13,9 +14,9 @@ namespace GCMInitV8Program
 abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 
-set_option debug.byAsSorry true in
+-- set_option debug.byAsSorry true in
 set_option maxRecDepth 1000000 in
-set_option profiler true in
+-- set_option profiler true in
 theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_init_v8_program)
     (h_s0_err : read_err s0 = .None)
@@ -40,7 +41,7 @@ def revflat (x : List (BitVec n)) : BitVec (n * x.length) :=
 
 set_option maxRecDepth 1000000 in
 set_option maxHeartbeats 2000000 in
-set_option profiler true in
+-- set_option profiler true in
 theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_init_v8_program)
     (h_s0_err : read_err s0 = .None)
