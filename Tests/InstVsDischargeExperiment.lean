@@ -54,12 +54,20 @@ elab "simp_inst" : tactic => do
     Name.mkSimple s!"h_s{i}_inst"
   simpGoalWith <|← LNSymSimpContext (thms := thms)
 
+
+attribute [-minimal_theory] eq_self
+attribute [-minimal_theory] ne_eq
+attribute [-bitvec_rules] BitVec.ofNat_eq_ofNat
+
+-- set_option trace.Meta.Tactic.simp true in
+-- set_option trace.Meta.Tactic.simp.all true in
+
 -- With 400 states, `simp_inst` takes around 35ms to simplify, using
 -- 0% of the heartbeat budget
 -- With 1000 states, `simp_inst` takes around 80ms to simplify, using
 -- 0% of the heartbeat budget
 #time example : r (GPR 1) finalState = r (GPR 1) s0 := by
-  simp_inst
+  simp_inst; (try rfl)
 
 
 
@@ -72,13 +80,12 @@ elab "simp_disch" : tactic => do
     Name.mkSimple s!"h_s{i}_disch"
   simpGoalWith <|← LNSymSimpContext (config := {decide := true}) (thms := thms)
 
-
 -- With 400 states, `simp_disch` takes around 190ms to simplify, using
 -- 3% of the heartbeat budget
 -- With 1000 states, `simp_disch` takes around 500ms to simplify, using
 -- 9% of the heartbeat budget
 #time example : r (GPR 1) finalState = r (GPR 1) s0 := by
-  simp_disch
+  simp_disch; (try rfl)
 
 
 
@@ -94,4 +101,4 @@ elab "simp_disch_list" : tactic => do
 -- `simp_disch_list` seems to take about 20 to 50 ms longer than `simp_disch`,
 -- using the exact same percentage of the heartbeat budget.
 #time example : r (GPR 1) finalState = r (GPR 1) s0 := by
-  simp_disch_list
+  simp_disch_list; (try rfl)
