@@ -21,7 +21,7 @@ open BitVec
          Xi -- current hash/tag value (x3)
          ivec -- counter (x4)
          key -- AES key schedule and rounds (x5)
-         Htable -- powers of H precomputed up to H^12 (x6)
+         Htable -- powers of H precomputed up to H^8 (x6)
   output: out -- ciphertext (x2)
           Xi -- current hash/tag value (x3)
 
