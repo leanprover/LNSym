@@ -703,7 +703,7 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
       /- We give the field-specific lemmas a high priority, since their
-      applicacibility is determined entirely by discrtree matching.
+      applicability is determined entirely by discrtree matching.
       This is important for performance, because it avoids unneccesary
       (expensive!) attempts to discharge the `field ≠ otherField`
       side-conditions of the non-effect proof -/
