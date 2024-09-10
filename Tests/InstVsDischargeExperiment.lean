@@ -37,8 +37,9 @@ macro "finalState" : term =>
 
 open Tactic
 
-def simpGoalWith (simpCtx : Simp.Context) : TacticM Unit := do
-  let simpRes ← simpGoal (← getMainGoal) simpCtx
+def simpGoalWith (cfg : Simp.Context × Array Simprocs) :
+    TacticM Unit := do
+  let simpRes ← simpGoal (← getMainGoal) cfg.1 cfg.2
   replaceMainGoal <| match simpRes.1 with
     | none            => []
     | some (_, goal)  => [goal]
@@ -48,20 +49,17 @@ def simpGoalWith (simpCtx : Simp.Context) : TacticM Unit := do
   `h_s{i}_inst : ∀ f, r f s{i} = r f s{i-1}`
 -/
 elab "simp_inst" : tactic => do
-  let mut simpTheorems : SimpTheorems := {}
-  for i in List.range (numStates-1) do
+  let thms := Array.range (numStates-1) |>.map fun i =>
     let i := i + 1
-    simpTheorems ← simpTheorems.addConst <| Name.mkSimple s!"h_s{i}_inst"
-  simpGoalWith {
-    simpTheorems := #[simpTheorems]
-  }
+    Name.mkSimple s!"h_s{i}_inst"
+  simpGoalWith <|← LNSymSimpContext (thms := thms)
 
 -- With 400 states, `simp_inst` takes around 35ms to simplify, using
 -- 0% of the heartbeat budget
 -- With 1000 states, `simp_inst` takes around 80ms to simplify, using
 -- 0% of the heartbeat budget
 #time example : r (GPR 1) finalState = r (GPR 1) s0 := by
-  simp_inst; rfl
+  simp_inst
 
 
 
@@ -69,22 +67,18 @@ elab "simp_inst" : tactic => do
   `h_s{i}_disch : ∀ f, f ≠ (GPR 0) → f ≠ (GPR 31) → r f s{i} = r f s{i-1}`
 which requires two side-condition to be discharged -/
 elab "simp_disch" : tactic => do
-  let mut simpTheorems : SimpTheorems := {}
-  for i in List.range (numStates-1) do
+  let thms := Array.range (numStates-1) |>.map fun i =>
     let i := i + 1
-    simpTheorems ← simpTheorems.addConst <| Name.mkSimple s!"h_s{i}_disch"
+    Name.mkSimple s!"h_s{i}_disch"
+  simpGoalWith <|← LNSymSimpContext (config := {decide := true}) (thms := thms)
 
-  simpGoalWith {
-    config := {decide := true}
-    simpTheorems := #[simpTheorems]
-  }
 
 -- With 400 states, `simp_disch` takes around 190ms to simplify, using
 -- 3% of the heartbeat budget
 -- With 1000 states, `simp_disch` takes around 500ms to simplify, using
 -- 9% of the heartbeat budget
 #time example : r (GPR 1) finalState = r (GPR 1) s0 := by
-  simp_disch; rfl
+  simp_disch
 
 
 
@@ -92,17 +86,12 @@ elab "simp_disch" : tactic => do
   `h_s{i}_disch_list : ∀ f, f ∉ [GPR 0, GPR 31] → r f s{i} = r f s{i-1}`
 which bundles the side-conditions to be discharged -/
 elab "simp_disch_list" : tactic => do
-  let mut simpTheorems : SimpTheorems := {}
-  for i in List.range (numStates-1) do
+  let thms := Array.range (numStates-1) |>.map fun i =>
     let i := i + 1
-    simpTheorems ← simpTheorems.addConst <| Name.mkSimple s!"h_s{i}_disch_list"
-
-  simpGoalWith {
-    config := {decide := true}
-    simpTheorems := #[simpTheorems]
-  }
+    Name.mkSimple s!"h_s{i}_disch_list"
+  simpGoalWith <|← LNSymSimpContext (config := {decide := true}) (thms := thms)
 
 -- `simp_disch_list` seems to take about 20 to 50 ms longer than `simp_disch`,
 -- using the exact same percentage of the heartbeat budget.
 #time example : r (GPR 1) finalState = r (GPR 1) s0 := by
-  simp_disch_list; rfl
+  simp_disch_list
