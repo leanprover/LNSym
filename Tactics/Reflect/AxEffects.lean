@@ -702,16 +702,15 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
     let mut thms : SimpTheorems := {}
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
-      thms ← add thms proof s!"field_{field}"
+      /- We give the field-specific lemmas a high priority, since their
+      applicacibility is determined entirely by discrtree matching.
+      This is important for performance, because it avoids unneccesary
+      (expensive!) attempts to discharge the `field ≠ otherField`
+      side-conditions of the non-effect proof -/
+      thms ← add thms proof s!"field_{field}" (prio := 1500)
 
-    /- We give the non-effect lemma a lower priority, so that the more
-    specific field lemmas are tried first.
-    This is important for performance, because for the field-specific lemmas,
-    applicability can be determined purely by discrtree lookup,
-    whereas determining the applicability of a non-effect lemma requires
-    expensive discharging of `field ≠ otherField` side-conditions -/
-    thms ← add thms eff.nonEffectProof "nonEffectProof" (prio := 900)
 
+    thms ← add thms eff.nonEffectProof "nonEffectProof"
     thms ← add thms eff.memoryEffectProof "memoryEffectProof"
     thms ← add thms eff.programProof "programProof"
     if let some stackAlignmentProof := eff.stackAlignmentProof? then
