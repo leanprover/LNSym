@@ -59,8 +59,13 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     ∧ CheckSPAlignment sf
       -- PC is updated
     ∧ read_pc sf = read_gpr 64 30#5 s0
-    -- Htable_ptr is moved to the start of the 10th element
+    -- Htable_addr ptr is moved to the start of the 10th element
     ∧ Htable_addr sf = Htable_addr s0 + (9 * 16#64)
+    -- H_addr ptr stays the same
+    ∧ H_addr sf = H_addr s0
+    -- v20 - v31 stores results of Htable
+    ∧ read_sfp 128 20#5 sf = (GCMV8.GCMInitV8 (read_mem_bytes 16 (H_addr s0) s0)).get! 0
+    -- ∧ read_sfp 128 21#5 sf = (GCMV8.GCMInitV8 (read_mem_bytes 16 (H_addr s0) s0)).get! 1
     -- TODO: Commenting out memory related conjuncts since it seems
     -- to make symbolic execution stuck
     --   -- First 12 elements in Htable is correct
@@ -84,4 +89,6 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   --    unable to be reflected
   sym_n 152
   simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
-  bv_decide
+  apply And.intro
+  · bv_decide
+  · sorry
