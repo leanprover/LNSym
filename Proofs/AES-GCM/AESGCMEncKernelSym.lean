@@ -40,7 +40,7 @@ theorem aes_gcm_enc_kernel_program_run_xx (s0 sf : ArmState)
     case h_s1_sp_aligned =>
       apply Aligned_BitVecAdd_64_4
       · assumption
-      · simp only (config := {ground := true})
+      · simp (config := {ground := true}) only []
     init_next_step h_run h_step_139 s139
     replace h_step_139 := h_step_139.symm
     rw [aes_gcm_enc_kernel_program.stepi_eq_0x7cf838] at h_step_139<;> try assumption

@@ -33,12 +33,6 @@ theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
   sym_n 152
   done
 
--- TODO: this function is from Tests.Common
--- need to put it in a better place
-def revflat (x : List (BitVec n)) : BitVec (n * x.length) :=
-  have h : n * x.reverse.length = n * x.length := by simp only [List.length_reverse]
-  BitVec.cast h $ BitVec.flatten (List.reverse x)
-
 set_option maxRecDepth 1000000 in
 set_option maxHeartbeats 2000000 in
 -- set_option profiler true in

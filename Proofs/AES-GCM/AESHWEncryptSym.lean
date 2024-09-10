@@ -6,7 +6,6 @@ Author(s): Yan Peng
 import Tests.«AES-GCM».AESHWEncryptProgram
 import Tactics.Sym
 import Tactics.StepThms
-import Correctness.ArmSpec
 
 namespace AESHWEncryptProgram
 
