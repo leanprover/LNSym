@@ -1,5 +1,6 @@
 import Lean
 import Arm.State
+import Tactics.Simp
 
 open Lean Meta Elab Command
 
@@ -55,7 +56,9 @@ elab "simp_inst" : tactic => do
     simpTheorems := #[simpTheorems]
   }
 
--- `simp_inst` takes around 35ms to simplify with 400 states, using
+-- With 400 states, `simp_inst` takes around 35ms to simplify, using
+-- 0% of the heartbeat budget
+-- With 1000 states, `simp_inst` takes around 80ms to simplify, using
 -- 0% of the heartbeat budget
 #time example : r (GPR 1) finalState = r (GPR 1) s0 := by
   simp_inst; rfl
@@ -76,8 +79,10 @@ elab "simp_disch" : tactic => do
     simpTheorems := #[simpTheorems]
   }
 
--- `simp_disch` takes around 190ms to simplify with 400 states, using
+-- With 400 states, `simp_disch` takes around 190ms to simplify, using
 -- 3% of the heartbeat budget
+-- With 1000 states, `simp_disch` takes around 500ms to simplify, using
+-- 9% of the heartbeat budget
 #time example : r (GPR 1) finalState = r (GPR 1) s0 := by
   simp_disch; rfl
 
@@ -97,7 +102,7 @@ elab "simp_disch_list" : tactic => do
     simpTheorems := #[simpTheorems]
   }
 
--- `simp_disch_list` takes around 200ms to simplify with 400 states, using
--- 3% of the heartbeat budget
+-- `simp_disch_list` seems to take about 20 to 50 ms longer than `simp_disch`,
+-- using the exact same percentage of the heartbeat budget.
 #time example : r (GPR 1) finalState = r (GPR 1) s0 := by
   simp_disch_list; rfl
