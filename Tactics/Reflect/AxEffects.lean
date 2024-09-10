@@ -662,7 +662,8 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
         none
     let baseName := baseName?.getD (Name.mkSimple "AxEffects")
 
-    let add (thms : SimpTheorems) (e : Expr) (name : String) :=
+    let add (thms : SimpTheorems) (e : Expr) (name : String)
+        (prio : Nat := 1000) :=
       let msg := m!"adding {e} with name {name}"
       withTraceNode `Tactic.sym (fun _ => pure msg) <| do
         let origin : Origin :=
@@ -670,7 +671,7 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
             .fvar e.fvarId!
           else
             .other <| Name.str baseName name
-        let newThms ← mkSimpTheorems origin #[] e
+        let newThms ← mkSimpTheorems origin #[] e (prio := prio)
         let newThms ← newThms.mapM (fun thm => do
           /- `mkSimpTheorems` sets `noIndexAtArgs := true`, meaning that all
           our (non-effects) theorems will have `[r, *, *]` as key.
@@ -703,7 +704,14 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
     for ⟨field, {proof, ..}⟩ in eff.fields do
       thms ← add thms proof s!"field_{field}"
 
-    thms ← add thms eff.nonEffectProof "nonEffectProof"
+    /- We give the non-effect lemma a lower priority, so that the more
+    specific field lemmas are tried first.
+    This is important for performance, because for the field-specific lemmas,
+    applicability can be determined purely by discrtree lookup,
+    whereas determining the applicability of a non-effect lemma requires
+    expensive discharging of `field ≠ otherField` side-conditions -/
+    thms ← add thms eff.nonEffectProof "nonEffectProof" (prio := 900)
+
     thms ← add thms eff.memoryEffectProof "memoryEffectProof"
     thms ← add thms eff.programProof "programProof"
     if let some stackAlignmentProof := eff.stackAlignmentProof? then
