@@ -1061,6 +1061,11 @@ theorem not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
   · simp [h]
     exact Int.not_lt.mp h
 
+/-! ## Length one bitvector lemmas -/
+
+
+theorem eq_one_iff_neq_zero {a : BitVec 1} : a ≠ 0#1 ↔ a = 1#1 := by bv_omega
+theorem eq_zero_iff_neq_one {a : BitVec 1} : a ≠ 1#1 ↔ a = 0#1 := by bv_omega
 
 /-! ## `Quote` instance -/
 

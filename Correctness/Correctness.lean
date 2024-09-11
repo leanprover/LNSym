@@ -431,6 +431,61 @@ theorem partial_correctness_from_assertions [Sys σ] [Spec' σ]
         ⟨n, Nat.le_refl _, hexit, hpost⟩
     find 0 (v1 s0 hp) (Nat.zero_le ..)
 
+/--
+Prove partial correctness from inductive assertions using `cassert`
+function.
+
+We use `s0`, `si`, and `sf` to refer to initial, intermediate, and
+final (exit) states respectively.
+
+This is more convenient to use than
+`partial_correctness_from_inductive_assertions` because we can do
+symbolic simulation and open `cassert` in tandem.
+-/
+theorem partial_correctness_from_assertions' [Sys σ] [Spec' σ]
+    (v1 : ∀ s0 : σ, pre s0 → assert s0 s0)
+    -- (FIXME) Is it possible to remove v2 and combine v3 and v4 into
+    -- a single verification condition as follows?
+    -- As @bollu noted, this has the benefit of not having `post` be a
+    -- callee of `assert`.
+    --
+    --  ∀ s0 si : σ, assert s0 si → (cassert s0 (run si 1) 0).snd ∨
+    --                              (exit si → post s0 si)
+    (v2 : ∀ sf : σ, exit sf → cut sf)
+    (v3 : ∀ s0 sf : σ, assert s0 sf → exit sf → post s0 sf)
+    (v4 : ∀ s0 si : σ, assert s0 si → ¬ exit si → (cassert s0 (next si) 0).snd)
+    : PartialCorrectness σ :=
+    fun s0 n hp hexit =>
+    let rec find (i : Nat) (h : assert s0 (run s0 i)) (hle : i ≤ n) :
+                 ∃ m : Nat, m ≤ n ∧ exit (run s0 m) ∧ post s0 (run s0 m) :=
+      if hn : i < n then
+        if he : exit (run s0 i) then
+          ⟨i, Nat.le_of_lt hn, he, v3 _ _ h he⟩
+        else
+          have : cut (run (run s0 (i + 1)) (n - Nat.succ i)) := by
+            rw [run_run, Nat.add_one, Nat.add_sub_cancel' hn]
+            exact v2 _ hexit
+          have ⟨k, _hk, hlek, hck⟩ := find_next_cut_for_cassert s0 (run s0 (i+1)) this
+          have hle' : i + 1 + k ≤ n := by
+            omega
+          have : (cassert s0 (next (run s0 i)) 0).snd := v4 _ _ h he
+          have h' : assert s0 (run s0 (i + 1 + k)) := by
+            rw [run_run] at hck
+            rw [next_run] at this
+            rw [run_run] at hlek
+            simp_all only [Nat.succ_eq_add_one, eq_iff_iff, true_iff]
+            done
+          have : n - (i + 1 + k) < n - i := by
+            apply Nat.sub_lt_sub_left; assumption; simp_arith
+          find (i + 1 + k) h' hle'
+      else
+        have := Nat.ge_of_not_lt hn
+        have := Nat.le_antisymm this hle
+        have ha : assert s0 (run s0 n) := by subst this; assumption
+        have hpost : post s0 (run s0 n) := v3 _ _ ha hexit
+        ⟨n, Nat.le_refl _, hexit, hpost⟩
+    find 0 (v1 s0 hp) (Nat.zero_le ..)
+
 ----------------------------------------------------------------------
 
 -- Method to prove Termination

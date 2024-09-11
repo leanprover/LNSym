@@ -756,6 +756,7 @@ theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n 
     rw [h_n]
     simp only [write_mem]
 
+
 /-! ### Memory RoW/WoW lemmas -/
 
 theorem read_mem_of_write_mem_same :
@@ -820,6 +821,7 @@ A variant of `write_mem` that directly talks about writes to memory, instead of 
 def Memory.write (addr : BitVec 64) (val : BitVec 8) (m : Memory) : Memory :=
   write_store addr val m
 
+@[state_simp_rules]
 theorem ArmState.write_mem_eq_mem_write :  (write_mem addr val s).mem = s.mem.write addr val := rfl
 
 namespace Memory
