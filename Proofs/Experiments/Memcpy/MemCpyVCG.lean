@@ -334,6 +334,7 @@ structure Step_8f0_8f4 (scur : ArmState) (snext : ArmState) extends WellFormedAt
   h_z : snext.Z = (AddWithCarry scur.x0 0xffffffffffffffff#64 0x1#1).snd.z
   h_n : snext.N = (AddWithCarry scur.x0 0xffffffffffffffff#64 0x1#1).snd.n
   h_cut : cut snext = true
+  h_x0 : snext.x0 = scur.x0
 
 
 
@@ -493,7 +494,16 @@ theorem partial_correctness :
       rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si, step_8f0_8f4.h_cut])];
       simp only [Spec'.assert, assert, h_pre,
         BitVec.ofNat_eq_ofNat, loop_inv, Nat.reduceMul, id_eq, true_and]
-      sorry
+      simp [step_8f0_8f4.h_pc]
+      simp [step_8f0_8f4.h_err, step_8f0_8f4.h_program, step_8f0_8f4.h_sp_aligned]
+      have : s2.x0 ≤ si.x0  := sorry
+      have : (r (StateField.FLAG PFlag.Z) s2 = 0x1#1 ↔ s2.x0 = 0x0#64) := sorry
+      have : s2.x1 = si.x1 + 0x10#64 * (si.x0 - s2.x0)  := sorry
+      have : s2.x2 = si.x2 + 0x10#64 * (si.x0 - s2.x0) := sorry
+      have : ∀ (i : BitVec 64), i < si.x0 - s2.x0 →
+        read_mem_bytes 16 (si.x2 + 0x10#64 * i) s2 = read_mem_bytes 16 (si.x1 + 0x10#64 * i) si := sorry
+      simp [*]
+      exact this
     case h_2 pc h_si =>
       name h_s1_next_si : s1 := Sys.next si
       have si_well_formed : WellFormedAtPc si 0x8f4#64 := by
@@ -538,7 +548,16 @@ theorem partial_correctness :
           program.step_8f0_8f4_of_wellformed s4 s5 step_8ec_8f0.toWellFormedAtPc (.of_next h_s5_next_s4)
         rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s5_next_s4, step_8f0_8f4.h_cut])];
         simp [Spec'.assert, assert, h_pre, step_8f0_8f4.h_pc, loop_inv]
-        sorry
+
+        have : s5.x0 ≤ s0.x0  := sorry
+        have : (r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ s5.x0 = 0x0#64) := sorry
+        have : s5.x1 = s0.x1 + 0x10#64 * (s0.x0 - s5.x0)  := sorry
+        have : s5.x2 = s0.x2 + 0x10#64 * (s0.x0 - s5.x0) := sorry
+        have : ∀ (i : BitVec 64), i < s0.x0 - s5.x0 →
+          read_mem_bytes 16 (s0.x2 + 0x10#64 * i) s5 = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0 := sorry
+        simp [step_8f0_8f4.h_sp_aligned, step_8f0_8f4.h_program, step_8f0_8f4.h_err]
+        simp [*]
+        exact this
 
     case h_3 pc h_si =>
       contradiction
