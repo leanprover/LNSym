@@ -335,6 +335,12 @@ def split (x : BitVec n) (e : Nat) (h : 0 < e): List (BitVec e) :=
 example : split 0xabcd1234#32 8 (by omega) = [0xab#8, 0xcd#8, 0x12#8, 0x34#8] :=
   by rfl
 
+/-- Reverse a list of bit vectors and flatten the list. -/
+def revflat (x : List (BitVec n)) : BitVec (n * x.length) :=
+  have h : n * x.reverse.length = n * x.length := by
+    simp only [List.length_reverse]
+  BitVec.cast h $ BitVec.flatten (List.reverse x)
+
 /-- Get the width of a bitvector. -/
 protected def width (_ : BitVec n) : Nat := n
 
