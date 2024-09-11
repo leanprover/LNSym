@@ -685,7 +685,6 @@ def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
       side-conditions of the non-effect proof -/
       thms ← add thms proof s!"field_{field}" (prio := 1500)
 
-
     thms ← add thms eff.nonEffectProof "nonEffectProof"
     thms ← add thms eff.memoryEffectProof "memoryEffectProof"
     thms ← add thms eff.programProof "programProof"
