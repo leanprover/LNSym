@@ -402,21 +402,53 @@ theorem program.stepi_0x8f8_cut (sprev scur snext : ArmState)
 
 end CutTheorems
 
+section PartialCorrectness
+
 theorem partial_correctness :
   PartialCorrectness ArmState := by
-  apply Correctness.partial_correctness_from_verification_conditions
+  apply Correctness.partial_correctness_from_assertions
   case v1 =>
     intro s0 h_pre
-    sorry
+    simp only [Spec.pre, pre, BitVec.ofNat_eq_ofNat, BitVec.toNat_mul, BitVec.toNat_ofNat,
+      Nat.reducePow, Nat.reduceMod, Spec'.assert, assert] at h_pre ⊢
+    simp only [h_pre, and_self]
   case v2 =>
     intro sf h_exit
-    sorry
+    simp only [Spec.exit, Spec'.cut, cut, exit] at h_exit ⊢
+    simp only [h_exit, BitVec.reduceEq, decide_False, Bool.or_self, decide_True, Bool.or_true]
   case v3 =>
     intro s0 sf h_assert h_exit
-    sorry
+    simp [Spec'.assert, Spec.exit, Spec.post, post, exit,
+      assert] at h_assert h_exit ⊢
+    simp [h_exit] at h_assert ⊢
+    simp only [h_assert, and_self, and_true]
+    obtain ⟨h_pre, h_mem₁, h_mem₂, h_err, h_program, h_sp_aligned⟩ := h_assert
+    constructor
+    · intros i hi
+      -- simp_mem -- TODO: do we want to automatically apply quantified goals?
+      apply h_mem₁
+      bv_omega
+    · -- TODO: do we want to automatically apply quantified goals?
+      apply h_mem₂
+
   case v4 =>
     intro s0 si h_assert h_exit
-    sorry
+    simp [Spec'.assert, Spec.exit, Spec.post, post, exit,
+      assert] at h_assert h_exit ⊢
+    obtain ⟨h_pre, h_assert⟩ := h_assert
+    split at h_assert
+    case h_1 pc h_si =>
+      subst h_assert
+      sorry
+    case h_2 pc h_si =>
+      sorry
+    case h_3 pc h_si =>
+      sorry
+    case h_4 pc h_si =>
+      apply False.elim h_assert
+
+
+end PartialCorrectness
 
 theorem termination :
   Termination ArmState := by
