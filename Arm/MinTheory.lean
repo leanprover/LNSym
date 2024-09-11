@@ -22,8 +22,16 @@ This is because the variable `?p` is used only once in the pattern (i.e.,
 the pattern is linear), and the first unification of an unassigned metavariable
 is always successful.
 
-Thus, we ensure that `and_true` gets tried before `and_self` by setting a higher
-priority for the former, and the same for other obviously linear simp lemmas. -/
+Another possibly expensive lemma is
+  `and_iff_left_of_imp : {a b : Prop} (ha : a → b) : a ∧ b ↔ a`
+The pattern of this lemma (`?a ∧ ?b`) is perfectly linear, but to apply such
+a lemma, `simp` first has to discharge the `(ha : a → b)`, which might fail,
+and might be expensive.
+
+Thus, the rationale we follow is that only linear, side-condition free lemmas
+get the `high` priority, and everything else gets the default prioriry.
+This ensures that `and_true` gets tried before `and_self` or
+`and_iff_left_of_imp` -/
 attribute [minimal_theory high] and_true
 attribute [minimal_theory high] true_and
 attribute [minimal_theory high] and_false
@@ -32,27 +40,27 @@ attribute [minimal_theory] and_self
 attribute [minimal_theory] and_not_self
 attribute [minimal_theory] not_and_self
 attribute [minimal_theory] and_imp
-attribute [minimal_theory] not_and
+attribute [minimal_theory high] not_and
 attribute [minimal_theory] or_self
-attribute [minimal_theory] or_true
-attribute [minimal_theory] true_or
-attribute [minimal_theory] or_false
-attribute [minimal_theory] false_or
-attribute [minimal_theory] if_true_left
-attribute [minimal_theory] if_true_right
-attribute [minimal_theory] if_false_left
-attribute [minimal_theory] if_false_right
+attribute [minimal_theory high] or_true
+attribute [minimal_theory high] true_or
+attribute [minimal_theory high] or_false
+attribute [minimal_theory high] false_or
+attribute [minimal_theory high] if_true_left
+attribute [minimal_theory high] if_true_right
+attribute [minimal_theory high] if_false_left
+attribute [minimal_theory high] if_false_right
 attribute [minimal_theory] iff_self
-attribute [minimal_theory] iff_true
-attribute [minimal_theory] true_iff
-attribute [minimal_theory] iff_false
-attribute [minimal_theory] false_iff
-attribute [minimal_theory] eq_iff_iff
-attribute [minimal_theory] false_implies
-attribute [minimal_theory] implies_true
-attribute [minimal_theory] true_implies
-attribute [minimal_theory] not_false_eq_true
-attribute [minimal_theory] not_true_eq_false
+attribute [minimal_theory high] iff_true
+attribute [minimal_theory high] true_iff
+attribute [minimal_theory high] iff_false
+attribute [minimal_theory high] false_iff
+attribute [minimal_theory high] eq_iff_iff
+attribute [minimal_theory high] false_implies
+attribute [minimal_theory high] implies_true
+attribute [minimal_theory high] true_implies
+attribute [minimal_theory high] not_false_eq_true
+attribute [minimal_theory high] not_true_eq_false
 attribute [minimal_theory] not_iff_self
 attribute [minimal_theory] and_self_left
 attribute [minimal_theory] and_self_right
@@ -68,56 +76,61 @@ attribute [minimal_theory] or_iff_right_of_imp
 attribute [minimal_theory] or_iff_left_of_imp
 attribute [minimal_theory] or_iff_left_iff_imp
 attribute [minimal_theory] or_iff_right_iff_imp
-attribute [minimal_theory] Bool.or_false
-attribute [minimal_theory] Bool.or_true
-attribute [minimal_theory] Bool.false_or
-attribute [minimal_theory] Bool.false_eq_true
-attribute [minimal_theory] Bool.true_or
+
+attribute [minimal_theory high] Bool.or_false
+attribute [minimal_theory high] Bool.or_true
+attribute [minimal_theory high] Bool.false_or
+attribute [minimal_theory high] Bool.false_eq_true
+attribute [minimal_theory high] Bool.true_or
 attribute [minimal_theory] Bool.or_self
-attribute [minimal_theory] Bool.or_eq_true
-attribute [minimal_theory] Bool.and_false
-attribute [minimal_theory] Bool.and_true
-attribute [minimal_theory] Bool.false_and
-attribute [minimal_theory] Bool.true_and
+attribute [minimal_theory high] Bool.or_eq_true
+attribute [minimal_theory high] Bool.and_false
+attribute [minimal_theory high] Bool.and_true
+attribute [minimal_theory high] Bool.false_and
+attribute [minimal_theory high] Bool.true_and
 attribute [minimal_theory] Bool.and_self
-attribute [minimal_theory] Bool.and_eq_true
-attribute [minimal_theory] Bool.not_not
-attribute [minimal_theory] Bool.not_true
-attribute [minimal_theory] Bool.not_false
-attribute [minimal_theory] beq_true
-attribute [minimal_theory] beq_false
-attribute [minimal_theory] Bool.not_eq_true'
-attribute [minimal_theory] Bool.not_eq_false'
-attribute [minimal_theory] Bool.beq_to_eq
-attribute [minimal_theory] Bool.not_beq_to_not_eq
-attribute [minimal_theory] Bool.not_eq_true
-attribute [minimal_theory] Bool.not_eq_false
-attribute [minimal_theory] decide_eq_true_eq
-attribute [minimal_theory] decide_not
-attribute [minimal_theory] not_decide_eq_true
+attribute [minimal_theory high] Bool.and_eq_true
+attribute [minimal_theory high] Bool.not_not
+attribute [minimal_theory high] Bool.not_true
+attribute [minimal_theory high] Bool.not_false
+attribute [minimal_theory high] beq_true
+attribute [minimal_theory high] beq_false
+attribute [minimal_theory high] Bool.not_eq_true'
+attribute [minimal_theory high] Bool.not_eq_false'
+attribute [minimal_theory high] Bool.beq_to_eq
+attribute [minimal_theory high] Bool.not_beq_to_not_eq
+attribute [minimal_theory high] Bool.not_eq_true
+attribute [minimal_theory high] Bool.not_eq_false
+attribute [minimal_theory high] decide_eq_true_eq
+attribute [minimal_theory high] decide_not
+attribute [minimal_theory high] not_decide_eq_true
+
+-- NOTE: `heq_eq_eq` might look linear, but if we consider implicit variables,
+-- the pattern is `@HEq ?α ?a ?α ?b`; `?α` is used non-linearly
 attribute [minimal_theory] heq_eq_eq
-attribute [minimal_theory] cond_true
-attribute [minimal_theory] cond_false
+
+attribute [minimal_theory high] cond_true
+attribute [minimal_theory high] cond_false
 attribute [minimal_theory] beq_self_eq_true
 attribute [minimal_theory] beq_self_eq_true'
 attribute [minimal_theory] bne_self_eq_false
 attribute [minimal_theory] bne_self_eq_false'
-attribute [minimal_theory] decide_False
-attribute [minimal_theory] decide_True
-attribute [minimal_theory] decide_eq_false_iff_not
-attribute [minimal_theory] decide_eq_true_iff
-attribute [minimal_theory] bne_iff_ne
-attribute [minimal_theory] Bool.false_eq
-attribute [minimal_theory] Bool.and_eq_false_imp
+attribute [minimal_theory high] decide_False
+attribute [minimal_theory high] decide_True
+attribute [minimal_theory high] decide_eq_false_iff_not
+attribute [minimal_theory high] decide_eq_true_iff
+attribute [minimal_theory high] bne_iff_ne
+attribute [minimal_theory high] Bool.false_eq
+attribute [minimal_theory high] Bool.and_eq_false_imp
 
-attribute [minimal_theory] Decidable.not_not
+attribute [minimal_theory high] Decidable.not_not
 
-attribute [minimal_theory] Nat.le_zero_eq
-attribute [minimal_theory] Nat.zero_add
-attribute [minimal_theory] Nat.zero_eq
-attribute [minimal_theory] Nat.succ.injEq
-attribute [minimal_theory] Nat.succ_ne_zero
-attribute [minimal_theory] Nat.sub_zero
+attribute [minimal_theory high] Nat.le_zero_eq
+attribute [minimal_theory high] Nat.zero_add
+attribute [minimal_theory high] Nat.zero_eq
+attribute [minimal_theory high] Nat.succ.injEq
+attribute [minimal_theory high] Nat.succ_ne_zero
+attribute [minimal_theory high] Nat.sub_zero
 
 attribute [minimal_theory] Nat.le_refl
 
@@ -127,8 +140,8 @@ theorem option_get_bang_of_some [Inhabited α] (v : α) :
 attribute [minimal_theory] Option.isNone_some
 
 attribute [minimal_theory] Fin.isValue
-attribute [minimal_theory] Fin.zero_eta
-attribute [minimal_theory] Fin.mk.injEq
+attribute [minimal_theory high] Fin.zero_eta
+attribute [minimal_theory high] Fin.mk.injEq
 
 -- attribute [minimal_theory] ↓reduceIte
 attribute [minimal_theory] reduceCtorEq
