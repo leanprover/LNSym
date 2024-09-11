@@ -7,7 +7,7 @@ import Lean
 
 open Lean Elab Meta Tactic in
 /-- `clear_named [n₁, n₂, ...]` clear all inaccessible names that have
-*any* one of `n₁, n2, ...` as prefixes. -/
+*any* one of `n₁, n₂, ...` as prefixes. -/
 elab "clear_named" "[" names:(ident),* "]": tactic =>  do
   withMainContext do
     for hyp in (← getLCtx) do
