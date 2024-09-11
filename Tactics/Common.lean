@@ -148,7 +148,7 @@ def reflectPFLag (e : Expr) : MetaM PFlag :=
       let pflag := mkConst ``PFlag
       throwError "Expected a `{pflag}` constructor, found:\n  {e}"
 
-/-- Reflect a concrete `StateField` -/
+/-- Reflect a concrete `StateField`, throwing an error on failure -/
 def reflectStateField (e : Expr) : MetaM StateField :=
   match_expr e with
     | StateField.GPR x  => StateField.GPR <$> reflectBitVecLiteral _ x
@@ -159,6 +159,11 @@ def reflectStateField (e : Expr) : MetaM StateField :=
     | _ =>
       let sf := mkConst ``StateField
       throwError "Expected a `{sf}` constructor, found:\n  {e}"
+
+/-- Reflect a concrete `StateField`, returning `none` on failure -/
+def reflectStateField? (e : Expr) : MetaM (Option StateField) := do
+  try some <$> reflectStateField e
+  catch _ => return none
 
 /-! ## Hypothesis types -/
 namespace SymContext

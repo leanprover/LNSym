@@ -1,12 +1,87 @@
 import Lean
 import Arm.State
 import Tactics.Simp
+import Tactics.Common
+import Tactics.Attr
 
 open Lean Meta Elab Command
 
 open StateField (GPR)
 def numStates : Nat := 1000
 set_option maxRecDepth 1000000
+
+example : ((1+2) = 3) = True := eq_self _
+
+simproc StateField.reduceEq (@Eq StateField _ _) := fun e => do
+  if e.hasFVar || e.hasMVar then
+    return .continue
+
+  let_expr Eq type lhsE rhsE := e
+    | return .continue
+
+  let some lhs ← reflectStateField? lhsE
+    | return .continue
+  let some rhs ← reflectStateField? rhsE
+    | return .continue
+
+  if lhs = rhs then
+    return .done {
+      expr   := mkConst ``True
+      proof? := some (mkApp2 (.const ``eq_self [1]) type lhsE)
+    }
+  else
+    -- TODO: simplify to `False`
+    return .continue
+attribute [bitvec_rules high] StateField.reduceEq
+
+simproc StateField.reduceNe (@Ne StateField _ _) := fun ne => do
+  trace[Tactic.sym] "Simplifying: {ne}"
+  if ne.hasFVar || ne.hasMVar then
+    trace[Tacitc.sym] "abort: has free variables"
+    return .continue
+
+  let_expr Ne _type lhsE rhsE := ne
+    | trace[Tactic.sym] "internal error: failed to destructure"
+      return .continue
+  trace[Tactic.sym] "lhs = {lhsE}\nrhs = {rhsE}"
+
+  let some lhs ← reflectStateField? lhsE
+    | return .continue
+  let some rhs ← reflectStateField? rhsE
+    | return .continue
+
+  if lhs = rhs then
+    trace[Tactic.sym] "{lhs} = {rhs}"
+    return .done {
+      expr   := mkConst ``False
+      proof? := some (
+        mkApp (mkConst ``propext) <|
+          mkApp2 (.const ``ne_self_iff_false [1]) (mkConst ``StateField) lhsE
+      )
+    }
+  else
+    trace[Tactic.sym] "{lhs} ≠ {rhs}"
+    let instDecide ← synthInstance <| mkApp (mkConst ``Decidable) ne
+    return .done {
+      expr   := mkConst ``True
+      proof? := some (
+        mkAppN (mkConst ``eq_true_of_decide) #[
+          ne, instDecide,
+          mkApp2 (.const ``Eq.refl [1]) (mkConst ``Bool) (mkConst ``true)
+        ]
+      )
+    }
+attribute [bitvec_rules high] StateField.reduceNe
+
+attribute [bitvec_rules] BitVec.reduceEq
+attribute [bitvec_rules] BitVec.reduceNe
+-- attribute [bitvec_rules, minimal_theory] GPR.injEq
+
+set_option trace.Tactic.sym true
+
+example : StateField.GPR 1#5 ≠ StateField.GPR 2#5 := by
+  simp (config := { decide := false }) only [StateField.reduceNe]
+
 
 elab "states" : command => do
   for i in List.range numStates do
@@ -58,6 +133,7 @@ elab "simp_inst" : tactic => do
 attribute [-minimal_theory] eq_self
 attribute [-minimal_theory] ne_eq
 attribute [-bitvec_rules] BitVec.ofNat_eq_ofNat
+set_option trace.Tactic.sym true
 
 -- set_option trace.Meta.Tactic.simp true in
 -- set_option trace.Meta.Tactic.simp.all true in
@@ -78,7 +154,10 @@ elab "simp_disch" : tactic => do
   let thms := Array.range (numStates-1) |>.map fun i =>
     let i := i + 1
     Name.mkSimple s!"h_s{i}_disch"
-  simpGoalWith <|← LNSymSimpContext (config := {decide := true}) (thms := thms)
+  simpGoalWith <|← LNSymSimpContext (config := {decide := false}) (thms := thms)
+
+set_option trace.Meta.Tactic.simp true in
+set_option trace.Meta.Tactic.simp.all true in
 
 -- With 400 states, `simp_disch` takes around 190ms to simplify, using
 -- 3% of the heartbeat budget
