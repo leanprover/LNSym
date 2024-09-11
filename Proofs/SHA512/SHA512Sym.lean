@@ -44,6 +44,8 @@ abbrev num_blocks (s : ArmState) : BitVec 64 := r (StateField.GPR 2#5) s
 -- (0x1264d8#64 , 0x910c0063#32),      --  add     x3, x3, #0x300
 abbrev ktbl_addr : BitVec 64 := 0x1b4300#64
 
+set_option trace.Tactic.sym.heartbeats true
+
 -- set_option profiler true in
 -- set_option profiler.threshold 1 in
 -- set_option pp.deepTerms false in
@@ -71,10 +73,12 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
                   ktbl_addr      (SHA2.k_512.length * 8))
   -- (FIXME) Use program.length instead of 20 here (depends on the
   -- performance of the new symbolic simulation tactic).
-  (h_run : sf = run 20 s0) :
+  (h_run : sf = run 225 s0) :
   r (StateField.GPR 2#5) sf = 0#64 ∧
   r StateField.ERR sf = StateError.None := by
-  sym_n 20
+  sym_n 225
+
+  stop
 
   simp (config := {decide := true, ground := true}) only
     [AddWithCarry, bitvec_rules, minimal_theory, Nat.reduceAdd]
