@@ -425,10 +425,16 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     curr_state_number
   }
 
-/-- Add a set of new simp-theorems to the simp-theorems tracked in the context -/
+/-- Add a set of new simp-theorems to the simp-theorems used
+for effect aggregation -/
 def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
-  let simpThms : SimpTheorems := simpThms.foldl addSimpTheoremEntry {}
-  let aggregateSimpCtx := { c.aggregateSimpCtx with
-      simpTheorems := c.aggregateSimpCtx.simpTheorems.push simpThms
-  }
-  { c with aggregateSimpCtx}
+  let addSimpThms := simpThms.foldl addSimpTheoremEntry
+
+  let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
+  let simpTheorems :=
+    if oldSimpTheorems.isEmpty then
+      oldSimpTheorems.push <| addSimpThms {}
+    else
+      oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
+
+  { c with aggregateSimpCtx.simpTheorems := simpTheorems }
