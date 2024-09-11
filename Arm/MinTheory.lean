@@ -25,8 +25,8 @@ is always successful.
 Another possibly expensive lemma is
   `and_iff_left_of_imp : {a b : Prop} (ha : a → b) : a ∧ b ↔ a`
 The pattern of this lemma (`?a ∧ ?b`) is perfectly linear, but to apply such
-a lemma, `simp` first has to discharge the `(ha : a → b)`, which might fail,
-and might be expensive.
+a lemma, `simp` first has to discharge the `(ha : a → b)` side-condition,
+which might fail and might be expensive.
 
 Thus, the rationale we follow is that only linear, side-condition free lemmas
 get the `high` priority, and everything else gets the default prioriry.
