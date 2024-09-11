@@ -8,15 +8,10 @@ import Arm.Map
 import Arm.Decode
 import Tactics.Common
 import Tactics.Simp
-import Tactics.ChangeHyps
 import Tactics.Reflect.ProgramInfo
 
 open Lean Lean.Expr Lean.Meta Lean.Elab Lean.Elab.Command
 open SymContext (h_pc_type h_program_type h_err_type)
-
--- NOTE: This is an experimental and probably quite shoddy method of autogenerating
--- `stepi` theorems from a program under verification, and things may change
--- without warning in the near future.
 
 /-
 Command to autogenerate fetch, decode, execute, and stepi theorems for

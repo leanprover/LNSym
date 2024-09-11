@@ -22,7 +22,7 @@ def exec_ldstur
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let offset := signExtend 64 inst.imm9
-    let memop := if getLsb inst.opc 0 then MemOp.MemOp_LOAD else MemOp.MemOp_STORE
+    let memop := if getLsbD inst.opc 0 then MemOp.MemOp_LOAD else MemOp.MemOp_STORE
     let datasize := 8 <<< scale
     let address := read_gpr 64 inst.Rn s
     if inst.Rn = 31#5 ∧ ¬(CheckSPAlignment s) then

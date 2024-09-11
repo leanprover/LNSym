@@ -115,7 +115,7 @@ structure Proof (α : Type) (e : α) where
   /-- `h` is an expression of type `e`. -/
   h : Expr
 
-def WithProof.e {α : Type} {e : α} (p : Proof α e) : α := e
+def WithProof.e {α : Type} {e : α} (_p : Proof α e) : α := e
 
 instance [ToMessageData α] : ToMessageData (Proof α e) where
   toMessageData proof := m! "{proof.h}: {e}"

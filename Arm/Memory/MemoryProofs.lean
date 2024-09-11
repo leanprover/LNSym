@@ -316,12 +316,12 @@ private theorem mem_subset_neq_first_addr_small_second_region
                  decide_eq_true_eq, Bool.and_eq_true]
   cases h2
   · rename_i h
-    simp [BitVec.add_sub_self_left_64] at h
-    have l1 : n' = 18446744073709551615 := by
-      rw [BitVec.toNat_eq (BitVec.ofNat 64 n') 18446744073709551615#64] at h
+    simp only [BitVec.add_sub_self_left_64] at h
+    have l1 : n' = 18446744073709551615 := by      
+      rw [BitVec.toNat_eq] at h
       simp only [toNat_ofNat, Nat.reducePow, Nat.reduceMod] at h
       omega
-    simp [l1] at h1
+    simp only [l1, Nat.lt_irrefl] at h1
   · rename_i h
     bv_omega
     done

@@ -1,9 +1,14 @@
+/-
+Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author(s): Siddharth Bhat, Alex Keizer
+-/
 import Lean
 
 open Lean
 initialize
   -- CSE tactic's non-verbose summary logging.
-  registerTraceClass `Tactic.cse.summary 
+  registerTraceClass `Tactic.cse.summary
   -- enable tracing for `sym_n` tactic and related components
   registerTraceClass `Tactic.sym
 

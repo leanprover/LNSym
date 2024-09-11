@@ -648,7 +648,7 @@ theorem partial_correctness :
       subst si
       rename_i x h_pc
       name h_s0_run : s1 := run 1 s0
-      obtain ⟨h_s1_cut, h_s1_pc, h_s1_err, h_s1_x0, h_s1_x1, h_s1_sp, h_s1_mem, h_s1_program, h_s1_sp_aligned⟩ :=
+      obtain ⟨h_s1_cut, h_s1_pc, h_s1_err, h_s1_x0, h_s1_x1, h_s1_sp, _h_s1_mem, h_s1_program, h_s1_sp_aligned⟩ :=
         program.stepi_0x894_cut s0 s1 h_s0_program h_pc h_s0_err h_s0_sp_aligned h_s0_run.symm
       rw [Correctness.snd_cassert_of_not_cut h_s1_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s1 = run 1 s1 by rfl]
@@ -673,11 +673,11 @@ theorem partial_correctness :
       rw [Correctness.snd_cassert_of_not_cut h_s3_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s3 = run 1 s3 by rfl]
       replace h_s3_x0 : s3.x0 = s0.x0 := by simp_all
-      replace h_s3_x1 : s3.x1 = s0.x1 := by simp_all
+      replace _h_s3_x1 : s3.x1 = s0.x1 := by simp_all
       replace h_s3_sp : s3.sp = s0.sp - 32 := by simp_all
       /- TODO: this should be s0.x0-/
       replace h_s3_read_sp12 : read_mem_bytes 4 (s3.sp + 12#64) s3 = BitVec.truncate 32 s0.x0 := by simp_all
-      replace h_s3_read_sp8 : read_mem_bytes 4 (s3.sp + 8#64) s3 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace _h_s3_read_sp8 : read_mem_bytes 4 (s3.sp + 8#64) s3 = BitVec.truncate 32 s0.x1 := by simp_all
       clear_named [h_s2]
 
       -- 4/15
@@ -687,11 +687,11 @@ theorem partial_correctness :
       rw [Correctness.snd_cassert_of_not_cut h_s4_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s4 = run 1 s4 by rfl]
       replace h_s4_sp : s4.sp = s0.sp - 32 := by simp_all
-      replace h_s4_x0 : s4.x0 = s0.x0 := by simp_all
+      replace _h_s4_x0 : s4.x0 = s0.x0 := by simp_all
       replace h_s4_x1 : s4.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
       replace h_s4_sp : s4.sp = s0.sp - 32 := by simp_all
       replace h_s4_read_sp12 : read_mem_bytes 4 (s4.sp + 12#64) s4 = BitVec.truncate 32 s0.x0 := by simp_all
-      replace h_s4_read_sp8 : read_mem_bytes 4 (s4.sp + 8#64) s4 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace _h_s4_read_sp8 : read_mem_bytes 4 (s4.sp + 8#64) s4 = BitVec.truncate 32 s0.x1 := by simp_all
       clear_named [h_s3]
 
       -- 5/15
@@ -705,13 +705,13 @@ theorem partial_correctness :
       replace h_s5_x1 : s5.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
       replace h_s5_sp : s5.sp = s0.sp - 32 := by simp_all
       replace h_s5_read_sp12 : read_mem_bytes 4 (s5.sp + 12#64) s5 = BitVec.truncate 32 s0.x0 := by simp_all
-      replace h_s5_read_sp8 : read_mem_bytes 4 (s5.sp + 8#64) s5 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace _h_s5_read_sp8 : read_mem_bytes 4 (s5.sp + 8#64) s5 = BitVec.truncate 32 s0.x1 := by simp_all
       clear_named [h_s4]
 
       -- 6/15
       name h_run : s6 := run 1 s5
       obtain h := program.stepi_0x8a8_cut s5 s6 h_s5_program h_s5_pc h_s5_err h_s5_sp_aligned h_run.symm
-      obtain ⟨h_s6_cut, h_s6_pc, h_s6_err, h_s6_program, h_s6_c, h_s6_v, h_s6_z, h_s6_n, h_s6_read_sp_8, h_s6_read_sp_12, h_s6_x0, h_s6_x1, h_s6_sp, h_s6_sp_aligned, h_s6_mem⟩ := h
+      obtain ⟨h_s6_cut, h_s6_pc, h_s6_err, h_s6_program, h_s6_c, h_s6_v, h_s6_z, h_s6_n, h_s6_read_sp_8, h_s6_read_sp_12, h_s6_x0, h_s6_x1, h_s6_sp, h_s6_sp_aligned, _h_s6_mem⟩ := h
       rw [Correctness.snd_cassert_of_not_cut h_s6_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s6 = run 1 s6 by rfl]
       replace h_s6_sp : s6.sp = s0.sp - 32 := by simp_all
@@ -719,7 +719,7 @@ theorem partial_correctness :
       replace h_s6_x1 : s6.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
       replace h_s6_sp : s6.sp = s0.sp - 32 := by simp_all
       replace h_s6_read_sp12 : read_mem_bytes 4 (s6.sp + 12#64) s6 = BitVec.truncate 32 s0.x0 := by simp_all
-      replace h_s6_read_sp8 : read_mem_bytes 4 (s6.sp + 8#64) s6 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace _h_s6_read_sp8 : read_mem_bytes 4 (s6.sp + 8#64) s6 = BitVec.truncate 32 s0.x1 := by simp_all
       replace h_s6_c : s6.C = (AddWithCarry (s0.x0.zeroExtend 32) (~~~s0.x1.zeroExtend 32) 1#1).snd.c := by simp_all
       replace h_s6_n : s6.N = (AddWithCarry (s0.x0.zeroExtend 32) (~~~s0.x1.zeroExtend 32) 1#1).snd.n := by simp_all
       replace h_s6_v : s6.V = (AddWithCarry (s0.x0.zeroExtend 32) (~~~s0.x1.zeroExtend 32) 1#1).snd.v := by simp_all

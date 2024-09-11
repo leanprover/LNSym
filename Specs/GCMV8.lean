@@ -40,7 +40,7 @@ def pmult (x: BitVec (m + 1)) (y : BitVec (n + 1)) : BitVec (m + n + 1) :=
     if i < n + 1 then
       let acc := acc <<< 1
       have h : m + n + 1 = n + (m + 1) := by omega
-      let tmp := if getMsb y i
+      let tmp := if getMsbD y i
                  then (BitVec.zero n) ++ x
                  else BitVec.cast h (BitVec.zero (m + n + 1))
       let acc := (BitVec.cast h acc) ^^^ tmp
@@ -48,19 +48,23 @@ def pmult (x: BitVec (m + 1)) (y : BitVec (n + 1)) : BitVec (m + n + 1) :=
     else acc
   pmultTR x y 0 (BitVec.zero (m + n + 1))
 
-example: pmult 0b1101#4 0b10#2 = 0b11010#5 := by rfl
+example: pmult 0b1101#4 0b10#2 = 0b11010#5 := by 
+  -- (FIXME) With leanprover/lean4:nightly-2024-08-29, just `rfl` sufficed here.
+  native_decide
 
 /-- Degree of x. -/
 private def degree (x : BitVec n) : Nat :=
   let rec degreeTR (x : BitVec n) (n : Nat) : Nat :=
     if n = 0 then 0
-    else if getLsb x n then n else degreeTR x (n - 1)
+    else if getLsbD x n then n else degreeTR x (n - 1)
   degreeTR x (n - 1)
-example: GCMV8.degree 0b0101#4 = 2 := by rfl
+example: GCMV8.degree 0b0101#4 = 2 := by
+  -- (FIXME) With leanprover/lean4:nightly-2024-08-29, just `rfl` sufficed here.
+  native_decide
 
 /-- Subtract x from y if y's x-degree-th bit is 1. -/
 private def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
-  if getLsb y (GCMV8.degree x) then y ^^^ x else y
+  if getLsbD y (GCMV8.degree x) then y ^^^ x else y
 
 /-- Performs division of polynomials over GF(2). -/
 def pdiv (x: BitVec n) (y : BitVec m) (h : 0 < m): BitVec n :=
@@ -82,16 +86,17 @@ def pdiv (x: BitVec n) (y : BitVec m) (h : 0 < m): BitVec n :=
     else acc
   pdivTR x y 0 (BitVec.zero m) (BitVec.zero n)
 
-example : pdiv 0b1101#4 0b10#2 (by omega) = 0b110#4 := by rfl
-example : pdiv 0x1a#5 0b10#2 (by omega) = 0b1101#5 := by rfl
-example : pdiv 0b1#1 0b10#2 (by omega) = 0b0#1 := by rfl
+-- (FIXME) With leanprover/lean4:nightly-2024-08-29, just `rfl` sufficed here.
+example : pdiv 0b1101#4 0b10#2 (by omega) = 0b110#4 := by native_decide
+example : pdiv 0x1a#5 0b10#2 (by omega) = 0b1101#5 := by native_decide
+example : pdiv 0b1#1 0b10#2 (by omega) = 0b0#1 := by native_decide
 
 /-- Performs modulus of polynomials over GF(2). -/
 def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : 0 < m) : BitVec m :=
   let rec pmodTR (x : BitVec n) (y : BitVec (m + 1)) (p : BitVec (m + 1))
     (i : Nat) (r : BitVec m) (H : 0 < m) : BitVec m :=
     if i < n then
-      let xi := getLsb x i
+      let xi := getLsbD x i
       have h : m - 1 + 1 = m := by omega
       let tmp : BitVec (m - 1 + 1) :=
         if xi
@@ -102,12 +107,13 @@ def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : 0 < m) : BitVec m :=
     else r
   if y = 0 then 0 else pmodTR x y (GCMV8.reduce y 1) 0 (BitVec.zero m) H
 
-example: pmod 0b011#3 0b00#2 (by omega) = 0b0#1 := by rfl
-example: pmod 0b011#3 0b01#2 (by omega) = 0b0#1 := by rfl
-example: pmod 0b011#3 0b10#2 (by omega) = 0b1#1 := by rfl
-example: pmod 0b011#3 0b11#2 (by omega) = 0b0#1 := by rfl
-example: pmod 0b011#3 0b100#3 (by omega) = 0b11#2 := by rfl
-example: pmod 0b011#3 0b1001#4 (by omega) = 0b11#3 := by rfl
+-- (FIXME) With leanprover/lean4:nightly-2024-08-29, just `rfl` sufficed here.
+example: pmod 0b011#3 0b00#2 (by omega) = 0b0#1 := by native_decide
+example: pmod 0b011#3 0b01#2 (by omega) = 0b0#1 := by native_decide
+example: pmod 0b011#3 0b10#2 (by omega) = 0b1#1 := by native_decide
+example: pmod 0b011#3 0b11#2 (by omega) = 0b0#1 := by native_decide
+example: pmod 0b011#3 0b100#3 (by omega) = 0b11#2 := by native_decide
+example: pmod 0b011#3 0b1001#4 (by omega) = 0b11#3 := by native_decide
 
 ------------------------------------------------------------------------------
 -- Functions related to GCM
@@ -210,11 +216,12 @@ def GCMGmultV8 (H : BitVec 128) (Xi : List (BitVec 8)) (h : 8 * Xi.length = 128)
   let H := (lo H) ++ (hi H)
   split (GCMV8.gcm_polyval H (BitVec.cast h (BitVec.flatten Xi))) 8 (by omega)
 
+-- (FIXME) With leanprover/lean4:nightly-2024-08-29, just `rfl` sufficed here.
 example : GCMGmultV8 0x1099f4b39468565ccdd297a9df145877#128
   [ 0x10#8, 0x54#8, 0x43#8, 0xb0#8, 0x2c#8, 0x4b#8, 0x1f#8, 0x24#8,
     0x3b#8, 0xcd#8, 0xd4#8, 0x87#8, 0x16#8, 0x65#8, 0xb3#8, 0x2b#8 ] (by decide) =
   [ 0xa2#8, 0xc9#8, 0x9c#8, 0x56#8, 0xeb#8, 0xa7#8, 0x91#8, 0xf6#8,
-    0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ] := by rfl
+    0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ] := by native_decide
 
 
 private def gcm_ghash_block (H : BitVec 128) (Xi : BitVec 128)
@@ -247,11 +254,12 @@ def GCMGhashV8 (H : BitVec 128) (Xi : List (BitVec 8))
   let flat_inp := BitVec.flatten inp
   split (GCMGhashV8TR H flat_Xi flat_inp 0 h3) 8 (by omega)
 
+-- (FIXME) With leanprover/lean4:nightly-2024-08-29, just `rfl` sufficed here.
 example : GCMGhashV8 0x1099f4b39468565ccdd297a9df145877#128
   [ 0xa2#8, 0xc9#8, 0x9c#8, 0x56#8, 0xeb#8, 0xa7#8, 0x91#8, 0xf6#8,
     0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ]
   (List.replicate 16 0x2a#8) (by simp) (by simp only [List.length_replicate]; omega) =
   [ 0x20#8, 0x60#8, 0x2e#8, 0x75#8, 0x7a#8, 0x4e#8, 0xec#8, 0x90#8,
-    0xc0#8, 0x9d#8, 0x49#8, 0xfd#8, 0xdc#8, 0xf2#8, 0xc9#8, 0x35#8 ] := by rfl
+    0xc0#8, 0x9d#8, 0x49#8, 0xfd#8, 0xdc#8, 0xf2#8, 0xc9#8, 0x35#8 ] := by native_decide
 
 end GCMV8
