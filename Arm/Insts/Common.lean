@@ -682,6 +682,66 @@ def shift_right_common_aux
     shift_right_common_aux (e + 1) info operand operand2 result
   termination_by (info.elements - e)
 
+
+theorem crock (operand : BitVec 128) :
+  (BitVec.ofNat 65 (operand.toNat % 18446744073709551616)) = zeroExtend 65 (extractLsb' 0 64 operand)
+  := by sorry
+
+theorem crock1 (operand : BitVec 128) :
+  (BitVec.ofNat 65 (operand.toNat >>> 64 % 18446744073709551616)) = zeroExtend 65 (extractLsb' 64 64 operand)
+  := by sorry
+
+
+/-
+unsolved goals
+
+operand : BitVec 128
+shift : Nat
+result : BitVec 128
+⊢ (result &&& 340282366920938463444927863358058659840#128 |||
+        zeroExtend 128
+          (extractLsb' 0 64 ((BitVec.ofNat 65 (operand.toNat % 18446744073709551616)).ushiftRight shift))) &&&
+      18446744073709551615#128 |||
+    zeroExtend 128
+        (extractLsb' 0 64 ((BitVec.ofNat 65 (operand.toNat >>> 64 % 18446744073709551616)).ushiftRight shift)) <<<
+      64 =
+  (extractLsb' 64 64 operand).ushiftRight shift ++ (extractLsb' 0 64 operand).ushiftRight shift
+-/
+
+
+theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
+  (shift : Nat) (result : BitVec 128):
+  shift_right_common_aux 0
+    {esize := 64, elements := 2, shift := shift,
+     unsigned := true, round := false, accumulate := false,
+     h := (by omega)}
+    operand 0#128 result =
+  (ushiftRight (extractLsb' 64 64 operand) shift)
+    ++ (ushiftRight (extractLsb' 0 64 operand) shift) := by
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  simp only [state_simp_rules, partInstall,
+             minimal_theory, bitvec_rules,
+             Nat.shiftRight_zero, Nat.zero_shiftRight,
+             crock, crock1]
+  -- bv_decide
+
+theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
+  (shift : Nat) (result : BitVec 128):
+  shift_right_common_aux 0
+    { esize := 32, elements := 4, shift := shift,
+      unsigned := false, round := false, accumulate := false,
+      h := (by omega) }
+      operand 0#128 result =
+  (sshiftRight (extractLsb' 96 32 operand) shift)
+    ++ (sshiftRight (extractLsb' 64 32 operand) shift)
+    ++ (sshiftRight (extractLsb' 32 32 operand) shift)
+    ++ (sshiftRight (extractLsb' 0 32 operand) shift) := by sorry
+
 @[state_simp_rules]
 def shift_right_common
   (info : ShiftInfo) (datasize : Nat) (Rn : BitVec 5) (Rd : BitVec 5)
@@ -703,6 +763,17 @@ def shift_left_common_aux
     have _ : info.elements - (e + 1) < info.elements - e := by omega
     shift_left_common_aux (e + 1) info operand result
   termination_by (info.elements - e)
+
+theorem shift_left_common_aux_64_2 (operand : BitVec 128)
+  (shift : Nat) (unsigned: Bool) (round : Bool) (accumulate : Bool)
+  (result : BitVec 128):
+  shift_left_common_aux 0
+    {esize := 64, elements := 2, shift := shift,
+     unsigned := unsigned, round := round, accumulate := accumulate,
+     h := (by omega)}
+    operand result =
+  (extractLsb' 0 64 operand <<< shift)
+    ++ (extractLsb' 64 64 operand <<< shift) := by sorry
 
 @[state_simp_rules]
 def shift_left_common

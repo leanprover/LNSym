@@ -60,7 +60,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     ∧ H_addr sf = H_addr s0
     -- v20 - v31 stores results of Htable
     ∧ read_sfp 128 20#5 sf = (GCMV8.GCMInitV8 (read_mem_bytes 16 (H_addr s0) s0)).get! 0
-    -- ∧ read_sfp 128 21#5 sf = (GCMV8.GCMInitV8 (read_mem_bytes 16 (H_addr s0) s0)).get! 1
+    --
     -- TODO: Commenting out memory related conjuncts since it seems
     -- to make symbolic execution stuck
     --   -- First 12 elements in Htable is correct
@@ -73,6 +73,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     -- ∧ (∀ (f : StateField), ¬ (f = StateField.PC) ∧
     --                        ¬ (f = (StateField.GPR 29#5)) →
     --     r f sf = r f s0)
+    --
     -- -- Memory safety: memory location that should not change did
     -- -- not change
     -- -- The addr exclude output region Htable
@@ -86,4 +87,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
   apply And.intro
   · bv_decide
-  · sorry
+  · simp only
+    [shift_left_common_aux_64_2
+    , shift_right_common_aux_64_2_tff
+    , shift_right_common_aux_32_4_fff];
+    sorry
