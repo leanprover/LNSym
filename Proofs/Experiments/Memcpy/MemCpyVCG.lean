@@ -223,6 +223,8 @@ def Stepped.of_next {s sn : ArmState} (h : Sys.next s = sn) : Stepped s sn := �
 structure Step_8e0_8f0 (scur snext : ArmState) extends WellFormedAtPc snext 0x8f0 : Prop where
   h_mem : snext.mem = scur.mem
   h_cut : cut snext = false
+  h_x1 : snext.x1 = scur.x1
+  h_x2 : snext.x2 = scur.x2
 
 --  /- 00000000000008e0 <mem_copy>:                         -/
 -- 1/7 (0x8e0#64, 0x14000004#32),  /- b   8f0 <loop_test>      -/
@@ -249,6 +251,8 @@ structure Step_8e4_8e8 (scur : ArmState) (snext : ArmState) extends WellFormedAt
   h_x1 : snext.x1 = scur.x1 + 0x10#64
   h_mem : snext.mem = scur.mem
   h_q4 : snext.q4 = scur[scur.x1, 16]
+  h_x0 : snext.x0 = scur.x0
+  h_x2 : snext.x2 = scur.x2
 
 
 def Step_8e4_8e8.h_cut (h : Step_8e4_8e8 scur snext) : cut snext = false := by
@@ -276,6 +280,8 @@ theorem program.step_8e4_8e8_of_wellformed_of_stepped (scur snext : ArmState)
 structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8ec : Prop where
   h_x2 : snext.x2 = scur.x2 + 0x10#64
   h_mem : snext.mem = scur.mem.write_bytes 16 scur.x2 scur.q4
+  h_x0 : snext.x0 = scur.x0
+  h_x1 : snext.x1 = scur.x1
 
 def Step_8e8_8ec.h_cut (h : Step_8e8_8ec scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
@@ -296,14 +302,20 @@ theorem program.step_8e8_8ec_of_wellformed (scur snext : ArmState)
   subst h_step
   constructor
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules]
-  · simp? [*, state_simp_rules, minimal_theory, BitVec.extractLsb]
+  · simp only [ArmState.x2, BitVec.ofNat_eq_ofNat, ne_eq, reduceCtorEq, not_false_eq_true,
+    r_of_w_different, r_of_w_same, this]
   · rw [this]
     simp [state_simp_rules, memory_rules]
+  · simp only [ArmState.x0, BitVec.ofNat_eq_ofNat, ne_eq, reduceCtorEq, not_false_eq_true,
+    r_of_w_different, StateField.GPR.injEq, BitVec.reduceEq, r_of_write_mem_bytes, this]
 
 -- 4/7 (0x8ec#64, 0xd1000400#32),  /- sub x0, x0, #0x1         -/
 structure Step_8ec_8f0 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f0 : Prop where
   h_x0 : snext.x0 = scur.x0 - 0x1#64
   h_mem : snext.mem = scur.mem
+  h_x1 : snext.x1 = scur.x1
+  h_x2 : snext.x2 = scur.x2
+
 
 def Step_8ec_8f0.h_cut (h : Step_8ec_8f0 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
@@ -335,6 +347,8 @@ structure Step_8f0_8f4 (scur : ArmState) (snext : ArmState) extends WellFormedAt
   h_n : snext.N = (AddWithCarry scur.x0 0xffffffffffffffff#64 0x1#1).snd.n
   h_cut : cut snext = true
   h_x0 : snext.x0 = scur.x0
+  h_x1 : snext.x1 = scur.x1
+  h_x2 : snext.x2 = scur.x2
 
 
 
@@ -359,6 +373,9 @@ theorem program.step_8f0_8f4_of_wellformed (scur snext : ArmState)
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
 structure Step_8f4_8e4 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8e4 : Prop where
   h_mem : snext.mem = scur.mem
+  h_x0 : snext.x0 = scur.x0
+  h_x1 : snext.x1 = scur.x1
+  h_x2 : snext.x2 = scur.x2
 
 def Step_8f4_8e4.h_cut (h : Step_8f4_8e4 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
@@ -380,10 +397,10 @@ theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
-  constructor
-  · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules]
-  · simp? (config := { ground := true, decide := true}) [*,
+  constructor <;> solve
+    | simp? (config := { ground := true, decide := true}) [*,
       state_simp_rules, minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg]
+  · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules]
 
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
 structure Step_8f4_8f8 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f8 : Prop where
@@ -414,38 +431,7 @@ theorem program.step_8f4_8f8_of_wellformed_of_z_eq_1 (scur snext : ArmState)
       minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg, cut]
   · constructor <;> simp [*, h_z, state_simp_rules, minimal_theory, bitvec_rules, cut]
 
--- -- 7/7 (0x8f8#64, 0xd65f03c0#32)   /- ret                      -/
--- structure Step_8f8_ret (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f8#64 : Prop where
---   h_mem : snext.mem = scur.mem
-
--- def Step_8f8_ret.h_cut (h : Step_8f8_ret scur snext) : cut snext = true := by
---   have h_pc := h.toWellFormedAtPc.h_pc
---   simp [h_pc, cut]
---   decide
-
--- theorem program.step_8f8_ret_of_wellformed (scur snext : ArmState)
---     (hs : WellFormedAtPc scur 0x8f8#64)
---     (hstep : Stepped scur snext) : Step_8f8_ret scur snext := by
---   obtain h_program := hs.h_program
---   obtain h_pc := hs.h_pc
---   obtain h_err := hs.h_err
---   obtain h_sp_aligned := hs.h_sp_aligned
-
---   have := program.stepi_eq_0x8f8 h_program h_pc h_err
---   simp (config := { ground := true, decide := true}) [BitVec.extractLsb,
---     fst_AddWithCarry_eq_sub_neg,
---     fst_AddWithCarry_eq_add] at this
-
---   obtain ⟨h_step⟩ := hstep
---   subst h_step
---   constructor <;> simp? (config := { ground := true, decide := true}) [*,
---       state_simp_rules, minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg]
-
 end CutTheorems
-
-#check stepi
-#check Sys.run
-#check run
 
 section PartialCorrectness
 
@@ -529,19 +515,19 @@ theorem partial_correctness :
         have step_8e4_8e8 :=
           program.step_8e4_8e8_of_wellformed_of_stepped s1 s2 step_8f4_8e4.toWellFormedAtPc (.of_next h_s2_next_s1)
         rw [Correctness.snd_cassert_of_not_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s2_next_s1, step_8e4_8e8.h_cut])];
-        simp
+        simp only [Nat.reduceAdd]
 
         name h_s3_next_s2 : s3 := Sys.next s2
         have step_8e8_8ec :=
           program.step_8e8_8ec_of_wellformed s2 s3 step_8e4_8e8.toWellFormedAtPc (.of_next h_s3_next_s2)
         rw [Correctness.snd_cassert_of_not_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s3_next_s2, step_8e8_8ec.h_cut])];
-        simp
+        simp only [Nat.reduceAdd]
 
         name h_s4_next_s3 : s4 := Sys.next s3
         have step_8ec_8f0 :=
           program.step_8ec_8f0_of_wellformed s3 s4 step_8e8_8ec.toWellFormedAtPc (.of_next h_s4_next_s3)
         rw [Correctness.snd_cassert_of_not_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s4_next_s3, step_8ec_8f0.h_cut])];
-        simp
+        simp only [Nat.reduceAdd]
 
         name h_s5_next_s4 : s5 := Sys.next s4
         have step_8f0_8f4 :=
@@ -549,12 +535,61 @@ theorem partial_correctness :
         rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s5_next_s4, step_8f0_8f4.h_cut])];
         simp [Spec'.assert, assert, h_pre, step_8f0_8f4.h_pc, loop_inv]
 
-        have : s5.x0 ≤ s0.x0  := sorry
-        have : (r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ s5.x0 = 0x0#64) := sorry
-        have : s5.x1 = s0.x1 + 0x10#64 * (s0.x0 - s5.x0)  := sorry
-        have : s5.x2 = s0.x2 + 0x10#64 * (s0.x0 - s5.x0) := sorry
+        have : s5.x0 ≤ s0.x0  := by
+          rw [step_8f0_8f4.h_x0,
+            step_8ec_8f0.h_x0,
+            step_8e8_8ec.h_x0,
+            step_8e4_8e8.h_x0, step_8f4_8e4.h_x0]
+          have : ¬ (si.x0 = 0#64) := by
+            intros h -- TODO: upstream `contrapose`.
+            have := h_si_x0.mpr h
+            contradiction
+          simp [loop_inv] at h_assert
+          bv_omega
+
+        have : (r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ s5.x0 = 0x0#64) := by
+          have := step_8f0_8f4.h_z
+          rw [step_8f0_8f4.h_x0,
+            step_8ec_8f0.h_x0,
+            step_8e8_8ec.h_x0,
+            step_8e4_8e8.h_x0, step_8f4_8e4.h_x0]
+          simp [loop_inv] at h_assert
+          sorry
+
+        have : s5.x1 = s0.x1 + 0x10#64 * (s0.x0 - s5.x0) := by
+          rw [step_8f0_8f4.h_x0,
+            step_8ec_8f0.h_x0,
+            step_8e8_8ec.h_x0,
+            step_8e4_8e8.h_x0, step_8f4_8e4.h_x0]
+          rw [step_8f0_8f4.h_x1,
+            step_8ec_8f0.h_x1,
+            step_8e8_8ec.h_x1,
+            step_8e4_8e8.h_x1, step_8f4_8e4.h_x1]
+          simp [loop_inv] at h_assert
+          sorry
+          -- bv_omega
+
+        have : s5.x2 = s0.x2 + 0x10#64 * (s0.x0 - s5.x0) := by
+          rw [step_8f0_8f4.h_x0,
+            step_8ec_8f0.h_x0,
+            step_8e8_8ec.h_x0,
+            step_8e4_8e8.h_x0, step_8f4_8e4.h_x0]
+          rw [step_8f0_8f4.h_x2,
+            step_8ec_8f0.h_x2,
+            step_8e8_8ec.h_x2,
+            step_8e4_8e8.h_x2, step_8f4_8e4.h_x2]
+          simp [loop_inv] at h_assert
+          sorry
+
+          -- bv_omega
+
         have : ∀ (i : BitVec 64), i < s0.x0 - s5.x0 →
-          read_mem_bytes 16 (s0.x2 + 0x10#64 * i) s5 = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0 := sorry
+          read_mem_bytes 16 (s0.x2 + 0x10#64 * i) s5 = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0 := by
+          simp [loop_inv] at h_assert
+          intros i hi
+          sorry
+
+
         simp [step_8f0_8f4.h_sp_aligned, step_8f0_8f4.h_program, step_8f0_8f4.h_err]
         simp [*]
         exact this
