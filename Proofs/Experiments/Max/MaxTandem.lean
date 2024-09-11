@@ -9,11 +9,15 @@ computes the maximum of two numbers.
 import Arm
 import Tactics.CSE
 import Tactics.Sym
+import Tactics.Rename
+import Tactics.Name
+import Tactics.ClearNamed
 import Tactics.StepThms
 import Correctness.ArmSpec
 import Proofs.Experiments.Max.MaxProgram
 import Arm.Insts.Common
 import Arm.Memory.SeparateAutomation
+import Arm.Syntax
 
 namespace MaxTandem
 open Max
@@ -28,14 +32,6 @@ scoped notation "then_start" => 0x8b0#64
 scoped notation "else_start" => 0x8bc#64
 scoped notation "merge_end" => 0x8cc#64
 
-
-namespace ArmStateNotation
-
-/-! We build a notation for `read_mem_bytes $n $base $s` as `$s[$base, $n]` -/
-@[inherit_doc read_mem_bytes]
-syntax:max term noWs "[" withoutPosition(term)  ","  withoutPosition(term) noWs "]" : term
-macro_rules | `($s[$base,$n]) => `(read_mem_bytes $n $base $s)
-end ArmStateNotation
 
 open ArmStateNotation
 
@@ -89,7 +85,7 @@ def entry_end_inv (s0 si : ArmState): Prop :=
   CheckSPAlignment si ∧
   si[s0.sp - 32#64 + 12#64, 4] = s0.x0.zeroExtend 32 ∧
   si[s0.sp - 32#64 + 8#64, 4] = s0.x1.zeroExtend 32 ∧
-  si.sp = s0.sp - 32#64 
+  si.sp = s0.sp - 32#64
 
 /-!
 Notice the pattern: The invariant after the conditional branch
@@ -574,37 +570,11 @@ info: 'MaxTandem.program.stepi_0x8c8_cut' depends on axioms: [propext, Classical
 
 end CutTheorems
 
-/--
-rename an old term `old` identifier a new identifier `new`, and replace
-all occurrences of `old` with `new`.
--/
-macro "rename" old:ident "to" new:ident : tactic =>
-  `(tactic|
-    generalize h_rename : $old = $new <;> subst $old)
-
-/-- define a value `x := val`, and name the hypothesis `heq : x := val` -/
-macro "name" heq:ident ":" x:ident " := " val:term : tactic =>
-  `(tactic| generalize $heq : $val = $x)
-
-
 /-- info: Correctness.cassert {σ : Type} [Sys σ] [Spec' σ] (s0 si : σ) (i : Nat) : Nat × Prop -/
 #guard_msgs in #check Correctness.cassert
 
 /-- info: MaxTandem.cut (s : ArmState) : Bool -/
 #guard_msgs in #check cut
-
-open Lean Elab Meta Tactic in
-/-- If no name is supplied, then clears all inaccessible names.
-If a list of names is supplied, then clear all inaccessible names that have
-*any* one of the strings as prefixes. -/
-elab "clear_named" "[" names:(ident),* "]": tactic =>  do
-  withMainContext do
-    for hyp in (← getLCtx) do
-      -- trace[debug] "name: {hyp.userName}"
-      for name in names.getElems do
-        if name.getId.toString.isPrefixOf hyp.userName.toString then
-          replaceMainGoal [← (← getMainGoal).clear hyp.fvarId]
-          continue
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by
