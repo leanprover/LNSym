@@ -425,7 +425,8 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
   }
 
 /-- Add a set of new simp-theorems to the simp-theorems tracked in the context -/
-def addSimpTheorems (c : SymContext) (simpThms : SimpTheorems) : SymContext :=
+def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
+  let simpThms : SimpTheorems := simpThms.foldl addSimpTheoremEntry {}
   let aggregateSimpCtx := { c.aggregateSimpCtx with
       simpTheorems := c.aggregateSimpCtx.simpTheorems.push simpThms
   }
