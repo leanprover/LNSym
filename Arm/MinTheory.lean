@@ -8,6 +8,22 @@ attribute [minimal_theory] ite_false
 attribute [minimal_theory] dite_true
 attribute [minimal_theory] dite_false
 attribute [minimal_theory] ite_self
+
+/-
+Notice how both `and_true : ?p ∧ True = ?p` and `and_self : ?p ∧ ?p = ?p` may
+be attempted by `simp` on a goal of the shape `_ ∧ True`, as they are both
+a match where the discrimination tree is concerned.
+
+However, assuming the left conjunct is not def-eq to `True`, an attempt of
+`and_self` will fail to unify, which causes a fallback to `and_true`.
+For the latter simp lemma, on the other hand, we know that if the discrimination
+tree gives a match, then the lemma should be applicable.
+This is because the variable `?p` is used only once in the pattern (i.e.,
+the pattern is linear), and the first unification of an unassigned metavariable
+is always successful.
+
+Thus, we ensure that `and_true` gets tried before `and_self` by setting a higher
+priority for the former, and the same for other obviously linear simp lemmas. -/
 attribute [minimal_theory high] and_true
 attribute [minimal_theory high] true_and
 attribute [minimal_theory high] and_false
