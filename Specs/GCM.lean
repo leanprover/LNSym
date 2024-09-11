@@ -38,9 +38,9 @@ def mul_aux (i : Nat) (X : BitVec 128) (Z : BitVec 128) (V : BitVec 128)
   if h : 128 ≤ i then
     Z
   else
-    let Xi := getMsb X i
+    let Xi := getMsbD X i
     let Z := if not Xi then Z else Z ^^^ V
-    let lsb_v := getLsb V 0
+    let lsb_v := getLsbD V 0
     let V := if not lsb_v then V >>> 1 else (V >>> 1) ^^^ R
     mul_aux (i + 1) X Z V
   termination_by (128 - i)
