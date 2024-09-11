@@ -421,3 +421,10 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     pc          := nextPc?.getD (c.pc + 4#64)
     curr_state_number
   }
+
+/-- Add a set of new simp-theorems to the simp-theorems tracked in the context -/
+def addSimpTheorems (c : SymContext) (simpThms : SimpTheorems) : SymContext :=
+  let aggregateSimpCtx := { c.aggregateSimpCtx with
+      simpTheorems := c.aggregateSimpCtx.simpTheorems.push simpThms
+  }
+  { c with aggregateSimpCtx}
