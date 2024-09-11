@@ -7,3 +7,6 @@ Author(s): Shilpi Goel
 -- Import modules here that should be built as part of the library.
 import «Tactics».Sym
 import «Tactics».StepThms
+import «Tactics».Rename
+import «Tactics».Name
+import «Tactics».ClearNamed
