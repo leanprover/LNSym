@@ -672,31 +672,7 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
           else
             .other <| Name.str baseName name
         let newThms ← mkSimpTheorems origin #[] e (prio := prio)
-        let newThms ← newThms.mapM (fun thm => do
-          /- `mkSimpTheorems` sets `noIndexAtArgs := true`, meaning that all
-          our (non-effects) theorems will have `[r, *, *]` as key.
-          causing many unneeded attempts at unification.
-          The following code fixes up the keys, so that for example
-            `h_x0_s10 : r (.GPR 0#5) s10`
-          will get a key that includes the state and statefield constant
-
-          FIXME: we should suggest a PR upstream that adds `noIndexAtArgs` as
-          an optional argument to `mkSimpTheorems`, so that we can control
-          this properly -/
-          let type ← inferType thm.proof
-          let ⟨_, _, type⟩ ← forallMetaTelescope type
-          match type.eq? with
-            | none =>
-                trace[Tactic.sym] "{Lean.crossEmoji} {type} is not an equality\
-                  , giving up on fixing the discrtree keys.
-
-                  Currently, the keys are:\n{thm.keys}"
-                pure thm
-            | some (_eqType, lhs, _rhs) =>
-                let keys ← mkPath lhs simpDtConfig (noIndexAtArgs := false)
-                pure { thm with keys }
-        )
-
+        let newThms ← newThms.mapM fixSimpTheoremKey
         pure <| newThms.foldl addSimpTheoremEntry thms
 
     let mut thms : SimpTheorems := {}
