@@ -298,6 +298,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     LNSymSimpContext
       (config := {decide := true, failIfUnchanged := false})
       (decls := axHyps)
+      (noIndexAtArgs := false)
 
   return inferStatePrefixAndNumber {
     state, finalState, runSteps?, pc,

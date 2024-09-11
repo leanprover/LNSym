@@ -50,6 +50,8 @@ def LNSymSimpContext
   (decls : Array LocalDecl := #[])
   -- Simprocs to add to the default set.
   (simprocs : Array Name := #[])
+  -- argument to `DiscrTree.mkPath`
+  (noIndexAtArgs : Bool := true)
   : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
   let mut ext_simpTheorems := #[]
   let default_simprocs ← Simp.getSimprocs
@@ -71,7 +73,10 @@ def LNSymSimpContext
   for l in decls do
     let proof := l.toExpr
     let fvar := l.fvarId
-    const_simpTheorems ← const_simpTheorems.add (.fvar fvar) #[] proof
+    let mut newThms ← mkSimpTheorems (.fvar fvar) #[] proof
+    if noIndexAtArgs = false then
+      newThms ← newThms.mapM fixSimpTheoremKey
+    const_simpTheorems := newThms.foldl addSimpTheoremEntry const_simpTheorems
   let all_simpTheorems := (#[const_simpTheorems] ++ ext_simpTheorems)
   let (ctx : Simp.Context) := { config := config,
                                 simpTheorems := all_simpTheorems,
