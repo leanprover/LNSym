@@ -283,6 +283,7 @@ structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) extends WellFormedAt
   h_mem : snext.mem = scur.mem.write_bytes 16 scur.x2 scur.q4
   h_x0 : snext.x0 = scur.x0
   h_x1 : snext.x1 = scur.x1
+  h_q4 : snext.q4 = scur.q4
 
 def Step_8e8_8ec.h_cut (h : Step_8e8_8ec scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
@@ -316,7 +317,7 @@ structure Step_8ec_8f0 (scur : ArmState) (snext : ArmState) extends WellFormedAt
   h_mem : snext.mem = scur.mem
   h_x1 : snext.x1 = scur.x1
   h_x2 : snext.x2 = scur.x2
-
+  h_q4 : snext.q4 = scur.q4
 
 def Step_8ec_8f0.h_cut (h : Step_8ec_8f0 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
@@ -350,6 +351,7 @@ structure Step_8f0_8f4 (scur : ArmState) (snext : ArmState) extends WellFormedAt
   h_x0 : snext.x0 = scur.x0
   h_x1 : snext.x1 = scur.x1
   h_x2 : snext.x2 = scur.x2
+  h_q4 : snext.q4 = scur.q4
 
 
 
@@ -377,6 +379,7 @@ structure Step_8f4_8e4 (scur : ArmState) (snext : ArmState) extends WellFormedAt
   h_x0 : snext.x0 = scur.x0
   h_x1 : snext.x1 = scur.x1
   h_x2 : snext.x2 = scur.x2
+  h_q4 : snext.q4 = scur.q4
 
 def Step_8f4_8e4.h_cut (h : Step_8f4_8e4 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
@@ -406,6 +409,7 @@ theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
 structure Step_8f4_8f8 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f8 : Prop where
   h_mem : snext.mem = scur.mem
+  h_q4 : snext.q4 = scur.q4
 
 def Step_8f4_8f8.h_cut (h : Step_8f4_8f8 scur snext) : cut snext = true := by
   have h_pc := h.toWellFormedAtPc.h_pc
@@ -642,7 +646,16 @@ theorem partial_correctness :
           simp_mem
           -- TODO: we need some kind of simp_mem assumption
           sorry
-        · sorry
+        · specialize (h_si_mem hi)
+          simp [memory_rules] at h_si_mem
+          rw [← h_si_mem]
+          rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+          -- simp_mem
+          -- mem_separate' (s0.x2 + 0x10#64 * i) 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16
+          -- this is true, because (i < (s0.x0 - si.x0)).
+          -- however, note that this is non-linear, so I can see why `bv_omega`
+          -- struggles with this `:(`
+          sorry
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
