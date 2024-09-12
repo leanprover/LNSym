@@ -542,7 +542,10 @@ theorem partial_correctness :
             step_8ec_8f0.h_x0,
             step_8e8_8ec.h_x0,
             step_8e4_8e8.h_x0, step_8f4_8e4.h_x0]
-
+        have h_s4_x0 : s4.x0 = si.x0 - 0x1#64 := by
+          rw [step_8ec_8f0.h_x0,
+            step_8e8_8ec.h_x0,
+            step_8e4_8e8.h_x0, step_8f4_8e4.h_x0]
         have h_si_x0_nonzero : si.x0 ≠ 0 := by
           intro hcontra
           have := h_si_x0.mpr hcontra
@@ -566,6 +569,12 @@ theorem partial_correctness :
         have h_si_x2 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0) := by
           simp [h_assert]
 
+        have h_s5_z : (r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ si.x0 - 0x1#64 = 0x0#64) := by
+          simp [step_8f0_8f4.h_z, h_s4_x0]
+          apply zero_iff_z_eq_one
+        simp [h_s5_z]
+
+        stop
         simp only [show s5.x0 ≤ s0.x0 by bv_omega, true_and]
         rw [h_s5_x0, h_s5_x1, h_si_x1]
         simp [show s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64))
@@ -574,10 +583,23 @@ theorem partial_correctness :
         simp [show s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64))
           by bv_omega]
 
-
-        have h_s5_z : s5.Z = 1#1 := by
-          rw [step_8f0_8f4.h_z]
-          rw [step_8ec_8f0.h_x0]
+        simp [step_8f0_8f4.h_program, step_8f0_8f4.h_err, step_8f0_8f4.h_sp_aligned]
+        intros i hi
+        simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
+        rw [step_8f0_8f4.h_mem, step_8ec_8f0.h_mem, step_8e8_8ec.h_mem, step_8e4_8e8.h_mem, step_8f4_8e4.h_mem]
+        rw [step_8e4_8e8.h_x2, step_8f4_8e4.h_x2, h_si_x2]
+        have h_si_mem : (∀ (i : BitVec 64),
+            i < s0.x0 - si.x0 →
+              read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0) := by
+          simp [h_assert]
+        specialize h_si_mem i
+        have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
+          bv_omega
+        rcases icases with hi | hi
+        · simp [hi]
+          -- TODO: we need some kind of simp_mem assumption
+          sorry
+        · sorry
 
 
     case h_3 pc h_si =>
