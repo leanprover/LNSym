@@ -537,8 +537,15 @@ theorem partial_correctness :
         · intros i hi
           have h_si_x0_eq_zero := h_si_x0.mp hz
           rw [loop_inv] at h_assert
+          have h_mem := h_assert.right.right.right.right.left
+          simp [h_si_x0_eq_zero] at h_mem
+          specialize (h_mem i hi)
+          rw [← h_mem]
+          simp [memory_rules, step.h_mem]
+        · simp [step.h_sp_aligned, step.h_program, step.h_err]
+          intros n addr sep
+          simp [memory_rules, step.h_mem]
           sorry
-        · sorry
 
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
