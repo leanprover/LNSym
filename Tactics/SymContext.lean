@@ -54,6 +54,8 @@ structure SymContext where
 
   See also `SymContext.runSteps?` -/
   h_run : Name
+  /-- `program` is a *constant* which represents the program being evaluated -/
+  program : Name
   /-- `h_program` is a local hypothesis of the form `state.program = program` -/
   h_program : Name
   /-- `programInfo` is the relevant cached `ProgramInfo` -/
@@ -98,41 +100,12 @@ structure SymContext where
   to determine the name of the next state variable that is added by `sym` -/
   curr_state_number : Nat := 0
 
-/-! ## Helpers -/
-
-def Sym.findLocalDeclOfType? (expectedType : Expr) : MetaM (Option LocalDecl) := do
-  let msg := m!"Searching for hypothesis of type: {expectedType}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-    let decl? ← _root_.findLocalDeclOfType? expectedType
-    trace[Tactic.sym] "Found: {(·.toExpr) <$> decl?}"
-    return decl?
-
-def Sym.findLocalDeclOfTypeOrError (expectedType : Expr) : MetaM LocalDecl := do
-  let msg := m!"Searching for hypothesis of type: {expectedType}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-    let decl ← _root_.findLocalDeclOfTypeOrError expectedType
-    trace[Tactic.sym] "Found: {decl.toExpr}"
-    return decl
-
-/-- Annotate any errors thrown by `k` with a local variable (and its type) -/
-private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
-    MetaM α :=
-  try k catch e =>
-    let h ← userNameToMessageData name
-    let type := match type? with
-      | some type => m!" : {type}"
-      | none      => m!""
-    throwErrorAt e.getRef "{e.toMessageData}\n\nIn {h}{type}"
-
 namespace SymContext
 
 /-! ## Simple projections -/
 section
 open Lean (Ident mkIdent)
 variable (c : SymContext)
-
-/-- `program` is a *constant* which represents the program being evaluated -/
-def program := c.programInfo.name
 
 /-- `next_state` generates the name for the next intermediate state -/
 def next_state (c : SymContext) : Name :=
@@ -211,6 +184,16 @@ def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
       state_prefix := "s",
       curr_state_number := 1 }
 
+/-- Annotate any errors thrown by `k` with a local variable (and its type) -/
+private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
+    MetaM α :=
+  try k catch e =>
+    let h ← userNameToMessageData name
+    let type := match type? with
+      | some type => m!" : {type}"
+      | none      => m!""
+    throwErrorAt e.getRef "{e.toMessageData}\n\nIn {h}{type}"
+
 /-- Build a `SymContext` by searching the local context for hypotheses of the
 required types (up-to defeq) -/
 def fromLocalContext (state? : Option Name) : MetaM SymContext := do
@@ -232,7 +215,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   let finalState ← mkFreshExprMVar none
   let runSteps ← mkFreshExprMVar (Expr.const ``Nat [])
   let h_run ←
-    Sym.findLocalDeclOfTypeOrError <| h_run_type finalState runSteps stateExpr
+    findLocalDeclOfTypeOrError <| h_run_type finalState runSteps stateExpr
 
   -- Unwrap and reflect `runSteps`
   let runSteps? ← do
@@ -272,17 +255,17 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
 
   -- Then, try to find `h_pc`
   let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
-  let h_pc ← Sym.findLocalDeclOfTypeOrError <| h_pc_type stateExpr pc
+  let h_pc ← findLocalDeclOfTypeOrError <| h_pc_type stateExpr pc
 
   -- Unwrap and reflect `pc`
   let pc ← instantiateMVars pc
   let pc ← withErrorContext h_pc.userName h_pc.type <| reflectBitVecLiteral 64 pc
 
   -- Attempt to find `h_err` and `h_sp`
-  let h_err? ← Sym.findLocalDeclOfType? (h_err_type stateExpr)
+  let h_err? ← findLocalDeclOfType? (h_err_type stateExpr)
   if h_err?.isNone then
     trace[Sym] "Could not find local hypothesis of type {h_err_type stateExpr}"
-  let h_sp?  ← Sym.findLocalDeclOfType? (h_sp_type stateExpr)
+  let h_sp?  ← findLocalDeclOfType? (h_sp_type stateExpr)
   if h_sp?.isNone then
     trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
 
@@ -301,7 +284,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
       (noIndexAtArgs := false)
 
   return inferStatePrefixAndNumber {
-    state, finalState, runSteps?, pc,
+    state, finalState, runSteps?, program, pc,
     h_run := h_run.userName,
     h_program := h_program.userName,
     h_pc := h_pc.userName
@@ -310,6 +293,21 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     programInfo,
     aggregateSimpCtx, aggregateSimprocs
   }
+where
+  findLocalDeclOfType? (expectedType : Expr) : MetaM (Option LocalDecl) := do
+    let msg := m!"Searching for hypothesis of type: {expectedType}"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      let decl? ← _root_.findLocalDeclOfType? expectedType
+      trace[Tactic.sym] "Found: {(·.toExpr) <$> decl?}"
+      return decl?
+  findLocalDeclOfTypeOrError (expectedType : Expr) : MetaM LocalDecl := do
+    let msg := m!"Searching for hypothesis of type: {expectedType}"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      let decl ← _root_.findLocalDeclOfTypeOrError expectedType
+      trace[Tactic.sym] "Found: {decl.toExpr}"
+      return decl
+
+
 
 /-! ## Massaging the local context -/
 
