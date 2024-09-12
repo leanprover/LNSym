@@ -334,6 +334,19 @@ theorem mem_separate'_comm (h : mem_separate' a an b bn) :
   apply mem_separate'.of_omega
   omega
 
+/--
+`[a..an)` is disjoint from `[b..bn)`
+if they are both legal, and  `a.toNat + an < b.tNat` -/
+theorem mem_separate'.of_add_lt {a b : BitVec 64} {an bn : Nat}
+    (hlegal : mem_legal' a an)
+    (hlegal' : mem_legal' b bn)
+    (h : a.toNat + an < b.toNat) :
+    mem_separate' a an b bn := by
+  have := hlegal.omega_def
+  have := hlegal'.omega_def
+  apply mem_separate'.of_omega
+  omega
+
 /-#
 This is a theorem we ought to prove, which establishes the equivalence
 between the old and new defintions of 'mem_separate'.

@@ -651,7 +651,8 @@ theorem partial_correctness :
           rw [← h_si_mem]
           rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
           -- simp_mem
-          -- mem_separate' (s0.x2 + 0x10#64 * i) 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16
+          -- hi : i < s0.x0 - si.x0
+          -- ⊢ mem_separate' (s0.x2 + 0x10#64 * i) 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16
           -- this is true, because (i < (s0.x0 - si.x0)).
           -- however, note that this is non-linear, so I can see why `bv_omega`
           -- struggles with this `:(`
