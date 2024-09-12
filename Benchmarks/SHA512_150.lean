@@ -7,7 +7,7 @@ import Tactics.Sym
 import Benchmarks.SHA512
 
 set_option trace.Tactic.sym.heartbeats true in
-theorem Benchmarks.sha512_150_instructions : SHA512Bench 150 := by
+#time theorem Benchmarks.sha512_150_instructions : SHA512Bench 150 := by
   unfold SHA512Bench
   intros
   sym_n 150
