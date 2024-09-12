@@ -535,64 +535,50 @@ theorem partial_correctness :
         rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s5_next_s4, step_8f0_8f4.h_cut])];
         simp [Spec'.assert, assert, h_pre, step_8f0_8f4.h_pc, loop_inv]
 
-        have : s5.x0 ≤ s0.x0  := by
-          rw [step_8f0_8f4.h_x0,
-            step_8ec_8f0.h_x0,
-            step_8e8_8ec.h_x0,
-            step_8e4_8e8.h_x0, step_8f4_8e4.h_x0]
-          have : ¬ (si.x0 = 0#64) := by
-            intros h -- TODO: upstream `contrapose`.
-            have := h_si_x0.mpr h
-            contradiction
-          simp [loop_inv] at h_assert
-          bv_omega
+        simp [loop_inv] at h_assert
 
-        have : (r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ s5.x0 = 0x0#64) := by
-          have := step_8f0_8f4.h_z
-          rw [step_8f0_8f4.h_x0,
+        have h_s5_x0 : s5.x0 = si.x0 - 0x1#64  := by
+            rw [step_8f0_8f4.h_x0,
             step_8ec_8f0.h_x0,
             step_8e8_8ec.h_x0,
             step_8e4_8e8.h_x0, step_8f4_8e4.h_x0]
-          simp [loop_inv] at h_assert
-          sorry
 
-        have : s5.x1 = s0.x1 + 0x10#64 * (s0.x0 - s5.x0) := by
-          rw [step_8f0_8f4.h_x0,
-            step_8ec_8f0.h_x0,
-            step_8e8_8ec.h_x0,
-            step_8e4_8e8.h_x0, step_8f4_8e4.h_x0]
+        have h_si_x0_nonzero : si.x0 ≠ 0 := by
+          intro hcontra
+          have := h_si_x0.mpr hcontra
+          contradiction
+
+        have h_s5_x1 : s5.x1 = si.x1 + 0x10#64 := by
           rw [step_8f0_8f4.h_x1,
             step_8ec_8f0.h_x1,
             step_8e8_8ec.h_x1,
             step_8e4_8e8.h_x1, step_8f4_8e4.h_x1]
-          simp [loop_inv] at h_assert
-          sorry
-          -- bv_omega
 
-        have : s5.x2 = s0.x2 + 0x10#64 * (s0.x0 - s5.x0) := by
-          rw [step_8f0_8f4.h_x0,
-            step_8ec_8f0.h_x0,
-            step_8e8_8ec.h_x0,
-            step_8e4_8e8.h_x0, step_8f4_8e4.h_x0]
+        have h_s5_x2 : s5.x2 = si.x2 + 0x10#64 := by
           rw [step_8f0_8f4.h_x2,
             step_8ec_8f0.h_x2,
             step_8e8_8ec.h_x2,
             step_8e4_8e8.h_x2, step_8f4_8e4.h_x2]
-          simp [loop_inv] at h_assert
-          sorry
 
-          -- bv_omega
+        have h_si_x1 :  si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0) := by
+          simp [h_assert]
 
-        have : ∀ (i : BitVec 64), i < s0.x0 - s5.x0 →
-          read_mem_bytes 16 (s0.x2 + 0x10#64 * i) s5 = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0 := by
-          simp [loop_inv] at h_assert
-          intros i hi
-          sorry
+        have h_si_x2 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0) := by
+          simp [h_assert]
+
+        simp only [show s5.x0 ≤ s0.x0 by bv_omega, true_and]
+        rw [h_s5_x0, h_s5_x1, h_si_x1]
+        simp [show s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64))
+          by bv_omega]
+        rw [h_s5_x2, h_si_x2]
+        simp [show s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64))
+          by bv_omega]
 
 
-        simp [step_8f0_8f4.h_sp_aligned, step_8f0_8f4.h_program, step_8f0_8f4.h_err]
-        simp [*]
-        exact this
+        have h_s5_z : s5.Z = 1#1 := by
+          rw [step_8f0_8f4.h_z]
+          rw [step_8ec_8f0.h_x0]
+
 
     case h_3 pc h_si =>
       contradiction
