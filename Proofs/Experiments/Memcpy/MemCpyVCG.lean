@@ -435,6 +435,7 @@ end CutTheorems
 
 section PartialCorrectness
 
+
 theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions'
@@ -564,44 +565,54 @@ theorem partial_correctness :
             step_8e4_8e8.h_x2, step_8f4_8e4.h_x2]
 
         have h_si_x1 :  si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0) := by
-          simp [h_assert]
+          simp only [h_assert]
 
         have h_si_x2 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0) := by
-          simp [h_assert]
+          simp only [h_assert]
 
         have h_s5_z : (r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ si.x0 - 0x1#64 = 0x0#64) := by
-          simp [step_8f0_8f4.h_z, h_s4_x0]
+          simp only [step_8f0_8f4.h_z, h_s4_x0]
           apply zero_iff_z_eq_one
-        simp [h_s5_z]
+        simp only [h_s5_z]
 
-        stop
         simp only [show s5.x0 ≤ s0.x0 by bv_omega, true_and]
         rw [h_s5_x0, h_s5_x1, h_si_x1]
-        simp [show s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64))
-          by bv_omega]
-        rw [h_s5_x2, h_si_x2]
-        simp [show s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64))
-          by bv_omega]
+        have : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
+          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by bv_omega,
+            BitVec.BitVec.mul_add]
+        simp only [this, true_and]
 
-        simp [step_8f0_8f4.h_program, step_8f0_8f4.h_err, step_8f0_8f4.h_sp_aligned]
+        rw [h_s5_x2, h_si_x2]
+        have : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
+          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by bv_omega,
+            BitVec.BitVec.mul_add]
+        simp only [this, true_and]
+        simp only [step_8f0_8f4.h_err,
+          step_8f0_8f4.h_program,
+          step_8f0_8f4.h_sp_aligned,
+          and_self,
+          and_true]
+
         intros i hi
         simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
         rw [step_8f0_8f4.h_mem, step_8ec_8f0.h_mem, step_8e8_8ec.h_mem, step_8e4_8e8.h_mem, step_8f4_8e4.h_mem]
         rw [step_8e4_8e8.h_x2, step_8f4_8e4.h_x2, h_si_x2]
+
         have h_si_mem : (∀ (i : BitVec 64),
             i < s0.x0 - si.x0 →
-              read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0) := by
-          simp [h_assert]
+              read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0) :=
+          h_assert.right.right.right.right.left
         specialize h_si_mem i
-        have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
-          bv_omega
+
+        have h_mem : mem_legal' (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16 := sorry
+        have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by sorry
         rcases icases with hi | hi
         · simp [hi]
+          simp_mem
           -- TODO: we need some kind of simp_mem assumption
           sorry
-        · sorry
-
-
+        · simp_mem
+          sorry
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
