@@ -520,6 +520,7 @@ theorem partial_correctness :
         rw [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0] at hi
         simp [hi] -- contradiction
       exact h_mem
+
     case h_2 pc h_si =>
       name h_s1_next_si : s1 := Sys.next si
       have si_well_formed : WellFormedAtPc si 0x8f4#64 := by
@@ -533,9 +534,9 @@ theorem partial_correctness :
             si s1 si_well_formed hz (Stepped.of_next h_s1_next_si)
         rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si,  step.h_cut])];
         simp [Spec'.assert, assert, h_pre, step.h_pc, post]
+        have h_si_x0_eq_zero := h_si_x0.mp hz
         constructor
         · intros i hi
-          have h_si_x0_eq_zero := h_si_x0.mp hz
           rw [loop_inv] at h_assert
           have h_mem := h_assert.right.right.right.right.left
           simp [h_si_x0_eq_zero] at h_mem
@@ -546,6 +547,10 @@ theorem partial_correctness :
           intros n addr sep
           simp [memory_rules, step.h_mem]
           simp [loop_inv] at h_assert
+          have h_mem' := h_assert.right.right.right.right.left
+          simp [memory_rules] at h_mem'
+          simp [h_si_x0_eq_zero] at *
+          -- TODO: use the extensionality theorem about memory
           sorry
 
 
@@ -649,10 +654,18 @@ theorem partial_correctness :
         specialize h_si_mem i
 
         have h_mem : mem_legal' (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16 := sorry
-        have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by sorry
+        have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
+          sorry
         rcases icases with hi | hi
         · simp [hi]
           simp_mem
+          rw [step_8e4_8e8.h_q4]
+          simp [memory_rules]
+          rw [step_8f4_8e4.h_mem, step_8f4_8e4.h_x1]
+          simp [bitvec_rules]
+          rw [h_si_x1]
+          -- ⊢ Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem =
+          --   Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) s0.mem
           -- TODO: we need some kind of simp_mem assumption
           sorry
         · specialize (h_si_mem hi)
