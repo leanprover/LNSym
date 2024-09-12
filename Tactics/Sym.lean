@@ -352,7 +352,6 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
       let goal ← goal.clear hStep.fvarId
       replaceMainGoal [goal]
 
-      traceHeartbeats
       return c
 
 /- used in `sym_n` tactic to specify an initial state -/
@@ -468,7 +467,6 @@ Did you remember to generate step theorems with:
 
         let goal ← subst goal hEqId
         trace[Tactic.sym] "performed subsitutition in:\n{goal}"
-        traceHeartbeats
 
         replaceMainGoal [goal]
 
@@ -476,7 +474,6 @@ Did you remember to generate step theorems with:
     -- added while symbolically evaluating to `simp`
     let msg := m!"aggregating (non-)effects"
     withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
-      traceHeartbeats "pre"
       let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
       replaceMainGoal goal?.toList
 
