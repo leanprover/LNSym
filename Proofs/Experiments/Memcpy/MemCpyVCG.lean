@@ -225,6 +225,7 @@ structure Step_8e0_8f0 (scur snext : ArmState) extends WellFormedAtPc snext 0x8f
   h_cut : cut snext = false
   h_x1 : snext.x1 = scur.x1
   h_x2 : snext.x2 = scur.x2
+  h_x0 : snext.x0 = scur.x0
 
 --  /- 00000000000008e0 <mem_copy>:                         -/
 -- 1/7 (0x8e0#64, 0x14000004#32),  /- b   8f0 <loop_test>      -/
@@ -472,7 +473,11 @@ theorem partial_correctness :
     case h_1 pc h_si =>
       subst h_assert
       name h_s1_next_si : s1 := Sys.next si
-      have step_8e0_8f0 := program.step_8e0_8f0_of_wellformed si s1 sorry (.of_next h_s1_next_si)
+      have h_si_wellformed : WellFormedAtPc si 2272 := by
+        unfold pre at h_pre
+        constructor <;> simp [*]
+
+      have step_8e0_8f0 := program.step_8e0_8f0_of_wellformed si s1 h_si_wellformed (.of_next h_s1_next_si)
       rw [Correctness.snd_cassert_of_not_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si, step_8e0_8f0.h_cut])];
       simp only [Nat.zero_add]
       name h_s2_next_s1 : s2 := Sys.next s1
@@ -483,14 +488,34 @@ theorem partial_correctness :
         BitVec.ofNat_eq_ofNat, loop_inv, Nat.reduceMul, id_eq, true_and]
       simp [step_8f0_8f4.h_pc]
       simp [step_8f0_8f4.h_err, step_8f0_8f4.h_program, step_8f0_8f4.h_sp_aligned]
-      have : s2.x0 ≤ si.x0  := sorry
-      have : (r (StateField.FLAG PFlag.Z) s2 = 0x1#1 ↔ s2.x0 = 0x0#64) := sorry
-      have : s2.x1 = si.x1 + 0x10#64 * (si.x0 - s2.x0)  := sorry
-      have : s2.x2 = si.x2 + 0x10#64 * (si.x0 - s2.x0) := sorry
-      have : ∀ (i : BitVec 64), i < si.x0 - s2.x0 →
-        read_mem_bytes 16 (si.x2 + 0x10#64 * i) s2 = read_mem_bytes 16 (si.x1 + 0x10#64 * i) si := sorry
-      simp [*]
-      exact this
+      have h_x0 : s2.x0 ≤ si.x0  := by
+        simp only [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0]
+        simp only [BitVec.le_def, Nat.le_refl]
+      simp only [h_x0, true_and]
+
+      have h_s2_z : (r (StateField.FLAG PFlag.Z) s2 = 0x1#1 ↔ s2.x0 = 0x0#64) := by
+        simp only [step_8f0_8f4.h_z, step_8f0_8f4.h_x0]
+        apply zero_iff_z_eq_one
+      simp only [h_s2_z, true_and]
+
+      have h_s2_x1 : s2.x1 = si.x1 + 0x10#64 * (si.x0 - s2.x0) := by
+        simp only [step_8f0_8f4.h_x1, step_8e0_8f0.h_x1]
+        simp only [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0]
+        simp only [BitVec.sub_self, BitVec.reduceMul, BitVec.add_zero]
+      simp only [h_s2_x1, true_and]
+
+      have h_s2_x2 : s2.x2 = si.x2 + 0x10#64 * (si.x0 - s2.x0) := by
+        simp only [step_8f0_8f4.h_x2, step_8e0_8f0.h_x2]
+        simp only [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0]
+        simp only [BitVec.sub_self, BitVec.reduceMul, BitVec.add_zero]
+      simp [h_s2_x2, true_and]
+
+      have h_mem : ∀ (i : BitVec 64), i < si.x0 - s2.x0 →
+        read_mem_bytes 16 (si.x2 + 0x10#64 * i) s2 = read_mem_bytes 16 (si.x1 + 0x10#64 * i) si := by
+        intro i hi
+        rw [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0] at hi
+        simp [hi] -- contradiction
+      exact h_mem
     case h_2 pc h_si =>
       name h_s1_next_si : s1 := Sys.next si
       have si_well_formed : WellFormedAtPc si 0x8f4#64 := by
@@ -504,7 +529,13 @@ theorem partial_correctness :
             si s1 si_well_formed hz (Stepped.of_next h_s1_next_si)
         rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si,  step.h_cut])];
         simp [Spec'.assert, assert, h_pre, step.h_pc, post]
-        sorry
+        constructor
+        · intros i hi
+          have h_si_x0_eq_zero := h_si_x0.mp hz
+          rw [loop_inv] at h_assert
+          sorry
+        · sorry
+
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
           (BitVec.eq_zero_iff_neq_one.mp hz)
@@ -611,8 +642,7 @@ theorem partial_correctness :
           simp_mem
           -- TODO: we need some kind of simp_mem assumption
           sorry
-        · simp_mem
-          sorry
+        · sorry
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
