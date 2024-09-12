@@ -647,7 +647,6 @@ where
         let ⟨fvar, goal⟩ ← goal.note h v t?
         return ⟨fvar, goal⟩
 
-
 /-- Return an array of `SimpTheorem`s of the proofs contained in
 the given `AxEffects` -/
 def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
