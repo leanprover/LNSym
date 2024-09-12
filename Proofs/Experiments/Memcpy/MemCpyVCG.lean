@@ -638,6 +638,9 @@ theorem partial_correctness :
               read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0) :=
           h_assert.right.right.right.right.left
         specialize h_si_mem i
+        unfold pre at h_pre
+
+        stop
 
         have h_mem : mem_legal' (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16 := sorry
         have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
