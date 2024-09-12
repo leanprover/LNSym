@@ -461,15 +461,8 @@ theorem partial_correctness :
       assert] at h_assert h_exit ⊢
     simp [h_exit] at h_assert ⊢
     simp only [h_assert, and_self, and_true]
-    obtain ⟨h_pre, h_mem₁, h_mem₂, h_err, h_program, h_sp_aligned⟩ := h_assert
-    constructor
-    · intros i hi
-      -- simp_mem -- TODO: do we want to automatically apply quantified goals?
-      apply h_mem₁
-      bv_omega
-    · -- TODO: do we want to automatically apply quantified goals?
-      apply h_mem₂
-
+    obtain ⟨h_pre, h_mem₁, h_err, h_program, h_sp_aligned⟩ := h_assert
+    exact h_mem₁
   case v4 =>
     intro s0 si h_assert h_exit
     simp [Spec'.assert, Spec.exit, Spec.post, post, exit,
@@ -546,16 +539,6 @@ theorem partial_correctness :
           rw [← h_mem]
           simp [memory_rules, step.h_mem]
         · simp [step.h_sp_aligned, step.h_program, step.h_err]
-          intros n addr sep
-          simp [memory_rules, step.h_mem]
-          simp [loop_inv] at h_assert
-          have h_mem' := h_assert.right.right.right.right.left
-          simp [memory_rules] at h_mem'
-          simp [h_si_x0_eq_zero] at *
-          -- TODO: use the extensionality theorem about memory
-          sorry
-
-
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
           (BitVec.eq_zero_iff_neq_one.mp hz)
@@ -630,7 +613,8 @@ theorem partial_correctness :
         rw [h_s5_x0, h_s5_x1, h_si_x1]
         have : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
           rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by bv_omega,
-            BitVec.BitVec.mul_add]
+            BitVec.BitVec.mul_add,
+            BitVec.add_assoc, BitVec.mul_one]
         simp only [this, true_and]
 
         rw [h_s5_x2, h_si_x2]
