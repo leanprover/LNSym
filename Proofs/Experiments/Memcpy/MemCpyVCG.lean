@@ -545,7 +545,9 @@ theorem partial_correctness :
         · simp [step.h_sp_aligned, step.h_program, step.h_err]
           intros n addr sep
           simp [memory_rules, step.h_mem]
+          simp [loop_inv] at h_assert
           sorry
+
 
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
