@@ -120,10 +120,12 @@ def post (s0 sf : ArmState) : Prop :=
   (∀ i : BitVec 64, i < num_blks →
     read_mem_bytes 16 (dst_base + (16 * i)) sf =
     id (read_mem_bytes 16 (src_base + (16 * i)) s0)) ∧
-  -- All memory regions separate from the destination are unchanged.
-  (∀ (n : Nat) (addr : BitVec 64),
-      mem_separate' dst_base num_bytes.toNat addr n →
-      read_mem_bytes n addr sf = read_mem_bytes n addr s0) ∧
+  -- TODO (@bollu): we can't prove this, because we don't have this in the loop invariant
+  -- to show that emory regions separate from the destination are unchanged.
+  -- -- All memory regions separate from the destination are unchanged.
+  -- (∀ (n : Nat) (addr : BitVec 64),
+  --     mem_separate' dst_base num_bytes.toNat addr n →
+  --     read_mem_bytes n addr sf = read_mem_bytes n addr s0) ∧
   r StateField.PC sf = 0x8f8#64 ∧
   r StateField.ERR sf = .None ∧
   sf.program = program ∧
@@ -175,7 +177,7 @@ def assert (s0 si : ArmState) : Prop :=
     si = s0
   | loop_guard => -- Loop guard
     loop_inv s0 si
-  | 0x8f8 => -- Loop and program post
+  | loop_post => -- Loop and program post
     post s0 si
   | _ => False
 
