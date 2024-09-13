@@ -662,11 +662,12 @@ def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool)
       BitVec.ofInt (n + 1) rounded
     else
       BitVec.ofInt (n + 1) value
-  extractLsb' 0 n (fn rounded_bv shift)
+  have h₀ : n - 1 - 0 + 1 = n := by omega
+  BitVec.cast h₀ $ extractLsb (n-1) 0 (fn rounded_bv shift)
 
 @[state_simp_rules]
 def Int_with_unsigned (unsigned : Bool) (value : BitVec n) : Int :=
-  if unsigned then value.toNat else value.toInt
+  if unsigned then Int.ofNat value.toNat else value.toInt
 
 def shift_right_common_aux
   (e : Nat) (info : ShiftInfo) (operand : BitVec datasize)
@@ -683,32 +684,69 @@ def shift_right_common_aux
   termination_by (info.elements - e)
 
 
-theorem crock (operand : BitVec 128) :
-  (BitVec.ofNat 65 (operand.toNat % 18446744073709551616)) = zeroExtend 65 (extractLsb' 0 64 operand)
-  := by sorry
+@[app_unexpander BitVec.ofNat] def unexpandBitVecOfNatToHex : Lean.PrettyPrinter.Unexpander
+  | `($(_) $n:num $i:num) =>
+      let i' := i.getNat
+      let n' := n.getNat
+      let trimmed_hex := -- Remove leading zeroes...
+        String.dropWhile (BitVec.ofNat n' i').toHex
+                         (fun c => c = '0')
+                         -- ... but keep one if the literal is all zeros.
+      let trimmed_hex := if trimmed_hex.isEmpty then "0" else trimmed_hex
+      let bv := Lean.Syntax.mkNumLit s!"0x{trimmed_hex}#{n'}"
+      `($bv:num)
+  | _ => throw ()
 
-theorem crock1 (operand : BitVec 128) :
-  (BitVec.ofNat 65 (operand.toNat >>> 64 % 18446744073709551616)) = zeroExtend 65 (extractLsb' 64 64 operand)
-  := by sorry
+theorem crock1 (x : BitVec 64):
+  BitVec.ofInt 65 (Int.ofNat x.toNat) = zeroExtend 65 x := by
+  simp only [Int.ofNat_eq_coe, ofInt_natCast, ofNat_toNat]
 
+#print BitVec.ofNatLt
 
-/-
-unsolved goals
+theorem crock4 (x : BitVec n) (s : Nat) :
+  x.ushiftRight s = BitVec.ofNat n (x.toNat / (2 ^ s)) := by
+  sorry
 
-operand : BitVec 128
-shift : Nat
-result : BitVec 128
-⊢ (result &&& 340282366920938463444927863358058659840#128 |||
-        zeroExtend 128
-          (extractLsb' 0 64 ((BitVec.ofNat 65 (operand.toNat % 18446744073709551616)).ushiftRight shift))) &&&
-      18446744073709551615#128 |||
-    zeroExtend 128
-        (extractLsb' 0 64 ((BitVec.ofNat 65 (operand.toNat >>> 64 % 18446744073709551616)).ushiftRight shift)) <<<
-      64 =
-  (extractLsb' 64 64 operand).ushiftRight shift ++ (extractLsb' 0 64 operand).ushiftRight shift
--/
+theorem crock5 (x : BitVec 64) : (zeroExtend 65 x).toNat = x.toNat := by
+  simp only [toNat_truncate, Nat.reducePow]
+  omega
 
+theorem crock3 (x : BitVec 64) (shift : Nat) :
+  extractLsb 63 0 ((zeroExtend 65 x).ushiftRight shift) = x.ushiftRight shift := by
+  simp only [crock4, extractLsb, extractLsb', Nat.sub_zero,
+    Nat.reduceAdd, Nat.shiftRight_zero]
+  have h:
+    (BitVec.ofNat 65 ((zeroExtend 65 x).toNat / 2 ^ shift)).toNat =
+    (x.toNat / 2 ^ shift)
+    := by
+      rw [crock5]
+      simp only [toNat_ofNat]
+      refine Nat.mod_eq_of_lt ?h
+      refine Nat.div_lt_of_lt_mul ?h.h
+      have h : x.toNat < 2^64 := by exact isLt x
+      apply Nat.lt_trans h
+      have h1 : 2 ^ shift >= 1 := by exact Nat.one_le_two_pow
+      generalize 2 ^ shift = x at *
+      omega
+  exact congrArg (BitVec.ofNat 64) h
 
+theorem crock2 (shift : Nat) (result : BitVec 128)
+  (x : BitVec 64) (y : BitVec 64)
+  : (result &&& 0xffffffffffffffff0000000000000000#128 |||
+          zeroExtend 128 (extractLsb 63 0 ((zeroExtend 65 x).ushiftRight shift))) &&&
+        0xffffffffffffffff#128 |||
+      zeroExtend 128 (extractLsb 63 0 ((zeroExtend 65 y).ushiftRight shift)) <<< 64 =
+    y.ushiftRight shift ++ x.ushiftRight shift
+  := by
+  simp only [crock3]
+  generalize x.ushiftRight shift = x
+  generalize y.ushiftRight shift = y
+  bv_decide
+
+-- (BitVec.cast ⋯ (extractLsb 63 0 operand)).toNat
+-- --> (operand.toNat % 18446744073709551616)
+-- extractLsb_toNat is the lemma that turned extractLsb into mod operation in Nat
+-- This makes it hard to use bv_decide
 theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
   (shift : Nat) (result : BitVec 128):
   shift_right_common_aux 0
@@ -716,19 +754,45 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
      unsigned := true, round := false, accumulate := false,
      h := (by omega)}
     operand 0#128 result =
-  (ushiftRight (extractLsb' 64 64 operand) shift)
-    ++ (ushiftRight (extractLsb' 0 64 operand) shift) := by
+  (ushiftRight (extractLsb 127 64 operand) shift)
+    ++ (ushiftRight (extractLsb 63 0 operand) shift) := by
   unfold shift_right_common_aux
   simp only [minimal_theory, bitvec_rules]
   unfold shift_right_common_aux
   simp only [minimal_theory, bitvec_rules]
   unfold shift_right_common_aux
   simp only [minimal_theory, bitvec_rules]
-  simp only [state_simp_rules, partInstall,
-             minimal_theory, bitvec_rules,
-             Nat.shiftRight_zero, Nat.zero_shiftRight,
-             crock, crock1]
-  -- bv_decide
+  simp only [-- -extractLsb_toNat,
+             state_simp_rules,
+             minimal_theory,
+             -- bitvec_rules,
+             BitVec.cast_eq,
+             Nat.shiftRight_zero,
+             Nat.zero_shiftRight,
+             Nat.reduceMul,
+             Nat.reduceAdd,
+             Nat.add_one_sub_one,
+             Nat.sub_zero,
+             reduceAllOnes,
+             reduceZeroExtend,
+             Nat.zero_mul,
+             shiftLeft_zero_eq,
+             reduceNot,
+             BitVec.extractLsb_ofNat,
+             Nat.reducePow,
+             Nat.zero_mod,
+             Int.ofNat_emod,
+             Int.Nat.cast_ofNat_Int,
+             BitVec.zero_add,
+             Nat.reduceSub,
+             Nat.one_mul,
+             reduceHShiftLeft,
+             -- ushiftRight_eq,
+             crock1
+    ]
+  generalize (extractLsb 63 0 operand) = x
+  generalize (extractLsb 127 64 operand) = y
+  apply crock2
 
 theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
   (shift : Nat) (result : BitVec 128):

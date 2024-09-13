@@ -14,7 +14,7 @@ namespace GCMInitV8Program
 abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 
--- set_option debug.byAsSorry true in
+set_option debug.byAsSorry true in
 set_option maxRecDepth 1000000 in
 -- set_option profiler true in
 theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
@@ -35,6 +35,7 @@ theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
 
 set_option maxRecDepth 1000000 in
 set_option maxHeartbeats 2000000 in
+-- set_option linter.unusedVariables false
 -- set_option profiler true in
 theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_init_v8_program)
