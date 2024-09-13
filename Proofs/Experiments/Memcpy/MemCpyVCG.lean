@@ -442,6 +442,9 @@ end CutTheorems
 
 section PartialCorrectness
 
+private theorem eq_or_lt (hy : y ≥ 1) :
+    (i < x - (y - 0x1#64)) ↔ (i = x - y ∨ i < x - y) := by
+  bv_decide
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by
@@ -640,10 +643,9 @@ theorem partial_correctness :
         specialize h_si_mem i
         unfold pre at h_pre
 
-        stop
-
         have h_mem : mem_legal' (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16 := sorry
         have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
+          sorry
           sorry
         rcases icases with hi | hi
         · simp [hi]
