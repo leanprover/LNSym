@@ -515,6 +515,54 @@ theorem mem_separate'.of_subset'_of_subset'
   (h₁ : mem_subset' addr₁' n₁' addr₁ n₁)
   (h₂ : mem_subset' addr₂' n₂' addr₂ n₂) : mem_separate' addr₁' n₁' addr₂' n₂' := by simp_mem
 
+
+theorem mem_subset'.of_offset {nblocks sz : Nat} {base k sz' : BitVec 64}
+    (hsz : sz > 0)
+    -- (hnblocks : nblocks > 0)
+    (hk : k.toNat < nblocks)
+    (hlegal : mem_legal' base (nblocks * sz))
+    (hsz_eq_sz' : sz'.toNat = sz)
+    : mem_subset' (base + k * sz') sz base (nblocks * sz) := by
+  have legal' := hlegal.omega_def
+  have hmul' : (k * sz').toNat = k.toNat * sz := by
+    simp
+    rw [hsz_eq_sz']
+    apply Nat.mod_eq_of_lt
+    have := hlegal.omega_def
+    apply Nat.lt_of_lt_of_le (m := nblocks * sz)
+    · apply Nat.mul_lt_mul_of_pos_right hk hsz
+    · omega
+  have hmul_lt : (k * sz').toNat < nblocks * sz := by
+    rw [hmul']
+    apply Nat.mul_lt_mul_of_pos_right hk hsz
+  have hadd : (base + k * sz').toNat = base.toNat + (k * sz').toNat := by
+    bv_omega'
+
+  constructor
+  · apply mem_legal'.of_omega
+    rw [BitVec.toNat_add_eq_toNat_add_toNat]
+    · -- ⊢ base.toNat + (k * sz').toNat + sz ≤ 2 ^ 64
+      rw [hmul']
+      rw [show base.toNat + k.toNat * sz + sz = base.toNat + k.toNat * sz + 1 * sz by omega]
+      rw [Nat.add_assoc]
+      rw [← Nat.add_mul]
+      have : (k.toNat + 1) * sz ≤ nblocks * sz := by
+        apply Nat.mul_le_mul_right
+        omega
+      omega
+    · bv_omega'
+  · exact hlegal
+  · rw [BitVec.le_def, hadd]
+    bv_omega'
+  · rw [hadd]
+    rw [Nat.add_assoc]
+    apply Nat.add_le_add_iff_left.mpr
+    rw [hmul']
+    rw [show k.toNat * sz + sz = k.toNat * sz + 1 * sz by omega]
+    rw [← Nat.add_mul]
+    apply Nat.mul_le_mul_right
+    omega
+
 set_option showTacticDiff false
 
 theorem Memcpy.extracted_1 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0x8f8#64)
@@ -747,10 +795,41 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
             (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
               (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
           Memory.read_bytes n addr s0.mem := by
-  constructor
-  · sorry
+  apply And.intro
+  · intros i hi
+    have h_subset_2 : mem_subset' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat s0.x2 (s0.x0.toNat * 16) := by simp_mem
+    have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by
+      simp only [show 0x10#64 * (s0.x0 - si.x0) = (s0.x0 - si.x0) * 0x10#64 by bv_omega]
+      apply mem_subset'.of_offset
+      · decide
+      · sorry -- HERE HERE HERE HERE
+      · simp_mem
+      · rfl
+    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by bv_omega
+    rcases icases with hi | hi
+    · subst hi
+      rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
+      · simp [bitvec_rules]
+        rw [h_assert_6]
+        · have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by sorry
+          apply mem_separate'.symm
+          apply mem_separate'.of_subset'_of_subset' h_pre_1 h_subset_1 h_subset_2
+      · apply mem_subset'_refl
+        have h_s0_x2_legal := h_pre_1.hb
+        have h_s0_sub_si_small : s0.x0 - si.x0 ≤ s0.x0 := by sorry -- bv_omega
+        sorry
+        -- simp_mem
+      -- What I need to do is to rewrite using h_assert,
+      -- because in this case, we know that i < s0.x0 - si.x0,
+      -- and so we are accessing memory from prior loop iterations.
+
+    · rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+      · sorry
+      · sorry
+
   · sorry
 
+#exit
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by
