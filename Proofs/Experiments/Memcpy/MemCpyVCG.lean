@@ -75,6 +75,12 @@ def pcs : List (BitVec 64) := [
 
 end PC
 
+structure WellFormedAtPc (s : ArmState) (pc : BitVec 64) : Prop where
+  h_program : s.program = program
+  h_pc : r StateField.PC s = pc
+  h_err : r StateField.ERR s = StateError.None
+  h_sp_aligned : CheckSPAlignment s
+
 
 /-- Precondition for the correctness of the MemCpy program. -/
 def pre (s : ArmState) : Prop :=
@@ -123,9 +129,9 @@ def post (s0 sf : ArmState) : Prop :=
   -- TODO (@bollu): we can't prove this, because we don't have this in the loop invariant
   -- to show that emory regions separate from the destination are unchanged.
   -- -- All memory regions separate from the destination are unchanged.
-  -- (∀ (n : Nat) (addr : BitVec 64),
-  --     mem_separate' dst_base num_bytes.toNat addr n →
-  --     read_mem_bytes n addr sf = read_mem_bytes n addr s0) ∧
+  (∀ (n : Nat) (addr : BitVec 64),
+      mem_separate' dst_base num_bytes.toNat addr n →
+      read_mem_bytes n addr sf = read_mem_bytes n addr s0) ∧
   r StateField.PC sf = 0x8f8#64 ∧
   r StateField.ERR sf = .None ∧
   sf.program = program ∧
@@ -162,6 +168,9 @@ def loop_inv (s0 si : ArmState) : Prop :=
   (∀ i : BitVec 64, i < num_blks_copied →
     read_mem_bytes 16 (dst_base + (16 * i)) si =
     id (read_mem_bytes 16 (src_base + (16 * i)) s0)) ∧
+  (∀ (n : Nat) (addr : BitVec 64),
+      mem_separate' dst_base num_blks_copied.toNat addr n →
+      read_mem_bytes n addr si = read_mem_bytes n addr s0) ∧
   r StateField.ERR si = .None ∧
   si.program = program ∧
   CheckSPAlignment si
@@ -208,12 +217,6 @@ section CutTheorems
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
 -- 7/7 (0x8f8#64, 0xd65f03c0#32)   /- ret                      -/
 
-
-structure WellFormedAtPc (s : ArmState) (pc : BitVec 64) : Prop where
-  h_program : s.program = program
-  h_pc : r StateField.PC s = pc
-  h_err : r StateField.ERR s = StateError.None
-  h_sp_aligned : CheckSPAlignment s
 
 
 structure Stepped (s sn : ArmState) where
@@ -442,8 +445,7 @@ end CutTheorems
 
 section PartialCorrectness
 
-private theorem eq_or_lt (hy : y ≥ 1) :
-    (i < x - (y - 0x1#64)) ↔ (i = x - y ∨ i < x - y) := by
+private theorem eq_or_lt (hy : y ≥ 1) (hi: i < x - (y - 0x1#64)) : (i = x - y ∨ i < x - y) := by
   bv_decide
 
 theorem partial_correctness :
@@ -464,12 +466,14 @@ theorem partial_correctness :
       assert] at h_assert h_exit ⊢
     simp [h_exit] at h_assert ⊢
     simp only [h_assert, and_self, and_true]
-    obtain ⟨h_pre, h_mem₁, h_err, h_program, h_sp_aligned⟩ := h_assert
-    exact h_mem₁
+    obtain ⟨h_pre, h_mem₁, h_mem₂, h_err, h_program, h_sp_aligned⟩ := h_assert
+    constructor
+    · exact h_mem₁
+    · exact h_mem₂
   case v4 =>
     intro s0 si h_assert h_exit
-    simp [Spec'.assert, Spec.exit, Spec.post, post, exit,
-      assert] at h_assert h_exit ⊢
+    simp only [Spec'.assert, assert, post, Nat.reduceMul, BitVec.ofNat_eq_ofNat, id_eq,
+      BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod, Spec.exit, exit] at h_assert h_exit ⊢
     obtain ⟨h_pre, h_assert⟩ := h_assert
     split at h_assert
     case h_1 pc h_si =>
@@ -488,8 +492,9 @@ theorem partial_correctness :
       rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si, step_8f0_8f4.h_cut])];
       simp only [Spec'.assert, assert, h_pre,
         BitVec.ofNat_eq_ofNat, loop_inv, Nat.reduceMul, id_eq, true_and]
-      simp [step_8f0_8f4.h_pc]
-      simp [step_8f0_8f4.h_err, step_8f0_8f4.h_program, step_8f0_8f4.h_sp_aligned]
+      simp only [step_8f0_8f4.h_pc, BitVec.ofNat_eq_ofNat, Nat.reducePow]
+      simp only [Nat.reducePow, step_8f0_8f4.h_err, step_8f0_8f4.h_program,
+        step_8f0_8f4.h_sp_aligned, and_self, and_true]
       have h_x0 : s2.x0 ≤ si.x0  := by
         simp only [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0]
         simp only [BitVec.le_def, Nat.le_refl]
@@ -510,15 +515,19 @@ theorem partial_correctness :
         simp only [step_8f0_8f4.h_x2, step_8e0_8f0.h_x2]
         simp only [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0]
         simp only [BitVec.sub_self, BitVec.reduceMul, BitVec.add_zero]
-      simp [h_s2_x2, true_and]
+      simp only [h_s2_x2, true_and]
 
       have h_mem : ∀ (i : BitVec 64), i < si.x0 - s2.x0 →
         read_mem_bytes 16 (si.x2 + 0x10#64 * i) s2 = read_mem_bytes 16 (si.x1 + 0x10#64 * i) si := by
         intro i hi
         rw [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0] at hi
         simp [hi] -- contradiction
-      exact h_mem
-
+      constructor
+      · exact h_mem
+      · intros n addr h_mem_sep
+        simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
+        rw [step_8f0_8f4.h_mem]
+        rw [step_8e0_8f0.h_mem]
     case h_2 pc h_si =>
       name h_s1_next_si : s1 := Sys.next si
       have si_well_formed : WellFormedAtPc si 0x8f4#64 := by
@@ -643,10 +652,10 @@ theorem partial_correctness :
         specialize h_si_mem i
         unfold pre at h_pre
 
-        have h_mem : mem_legal' (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16 := sorry
-        have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
+        have h_mem : mem_legal' (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16 :=
+          -- grab this from h_pre
           sorry
-          sorry
+        have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by bv_decide
         rcases icases with hi | hi
         · simp [hi]
           simp_mem
@@ -655,6 +664,9 @@ theorem partial_correctness :
           rw [step_8f4_8e4.h_mem, step_8f4_8e4.h_x1]
           simp [bitvec_rules]
           rw [h_si_x1]
+          -- Aha, I *do* need to know that memory outside is untouched, it's
+          -- actually a super crucial loop invariant! This lets us connect si.mem to s0.mem.
+          -- Problem solved ^_^.
           -- ⊢ Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem =
           --   Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) s0.mem
           -- TODO: we need some kind of simp_mem assumption
