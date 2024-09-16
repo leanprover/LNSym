@@ -501,6 +501,11 @@ private theorem eq_or_lt (hy : y ≥ 1) (hi: i < x - (y - 0x1#64)) : (i = x - y 
 theorem mem_separate'.of_le_size (h : mem_separate' addr₁ n₁ addr₂ n₂)
   (hn : n₁' ≤ n₁) : mem_separate' addr₁ n₁' addr₂ n₂ := by simp_mem
 
+theorem mem_separate'.of_add_le (h : mem_legal' addr₁ n₁) (h' : mem_legal' addr₂ n₂)
+  (h : addr₁.toNat + n₁ ≤ addr₂.toNat) : mem_separate' addr₁ n₁ addr₂ n₂ := by
+  simp_mem
+
+
 theorem mem_separate'.symm (h : mem_separate' addr₁ n₁ addr₂ n₂) : mem_separate' addr₂ n₂ addr₁ n₁ := by
   simp_mem
 
@@ -725,10 +730,15 @@ theorem partial_correctness :
           rw [step_8e8_8ec.h_mem]
           rw [step_8e4_8e8.h_mem]
           rw [step_8f4_8e4.h_mem]
-          -- rw [step_8f4_8e4.h_x2]
-          -- rw [h_si_x2]
+
+          rw [step_8e4_8e8.h_x2]
+          rw [step_8f4_8e4.h_x2]
+          rw [h_si_x2]
+          rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+          · obtain ⟨pre_1, pre_2, pre_3, pre_4⟩ := h_pre
+            sorry
+          · sorry
           -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-          sorry
         · intros n addr mem_sep
           simp only [memory_rules]
           rw [step_8f0_8f4.h_mem]
