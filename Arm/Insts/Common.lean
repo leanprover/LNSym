@@ -56,6 +56,7 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   (result, (make_pstate N Z C V))
 
 /-- When the carry bit is `0`, `AddWithCarry x y 0 = x + y` -/
+@[bitvec_rules]
 theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 0#1).fst = x + y := by
   simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
@@ -67,6 +68,7 @@ theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   rw [Nat.mod_eq_of_lt this]
 
 /-- When the carry bit is `1`, `AddWithCarry x y 1 = x - ~~~y` -/
+@[bitvec_rules]
 theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 1#1).fst = x - ~~~y := by
   simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
