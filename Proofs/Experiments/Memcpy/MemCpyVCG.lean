@@ -550,7 +550,9 @@ theorem partial_correctness :
           specialize (h_mem i hi)
           rw [← h_mem]
           simp [memory_rules, step.h_mem]
-        · simp [step.h_sp_aligned, step.h_program, step.h_err]
+        · constructor
+          · sorry
+          · simp [step.h_sp_aligned, step.h_program, step.h_err]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
           (BitVec.eq_zero_iff_neq_one.mp hz)
@@ -639,49 +641,50 @@ theorem partial_correctness :
           step_8f0_8f4.h_sp_aligned,
           and_self,
           and_true]
+        constructor
+        · sorry
+        · intros i hi
+          simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
+          rw [step_8f0_8f4.h_mem, step_8ec_8f0.h_mem, step_8e8_8ec.h_mem, step_8e4_8e8.h_mem, step_8f4_8e4.h_mem]
+          rw [step_8e4_8e8.h_x2, step_8f4_8e4.h_x2, h_si_x2]
 
-        intros i hi
-        simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
-        rw [step_8f0_8f4.h_mem, step_8ec_8f0.h_mem, step_8e8_8ec.h_mem, step_8e4_8e8.h_mem, step_8f4_8e4.h_mem]
-        rw [step_8e4_8e8.h_x2, step_8f4_8e4.h_x2, h_si_x2]
+          have h_si_mem : (∀ (i : BitVec 64),
+              i < s0.x0 - si.x0 →
+                read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0) :=
+            h_assert.right.right.right.right.left
+          specialize h_si_mem i
+          unfold pre at h_pre
 
-        have h_si_mem : (∀ (i : BitVec 64),
-            i < s0.x0 - si.x0 →
-              read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0) :=
-          h_assert.right.right.right.right.left
-        specialize h_si_mem i
-        unfold pre at h_pre
-
-        have h_mem : mem_legal' (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16 :=
-          -- grab this from h_pre
-          sorry
-        have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by bv_decide
-        rcases icases with hi | hi
-        · simp [hi]
-          simp_mem
-          rw [step_8e4_8e8.h_q4]
-          simp [memory_rules]
-          rw [step_8f4_8e4.h_mem, step_8f4_8e4.h_x1]
-          simp [bitvec_rules]
-          rw [h_si_x1]
-          -- Aha, I *do* need to know that memory outside is untouched, it's
-          -- actually a super crucial loop invariant! This lets us connect si.mem to s0.mem.
-          -- Problem solved ^_^.
-          -- ⊢ Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem =
-          --   Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) s0.mem
-          -- TODO: we need some kind of simp_mem assumption
-          sorry
-        · specialize (h_si_mem hi)
-          simp [memory_rules] at h_si_mem
-          rw [← h_si_mem]
-          rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-          -- simp_mem
-          -- hi : i < s0.x0 - si.x0
-          -- ⊢ mem_separate' (s0.x2 + 0x10#64 * i) 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16
-          -- this is true, because (i < (s0.x0 - si.x0)).
-          -- however, note that this is non-linear, so I can see why `bv_omega`
-          -- struggles with this `:(`
-          sorry
+          have h_mem : mem_legal' (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16 :=
+            -- grab this from h_pre
+            sorry
+          have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by bv_decide
+          rcases icases with hi | hi
+          · simp [hi]
+            simp_mem
+            rw [step_8e4_8e8.h_q4]
+            simp [memory_rules]
+            rw [step_8f4_8e4.h_mem, step_8f4_8e4.h_x1]
+            simp [bitvec_rules]
+            rw [h_si_x1]
+            -- Aha, I *do* need to know that memory outside is untouched, it's
+            -- actually a super crucial loop invariant! This lets us connect si.mem to s0.mem.
+            -- Problem solved ^_^.
+            -- ⊢ Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem =
+            --   Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) s0.mem
+            -- TODO: we need some kind of simp_mem assumption
+            sorry
+          · specialize (h_si_mem hi)
+            simp [memory_rules] at h_si_mem
+            rw [← h_si_mem]
+            rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+            -- simp_mem
+            -- hi : i < s0.x0 - si.x0
+            -- ⊢ mem_separate' (s0.x2 + 0x10#64 * i) 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16
+            -- this is true, because (i < (s0.x0 - si.x0)).
+            -- however, note that this is non-linear, so I can see why `bv_omega`
+            -- struggles with this `:(`
+            sorry`
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
