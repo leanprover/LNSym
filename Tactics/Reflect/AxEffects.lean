@@ -7,6 +7,8 @@ Author(s): Alex Keizer
 import Arm.State
 import Tactics.Common
 import Tactics.Attr
+import Tactics.Simp
+
 import Std.Data.HashMap
 
 open Lean Meta
@@ -645,12 +647,9 @@ where
         let ⟨fvar, goal⟩ ← goal.note h v t?
         return ⟨fvar, goal⟩
 
-open Meta.DiscrTree in
-/-- Return a `SimpTheorems` with the proofs contained in the given `AxEffects`
-
-Note this adds *only* the (non-)effect proofs, to get a simp configuration with
-more default simp-lemmas, see `AxEffects.toSimp` -/
-def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
+/-- Return an array of `SimpTheorem`s of the proofs contained in
+the given `AxEffects` -/
+def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
   let msg := m!"computing SimpTheorems for (non-)effect hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     let lctx ← getLCtx
@@ -662,7 +661,7 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
         none
     let baseName := baseName?.getD (Name.mkSimple "AxEffects")
 
-    let add (thms : SimpTheorems) (e : Expr) (name : String)
+    let add (thms : Array SimpTheorem) (e : Expr) (name : String)
         (prio : Nat := 1000) :=
       let msg := m!"adding {e} with name {name}"
       withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -672,34 +671,10 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
           else
             .other <| Name.str baseName name
         let newThms ← mkSimpTheorems origin #[] e (prio := prio)
-        let newThms ← newThms.mapM (fun thm => do
-          /- `mkSimpTheorems` sets `noIndexAtArgs := true`, meaning that all
-          our (non-effects) theorems will have `[r, *, *]` as key.
-          causing many unneeded attempts at unification.
-          The following code fixes up the keys, so that for example
-            `h_x0_s10 : r (.GPR 0#5) s10`
-          will get a key that includes the state and statefield constant
+        let newThms ← newThms.mapM fixSimpTheoremKey
+        pure <| thms ++ newThms
 
-          FIXME: we should suggest a PR upstream that adds `noIndexAtArgs` as
-          an optional argument to `mkSimpTheorems`, so that we can control
-          this properly -/
-          let type ← inferType thm.proof
-          let ⟨_, _, type⟩ ← forallMetaTelescope type
-          match type.eq? with
-            | none =>
-                trace[Tactic.sym] "{Lean.crossEmoji} {type} is not an equality\
-                  , giving up on fixing the discrtree keys.
-
-                  Currently, the keys are:\n{thm.keys}"
-                pure thm
-            | some (_eqType, lhs, _rhs) =>
-                let keys ← mkPath lhs simpDtConfig (noIndexAtArgs := false)
-                pure { thm with keys }
-        )
-
-        pure <| newThms.foldl addSimpTheoremEntry thms
-
-    let mut thms : SimpTheorems := {}
+    let mut thms := #[]
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
       /- We give the field-specific lemmas a high priority, since their
@@ -708,7 +683,6 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
       (expensive!) attempts to discharge the `field ≠ otherField`
       side-conditions of the non-effect proof -/
       thms ← add thms proof s!"field_{field}" (prio := 1500)
-
 
     thms ← add thms eff.nonEffectProof "nonEffectProof"
     thms ← add thms eff.memoryEffectProof "memoryEffectProof"

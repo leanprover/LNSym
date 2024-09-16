@@ -25,7 +25,7 @@ theorem aes_hw_encrypt_program_run_60 (s0 sf : ArmState)
     -- AES256 rounds = 14, the address of rounds is stored in x2
     (h_rounds : 14 = read_mem_bytes 4 (round_addr s0) s0)
     -- memory separation
-    (h_mem : Memory.Region.pairwiseSeparate
+    (_h_mem : Memory.Region.pairwiseSeparate
       [⟨(in_addr s0), 128⟩,
        ⟨(key_addr s0), 1984⟩, -- 240*8 bits key schedule and 64 bits rounds
        ⟨(out_addr s0), 128⟩ ])
