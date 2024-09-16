@@ -325,7 +325,7 @@ theorem program.step_8e4_8e8_of_wellformed_of_stepped (scur snext : ArmState)
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules]
-  · constructor <;> simp? [*, state_simp_rules, minimal_theory, BitVec.extractLsb]
+  · constructor <;> simp [*, state_simp_rules, minimal_theory, BitVec.extractLsb]
 
 -- 3/7 (0x8e8#64, 0x3c810444#32),  /- str q4, [x2], #16        -/
 structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8ec : Prop where
@@ -391,7 +391,7 @@ theorem program.step_8ec_8f0_of_wellformed (scur snext : ArmState)
   simp [BitVec.extractLsb] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
-  constructor <;> simp? (config := { ground := true, decide := true}) [*,
+  constructor <;> simp (config := { ground := true, decide := true}) [*,
       state_simp_rules, minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg, memory_rules]
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
 
@@ -457,7 +457,7 @@ theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> solve
-    | simp? (config := { ground := true, decide := true}) [*,
+    | simp (config := { ground := true, decide := true}) [*,
       state_simp_rules, minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg]
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules]
 
@@ -487,7 +487,7 @@ theorem program.step_8f4_8f8_of_wellformed_of_z_eq_1 (scur snext : ArmState)
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;>
-    simp? (config := { ground := true, decide := true}) [*, state_simp_rules, h_z,
+    simp (config := { ground := true, decide := true}) [*, state_simp_rules, h_z,
       minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg, cut]
   · constructor <;> simp [*, h_z, state_simp_rules, minimal_theory, bitvec_rules, cut]
 
@@ -724,20 +724,48 @@ theorem partial_correctness :
         constructor
         · intros i hi
           simp only [memory_rules]
-          ;
           rw [step_8f0_8f4.h_mem]
           rw [step_8ec_8f0.h_mem]
           rw [step_8e8_8ec.h_mem]
           rw [step_8e4_8e8.h_mem]
           rw [step_8f4_8e4.h_mem]
-
           rw [step_8e4_8e8.h_x2]
           rw [step_8f4_8e4.h_x2]
+          rw [step_8e4_8e8.h_q4]
+
           rw [h_si_x2]
-          rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-          · obtain ⟨pre_1, pre_2, pre_3, pre_4⟩ := h_pre
-            sorry
+          have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
+            bv_omega
+          rcases icases with hi | hi
+          · subst hi
+            rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
+            · simp only [memory_rules]
+              simp [bitvec_rules]
+              have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
+              simp only [step_8f4_8e4.h_mem]
+              simp only [step_8f4_8e4.h_x1]
+              rw [h_si_x1]
+              simp only [memory_rules] at h_assert_6
+              apply h_assert_6
+              have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5⟩ := h_pre
+              -- simp_mem -- true.
+              sorry
+            · apply mem_subset'_refl
+              sorry
           · sorry
+            -- What I need to do is to rewrite using h_assert,
+            -- because in this case, we know that i < s0.x0 - si.x0,
+            -- and so we are accessing memory from prior loop iterations.
+
+          -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+          -- · obtain ⟨pre_1, pre_2, pre_3, pre_4⟩ := h_pre
+          --   have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
+          --   simp only [memory_rules] at h_assert_5
+          --   apply h_assert_5
+          --   -- is true because hi : hi : i < s0.x0 - (si.x0 - 0x1#64)
+          --   -- so i < s0.x0 - si.x0 + 0x1#64
+          --   rw [BitVec.lt_def]
+          --   rw [BitVec.lt_def] at hi
           -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
         · intros n addr mem_sep
           simp only [memory_rules]
@@ -756,57 +784,14 @@ theorem partial_correctness :
             rw [h_assert_6]
             apply mem_separate'.of_le_size mem_sep
             sorry -- bv_omega
+
           · apply mem_separate'.symm
             -- because mem_sep : mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
             -- we want to show mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
-            -- but see that the base pointer is moved up
+            -- but see that the base pointer is moved up.
+            -- so in this case, we maintain separation because we have touched
+            -- a strictly smaller portion of memory.
             sorry
-
-
-        -- constructor
-        -- · intros i hi
-        --   simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
-        --   rw [step_8f0_8f4.h_mem, step_8ec_8f0.h_mem, step_8e8_8ec.h_mem, step_8e4_8e8.h_mem, step_8f4_8e4.h_mem]
-        --   rw [step_8e4_8e8.h_x2, step_8f4_8e4.h_x2, h_si_x2]
-        --   have h_si_mem : (∀ (i : BitVec 64),
-        --       i < s0.x0 - si.x0 →
-        --         read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0) :=
-        --     h_assert.right.right.right.right.left
-        --   specialize h_si_mem i
-        --   have h_mem : mem_legal' (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16 := by
-        --     have h_mem_sep := h_pre.h_mem_sep
-        --     -- simp_mem
-        --     -- have {..} := h_pre
-        --     -- simp_mem
-        --     -- grab this from h_pre
-        --     sorry
-        --   have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by sorry -- bv_decide
-        --   rcases icases with hi | hi
-        --   · simp [hi]
-        --     simp_mem
-        --     rw [step_8e4_8e8.h_q4]
-        --     simp [memory_rules]
-        --     rw [step_8f4_8e4.h_mem, step_8f4_8e4.h_x1]
-        --     simp [bitvec_rules]
-        --     rw [h_si_x1]
-        --     -- Aha, I *do* need to know that memory outside is untouched, it's
-        --     -- actually a super crucial loop invariant! This lets us connect si.mem to s0.mem.
-        --     -- Problem solved ^_^.
-        --     -- ⊢ Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem =
-        --     --   Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) s0.mem
-        --     -- TODO: we need some kind of simp_mem assumption
-        --     sorry
-        --   · specialize (h_si_mem hi)
-        --     simp [memory_rules] at h_si_mem
-        --     rw [← h_si_mem]
-        --     rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-        --     -- simp_mem
-        --     -- hi : i < s0.x0 - si.x0
-        --     -- ⊢ mem_separate' (s0.x2 + 0x10#64 * i) 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 16
-        --     -- this is true, because (i < (s0.x0 - si.x0)).
-        --     -- however, note that this is non-linear, so I can see why `bv_omega`
-        --     -- struggles with this `:(`
-        --     sorry
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
