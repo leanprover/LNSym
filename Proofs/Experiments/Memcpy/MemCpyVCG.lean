@@ -540,18 +540,37 @@ theorem partial_correctness :
           program.step_8f4_8f8_of_wellformed_of_z_eq_1
             si s1 si_well_formed hz (Stepped.of_next h_s1_next_si)
         rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si,  step.h_cut])];
-        simp [Spec'.assert, assert, h_pre, step.h_pc, post]
+        simp only [Spec'.assert, assert, h_pre, step.h_pc, BitVec.ofNat_eq_ofNat, post,
+          Nat.reduceMul, id_eq, BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod,
+          true_and]
         have h_si_x0_eq_zero := h_si_x0.mp hz
         constructor
         · intros i hi
           rw [loop_inv] at h_assert
           have h_mem := h_assert.right.right.right.right.left
-          simp [h_si_x0_eq_zero] at h_mem
+          simp only [h_si_x0_eq_zero, BitVec.sub_zero, Nat.reduceMul, BitVec.ofNat_eq_ofNat,
+            id_eq] at h_mem
           specialize (h_mem i hi)
           rw [← h_mem]
-          simp [memory_rules, step.h_mem]
+          simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes, step.h_mem]
         · constructor
-          · sorry
+          · intros n addr
+            intros h_sep
+            simp [memory_rules, step.h_mem]
+            obtain ⟨h_s0_mem₁, h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned⟩ := h_pre
+            obtain ⟨h_si_x0, h_si_Z, h_si_x1, h_si_x2, h_si_read_overlap, h_si_read_sep, h_wellformed⟩ := h_assert
+            simp only [memory_rules] at h_si_read_sep
+            rw [h_si_read_sep]
+            rw [h_si_x0_eq_zero]
+            simp only [BitVec.sub_zero]
+            -- this is an assumption we need to make in h_pre.
+            have h_s0_x0 : s0.x0.toNat > 0 := by sorry
+            -- this should be an assumption that we have in h_pre.
+            have h_mem_legal : mem_legal' s0.x1 (s0.x0 * 0x10#64).toNat := by sorry
+            obtain h_sep := mem_separate'.omega_def h_sep
+            apply mem_separate'.of_omega
+            obtain h_mem_legal := h_mem_legal.omega_def
+            sorry -- this should be true by 'omega.
           · simp [step.h_sp_aligned, step.h_program, step.h_err]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
@@ -642,7 +661,6 @@ theorem partial_correctness :
           and_self,
           and_true]
         constructor
-        · sorry
         · intros i hi
           simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
           rw [step_8f0_8f4.h_mem, step_8ec_8f0.h_mem, step_8e8_8ec.h_mem, step_8e4_8e8.h_mem, step_8f4_8e4.h_mem]
@@ -684,7 +702,8 @@ theorem partial_correctness :
             -- this is true, because (i < (s0.x0 - si.x0)).
             -- however, note that this is non-linear, so I can see why `bv_omega`
             -- struggles with this `:(`
-            sorry`
+            sorry
+        · sorry
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
