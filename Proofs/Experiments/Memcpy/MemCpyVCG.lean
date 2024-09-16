@@ -621,178 +621,142 @@ theorem BitVec.le_sub {w} {base sz n i : BitVec w} {szNat : Nat}
 
 set_option showTacticDiff false
 
-theorem Memcpy.extracted_1 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0x8f8#64)
-  (h_pre : pre s0)
-  -- (pc : state_value StateField.PC)
-  -- (h_si : r StateField.PC si = 0x8f4#64)
-  -- (s1 : ArmState)
-  -- (h_s1_next_si : Sys.next si = s1)
-  -- (si_well_formed : WellFormedAtPc si 0x8f4#64)
-  -- (h_si_x0 : r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64)
-  -- (hz : ¬r (StateField.FLAG PFlag.Z) si = 0x1#1)
-  -- (step_8f4_8e4 : Step_8f4_8e4 si s1)
-  -- (s2 : ArmState)
-  -- (h_s2_next_s1 : Sys.next s1 = s2)
-  -- (step_8e4_8e8 : Step_8e4_8e8 s1 s2)
-  -- (s3 : ArmState)
-  -- (h_s3_next_s2 : Sys.next s2 = s3)
-  -- (step_8e8_8ec : Step_8e8_8ec s2 s3)
-  -- (s4 : ArmState)
-  -- (h_s4_next_s3 : Sys.next s3 = s4)
-  -- (step_8ec_8f0 : Step_8ec_8f0 s3 s4)
-  -- (s5 : ArmState)
-  -- (h_s5_next_s4 : Sys.next s4 = s5)
-  -- (step_8f0_8f4 : Step_8f0_8f4 s4 s5)
-  -- (h_s5_x0 : s5.x0 = si.x0 - 0x1#64)
-  -- (h_s4_x0 : s4.x0 = si.x0 - 0x1#64)
-  (h_si_x0_nonzero : si.x0 ≠ 0)
-  -- (h_s5_x1 : s5.x1 = si.x1 + 0x10#64)
-  -- (h_s5_x2 : s5.x2 = si.x2 + 0x10#64)
-  (h_si_x1 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
-  (h_si_x2 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-  -- (h_s5_z : r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ si.x0 - 0x1#64 = 0x0#64)
-  -- (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
-  -- (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
-  (h_assert_1 : si.x0 ≤ s0.x0)
-  -- (h_assert_2 : r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64)
-  -- (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
-  -- (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-  (h_assert_5 :
-    ∀ (i : BitVec 64),
-      i < s0.x0 - si.x0 → read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0)
-  (h_assert_6 :
-    ∀ (n : Nat)
-    (addr : BitVec 64),
-      mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat addr n →
-        read_mem_bytes n addr si = read_mem_bytes n addr s0)
-  (h_assert_7 : r StateField.ERR si = StateError.None ∧ si.program = program ∧ CheckSPAlignment si)
-  (i : BitVec 64)
-  (hi : i < s0.x0 - (si.x0 - 0x1#64)) :
-  Memory.read_bytes 16 (s0.x2 + 0x10#64 * i)
-      (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-      (read_mem_bytes 16 s1.x1 s1) si.mem) =
-    Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem := by sorry
-  -- have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by sorry -- bv_omega
-  -- rcases icases with hi | hi
-  -- -- · sorry
-  -- · subst hi
-  --   rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
-  --   · simp only [memory_rules]
-  --     simp [bitvec_rules]
-  --     have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
-  --     simp only [step_8f4_8e4.h_mem]
-  --     simp only [step_8f4_8e4.h_x1]
-  --     rw [h_si_x1]
-  --     simp only [memory_rules] at h_assert_6
-  --     have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5⟩ := h_pre
-  --     rw [h_assert_6]
-  --     · intros h
-  --       rfl
-  --     · have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := simp_mem
-  --       have h_subset_2 : mem_subset' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat s0.x2 (s0.x0.toNat * 16) := simp_mem
-  --       apply mem_separate'.symm
-  --       apply mem_separate'.of_subset'_of_subset' h_pre_1 h_subset_1 h_subset_2
-  --   · apply mem_subset'_refl
-  --     have {..} := h_pre
-  --     simp_mem
-  --   -- What I need to do is to rewrite using h_assert,
-  --   -- because in this case, we know that i < s0.x0 - si.x0,
-  --   -- and so we are accessing memory from prior loop iterations.
 
-  -- · rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-  --   · obtain ⟨pre_1, pre_2, pre_3, pre_4⟩ := h_pre
-  --     have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
-  --     simp only [memory_rules] at h_assert_5
-  --     -- is true because hi : hi : i < s0.x0 - (si.x0 - 0x1#64)
-  --     -- so i < s0.x0 - si.x0 + 0x1#64
-  --     rw [BitVec.lt_def]
-  --     rw [BitVec.lt_def] at hi
-  --   -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-  --     sorry
-  --   · sorry
+-- theorem Memcpy.extracted_2 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0x8f8#64) (h_pre : pre s0)
+--   (pc : state_value StateField.PC)
+--   (h_si : r StateField.PC si = 0x8f4#64)
+--   (s1 : ArmState)
+--   (h_s1_next_si : Sys.next si = s1)
+--   (si_well_formed : WellFormedAtPc si 0x8f4#64)
+--   -- (h_si_x0 : r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64)
+--   (hz : ¬r (StateField.FLAG PFlag.Z) si = 0x1#1)
+--   -- (step_8f4_8e4 : Step_8f4_8e4 si s1)
+--   -- (s2 : ArmState)
+--   -- (h_s2_next_s1 : Sys.next s1 = s2)
+--   -- (step_8e4_8e8 : Step_8e4_8e8 s1 s2)
+--   -- (s3 : ArmState)
+--   -- (h_s3_next_s2 : Sys.next s2 = s3)
+--   -- (step_8e8_8ec : Step_8e8_8ec s2 s3)
+--   -- (s4 : ArmState)
+--   -- (h_s4_next_s3 : Sys.next s3 = s4)
+--   -- (step_8ec_8f0 : Step_8ec_8f0 s3 s4)
+--   -- (s5 : ArmState)
+--   -- (h_s5_next_s4 : Sys.next s4 = s5)
+--   -- (step_8f0_8f4 : Step_8f0_8f4 s4 s5)
+--   -- (h_s5_x0 : s5.x0 = si.x0 - 0x1#64)
+--   -- (h_s4_x0 : s4.x0 = si.x0 - 0x1#64)
+--   -- (h_si_x0_nonzero : si.x0 ≠ 0)
+--   -- (h_s5_x1 : s5.x1 = si.x1 + 0x10#64)
+--   -- (h_s5_x2 : s5.x2 = si.x2 + 0x10#64)
+--   (h_si_x1 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
+--   (h_si_x2 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+--   -- (h_s5_z : r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ si.x0 - 0x1#64 = 0x0#64)
+--   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
+--   (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
+--   (h_assert_1 : si.x0 ≤ s0.x0)
+--   (h_assert_2 : r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64)
+--   (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
+--   (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+--   (h_assert_5 :
+--     ∀ (i : BitVec 64),
+--       i < s0.x0 - si.x0 → read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0)
+--   (h_assert_6 :
+--     ∀ (n : Nat)
+--     (addr : BitVec 64),
+--       mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat addr n →
+--         read_mem_bytes n addr si = read_mem_bytes n addr s0)
+--   (h_assert_7 : r StateField.ERR si = StateError.None ∧ si.program = program ∧ CheckSPAlignment si)
+--   (n : Nat)
+--   (addr : BitVec 64)
+--   (h_sep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n) :
+--   Memory.read_bytes n addr
+--       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+--       (read_mem_bytes 16 s1.x1 s1) si.mem) =
+--     Memory.read_bytes n addr s0.mem := sorry
+--     -- intros mem_sep
+--     -- simp only [memory_rules]
+--     -- rw [step_8f0_8f4.h_mem]
+--     -- rw [step_8ec_8f0.h_mem]
+--     -- rw [step_8e8_8ec.h_mem]
+--     -- rw [step_8e4_8e8.h_mem]
+--     -- rw [step_8e4_8e8.h_q4]
+--     -- rw [step_8e4_8e8.h_x2]
+--     -- rw [step_8f4_8e4.h_x2]
+--     -- rw [h_si_x2]
+--     -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+--     -- · rw [step_8f4_8e4.h_mem]
+--     --   have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
+--     --   simp only [memory_rules] at h_assert_6
+--     --   rw [h_assert_6]
+--     --   apply mem_separate'.of_le_size mem_sep
+--     --   sorry -- bv_omega
 
-theorem Memcpy.extracted_2 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0x8f8#64) (h_pre : pre s0)
-  (pc : state_value StateField.PC)
-  (h_si : r StateField.PC si = 0x8f4#64)
-  (s1 : ArmState)
-  (h_s1_next_si : Sys.next si = s1)
-  (si_well_formed : WellFormedAtPc si 0x8f4#64)
-  -- (h_si_x0 : r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64)
-  (hz : ¬r (StateField.FLAG PFlag.Z) si = 0x1#1)
-  -- (step_8f4_8e4 : Step_8f4_8e4 si s1)
-  -- (s2 : ArmState)
-  -- (h_s2_next_s1 : Sys.next s1 = s2)
-  -- (step_8e4_8e8 : Step_8e4_8e8 s1 s2)
-  -- (s3 : ArmState)
-  -- (h_s3_next_s2 : Sys.next s2 = s3)
-  -- (step_8e8_8ec : Step_8e8_8ec s2 s3)
-  -- (s4 : ArmState)
-  -- (h_s4_next_s3 : Sys.next s3 = s4)
-  -- (step_8ec_8f0 : Step_8ec_8f0 s3 s4)
-  -- (s5 : ArmState)
-  -- (h_s5_next_s4 : Sys.next s4 = s5)
-  -- (step_8f0_8f4 : Step_8f0_8f4 s4 s5)
-  -- (h_s5_x0 : s5.x0 = si.x0 - 0x1#64)
-  -- (h_s4_x0 : s4.x0 = si.x0 - 0x1#64)
-  -- (h_si_x0_nonzero : si.x0 ≠ 0)
-  -- (h_s5_x1 : s5.x1 = si.x1 + 0x10#64)
-  -- (h_s5_x2 : s5.x2 = si.x2 + 0x10#64)
-  (h_si_x1 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
-  (h_si_x2 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-  -- (h_s5_z : r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ si.x0 - 0x1#64 = 0x0#64)
-  (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
-  (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
-  (h_assert_1 : si.x0 ≤ s0.x0)
-  (h_assert_2 : r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64)
-  (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
-  (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-  (h_assert_5 :
-    ∀ (i : BitVec 64),
-      i < s0.x0 - si.x0 → read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0)
-  (h_assert_6 :
-    ∀ (n : Nat)
-    (addr : BitVec 64),
-      mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat addr n →
-        read_mem_bytes n addr si = read_mem_bytes n addr s0)
-  (h_assert_7 : r StateField.ERR si = StateError.None ∧ si.program = program ∧ CheckSPAlignment si)
-  (n : Nat)
-  (addr : BitVec 64)
-  (h_sep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n) :
-  Memory.read_bytes n addr
-      (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-      (read_mem_bytes 16 s1.x1 s1) si.mem) =
-    Memory.read_bytes n addr s0.mem := sorry
-    -- intros mem_sep
-    -- simp only [memory_rules]
-    -- rw [step_8f0_8f4.h_mem]
-    -- rw [step_8ec_8f0.h_mem]
-    -- rw [step_8e8_8ec.h_mem]
-    -- rw [step_8e4_8e8.h_mem]
-    -- rw [step_8e4_8e8.h_q4]
-    -- rw [step_8e4_8e8.h_x2]
-    -- rw [step_8f4_8e4.h_x2]
-    -- rw [h_si_x2]
-    -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-    -- · rw [step_8f4_8e4.h_mem]
-    --   have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
-    --   simp only [memory_rules] at h_assert_6
-    --   rw [h_assert_6]
-    --   apply mem_separate'.of_le_size mem_sep
-    --   sorry -- bv_omega
-
-    -- · apply mem_separate'.symm
-    --   -- because mem_sep : mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
-    --   -- we want to show mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
-    --   -- but see that the base pointer is moved up.
-    --   -- so in this case, we maintain separation because we have touched
-    --   -- a strictly smaller portion of memory.
-    --   sorry
+--     -- · apply mem_separate'.symm
+--     --   -- because mem_sep : mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
+--     --   -- we want to show mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
+--     --   -- but see that the base pointer is moved up.
+--     --   -- so in this case, we maintain separation because we have touched
+--     --   -- a strictly smaller portion of memory.
+--     --   sorry
 
 syntax (name := parserProvenBy) "proven_by" tactic : tactic
 macro_rules
 | `(tactic| proven_by $_x) =>
   `(tactic| sorry)
   -- `(tactic| $_x)
+
+
+theorem Memcpy.extracted_2 (s0 si : ArmState) (h_si_x0_nonzero : si.x0 ≠ 0)
+  (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
+  (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
+  (h_assert_1 : si.x0 ≤ s0.x0) (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
+  (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+  (h_assert_6 :
+    ∀ (n : Nat) (addr : BitVec 64),
+      mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat addr n →
+        Memory.read_bytes n addr si.mem = Memory.read_bytes n addr s0.mem)
+  (h_assert_5 :
+    ∀ (i : BitVec 64),
+      i < s0.x0 - si.x0 →
+        Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
+  (h_pre_1 : mem_separate' s0.x1 (s0.x0.toNat * 16) s0.x2 (s0.x0.toNat * 16)) (h_pre_2 : r StateField.PC s0 = 0x8e0#64)
+  (n : Nat) (addr : BitVec 64) (hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n) :
+  Memory.read_bytes n addr
+      (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+        (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
+    Memory.read_bytes n addr s0.mem := by
+  have h_le : (s0.x0 - (si.x0 - 0x1#64)).toNat ≤ s0.x0.toNat := by bv_omega
+  have h_upper_bound := hsep.hb.omega_def
+  have h_upper_bound₂ := h_pre_1.hb.omega_def
+  have h_upper_bound₃ := hsep.ha.omega_def
+  -- have h_upper_bound₄ : (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat < 2 ^ 64 := by bv_omega
+  -- have h_left_upper_bound : (0x10#64 * (s0.x0 - si.x0)).toNat < s0.x0.toNat * 16 := by bv_omega
+  -- have h_upper_bound₄ : 16 * ((s0.x0 - (si.x0 - 0x1#64))).toNat ≤ 2 ^ 64 := by bv_omega
+  have want₁ : 16 * s0.x0.toNat < 2 ^ 64 := by sorry -- I seem to need this precondition.
+  have want₂ : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by bv_omega
+  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+  · rw [h_assert_6]
+    apply mem_separate'.of_le_size hsep
+    -- (0x10#64 * (s0.x0 - si.x0)).toNat ≤ (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat
+    -- should be true, because from `h_pre_1`, we know that `s0.x0.toNat * 16 < 2^64`.
+    -- This will let us show that `(s0.x0 - si.x0) < 2^64`, since this subtraction cannot overflow
+    rw [BitVec.toNat_mul_of_lt (by proven_by bv_omega)]
+    rw [BitVec.toNat_mul_of_lt]
+    · proven_by bv_omega
+    · proven_by omega
+  · apply mem_separate'.symm
+    apply mem_separate'.of_subset'_of_subset' hsep
+    · apply mem_subset'.of_omega
+      constructor
+      · proven_by bv_omega
+      · constructor
+        · proven_by bv_omega
+        · constructor
+          · proven_by bv_omega
+          · proven_by bv_omega
+    · apply mem_subset'_refl hsep.hb
+
+
 
 set_option maxHeartbeats 9999999 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
@@ -872,6 +836,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
         · rfl
       }
     have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by proven_by bv_omega
+    have s2_sum_inbounds := h_pre_1.hb.omega_def
+    have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by proven_by bv_omega
+
     rcases icases with hi | hi
     · subst hi
       rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
@@ -905,17 +872,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
             bv_omega
           }
   · intros n addr hsep
-    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-    · rw [h_assert_6]
-      apply mem_separate'.of_le_size hsep
-      -- (0x10#64 * (s0.x0 - si.x0)).toNat ≤ (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat
-      -- should be true, because from `h_pre_1`, we know that `s0.x0.toNat * 16 < 2^64`.
-      -- This will let us show that `(s0.x0 - si.x0) < 2^64`, since this subtraction cannot overflow
-      sorry -- HERE HERE HERE
-    · apply mem_separate'.symm
-      apply mem_separate'.of_subset'_of_subset' hsep
-      · sorry -- HERE HERE HERE
-      · apply mem_subset'_refl hsep.hb
+    apply Memcpy.extracted_2 <;> assumption
 
 #exit
 
