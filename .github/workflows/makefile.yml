@@ -31,14 +31,7 @@ jobs:
       with:
         auto-config: false
         use-mathlib-cache: false
-        use-github-cache: false
-
-    - name: Cache `.lake` folder
-      id: cache-lake
-      uses: actions/cache@v4
-      with:
-        path: .lake
-        key: ${{ runner.os }}-lake
+        use-github-cache: true
 
     - name: Build AWS-LC and run ELFSage tests (Ubuntu)
       if : ${{ runner.os != 'macOS' }}
