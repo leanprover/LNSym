@@ -293,7 +293,7 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
     try
       if ! (← isDryRun) then
         -- Implementation modeled after `Lean.MVarId.generalizeHyp`.
-        let e ← instantiateMVars e
+        let _e ← instantiateMVars e
         let hyps := ((← getLCtx).getFVarIds)
         let transparency := TransparencyMode.reducible
         let hyps ← hyps.filterM fun h => do

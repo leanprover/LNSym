@@ -59,15 +59,15 @@ Let's also check our address normalization implementation, e.g., does the automa
 work for `16#64 + ctx_addr`? What about `8#64 + ctx_addr + 8#64`? Other
 variations?
 -/
-set_option trace.simp_mem true in
-set_option trace.simp_mem.info true in
+-- set_option trace.simp_mem true in
+-- set_option trace.simp_mem.info true in
 theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
-  (h_s0_err : read_err s0 = StateError.None)
-  (h_s0_sp_aligned : CheckSPAlignment s0)
+  (_h_s0_err : read_err s0 = StateError.None)
+  (_h_s0_sp_aligned : CheckSPAlignment s0)
   (h_s0_pc : read_pc s0 = 0x1264c4#64)
-  (h_s0_program : s0.program = sha512_program)
+  (_h_s0_program : s0.program = sha512_program)
   (h_s0_num_blocks : num_blocks s0 = 1)
-  (h_s0_x3 : r (StateField.GPR 3#5) s0 = ktbl_addr)
+  (_h_s0_x3 : r (StateField.GPR 3#5) s0 = ktbl_addr)
   (hlegal : mem_legal' (ctx_addr s0) 64)
   (h_s0_ctx : read_mem_bytes 64 (ctx_addr s0) s0 = SHA2.h0_512.toBitVec)
   (h_s0_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s0 = BitVec.flatten SHA2.k_512)
@@ -120,15 +120,15 @@ work for `16#64 + ktbl_addr`?
 --   (16#64 + ktbl_addr) + 16#64
 --   ~> 32#64 ktbl_addr
 -/
-set_option trace.simp_mem true in
-set_option trace.simp_mem.info true in
+-- set_option trace.simp_mem true in
+-- set_option trace.simp_mem.info true in
 theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
-  (h_s1_err : read_err s1 = StateError.None)
-  (h_s1_sp_aligned : CheckSPAlignment s1)
+  (_h_s1_err : read_err s1 = StateError.None)
+  (_h_s1_sp_aligned : CheckSPAlignment s1)
   (h_s1_pc : read_pc s1 = 0x126500#64)
-  (h_s1_program : s1.program = sha512_program)
+  (_h_s1_program : s1.program = sha512_program)
   (h_s1_num_blocks : num_blocks s1 = 1)
-  (h_s1_x3 : r (StateField.GPR 3#5) s1 = ktbl_addr)
+  (_h_s1_x3 : r (StateField.GPR 3#5) s1 = ktbl_addr)
   (h_s1_ctx : read_mem_bytes 64 (ctx_addr s1) s1 = SHA2.h0_512.toBitVec)
   (h_s1_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s1 = BitVec.flatten SHA2.k_512)
   -- (FIXME) Add separateness invariants for the stack's memory region.
