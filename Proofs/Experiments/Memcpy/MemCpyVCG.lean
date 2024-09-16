@@ -566,7 +566,8 @@ theorem Memcpy.extracted_1 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0
       have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5⟩ := h_pre
       sorry
     · apply mem_subset'_refl
-      sorry
+      have {..} := h_pre
+      simp_mem
     -- What I need to do is to rewrite using h_assert,
     -- because in this case, we know that i < s0.x0 - si.x0,
     -- and so we are accessing memory from prior loop iterations.
@@ -582,6 +583,8 @@ theorem Memcpy.extracted_1 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0
   -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
     sorry
   · sorry
+
+-- #exit -- Exit to prevent thrashing.
 
 theorem Memcpy.extracted_2 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0x8f8#64) (h_pre : pre s0)
   (pc : state_value StateField.PC) (h_si : r StateField.PC si = 0x8f4#64)
