@@ -513,7 +513,7 @@ theorem mem_separate'.symm (h : mem_separate' addr₁ n₁ addr₂ n₂) : mem_s
 set_option showTacticDiff false
 
 theorem Memcpy.extracted_1 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0x8f8#64) (h_pre : pre s0)
-  (h_si : r StateField.PC si = 0x8f4#64)
+  (pc : state_value StateField.PC) (h_si : r StateField.PC si = 0x8f4#64)
   (h_assert :
     si.x0 ≤ s0.x0 ∧
       (r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64) ∧
@@ -537,58 +537,54 @@ theorem Memcpy.extracted_1 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0
   (h_si_x1 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0)) (h_si_x2 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
   (h_s5_z : r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ si.x0 - 0x1#64 = 0x0#64)
   (this_1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
-  (this : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64))) (i : BitVec 64) :
+  (this : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64))) (i : BitVec 64)
+  (hi : i < s0.x0 - (si.x0 - 0x1#64)) :
   i < s0.x0 - (si.x0 - 0x1#64) →
-    read_mem_bytes 16 (s0.x2 + 0x10#64 * i) s5 = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0 := sorry
+    read_mem_bytes 16 (s0.x2 + 0x10#64 * i) s5 = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0 := by
+  simp only [memory_rules]
+  rw [step_8f0_8f4.h_mem]
+  rw [step_8ec_8f0.h_mem]
+  rw [step_8e8_8ec.h_mem]
+  rw [step_8e4_8e8.h_mem]
+  rw [step_8f4_8e4.h_mem]
+  rw [step_8e4_8e8.h_x2]
+  rw [step_8f4_8e4.h_x2]
+  rw [step_8e4_8e8.h_q4]
 
+  rw [h_si_x2]
+  have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by sorry -- bv_omega
+  rcases icases with hi | hi
+  · subst hi
+    rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
+    · simp only [memory_rules]
+      simp [bitvec_rules]
+      have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
+      simp only [step_8f4_8e4.h_mem]
+      simp only [step_8f4_8e4.h_x1]
+      rw [h_si_x1]
+      simp only [memory_rules] at h_assert_6
+      have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5⟩ := h_pre
+      sorry
+    · apply mem_subset'_refl
+      sorry
+    -- What I need to do is to rewrite using h_assert,
+    -- because in this case, we know that i < s0.x0 - si.x0,
+    -- and so we are accessing memory from prior loop iterations.
 
-          -- intros i hi
-          -- simp only [memory_rules]
-          -- rw [step_8f0_8f4.h_mem]
-          -- rw [step_8ec_8f0.h_mem]
-          -- rw [step_8e8_8ec.h_mem]
-          -- rw [step_8e4_8e8.h_mem]
-          -- rw [step_8f4_8e4.h_mem]
-          -- rw [step_8e4_8e8.h_x2]
-          -- rw [step_8f4_8e4.h_x2]
-          -- rw [step_8e4_8e8.h_q4]
-
-          -- rw [h_si_x2]
-          -- have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
-          --   bv_omega
-          -- rcases icases with hi | hi
-          -- · subst hi
-          --   rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
-          --   · simp only [memory_rules]
-          --     simp [bitvec_rules]
-          --     have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
-          --     simp only [step_8f4_8e4.h_mem]
-          --     simp only [step_8f4_8e4.h_x1]
-          --     rw [h_si_x1]
-          --     simp only [memory_rules] at h_assert_6
-          --     apply h_assert_6
-          --     have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5⟩ := h_pre
-          --     -- simp_mem -- true.
-          --     sorry
-          --   · apply mem_subset'_refl
-
-            -- What I need to do is to rewrite using h_assert,
-            -- because in this case, we know that i < s0.x0 - si.x0,
-            -- and so we are accessing memory from prior loop iterations.
-
-          -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-          -- · obtain ⟨pre_1, pre_2, pre_3, pre_4⟩ := h_pre
-          --   have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
-          --   simp only [memory_rules] at h_assert_5
-          --   apply h_assert_5
-          --   -- is true because hi : hi : i < s0.x0 - (si.x0 - 0x1#64)
-          --   -- so i < s0.x0 - si.x0 + 0x1#64
-          --   rw [BitVec.lt_def]
-          --   rw [BitVec.lt_def] at hi
-          -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+  · obtain ⟨pre_1, pre_2, pre_3, pre_4⟩ := h_pre
+    have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
+    simp only [memory_rules] at h_assert_5
+    -- is true because hi : hi : i < s0.x0 - (si.x0 - 0x1#64)
+    -- so i < s0.x0 - si.x0 + 0x1#64
+    rw [BitVec.lt_def]
+    rw [BitVec.lt_def] at hi
+  -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+    sorry
+  · sorry
 
 theorem Memcpy.extracted_2 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0x8f8#64) (h_pre : pre s0)
-  (h_si : r StateField.PC si = 0x8f4#64)
+  (pc : state_value StateField.PC) (h_si : r StateField.PC si = 0x8f4#64)
   (h_assert :
     si.x0 ≤ s0.x0 ∧
       (r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64) ∧
@@ -615,32 +611,32 @@ theorem Memcpy.extracted_2 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0
   (this : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64))) (n : Nat)
   (addr : BitVec 64) :
   mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n →
-    read_mem_bytes n addr s5 = read_mem_bytes n addr s0 := sorry
-          -- intros n addr mem_sep
-          -- simp only [memory_rules]
-          -- rw [step_8f0_8f4.h_mem]
-          -- rw [step_8ec_8f0.h_mem]
-          -- rw [step_8e8_8ec.h_mem]
-          -- rw [step_8e4_8e8.h_mem]
-          -- rw [step_8e4_8e8.h_q4]
-          -- rw [step_8e4_8e8.h_x2]
-          -- rw [step_8f4_8e4.h_x2]
-          -- rw [h_si_x2]
-          -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-          -- · rw [step_8f4_8e4.h_mem]
-          --   have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
-          --   simp only [memory_rules] at h_assert_6
-          --   rw [h_assert_6]
-          --   apply mem_separate'.of_le_size mem_sep
-          --   sorry -- bv_omega
+    read_mem_bytes n addr s5 = read_mem_bytes n addr s0 := by
+    intros mem_sep
+    simp only [memory_rules]
+    rw [step_8f0_8f4.h_mem]
+    rw [step_8ec_8f0.h_mem]
+    rw [step_8e8_8ec.h_mem]
+    rw [step_8e4_8e8.h_mem]
+    rw [step_8e4_8e8.h_q4]
+    rw [step_8e4_8e8.h_x2]
+    rw [step_8f4_8e4.h_x2]
+    rw [h_si_x2]
+    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+    · rw [step_8f4_8e4.h_mem]
+      have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
+      simp only [memory_rules] at h_assert_6
+      rw [h_assert_6]
+      apply mem_separate'.of_le_size mem_sep
+      sorry -- bv_omega
 
-          -- · apply mem_separate'.symm
-          --   -- because mem_sep : mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
-          --   -- we want to show mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
-          --   -- but see that the base pointer is moved up.
-          --   -- so in this case, we maintain separation because we have touched
-          --   -- a strictly smaller portion of memory.
-          --   sorry
+    · apply mem_separate'.symm
+      -- because mem_sep : mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
+      -- we want to show mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
+      -- but see that the base pointer is moved up.
+      -- so in this case, we maintain separation because we have touched
+      -- a strictly smaller portion of memory.
+      sorry
 
 
 theorem partial_correctness :
@@ -862,8 +858,6 @@ theorem partial_correctness :
       contradiction
     case h_4 pc h_si =>
       apply False.elim h_assert
-
-
 
 
 end PartialCorrectness
