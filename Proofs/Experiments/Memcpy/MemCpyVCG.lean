@@ -563,23 +563,61 @@ theorem mem_subset'.of_offset {nblocks sz : Nat} {base k sz' : BitVec 64}
     apply Nat.mul_le_mul_right
     omega
 
-theorem mem_separate'.of_offset {base i sz : BitVec 64}
-    (hsz : sz.toNat > 0)
-    (hi : i < n)
-    (hbase_sz_n : base.toNat + (sz.toNat * n.toNat) < 2^64)
-    (hlegal : mem_legal' (base + sz * n) sz.toNat)
-    : mem_separate' (base + sz * i) sz.toNat (base + sz * n) sz.toNat := by
-  constructor
-  · have := hlegal.omega_def
-    have : sz.toNat * n.toNat = (sz * n).toNat := by
-      simp
-      rw [Nat.mod_eq_of_lt]
-      omega
-    apply mem_legal'.of_omega
-    sorry
-  · simp_mem
-  · sorry
+theorem BitVec.toNat_mul_of_lt {w} {x y : BitVec w} (h : x.toNat * y.toNat < 2^w) :
+    (x * y).toNat = x.toNat * y.toNat := by
+  rw [BitVec.toNat_mul, Nat.mod_eq_of_lt h]
 
+theorem BitVec.toNat_sub_of_lt {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
+    (y - x).toNat = y.toNat - x.toNat := by
+  rw [BitVec.toNat_sub]
+  rw [show (2^w - x.toNat + y.toNat) = 2^w + (y.toNat - x.toNat) by omega]
+  rw [Nat.add_mod]
+  simp only [Nat.mod_self, Nat.zero_add, Nat.mod_mod]
+  rw [Nat.mod_eq_of_lt]
+  omega
+
+-- theorem Nat.lt_of_mul_left' {a b c : Nat} (h : a * b < c) (ha : a > 0) : b < c := by sorry
+
+theorem BitVec.toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
+    (hxy : x.toNat * y.toNat ≤ k)
+    (hyz : z ≤ y) :
+  x.toNat * z.toNat ≤ k := by
+  apply Nat.le_trans (m := x.toNat * y.toNat)
+  · apply Nat.mul_le_mul_left
+    bv_omega
+  · exact hxy
+
+theorem BitVec.le_sub {w} {base sz n i : BitVec w} {szNat : Nat}
+  (hsz : sz.toNat = szNat)
+  (hi : i < n)
+  (hinbounds : base.toNat + sz.toNat * n.toNat < 2 ^ w):
+  (base + sz * i).toNat + szNat ≤ (base + sz * n).toNat + szNat  := by
+  rw [BitVec.toNat_add_eq_toNat_add_toNat]
+  · sorry
+  · apply Nat.lt_trans (m := base.toNat + sz.toNat * n.toNat)
+    · sorry
+    · exact hinbounds
+
+
+-- theorem mem_separate'.of_offset {base i sz : BitVec 64}
+--     (hsz : sz.toNat > 0)
+--     (hi : i < n)
+--     (hnmul : (sz * n).toNat = sz.toNat * n.toNat)
+--     (himul : (sz * i).toNat = sz.toNat * i.toNat)
+--     (hlegal : mem_legal' (base + sz * n) sz.toNat)
+--     -- (hlegal' : mem_legal' (base + sz * i) sz.toNat)
+--     -- (hinbounds_i : base.toNat + (sz * i).toNat < 2 ^ 64)
+--     -- (hinbounds_n : base.toNat + (sz * n).toNat < 2 ^ 64)
+--     : mem_separate' (base + sz * i) sz.toNat (base + sz * n) sz.toNat := by
+--   rw [BitVec.lt_def] at hi
+--   constructor
+--   · have := hlegal.omega_def
+--     apply mem_legal'.of_omega
+--     rw [BitVec.toNat_add_eq_toNat_add_toNat]
+--     rw [BitVec.toNat_add_eq_toNat_add_toNat] at this
+--     · sorry
+--   · simp_mem
+--   · sorry
 
 set_option showTacticDiff false
 
@@ -752,8 +790,9 @@ theorem Memcpy.extracted_2 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0
 
 syntax (name := parserProvenBy) "proven_by" tactic : tactic
 macro_rules
-| `(tactic| proven_by $_x) => `(tactic| sorry)
+| `(tactic| proven_by $_x) => `(tactic| $_x)
 
+set_option maxHeartbeats 9999999 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
   -- (h_exit : ¬r StateField.PC si = 0x8f8#64)
   -- (h_pre : pre s0)
@@ -849,11 +888,20 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
 
     · rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
       · apply h_assert_5 _ hi
-      · apply mem_separate'.of_offset
-        · decide
-        · exact hi
-        · sorry  -- HERE HERE HERE
-        · sorry -- HERE HERE HERE
+      · constructor
+        · proven_by simp_mem
+        · proven_by simp_mem
+        · left
+          proven_by {
+            have s2_sum_inbounds := h_pre_1.hb.omega_def
+            have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by proven_by bv_omega
+            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
+            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
+            rw [BitVec.toNat_mul_of_lt (by bv_omega)]
+            rw [BitVec.toNat_mul_of_lt (by bv_omega)]
+            rw [BitVec.toNat_sub_of_lt (by bv_omega)]
+            bv_omega
+          }
   · intros n addr hsep
     rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
     · rw [h_assert_6]
