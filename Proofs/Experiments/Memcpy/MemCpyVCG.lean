@@ -757,7 +757,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
   -- (step_8f0_8f4 : Step_8f0_8f4 s4 s5)
   -- (h_s5_x0 : s5.x0 = si.x0 - 0x1#64)
   -- (h_s4_x0 : s4.x0 = si.x0 - 0x1#64)
-  -- (h_si_x0_nonzero : si.x0 ≠ 0)
+  (h_si_x0_nonzero : si.x0 ≠ 0)
   -- (h_s5_x1 : s5.x1 = si.x1 + 0x10#64)
   -- (h_s5_x2 : s5.x2 = si.x2 + 0x10#64)
   -- (h_si_x1 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
@@ -802,7 +802,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       simp only [show 0x10#64 * (s0.x0 - si.x0) = (s0.x0 - si.x0) * 0x10#64 by bv_omega]
       apply mem_subset'.of_offset
       · decide
-      · sorry -- HERE HERE HERE HERE
+      · bv_omega
       · simp_mem
       · rfl
     have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by bv_omega
@@ -811,14 +811,12 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
       · simp [bitvec_rules]
         rw [h_assert_6]
-        · have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by sorry
-          apply mem_separate'.symm
+        · apply mem_separate'.symm
           apply mem_separate'.of_subset'_of_subset' h_pre_1 h_subset_1 h_subset_2
       · apply mem_subset'_refl
         have h_s0_x2_legal := h_pre_1.hb
         have h_s0_sub_si_small : s0.x0 - si.x0 ≤ s0.x0 := by sorry -- bv_omega
-        sorry
-        -- simp_mem
+        sorry -- simp_mem
       -- What I need to do is to rewrite using h_assert,
       -- because in this case, we know that i < s0.x0 - si.x0,
       -- and so we are accessing memory from prior loop iterations.
