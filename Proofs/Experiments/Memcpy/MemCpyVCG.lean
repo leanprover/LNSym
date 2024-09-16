@@ -83,6 +83,7 @@ structure WellFormedAtPc (s : ArmState) (pc : BitVec 64) : Prop where
 
 
 structure Pre (s : ArmState) (num_blks : Nat) (src_base dst_base : BitVec 64) : Prop where
+  -- 16 bytes are copied in each iteration of the loop.
   h_mem_sep : mem_separate' src_base (num_blks * 16) dst_base (num_blks * 16)
   h_pc : r StateField.PC s = 0x8e0#64
   h_program : s.program = program
@@ -92,22 +93,22 @@ structure Pre (s : ArmState) (num_blks : Nat) (src_base dst_base : BitVec 64) : 
 /-- Precondition for the correctness of the MemCpy program. -/
 def pre (s : ArmState) : Prop :=
   let num_blks := ArmState.x0 s
-  -- 16 bytes are copied in each iteration of the loop.
-  let num_bytes := num_blks * 16
   let src_base  := ArmState.x1 s
   let dst_base  := ArmState.x2 s
-  -- (TODO) Also allow for the possibility of src_base = dst_base
-  -- or even more generally,
-  -- dst_base ≤ src_base ∨
-  -- src_base + num_bytes ≤ dst_base.
-  mem_separate' src_base num_bytes.toNat dst_base num_bytes.toNat ∧
-  r StateField.PC s = 0x8e0#64 ∧
-  s.program = program ∧
-  r StateField.ERR s = .None ∧
-  -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- `sym1_n` tactic currently expects this. Remove this conjunct when `sym1_n`
-  -- is updated to make this requirement optional.
-  CheckSPAlignment s
+  Pre s num_blks.toNat src_base dst_base
+
+  -- -- (TODO) Also allow for the possibility of src_base = dst_base
+  -- -- or even more generally,
+  -- -- dst_base ≤ src_base ∨
+  -- -- src_base + num_bytes ≤ dst_base.
+  -- mem_separate' src_base num_bytes.toNat dst_base num_bytes.toNat ∧
+  -- r StateField.PC s = 0x8e0#64 ∧
+  -- s.program = program ∧
+  -- r StateField.ERR s = .None ∧
+  -- -- (FIXME) We don't really need the stack pointer to be aligned, but the
+  -- -- `sym1_n` tactic currently expects this. Remove this conjunct when `sym1_n`
+  -- -- is updated to make this requirement optional.
+  -- CheckSPAlignment s
 
 
 structure Post (s0 sf : ArmState)
@@ -131,7 +132,7 @@ structure Post (s0 sf : ArmState)
 /-- Postcondition for the correctness of the MemCpy program. -/
 def post (s0 sf : ArmState) : Prop :=
   let num_blks := ArmState.x0 s0
-  let num_bytes := num_blks * 16
+  let num_bytes := num_blks.toNat * 16
   let src_base  := ArmState.x1 s0
   let dst_base  := ArmState.x2 s0
   -- The destination in the final state is a copy of the source in the initial
@@ -156,7 +157,7 @@ def post (s0 sf : ArmState) : Prop :=
   -- to show that emory regions separate from the destination are unchanged.
   -- -- All memory regions separate from the destination are unchanged.
   (∀ (n : Nat) (addr : BitVec 64),
-      mem_separate' dst_base num_bytes.toNat addr n →
+      mem_separate' dst_base num_bytes addr n →
       read_mem_bytes n addr sf = read_mem_bytes n addr s0) ∧
   r StateField.PC sf = 0x8f8#64 ∧
   r StateField.ERR sf = .None ∧
@@ -492,14 +493,19 @@ section PartialCorrectness
 private theorem eq_or_lt (hy : y ≥ 1) (hi: i < x - (y - 0x1#64)) : (i = x - y ∨ i < x - y) := by
   bv_decide
 
+theorem mem_separate'.of_le_size (h : mem_separate' addr₁ n₁ addr₂ n₂)
+  (hn : n₁' ≤ n₁) : mem_separate' addr₁ n₁' addr₂ n₂ := by simp_mem
+
 theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions'
   case v1 =>
     intro s0 h_pre
+    have {..} := h_pre
     simp only [Spec.pre, pre, BitVec.ofNat_eq_ofNat, BitVec.toNat_mul, BitVec.toNat_ofNat,
       Nat.reducePow, Nat.reduceMod, Spec'.assert, assert] at h_pre ⊢
     simp only [h_pre, and_self]
+    simp only [and_self, *]
   case v2 =>
     intro sf h_exit
     simp only [Spec.exit, Spec'.cut, cut, exit] at h_exit ⊢
@@ -524,7 +530,7 @@ theorem partial_correctness :
       subst h_assert
       name h_s1_next_si : s1 := Sys.next si
       have h_si_wellformed : WellFormedAtPc si 2272 := by
-        unfold pre at h_pre
+        have {..} := h_pre
         constructor <;> simp [*]
 
       have step_8e0_8f0 := program.step_8e0_8f0_of_wellformed si s1 h_si_wellformed (.of_next h_s1_next_si)
@@ -606,15 +612,7 @@ theorem partial_correctness :
             simp only [memory_rules] at h_si_read_sep
             rw [h_si_read_sep]
             rw [h_si_x0_eq_zero]
-            simp only [BitVec.sub_zero]
-            -- this is an assumption we need to make in h_pre.
-            have h_s0_x0 : s0.x0.toNat > 0 := by sorry
-            -- this should be an assumption that we have in h_pre.
-            have h_mem_legal : mem_legal' s0.x1 (s0.x0 * 0x10#64).toNat := by sorry
-            obtain h_sep := mem_separate'.omega_def h_sep
-            apply mem_separate'.of_omega
-            obtain h_mem_legal := h_mem_legal.omega_def
-            sorry -- this should be true by 'omega.
+            simp_mem -- nice!
           · simp [step.h_sp_aligned, step.h_program, step.h_err]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
@@ -709,7 +707,6 @@ theorem partial_correctness :
           simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
           rw [step_8f0_8f4.h_mem, step_8ec_8f0.h_mem, step_8e8_8ec.h_mem, step_8e4_8e8.h_mem, step_8f4_8e4.h_mem]
           rw [step_8e4_8e8.h_x2, step_8f4_8e4.h_x2, h_si_x2]
-
           have h_si_mem : (∀ (i : BitVec 64),
               i < s0.x0 - si.x0 →
                 read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0) :=
