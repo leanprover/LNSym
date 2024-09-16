@@ -259,10 +259,7 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
       withMainContext <| eff.toSimpTheorems
 
     -- Add the new (non-)effect hyps to the aggregation simp context
-    let aggregateSimpCtx := { c.aggregateSimpCtx with
-      simpTheorems := c.aggregateSimpCtx.simpTheorems.push simpThms
-    }
-    let c := { c with aggregateSimpCtx}
+    let c := c.addSimpTheorems simpThms
 
     -- Attempt to reflect the new PC
     let nextPc ← eff.getField .PC
