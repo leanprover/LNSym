@@ -281,6 +281,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     LNSymSimpContext
       (config := {decide := true, failIfUnchanged := false})
       (decls := axHyps)
+      (noIndexAtArgs := false)
 
   return inferStatePrefixAndNumber {
     state, finalState, runSteps?, program, pc,
@@ -421,3 +422,17 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     pc          := nextPc?.getD (c.pc + 4#64)
     curr_state_number
   }
+
+/-- Add a set of new simp-theorems to the simp-theorems used
+for effect aggregation -/
+def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
+  let addSimpThms := simpThms.foldl addSimpTheoremEntry
+
+  let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
+  let simpTheorems :=
+    if oldSimpTheorems.isEmpty then
+      oldSimpTheorems.push <| addSimpThms {}
+    else
+      oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
+
+  { c with aggregateSimpCtx.simpTheorems := simpTheorems }
