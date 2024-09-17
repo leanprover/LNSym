@@ -90,6 +90,7 @@ structure Pre (s : ArmState) (num_blks : Nat) (src_base dst_base : BitVec 64) : 
   h_program : s.program = program
   h_err : r StateField.ERR s = StateError.None
   h_sp_aligned : CheckSPAlignment s
+  h_total_blocks_size : 16 * num_blks < 2 ^ 64
 
 /-- Precondition for the correctness of the MemCpy program. -/
 def pre (s : ArmState) : Prop :=
@@ -587,17 +588,6 @@ theorem BitVec.toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
     bv_omega
   · exact hxy
 
-theorem BitVec.le_sub {w} {base sz n i : BitVec w} {szNat : Nat}
-  (hsz : sz.toNat = szNat)
-  (hi : i < n)
-  (hinbounds : base.toNat + sz.toNat * n.toNat < 2 ^ w):
-  (base + sz * i).toNat + szNat ≤ (base + sz * n).toNat + szNat  := by
-  rw [BitVec.toNat_add_eq_toNat_add_toNat]
-  · sorry
-  · apply Nat.lt_trans (m := base.toNat + sz.toNat * n.toNat)
-    · sorry
-    · exact hinbounds
-
 
 -- theorem mem_separate'.of_offset {base i sz : BitVec 64}
 --     (hsz : sz.toNat > 0)
@@ -702,11 +692,12 @@ set_option showTacticDiff false
 syntax (name := parserProvenBy) "proven_by" tactic : tactic
 macro_rules
 | `(tactic| proven_by $_x) =>
-  `(tactic| sorry)
-  -- `(tactic| $_x)
+  -- `(tactic| sorry)
+  `(tactic| $_x)
 
 
-theorem Memcpy.extracted_2 (s0 si : ArmState) (h_si_x0_nonzero : si.x0 ≠ 0)
+theorem Memcpy.extracted_2 (s0 si : ArmState)
+  (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
   (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
   (h_assert_1 : si.x0 ≤ s0.x0) (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
@@ -719,8 +710,12 @@ theorem Memcpy.extracted_2 (s0 si : ArmState) (h_si_x0_nonzero : si.x0 ≠ 0)
     ∀ (i : BitVec 64),
       i < s0.x0 - si.x0 →
         Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
-  (h_pre_1 : mem_separate' s0.x1 (s0.x0.toNat * 16) s0.x2 (s0.x0.toNat * 16)) (h_pre_2 : r StateField.PC s0 = 0x8e0#64)
-  (n : Nat) (addr : BitVec 64) (hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n) :
+  (h_pre_1 : mem_separate' s0.x1 (s0.x0.toNat * 16) s0.x2 (s0.x0.toNat * 16))
+  (h_pre_2 : r StateField.PC s0 = 0x8e0#64)
+  (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
+  (n : Nat)
+  (addr : BitVec 64)
+  (hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n) :
   Memory.read_bytes n addr
       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
@@ -732,7 +727,7 @@ theorem Memcpy.extracted_2 (s0 si : ArmState) (h_si_x0_nonzero : si.x0 ≠ 0)
   -- have h_upper_bound₄ : (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat < 2 ^ 64 := by bv_omega
   -- have h_left_upper_bound : (0x10#64 * (s0.x0 - si.x0)).toNat < s0.x0.toNat * 16 := by bv_omega
   -- have h_upper_bound₄ : 16 * ((s0.x0 - (si.x0 - 0x1#64))).toNat ≤ 2 ^ 64 := by bv_omega
-  have want₁ : 16 * s0.x0.toNat < 2 ^ 64 := by sorry -- I seem to need this precondition.
+  -- have want₁ : 16 * s0.x0.toNat < 2 ^ 64 := by sorry -- I seem to need this precondition.
   have want₂ : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by bv_omega
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
   · rw [h_assert_6]
@@ -809,6 +804,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
   -- (h_pre_3 : s0.program = program)
   -- (h_pre_4 : r StateField.ERR s0 = StateError.None)
   -- (h_pre_5 : CheckSPAlignment s0)
+  (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
   :
   (∀ (i : BitVec 64),
       i < s0.x0 - (si.x0 - 0x1#64) →
@@ -874,7 +870,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
   · intros n addr hsep
     apply Memcpy.extracted_2 <;> assumption
 
-#exit
+-- #exit
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by
@@ -1102,14 +1098,17 @@ theorem partial_correctness :
         simp only [step_8f4_8e4.h_x1]
         rw [h_si_x1]
         simp only [memory_rules] at h_assert_6 h_assert_5
-        have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5⟩ := h_pre
-        -- extract_goal *
+        have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5, h_pre_6⟩ := h_pre
         apply Memcpy.extracted_0 <;> assumption
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
       apply False.elim h_assert
 
+/--
+info: 'Memcpy.partial_correctness' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms partial_correctness
 
 end PartialCorrectness
 
