@@ -92,15 +92,7 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
                fst_AddWithCarry_eq_sub_neg]
     repeat (simp only [popcount32_spec_rec])
     bv_decide
-  · -- sym_aggregate
-    intro f h_x0 h_x1 h_x31 h_pc
-    simp only [h_s27_non_effects _ h_pc,
-               h_s26_non_effects _ h_pc h_x31,
-               h_s25_non_effects _ h_x0 h_pc,
-               h_s24_non_effects _ h_pc,
-               h_s23_non_effects _ h_x0 h_pc,
-               h_s22_non_effects _ h_x0 h_pc]
-    sorry
+  · sym_aggregate
 
 -------------------------------------------------------------------------------
 
