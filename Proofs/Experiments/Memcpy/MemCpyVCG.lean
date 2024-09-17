@@ -18,7 +18,6 @@ import Correctness.ArmSpec
 import Arm.Insts.Common
 import Arm.Memory.SeparateAutomation
 import Arm.Syntax
-import Tactics.ExtractGoal
 import Tactics.SkipProof
 
 namespace Memcpy
