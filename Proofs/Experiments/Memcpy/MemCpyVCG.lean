@@ -598,6 +598,11 @@ theorem BitVec.toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
     bv_omega
   · exact hxy
 
+theorem mem_separate'.len_le {addr₁ addr₂ : BitVec 64} {n₁ n₂ : Nat}
+    (hsep : mem_separate' addr₁ n₁ addr₂ n₂) : n₁ + n₂ ≤ 2^64 := by
+  have := hsep.omega_def
+  bv_omega
+
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -613,8 +618,7 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
       i < s0.x0 - si.x0 →
         Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
   (h_pre_1 : mem_separate' s0.x1 (s0.x0.toNat * 16) s0.x2 (s0.x0.toNat * 16))
-  (h_pre_2 : r StateField.PC s0 = 0x8e0#64)
-  (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
+  -- (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
   (n : Nat)
   (addr : BitVec 64)
   (hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n) :
@@ -630,7 +634,9 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
   -- have h_left_upper_bound : (0x10#64 * (s0.x0 - si.x0)).toNat < s0.x0.toNat * 16 := by bv_omega
   -- have h_upper_bound₄ : 16 * ((s0.x0 - (si.x0 - 0x1#64))).toNat ≤ 2 ^ 64 := by bv_omega
   -- have want₁ : 16 * s0.x0.toNat < 2 ^ 64 := by sorry -- I seem to need this precondition.
-  have want₂ : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by bv_omega
+  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by
+    have := mem_separate'.len_le h_pre_1
+    bv_omega
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
   · rw [h_assert_6]
     apply mem_separate'.of_le_size hsep
@@ -655,7 +661,7 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
 
 
 
-set_option maxHeartbeats 9999999 in
+set_option maxHeartbeats 999999 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
   -- (h_exit : ¬r StateField.PC si = 0x8f8#64)
   -- (h_pre : pre s0)
