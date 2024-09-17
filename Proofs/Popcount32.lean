@@ -71,19 +71,6 @@ def popcount32_program : Program :=
 
 #genStepEqTheorems popcount32_program
 
-theorem popcount32_sym_no_error (s0 s_final : ArmState)
-  (h_s0_pc : read_pc s0 = 0x4005b4#64)
-  (h_s0_program : s0.program = popcount32_program)
-  (h_s0_sp_aligned : CheckSPAlignment s0)
-  (h_s0_err : read_err s0 = StateError.None)
-  (h_run : s_final = run 27 s0) :
-  read_err s_final = StateError.None := by
-  -- Prelude
-  simp_all only [state_simp_rules, -h_run]
-  -- Symbolic Simulation
-  sym_n 27
-  done
-
 theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x4005b4#64)
   (h_s0_program : s0.program = popcount32_program)
