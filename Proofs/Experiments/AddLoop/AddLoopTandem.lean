@@ -300,7 +300,7 @@ theorem program.stepi_0x4005b8_cut (s sn : ArmState)
 -- Some helper lemmas to prove obligations stemming from `assert`
 
 -- TODO: Upstream?
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem BitVec.le_refl (x : BitVec n) :
   x <= x := by
   exact BitVec.le_of_eq x x rfl

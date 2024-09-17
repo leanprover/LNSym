@@ -17,239 +17,239 @@ open BitVec
 -- Adding some useful simp lemmas to `bitvec_rules`: we do not include
 -- `bv_toNat` lemmas here.
 -- See Init.Data.BitVec.Lemmas.
-attribute [bitvec_rules] BitVec.ofFin_eq_ofNat
-attribute [bitvec_rules] BitVec.ofFin.injEq
-attribute [bitvec_rules] BitVec.cast_eq
-attribute [bitvec_rules] BitVec.zeroExtend_eq
-attribute [bitvec_rules] BitVec.truncate_eq
-attribute [bitvec_rules] BitVec.getLsbD_ofFin
-attribute [bitvec_rules] BitVec.getLsbD_ge
-attribute [bitvec_rules] BitVec.getMsbD_ge
-attribute [bitvec_rules] BitVec.toNat_zero_length
-attribute [bitvec_rules] BitVec.getLsbD_zero_length
-attribute [bitvec_rules] BitVec.getMsbD_zero_length
-attribute [bitvec_rules] BitVec.msb_zero_length
-attribute [bitvec_rules] BitVec.toNat_ofBool
-attribute [bitvec_rules] BitVec.msb_ofBool
-attribute [bitvec_rules] BitVec.not_ofBool
-attribute [bitvec_rules] BitVec.toNat_ofFin
-attribute [bitvec_rules] BitVec.toNat_ofNatLt
-attribute [bitvec_rules] BitVec.getLsbD_ofNatLt
-attribute [bitvec_rules] BitVec.toFin_ofNat
-attribute [bitvec_rules] BitVec.getLsbD_zero
-attribute [bitvec_rules] BitVec.getMsbD_zero
-attribute [bitvec_rules] BitVec.toNat_mod_cancel
-attribute [bitvec_rules] BitVec.msb_zero
-attribute [bitvec_rules] BitVec.toNat_cast
-attribute [bitvec_rules] BitVec.getLsbD_cast
-attribute [bitvec_rules] BitVec.getMsbD_cast
-attribute [bitvec_rules] BitVec.toNat_ofInt
-attribute [bitvec_rules] BitVec.toInt_ofInt
-attribute [bitvec_rules] BitVec.ofInt_natCast
-attribute [bitvec_rules] BitVec.toNat_zeroExtend'
-attribute [bitvec_rules] BitVec.toNat_zeroExtend
-attribute [bitvec_rules] BitVec.toNat_truncate
-attribute [bitvec_rules] BitVec.zeroExtend_zero
-attribute [bitvec_rules] BitVec.ofNat_toNat
-attribute [bitvec_rules] BitVec.getLsbD_zeroExtend'
-attribute [bitvec_rules] BitVec.getMsbD_zeroExtend'
-attribute [bitvec_rules] BitVec.getLsbD_zeroExtend
-attribute [bitvec_rules] BitVec.getMsbD_zeroExtend_add
-attribute [bitvec_rules] BitVec.getLsbD_truncate
-attribute [bitvec_rules] BitVec.zeroExtend_zeroExtend_of_le
-attribute [bitvec_rules] BitVec.truncate_truncate_of_le
-attribute [bitvec_rules] BitVec.truncate_cast
-attribute [bitvec_rules] BitVec.extractLsb_ofFin
-attribute [bitvec_rules] BitVec.extractLsb_ofNat
-attribute [bitvec_rules] BitVec.extractLsb'_toNat
-attribute [bitvec_rules] BitVec.extractLsb_toNat
-attribute [bitvec_rules] BitVec.getLsbD_extract
-attribute [bitvec_rules] BitVec.toNat_allOnes
-attribute [bitvec_rules] BitVec.getLsbD_allOnes
-attribute [bitvec_rules] BitVec.toNat_or
-attribute [bitvec_rules] BitVec.toFin_or
-attribute [bitvec_rules] BitVec.getLsbD_or
-attribute [bitvec_rules] BitVec.getMsbD_or
-attribute [bitvec_rules] BitVec.msb_or
-attribute [bitvec_rules] BitVec.truncate_or
-attribute [bitvec_rules] BitVec.toNat_and
-attribute [bitvec_rules] BitVec.toFin_and
-attribute [bitvec_rules] BitVec.getLsbD_and
-attribute [bitvec_rules] BitVec.getMsbD_and
-attribute [bitvec_rules] BitVec.msb_and
-attribute [bitvec_rules] BitVec.truncate_and
-attribute [bitvec_rules] BitVec.toNat_xor
-attribute [bitvec_rules] BitVec.toFin_xor
-attribute [bitvec_rules] BitVec.getLsbD_xor
-attribute [bitvec_rules] BitVec.truncate_xor
-attribute [bitvec_rules] BitVec.toNat_not
-attribute [bitvec_rules] BitVec.toFin_not
-attribute [bitvec_rules] BitVec.getLsbD_not
-attribute [bitvec_rules] BitVec.truncate_not
-attribute [bitvec_rules] BitVec.not_cast
-attribute [bitvec_rules] BitVec.and_cast
-attribute [bitvec_rules] BitVec.or_cast
-attribute [bitvec_rules] BitVec.xor_cast
-attribute [bitvec_rules] BitVec.toNat_shiftLeft
-attribute [bitvec_rules] BitVec.toFin_shiftLeft
-attribute [bitvec_rules] BitVec.getLsbD_shiftLeft
-attribute [bitvec_rules] BitVec.getMsbD_shiftLeft
-attribute [bitvec_rules] BitVec.getLsbD_shiftLeftZeroExtend
-attribute [bitvec_rules] BitVec.getMsbD_shiftLeftZeroExtend
-attribute [bitvec_rules] BitVec.msb_shiftLeftZeroExtend
-attribute [bitvec_rules] BitVec.toNat_ushiftRight
-attribute [bitvec_rules] BitVec.getLsbD_ushiftRight
-attribute [bitvec_rules] BitVec.toNat_append
-attribute [bitvec_rules] BitVec.getLsbD_append
-attribute [bitvec_rules] BitVec.getMsbD_append
-attribute [bitvec_rules] BitVec.truncate_append
-attribute [bitvec_rules] BitVec.truncate_cons
-attribute [bitvec_rules] BitVec.not_append
-attribute [bitvec_rules] BitVec.and_append
-attribute [bitvec_rules] BitVec.or_append
-attribute [bitvec_rules] BitVec.xor_append
-attribute [bitvec_rules] BitVec.toNat_cons
-attribute [bitvec_rules] BitVec.getLsbD_cons
-attribute [bitvec_rules] BitVec.msb_cons
-attribute [bitvec_rules] BitVec.getMsbD_cons_zero
-attribute [bitvec_rules] BitVec.getMsbD_cons_succ
-attribute [bitvec_rules] BitVec.not_cons
-attribute [bitvec_rules] BitVec.cons_or_cons
-attribute [bitvec_rules] BitVec.cons_and_cons
-attribute [bitvec_rules] BitVec.cons_xor_cons
-attribute [bitvec_rules] BitVec.toNat_concat
-attribute [bitvec_rules] BitVec.getLsbD_concat_zero
-attribute [bitvec_rules] BitVec.getLsbD_concat_succ
-attribute [bitvec_rules] BitVec.not_concat
-attribute [bitvec_rules] BitVec.concat_or_concat
-attribute [bitvec_rules] BitVec.concat_and_concat
-attribute [bitvec_rules] BitVec.concat_xor_concat
-attribute [bitvec_rules] BitVec.toNat_add
-attribute [bitvec_rules] BitVec.toFin_add
-attribute [bitvec_rules] BitVec.ofFin_add
-attribute [bitvec_rules] BitVec.add_ofFin
-attribute [bitvec_rules] BitVec.add_zero
-attribute [bitvec_rules] BitVec.zero_add
-attribute [bitvec_rules] BitVec.toInt_add
-attribute [bitvec_rules] BitVec.toNat_sub
-attribute [bitvec_rules] BitVec.toFin_sub
-attribute [bitvec_rules] BitVec.ofFin_sub
-attribute [bitvec_rules] BitVec.sub_ofFin
-attribute [bitvec_rules] BitVec.sub_zero
-attribute [bitvec_rules] BitVec.sub_self
-attribute [bitvec_rules] BitVec.toNat_neg
-attribute [bitvec_rules] BitVec.toFin_neg
-attribute [bitvec_rules] BitVec.neg_zero
-attribute [bitvec_rules] BitVec.toNat_mul
-attribute [bitvec_rules] BitVec.toFin_mul
-attribute [bitvec_rules] BitVec.mul_one
-attribute [bitvec_rules] BitVec.one_mul
-attribute [bitvec_rules] BitVec.toInt_mul
-attribute [bitvec_rules] BitVec.le_ofFin
-attribute [bitvec_rules] BitVec.ofFin_le
-attribute [bitvec_rules] BitVec.ofNat_le_ofNat
-attribute [bitvec_rules] BitVec.lt_ofFin
-attribute [bitvec_rules] BitVec.ofFin_lt
-attribute [bitvec_rules] BitVec.ofNat_lt_ofNat
-attribute [bitvec_rules] BitVec.rotateLeft_mod_eq_rotateLeft
-attribute [bitvec_rules] BitVec.getLsbD_rotateLeft
-attribute [bitvec_rules] BitVec.rotateRight_mod_eq_rotateRight
-attribute [bitvec_rules] BitVec.getLsbD_rotateRight
-attribute [bitvec_rules] BitVec.ofBool_true
-attribute [bitvec_rules] BitVec.ofBool_false
-attribute [bitvec_rules] BitVec.ofNat_eq_ofNat
-attribute [bitvec_rules] BitVec.zero_eq
-attribute [bitvec_rules] BitVec.truncate_eq_zeroExtend
+attribute [lnsimp, bitvec_rules] BitVec.ofFin_eq_ofNat
+attribute [lnsimp, bitvec_rules] BitVec.ofFin.injEq
+attribute [lnsimp, bitvec_rules] BitVec.cast_eq
+attribute [lnsimp, bitvec_rules] BitVec.zeroExtend_eq
+attribute [lnsimp, bitvec_rules] BitVec.truncate_eq
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_ofFin
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_ge
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_ge
+attribute [lnsimp, bitvec_rules] BitVec.toNat_zero_length
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_zero_length
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_zero_length
+attribute [lnsimp, bitvec_rules] BitVec.msb_zero_length
+attribute [lnsimp, bitvec_rules] BitVec.toNat_ofBool
+attribute [lnsimp, bitvec_rules] BitVec.msb_ofBool
+attribute [lnsimp, bitvec_rules] BitVec.not_ofBool
+attribute [lnsimp, bitvec_rules] BitVec.toNat_ofFin
+attribute [lnsimp, bitvec_rules] BitVec.toNat_ofNatLt
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_ofNatLt
+attribute [lnsimp, bitvec_rules] BitVec.toFin_ofNat
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_zero
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_zero
+attribute [lnsimp, bitvec_rules] BitVec.toNat_mod_cancel
+attribute [lnsimp, bitvec_rules] BitVec.msb_zero
+attribute [lnsimp, bitvec_rules] BitVec.toNat_cast
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_cast
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_cast
+attribute [lnsimp, bitvec_rules] BitVec.toNat_ofInt
+attribute [lnsimp, bitvec_rules] BitVec.toInt_ofInt
+attribute [lnsimp, bitvec_rules] BitVec.ofInt_natCast
+attribute [lnsimp, bitvec_rules] BitVec.toNat_zeroExtend'
+attribute [lnsimp, bitvec_rules] BitVec.toNat_zeroExtend
+attribute [lnsimp, bitvec_rules] BitVec.toNat_truncate
+attribute [lnsimp, bitvec_rules] BitVec.zeroExtend_zero
+attribute [lnsimp, bitvec_rules] BitVec.ofNat_toNat
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_zeroExtend'
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_zeroExtend'
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_zeroExtend
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_zeroExtend_add
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_truncate
+attribute [lnsimp, bitvec_rules] BitVec.zeroExtend_zeroExtend_of_le
+attribute [lnsimp, bitvec_rules] BitVec.truncate_truncate_of_le
+attribute [lnsimp, bitvec_rules] BitVec.truncate_cast
+attribute [lnsimp, bitvec_rules] BitVec.extractLsb_ofFin
+attribute [lnsimp, bitvec_rules] BitVec.extractLsb_ofNat
+attribute [lnsimp, bitvec_rules] BitVec.extractLsb'_toNat
+attribute [lnsimp, bitvec_rules] BitVec.extractLsb_toNat
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_extract
+attribute [lnsimp, bitvec_rules] BitVec.toNat_allOnes
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_allOnes
+attribute [lnsimp, bitvec_rules] BitVec.toNat_or
+attribute [lnsimp, bitvec_rules] BitVec.toFin_or
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_or
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_or
+attribute [lnsimp, bitvec_rules] BitVec.msb_or
+attribute [lnsimp, bitvec_rules] BitVec.truncate_or
+attribute [lnsimp, bitvec_rules] BitVec.toNat_and
+attribute [lnsimp, bitvec_rules] BitVec.toFin_and
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_and
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_and
+attribute [lnsimp, bitvec_rules] BitVec.msb_and
+attribute [lnsimp, bitvec_rules] BitVec.truncate_and
+attribute [lnsimp, bitvec_rules] BitVec.toNat_xor
+attribute [lnsimp, bitvec_rules] BitVec.toFin_xor
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_xor
+attribute [lnsimp, bitvec_rules] BitVec.truncate_xor
+attribute [lnsimp, bitvec_rules] BitVec.toNat_not
+attribute [lnsimp, bitvec_rules] BitVec.toFin_not
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_not
+attribute [lnsimp, bitvec_rules] BitVec.truncate_not
+attribute [lnsimp, bitvec_rules] BitVec.not_cast
+attribute [lnsimp, bitvec_rules] BitVec.and_cast
+attribute [lnsimp, bitvec_rules] BitVec.or_cast
+attribute [lnsimp, bitvec_rules] BitVec.xor_cast
+attribute [lnsimp, bitvec_rules] BitVec.toNat_shiftLeft
+attribute [lnsimp, bitvec_rules] BitVec.toFin_shiftLeft
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_shiftLeft
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_shiftLeft
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_shiftLeftZeroExtend
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_shiftLeftZeroExtend
+attribute [lnsimp, bitvec_rules] BitVec.msb_shiftLeftZeroExtend
+attribute [lnsimp, bitvec_rules] BitVec.toNat_ushiftRight
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_ushiftRight
+attribute [lnsimp, bitvec_rules] BitVec.toNat_append
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_append
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_append
+attribute [lnsimp, bitvec_rules] BitVec.truncate_append
+attribute [lnsimp, bitvec_rules] BitVec.truncate_cons
+attribute [lnsimp, bitvec_rules] BitVec.not_append
+attribute [lnsimp, bitvec_rules] BitVec.and_append
+attribute [lnsimp, bitvec_rules] BitVec.or_append
+attribute [lnsimp, bitvec_rules] BitVec.xor_append
+attribute [lnsimp, bitvec_rules] BitVec.toNat_cons
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_cons
+attribute [lnsimp, bitvec_rules] BitVec.msb_cons
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_cons_zero
+attribute [lnsimp, bitvec_rules] BitVec.getMsbD_cons_succ
+attribute [lnsimp, bitvec_rules] BitVec.not_cons
+attribute [lnsimp, bitvec_rules] BitVec.cons_or_cons
+attribute [lnsimp, bitvec_rules] BitVec.cons_and_cons
+attribute [lnsimp, bitvec_rules] BitVec.cons_xor_cons
+attribute [lnsimp, bitvec_rules] BitVec.toNat_concat
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_concat_zero
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_concat_succ
+attribute [lnsimp, bitvec_rules] BitVec.not_concat
+attribute [lnsimp, bitvec_rules] BitVec.concat_or_concat
+attribute [lnsimp, bitvec_rules] BitVec.concat_and_concat
+attribute [lnsimp, bitvec_rules] BitVec.concat_xor_concat
+attribute [lnsimp, bitvec_rules] BitVec.toNat_add
+attribute [lnsimp, bitvec_rules] BitVec.toFin_add
+attribute [lnsimp, bitvec_rules] BitVec.ofFin_add
+attribute [lnsimp, bitvec_rules] BitVec.add_ofFin
+attribute [lnsimp, bitvec_rules] BitVec.add_zero
+attribute [lnsimp, bitvec_rules] BitVec.zero_add
+attribute [lnsimp, bitvec_rules] BitVec.toInt_add
+attribute [lnsimp, bitvec_rules] BitVec.toNat_sub
+attribute [lnsimp, bitvec_rules] BitVec.toFin_sub
+attribute [lnsimp, bitvec_rules] BitVec.ofFin_sub
+attribute [lnsimp, bitvec_rules] BitVec.sub_ofFin
+attribute [lnsimp, bitvec_rules] BitVec.sub_zero
+attribute [lnsimp, bitvec_rules] BitVec.sub_self
+attribute [lnsimp, bitvec_rules] BitVec.toNat_neg
+attribute [lnsimp, bitvec_rules] BitVec.toFin_neg
+attribute [lnsimp, bitvec_rules] BitVec.neg_zero
+attribute [lnsimp, bitvec_rules] BitVec.toNat_mul
+attribute [lnsimp, bitvec_rules] BitVec.toFin_mul
+attribute [lnsimp, bitvec_rules] BitVec.mul_one
+attribute [lnsimp, bitvec_rules] BitVec.one_mul
+attribute [lnsimp, bitvec_rules] BitVec.toInt_mul
+attribute [lnsimp, bitvec_rules] BitVec.le_ofFin
+attribute [lnsimp, bitvec_rules] BitVec.ofFin_le
+attribute [lnsimp, bitvec_rules] BitVec.ofNat_le_ofNat
+attribute [lnsimp, bitvec_rules] BitVec.lt_ofFin
+attribute [lnsimp, bitvec_rules] BitVec.ofFin_lt
+attribute [lnsimp, bitvec_rules] BitVec.ofNat_lt_ofNat
+attribute [lnsimp, bitvec_rules] BitVec.rotateLeft_mod_eq_rotateLeft
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_rotateLeft
+attribute [lnsimp, bitvec_rules] BitVec.rotateRight_mod_eq_rotateRight
+attribute [lnsimp, bitvec_rules] BitVec.getLsbD_rotateRight
+attribute [lnsimp, bitvec_rules] BitVec.ofBool_true
+attribute [lnsimp, bitvec_rules] BitVec.ofBool_false
+attribute [lnsimp, bitvec_rules] BitVec.ofNat_eq_ofNat
+attribute [lnsimp, bitvec_rules] BitVec.zero_eq
+attribute [lnsimp, bitvec_rules] BitVec.truncate_eq_zeroExtend
 
 -- BitVec Simproc rules:
 -- See Lean/Meta/Tactic/Simp/BuiltinSimprocs for the built-in
 -- simprocs.
-attribute [bitvec_rules] BitVec.reduceNeg
-attribute [bitvec_rules] BitVec.reduceNot
-attribute [bitvec_rules] BitVec.reduceAbs
-attribute [bitvec_rules] BitVec.reduceAnd
-attribute [bitvec_rules] BitVec.reduceOr
-attribute [bitvec_rules] BitVec.reduceXOr
-attribute [bitvec_rules] BitVec.reduceAdd
-attribute [bitvec_rules] BitVec.reduceMul
-attribute [bitvec_rules] BitVec.reduceSub
-attribute [bitvec_rules] BitVec.reduceDiv
-attribute [bitvec_rules] BitVec.reduceMod
-attribute [bitvec_rules] BitVec.reduceUMod
-attribute [bitvec_rules] BitVec.reduceUDiv
-attribute [bitvec_rules] BitVec.reduceSMTUDiv
-attribute [bitvec_rules] BitVec.reduceSMod
-attribute [bitvec_rules] BitVec.reduceSRem
-attribute [bitvec_rules] BitVec.reduceSDiv
-attribute [bitvec_rules] BitVec.reduceSMTSDiv
-attribute [bitvec_rules] BitVec.reduceGetLsb
-attribute [bitvec_rules] BitVec.reduceGetMsb
-attribute [bitvec_rules] BitVec.reduceShiftLeft
-attribute [bitvec_rules] BitVec.reduceUShiftRight
-attribute [bitvec_rules] BitVec.reduceSShiftRight
-attribute [bitvec_rules] BitVec.reduceHShiftLeft
-attribute [bitvec_rules] BitVec.reduceHShiftLeft'
-attribute [bitvec_rules] BitVec.reduceHShiftRight
-attribute [bitvec_rules] BitVec.reduceHShiftRight'
-attribute [bitvec_rules] BitVec.reduceRotateLeft
-attribute [bitvec_rules] BitVec.reduceRotateRight
-attribute [bitvec_rules] BitVec.reduceAppend
-attribute [bitvec_rules] BitVec.reduceCast
-attribute [bitvec_rules] BitVec.reduceToNat
-attribute [bitvec_rules] BitVec.reduceToInt
-attribute [bitvec_rules] BitVec.reduceOfInt
-attribute [bitvec_rules] BitVec.reduceOfNat
-attribute [bitvec_rules] BitVec.reduceEq
-attribute [bitvec_rules] BitVec.reduceNe
-attribute [bitvec_rules] BitVec.reduceLT
-attribute [bitvec_rules] BitVec.reduceLE
-attribute [bitvec_rules] BitVec.reduceGT
-attribute [bitvec_rules] BitVec.reduceGE
-attribute [bitvec_rules] BitVec.reduceULT
-attribute [bitvec_rules] BitVec.reduceULE
-attribute [bitvec_rules] BitVec.reduceSLT
-attribute [bitvec_rules] BitVec.reduceSLE
-attribute [bitvec_rules] BitVec.reduceZeroExtend'
-attribute [bitvec_rules] BitVec.reduceShiftLeftZeroExtend
-attribute [bitvec_rules] BitVec.reduceExtracLsb'
-attribute [bitvec_rules] BitVec.reduceReplicate
-attribute [bitvec_rules] BitVec.reduceZeroExtend
-attribute [bitvec_rules] BitVec.reduceSignExtend
-attribute [bitvec_rules] BitVec.reduceAllOnes
-attribute [bitvec_rules] BitVec.reduceBitVecOfFin
-attribute [bitvec_rules] BitVec.reduceBitVecToFin
-attribute [bitvec_rules] BitVec.reduceShiftLeftShiftLeft
-attribute [bitvec_rules] BitVec.reduceShiftRightShiftRight
+attribute [lnsimp, bitvec_rules] BitVec.reduceNeg
+attribute [lnsimp, bitvec_rules] BitVec.reduceNot
+attribute [lnsimp, bitvec_rules] BitVec.reduceAbs
+attribute [lnsimp, bitvec_rules] BitVec.reduceAnd
+attribute [lnsimp, bitvec_rules] BitVec.reduceOr
+attribute [lnsimp, bitvec_rules] BitVec.reduceXOr
+attribute [lnsimp, bitvec_rules] BitVec.reduceAdd
+attribute [lnsimp, bitvec_rules] BitVec.reduceMul
+attribute [lnsimp, bitvec_rules] BitVec.reduceSub
+attribute [lnsimp, bitvec_rules] BitVec.reduceDiv
+attribute [lnsimp, bitvec_rules] BitVec.reduceMod
+attribute [lnsimp, bitvec_rules] BitVec.reduceUMod
+attribute [lnsimp, bitvec_rules] BitVec.reduceUDiv
+attribute [lnsimp, bitvec_rules] BitVec.reduceSMTUDiv
+attribute [lnsimp, bitvec_rules] BitVec.reduceSMod
+attribute [lnsimp, bitvec_rules] BitVec.reduceSRem
+attribute [lnsimp, bitvec_rules] BitVec.reduceSDiv
+attribute [lnsimp, bitvec_rules] BitVec.reduceSMTSDiv
+attribute [lnsimp, bitvec_rules] BitVec.reduceGetLsb
+attribute [lnsimp, bitvec_rules] BitVec.reduceGetMsb
+attribute [lnsimp, bitvec_rules] BitVec.reduceShiftLeft
+attribute [lnsimp, bitvec_rules] BitVec.reduceUShiftRight
+attribute [lnsimp, bitvec_rules] BitVec.reduceSShiftRight
+attribute [lnsimp, bitvec_rules] BitVec.reduceHShiftLeft
+attribute [lnsimp, bitvec_rules] BitVec.reduceHShiftLeft'
+attribute [lnsimp, bitvec_rules] BitVec.reduceHShiftRight
+attribute [lnsimp, bitvec_rules] BitVec.reduceHShiftRight'
+attribute [lnsimp, bitvec_rules] BitVec.reduceRotateLeft
+attribute [lnsimp, bitvec_rules] BitVec.reduceRotateRight
+attribute [lnsimp, bitvec_rules] BitVec.reduceAppend
+attribute [lnsimp, bitvec_rules] BitVec.reduceCast
+attribute [lnsimp, bitvec_rules] BitVec.reduceToNat
+attribute [lnsimp, bitvec_rules] BitVec.reduceToInt
+attribute [lnsimp, bitvec_rules] BitVec.reduceOfInt
+attribute [lnsimp, bitvec_rules] BitVec.reduceOfNat
+attribute [lnsimp, bitvec_rules] BitVec.reduceEq
+attribute [lnsimp, bitvec_rules] BitVec.reduceNe
+attribute [lnsimp, bitvec_rules] BitVec.reduceLT
+attribute [lnsimp, bitvec_rules] BitVec.reduceLE
+attribute [lnsimp, bitvec_rules] BitVec.reduceGT
+attribute [lnsimp, bitvec_rules] BitVec.reduceGE
+attribute [lnsimp, bitvec_rules] BitVec.reduceULT
+attribute [lnsimp, bitvec_rules] BitVec.reduceULE
+attribute [lnsimp, bitvec_rules] BitVec.reduceSLT
+attribute [lnsimp, bitvec_rules] BitVec.reduceSLE
+attribute [lnsimp, bitvec_rules] BitVec.reduceZeroExtend'
+attribute [lnsimp, bitvec_rules] BitVec.reduceShiftLeftZeroExtend
+attribute [lnsimp, bitvec_rules] BitVec.reduceExtracLsb'
+attribute [lnsimp, bitvec_rules] BitVec.reduceReplicate
+attribute [lnsimp, bitvec_rules] BitVec.reduceZeroExtend
+attribute [lnsimp, bitvec_rules] BitVec.reduceSignExtend
+attribute [lnsimp, bitvec_rules] BitVec.reduceAllOnes
+attribute [lnsimp, bitvec_rules] BitVec.reduceBitVecOfFin
+attribute [lnsimp, bitvec_rules] BitVec.reduceBitVecToFin
+attribute [lnsimp, bitvec_rules] BitVec.reduceShiftLeftShiftLeft
+attribute [lnsimp, bitvec_rules] BitVec.reduceShiftRightShiftRight
 
 -- BitVec->Nat Simproc rules
-attribute [bitvec_rules] BitVec.reduceToNat
-attribute [bitvec_rules] Nat.reduceAdd
-attribute [bitvec_rules] Nat.reduceMul
-attribute [bitvec_rules] Nat.reduceSub
-attribute [bitvec_rules] Nat.reduceDiv
-attribute [bitvec_rules] Nat.reduceMod
-attribute [bitvec_rules] Nat.reducePow
-attribute [bitvec_rules] Nat.reduceGcd
-attribute [bitvec_rules] Nat.reduceLT
-attribute [bitvec_rules] Nat.reduceGT
-attribute [bitvec_rules] Nat.reduceBEq
-attribute [bitvec_rules] Nat.reduceBNe
-attribute [bitvec_rules] Nat.reduceEqDiff
-attribute [bitvec_rules] Nat.reduceBeqDiff
-attribute [bitvec_rules] Nat.reduceBneDiff
-attribute [bitvec_rules] Nat.reduceLTLE
-attribute [bitvec_rules] Nat.reduceLeDiff
-attribute [bitvec_rules] Nat.reduceSubDiff
-attribute [bitvec_rules] BitVec.toNat_ofNat
+attribute [lnsimp, bitvec_rules] BitVec.reduceToNat
+attribute [lnsimp, bitvec_rules] Nat.reduceAdd
+attribute [lnsimp, bitvec_rules] Nat.reduceMul
+attribute [lnsimp, bitvec_rules] Nat.reduceSub
+attribute [lnsimp, bitvec_rules] Nat.reduceDiv
+attribute [lnsimp, bitvec_rules] Nat.reduceMod
+attribute [lnsimp, bitvec_rules] Nat.reducePow
+attribute [lnsimp, bitvec_rules] Nat.reduceGcd
+attribute [lnsimp, bitvec_rules] Nat.reduceLT
+attribute [lnsimp, bitvec_rules] Nat.reduceGT
+attribute [lnsimp, bitvec_rules] Nat.reduceBEq
+attribute [lnsimp, bitvec_rules] Nat.reduceBNe
+attribute [lnsimp, bitvec_rules] Nat.reduceEqDiff
+attribute [lnsimp, bitvec_rules] Nat.reduceBeqDiff
+attribute [lnsimp, bitvec_rules] Nat.reduceBneDiff
+attribute [lnsimp, bitvec_rules] Nat.reduceLTLE
+attribute [lnsimp, bitvec_rules] Nat.reduceLeDiff
+attribute [lnsimp, bitvec_rules] Nat.reduceSubDiff
+attribute [lnsimp, bitvec_rules] BitVec.toNat_ofNat
 
 -- Some Fin lemmas useful for bitvector reasoning:
-attribute [bitvec_rules] Fin.eta
-attribute [bitvec_rules] Fin.isLt
-attribute [bitvec_rules] Fin.isValue -- To normalize Fin literals
+attribute [lnsimp, bitvec_rules] Fin.eta
+attribute [lnsimp, bitvec_rules] Fin.isLt
+attribute [lnsimp, bitvec_rules] Fin.isValue -- To normalize Fin literals
 
 -- Some lemmas useful for clean-up after the use of simp/ground
 -- leaves some terms exposed:
-attribute [bitvec_rules] BitVec.val_toFin
+attribute [lnsimp, bitvec_rules] BitVec.val_toFin
 
 ----------------------------------------------------------------------
 -- Some BitVec definitions
@@ -273,13 +273,13 @@ protected def rand (n : Nat) (lo := 0) (hi := 2^n - 1) : IO (BitVec n) := do
 def unsigned_compare (a b : BitVec n) : Ordering :=
   if BitVec.ult a b then .lt else if a = b then .eq else .gt
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
   rotateRight x r
 
 /-- Return the `i`-th least significant bit (or `0` if `i >= w`) of
     the `n`-bit bitvector `x`. -/
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
   -- TODO: We could use
   --   BitVec.extractLsb' i 1 x
@@ -503,19 +503,19 @@ protected theorem zero_le_sub (x y : BitVec n) :
 
 ----------------------------- Logical  Lemmas ------------------------
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 protected theorem zero_or (x : BitVec n) : 0#n ||| x = x := by
   unfold HOr.hOr instHOrOfOrOp OrOp.or instOrOp BitVec.or
   simp only [toNat_ofNat, Nat.zero_mod, Nat.zero_or]
   congr
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 protected theorem or_zero (x : BitVec n) : x ||| 0#n = x := by
   rw [BitVec.or_comm]
   rw [BitVec.zero_or]
   done
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 protected theorem or_self (x : BitVec n) :
   x ||| x = x := by
   refine eq_of_toNat_eq ?_
@@ -526,7 +526,7 @@ protected theorem or_self (x : BitVec n) :
 
 --------------------- ZeroExtend/Append/Extract  Lemmas ----------------
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem zeroExtend_zero_width : (zeroExtend 0 x) = 0#0 := by
   unfold zeroExtend
   split <;> simp [bitvec_zero_is_unique]
@@ -537,13 +537,13 @@ theorem zeroExtend_zero_width : (zeroExtend 0 x) = 0#0 := by
 -- 1). I've found the rules `zeroExtend_if_true` and `zeroExtend_if_false` to be
 -- helpful to reduce such occurrences of `zeroExtend` terms.
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem zeroExtend_if_true [Decidable p] (x : BitVec n)
   (h_eq : a = (if p then a else b)) :
   (zeroExtend (if p then a else b) x) = BitVec.cast h_eq (zeroExtend a x) := by
   simp only [toNat_eq, toNat_truncate, ← h_eq, toNat_cast]
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem zeroExtend_if_false [Decidable p] (x : BitVec n)
   (h_eq : b = (if p then a else b)) :
   (zeroExtend (if p then a else b) x) = BitVec.cast h_eq (zeroExtend b x) := by
@@ -555,7 +555,7 @@ theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
   ext1
   simp [←h]
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
     extractLsb j 0 (zeroExtend i x) = zeroExtend (j + 1) x := by
   apply BitVec.eq_of_getLsbD_eq
@@ -566,13 +566,13 @@ protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
   simp_all
   omega
 
-@[bitvec_rules, simp]
+@[lnsimp, bitvec_rules, simp]
 theorem zero_append {w} (x : BitVec 0) (y : BitVec w) :
     x ++ y = y.cast (by simp) := by
   apply eq_of_getLsbD_eq
   simp only [zero_width_append, getLsbD_cast, implies_true]
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem empty_bitvector_append_left
   (x : BitVec n) (h : 0 + n = n) :
   BitVec.cast h (0#0 ++ x) = x := by
@@ -687,14 +687,14 @@ theorem leftshift_n_or_mod_2n :
   case neg =>
     simp [h₀]
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 protected theorem truncate_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitVec n) :
   truncate n (x ++ y) = y := by
   simp only [truncate_append, Nat.le_refl, ↓reduceDIte, zeroExtend_eq]
 
 ---------------------------- Shift Lemmas ---------------------------
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 protected theorem shift_left_zero_eq (n : Nat) (x : BitVec n) : x <<< 0 = x := by
     refine eq_of_toNat_eq ?_
     apply Nat.eq_of_testBit_eq
@@ -967,7 +967,7 @@ theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
   apply BitVec.getLsbD_ge
   omega
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem getLsbD_extractLsByte (val : BitVec w₁) :
     ((BitVec.extractLsByte val n).getLsbD i) =
     (decide (i ≤ 7) && val.getLsbD (n * 8 + i)) := by
@@ -1003,7 +1003,7 @@ def extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
   | 0 => 0#0
   | x + 1 => val.extractLsb (base * 8 + n * 8 - 1) (base * 8) |>.cast (by omega)
 
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem getLsbD_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
     (BitVec.extractLsBytes val base n).getLsbD i =
       ((decide (i < n * 8) &&
@@ -1040,7 +1040,7 @@ theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i 
     omega
 
 /-- Extracting out bytes from the zero bitvector is equal to the zero bitvector. -/
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem extractLsBytes_zero {w : Nat} (base : Nat) :
     (0#w).extractLsBytes base n = 0#(n*8) := by
   apply BitVec.eq_of_getLsbD_eq
@@ -1048,7 +1048,7 @@ theorem extractLsBytes_zero {w : Nat} (base : Nat) :
     implies_true]
 
 /-- Extracting out all the bytes is equal to the bitvector. -/
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem extractLsBytes_eq_self {n : Nat} (x : BitVec (n * 8)) :
     x.extractLsBytes 0 n = x := by
   apply BitVec.eq_of_getLsbD_eq

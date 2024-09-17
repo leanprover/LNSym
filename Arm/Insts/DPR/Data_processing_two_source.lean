@@ -15,7 +15,7 @@ namespace DPR
 
 open BitVec
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_data_processing_shift
   (inst : Data_processing_two_source_cls) (s : ArmState) : ArmState :=
   let datasize := 32 <<< inst.sf.toNat
@@ -29,7 +29,7 @@ def exec_data_processing_shift
   let s := write_pc ((read_pc s) + 4#64) s
   s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_data_processing_two_source
   (inst : Data_processing_two_source_cls) (s : ArmState) : ArmState :=
   match inst.S, inst.opcode with

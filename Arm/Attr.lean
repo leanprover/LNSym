@@ -10,6 +10,9 @@ register_simp_attr bitvec_rules
 -- Rules for memory lemmas
 register_simp_attr memory_rules
 
+-- Combination of all of the above LnSym simpsets
+register_simp_attr lnsimp
+
 /-
 syntax "state_simp" : tactic
 macro_rules

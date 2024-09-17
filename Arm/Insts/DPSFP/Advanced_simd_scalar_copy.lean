@@ -16,7 +16,7 @@ namespace DPSFP
 
 open BitVec
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_advanced_simd_scalar_copy
   (inst : Advanced_simd_scalar_copy_cls) (s : ArmState) : ArmState :=
   let size := lowest_set_bit inst.imm5

@@ -47,7 +47,7 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
     pmull_op (e + 1) esize elements x y result H
   termination_by (elements - e)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmState :=
   -- This function assumes IsFeatureImplemented(FEAT_PMULL) is true
   if inst.size = 0b01#2 ∨ inst.size = 0b10#2 then
@@ -67,7 +67,7 @@ def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmSt
     let s := write_pc ((read_pc s) + 4#64) s
     s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_advanced_simd_three_different
   (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmState :=
   match inst.U, inst.opcode with

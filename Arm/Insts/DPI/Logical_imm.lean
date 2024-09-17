@@ -13,7 +13,7 @@ namespace DPI
 
 open BitVec
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def decode_op (opc : BitVec 2) : LogicalImmType :=
   match opc with
   | 00#2 => LogicalImmType.AND
@@ -28,7 +28,7 @@ def update_logical_imm_pstate (bv : BitVec n) : PState :=
   let V := 0#1
   (make_pstate N Z C V)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_logical_imm_op (op : LogicalImmType) (op1 : BitVec n) (op2 : BitVec n)
   : (BitVec n × Option PState) :=
   match op with
@@ -48,7 +48,7 @@ alias.
 Source:
 https://developer.arm.com/documentation/ddi0602/2023-03/Shared-Pseudocode/aarch64-functions-movwpreferred?lang=en#impl-aarch64.MoveWidePreferred.4
 -/
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def MoveWidePreferred (sf immN : BitVec 1) (imms immr : BitVec 6) : Bool :=
     -- NOTE: we need s and r to be integers, and not nats, because we
     -- perform int modulo operations here (see (0 - r % 16)).
@@ -106,7 +106,7 @@ https://developer.arm.com/documentation/ddi0602/2023-03/Base-Instructions/MOV--b
 https://developer.arm.com/documentation/ddi0602/2023-03/Base-Instructions/EOR--immediate---Bitwise-Exclusive-OR--immediate--?lang=en
 https://developer.arm.com/documentation/ddi0602/2023-03/Base-Instructions/AND--immediate---Bitwise-AND--immediate--?lang=en
 -/
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_logical_imm (inst : Logical_imm_cls) (s : ArmState) : ArmState :=
   if inst.sf = 0#1 ∧ inst.N ≠ 0#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s

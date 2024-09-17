@@ -82,7 +82,7 @@ theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
   omega
 
 -- TODO: Is this rule helpful at all?
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem zeroExtend_eq_of_AddWithCarry :
   zeroExtend n (AddWithCarry x y carry_in).fst =
   (AddWithCarry x y carry_in).fst := by
@@ -191,22 +191,22 @@ def CheckSPAlignment (s : ArmState) : Prop :=
 /-- We need to prove why the CheckSPAlignment predicate is Decidable. -/
 instance : Decidable (CheckSPAlignment s) := by unfold CheckSPAlignment; infer_instance
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
   CheckSPAlignment (w fld v s) = CheckSPAlignment s := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem CheckSPAligment_of_w_sp :
   CheckSPAlignment (w (StateField.GPR 31#5) v s) = (Aligned v 4) := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem CheckSPAligment_of_write_mem_bytes :
   CheckSPAlignment (write_mem_bytes n addr v s) = CheckSPAlignment s := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem CheckSPAlignment_AddWithCarry_64_4 (st : ArmState) (y : BitVec 64) (carry_in : BitVec 1)
   (x_aligned : CheckSPAlignment st)
   (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
@@ -214,14 +214,14 @@ theorem CheckSPAlignment_AddWithCarry_64_4 (st : ArmState) (y : BitVec 64) (carr
   simp_all only [CheckSPAlignment, read_gpr, zeroExtend_eq, Nat.sub_zero, add_eq,
     Aligned_AddWithCarry_64_4]
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem CheckSPAlignment_of_r_sp_eq {s s' : ArmState}
     (h_eq : r (StateField.GPR 31#5) s' = r (StateField.GPR 31#5) s)
     (h_sp : CheckSPAlignment s) :
     CheckSPAlignment s' := by
   simpa only [CheckSPAlignment, read_gpr, h_eq] using h_sp
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem CheckSPAlignment_of_r_sp_aligned {s : ArmState} {value}
     (h_eq : r (StateField.GPR 31#5) s = value)
     (h_aligned : Aligned value 4) :
@@ -239,7 +239,7 @@ deriving DecidableEq, Repr
 
 instance : ToString ShiftType where toString a := toString (repr a)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def decode_shift (shift : BitVec 2) : ShiftType :=
   match shift with
   | 0b00 => ShiftType.LSL
@@ -247,7 +247,7 @@ def decode_shift (shift : BitVec 2) : ShiftType :=
   | 0b10 => ShiftType.ASR
   | 0b11 => ShiftType.ROR
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def shift_reg (bv : BitVec n) (st : ShiftType) (sa : BitVec 6)
   : BitVec n :=
   match st with
@@ -468,7 +468,7 @@ instance : ToString SIMDThreeSameLogicalType where toString a := toString (repr 
 
 ----------------------------------------------------------------------
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState) (H : width > 0)
   : BitVec width :=
   -- assert n >= 0 && n <= 31;
@@ -483,7 +483,7 @@ def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState) (H : width > 0)
     BitVec.cast h2 $ extractLsb (width*2-1) width $ read_sfp 128 n s
 
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def Vpart_write (n : BitVec 5) (part width : Nat) (val : BitVec width) (s : ArmState)
   : ArmState :=
   -- assert n >= 0 && n <= 31;
@@ -498,12 +498,12 @@ def Vpart_write (n : BitVec 5) (part width : Nat) (val : BitVec width) (s : ArmS
 
 ----------------------------------------------------------------------
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def ldst_read (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (s : ArmState)
   : BitVec width :=
   if SIMD? then read_sfp width idx s else read_gpr width idx s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def ldst_write (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
   : ArmState :=
   if SIMD? then write_sfp width idx val s else write_gpr width idx val s
@@ -551,7 +551,7 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
     BitVec.cast h3 (element ++ rest_ans)
    termination_by n
 
-example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by 
+example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by
   native_decide
 example : rev_elems 8 4 0xAB#8 (by decide) (by decide) = 0xBA#8 := by native_decide
 example : rev_elems 8 4 (rev_elems 8 4 0xAB#8 (by decide) (by decide))
@@ -598,7 +598,7 @@ example : rev_vector 32 16 8 0xaabbccdd#32 (by decide)
 
 /-- Divide bv `vector` into elements, each of size `size`. This function gets
 the `e`'th element from the `vector`. -/
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def elem_get (vector : BitVec n) (e : Nat) (size : Nat)
   (h: size > 0): BitVec size :=
   -- assert (e+1)*size <= n
@@ -609,7 +609,7 @@ def elem_get (vector : BitVec n) (e : Nat) (size : Nat)
 
 /-- Divide bv `vector` into elements, each of size `size`. This function sets
 the `e`'th element in the `vector`. -/
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def elem_set (vector : BitVec n) (e : Nat) (size : Nat)
   (value : BitVec size) (h: size > 0): BitVec n :=
   -- assert (e+1)*size <= n
@@ -633,7 +633,7 @@ deriving DecidableEq, Repr
 
 export ShiftInfo (esize elements shift unsigned round accumulate)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool) (h : n > 0)
   : BitVec n :=
   -- assert shift > 0
@@ -647,7 +647,7 @@ def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool) (h : n > 0
   have h₀ : n - 1 - 0 + 1 = n := by omega
   BitVec.cast h₀ $ extractLsb (n-1) 0 (fn rounded_bv shift)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def Int_with_unsigned (unsigned : Bool) (value : BitVec n) : Int :=
   if unsigned then value.toNat else value.toInt
 
@@ -665,7 +665,7 @@ def shift_right_common_aux
     shift_right_common_aux (e + 1) info operand operand2 result
   termination_by (info.elements - e)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def shift_right_common
   (info : ShiftInfo) (datasize : Nat) (Rn : BitVec 5) (Rd : BitVec 5)
   (s : ArmState) : BitVec datasize :=
@@ -687,7 +687,7 @@ def shift_left_common_aux
     shift_left_common_aux (e + 1) info operand result
   termination_by (info.elements - e)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def shift_left_common
   (info : ShiftInfo) (datasize : Nat) (Rn : BitVec 5) (s : ArmState)
   : BitVec datasize :=

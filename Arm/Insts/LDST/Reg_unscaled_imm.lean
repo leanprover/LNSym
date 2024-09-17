@@ -14,7 +14,7 @@ namespace LDST
 
 open BitVec
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_ldstur
   (inst : Reg_unscaled_imm_cls) (s : ArmState) : ArmState :=
   let scale := (extractLsb 1 1 inst.opc ++ inst.size).toNat
@@ -41,12 +41,12 @@ def exec_ldstur
       let s := write_pc ((read_pc s) + 4#64) s
       s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_reg_unscaled_imm
   (inst : Reg_unscaled_imm_cls) (s : ArmState) : ArmState :=
-  if inst.VR = 0b1#1 then 
+  if inst.VR = 0b1#1 then
     exec_ldstur inst s
-  else 
+  else
     write_err (StateError.Unimplemented s!"Unsupported instruction {inst} encountered!") s
 
 end LDST

@@ -86,11 +86,11 @@ inductive StateError where
 deriving DecidableEq, Repr
 
 -- Injective Lemmas for StateError
-attribute [state_simp_rules] StateError.NotFound.injEq
-attribute [state_simp_rules] StateError.Unimplemented.injEq
-attribute [state_simp_rules] StateError.Illegal.injEq
-attribute [state_simp_rules] StateError.Fault.injEq
-attribute [state_simp_rules] StateError.Other.injEq
+attribute [lnsimp, state_simp_rules] StateError.NotFound.injEq
+attribute [lnsimp, state_simp_rules] StateError.Unimplemented.injEq
+attribute [lnsimp, state_simp_rules] StateError.Illegal.injEq
+attribute [lnsimp, state_simp_rules] StateError.Fault.injEq
+attribute [lnsimp, state_simp_rules] StateError.Other.injEq
 
 -- PFlag (Process State's Flags)
 inductive PFlag where
@@ -260,7 +260,7 @@ deriving DecidableEq, Repr, Hashable
 namespace StateField
 
 /-- general purpose register `x31` is used as stack pointer -/
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 abbrev SP := GPR 31#5
 
 /- Might eventually be used to maintain a `O(1)` access `StateField` map,
@@ -309,9 +309,9 @@ instance : ToString StateField :=
   | StateField.ERR    => "err"⟩
 
 -- Injective Lemmas for StateField
-attribute [state_simp_rules] StateField.GPR.injEq
-attribute [state_simp_rules] StateField.SFP.injEq
-attribute [state_simp_rules] StateField.FLAG.injEq
+attribute [lnsimp, state_simp_rules] StateField.GPR.injEq
+attribute [lnsimp, state_simp_rules] StateField.SFP.injEq
+attribute [lnsimp, state_simp_rules] StateField.FLAG.injEq
 
 @[reducible]
 def state_value (fld : StateField) : Type :=
@@ -336,26 +336,26 @@ def r (fld : StateField) (s : ArmState) : (state_value fld) :=
 /-!
 
 We define helpers for reading and writing registers on the `ArmState` with the colloquial
-names. For example, the stack pointer (`sp`) refers to register 31. 
+names. For example, the stack pointer (`sp`) refers to register 31.
 These mnemonics make it much easier to read and write theorems about assembly programs.
 
 -/
 
-@[state_simp_rules] abbrev ArmState.x0 (s : ArmState) : BitVec 64 := r (StateField.GPR 0) s
+@[lnsimp, state_simp_rules] abbrev ArmState.x0 (s : ArmState) : BitVec 64 := r (StateField.GPR 0) s
 
-@[state_simp_rules] abbrev ArmState.x1 (s : ArmState) : BitVec 64 := r (StateField.GPR 1) s
+@[lnsimp, state_simp_rules] abbrev ArmState.x1 (s : ArmState) : BitVec 64 := r (StateField.GPR 1) s
 
-@[state_simp_rules] abbrev ArmState.x2 (s : ArmState) : BitVec 64 := r (StateField.GPR 2) s
+@[lnsimp, state_simp_rules] abbrev ArmState.x2 (s : ArmState) : BitVec 64 := r (StateField.GPR 2) s
 
-@[state_simp_rules] abbrev ArmState.sp (s : ArmState) : BitVec 64 := r (StateField.GPR 31) s
+@[lnsimp, state_simp_rules] abbrev ArmState.sp (s : ArmState) : BitVec 64 := r (StateField.GPR 31) s
 
-@[state_simp_rules] abbrev ArmState.V (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.V) s
+@[lnsimp, state_simp_rules] abbrev ArmState.V (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.V) s
 
-@[state_simp_rules] abbrev ArmState.C (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.C) s
+@[lnsimp, state_simp_rules] abbrev ArmState.C (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.C) s
 
-@[state_simp_rules] abbrev ArmState.Z (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.Z) s
+@[lnsimp, state_simp_rules] abbrev ArmState.Z (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.Z) s
 
-@[state_simp_rules] abbrev ArmState.N (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.N) s
+@[lnsimp, state_simp_rules] abbrev ArmState.N (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.N) s
 
 def ArmState.r_GPR_0_eq_x0 (s : ArmState) : r (StateField.GPR 0) s = s.x0 := by rfl
 
@@ -382,22 +382,22 @@ def w (fld : StateField) (v : (state_value fld)) (s : ArmState) : ArmState :=
   | FLAG i => write_base_flag i v s
   | ERR    => write_base_error v s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem zeroExtend_eq_of_r_gpr :
   zeroExtend 64 (r (StateField.GPR i) s) = (r (StateField.GPR i) s) := by
   simp only [bitvec_rules]
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem zeroExtend_eq_of_r_sfp :
   zeroExtend 128 (r (StateField.SFP i) s) = (r (StateField.SFP i) s) := by
   simp only [bitvec_rules]
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem zeroExtend_eq_of_r_pc :
   zeroExtend 64 (r (StateField.PC) s) = (r (StateField.PC) s) := by
   simp only [bitvec_rules]
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem r_of_w_same : r fld (w fld v s) = v := by
   unfold r w
   unfold read_base_gpr write_base_gpr
@@ -407,7 +407,7 @@ theorem r_of_w_same : r fld (w fld v s) = v := by
   unfold read_base_error write_base_error
   split <;> (repeat (split <;> simp_all!))
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem r_of_w_different (h : fld1 ≠ fld2) :
   r fld1 (w fld2 v s) = r fld1 s := by
   unfold r w
@@ -419,7 +419,7 @@ theorem r_of_w_different (h : fld1 ≠ fld2) :
   simp_all!
   split <;> (repeat (split <;> simp_all!))
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem w_of_w_shadow : w fld v2 (w fld v1 s) = w fld v2 s := by
   unfold w
   unfold write_base_gpr
@@ -429,7 +429,7 @@ theorem w_of_w_shadow : w fld v2 (w fld v1 s) = w fld v2 s := by
   unfold write_base_error
   (repeat (split <;> simp_all!))
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem w_irrelevant : w fld (r fld s) s = s := by
   unfold r w
   unfold read_base_gpr write_base_gpr
@@ -439,7 +439,7 @@ theorem w_irrelevant : w fld (r fld s) s = s := by
   unfold read_base_error write_base_error
   repeat (split <;> simp_all)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem fetch_inst_of_w : fetch_inst addr (w fld val s) = fetch_inst addr s := by
   unfold fetch_inst w
   unfold write_base_gpr
@@ -450,7 +450,7 @@ theorem fetch_inst_of_w : fetch_inst addr (w fld val s) = fetch_inst addr s := b
   split <;> simp_all!
 
 -- There is no StateField that overwrites the program.
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem w_program : (w fld v s).program = s.program := by
   intros
   cases fld <;> unfold w <;> simp
@@ -463,7 +463,7 @@ theorem w_program : (w fld v s).program = s.program := by
 -- The following functions are defined in terms of r and w, but may be
 -- simpler to use.
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def read_gpr (width : Nat) (idx : BitVec 5) (s : ArmState)
   : BitVec width :=
     let val := r (StateField.GPR idx) s
@@ -471,7 +471,7 @@ def read_gpr (width : Nat) (idx : BitVec 5) (s : ArmState)
 
 -- Use read_gpr_zr when register 31 is mapped to the zero register ZR,
 -- instead of the default (Stack pointer).
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def read_gpr_zr (width : Nat) (idx : BitVec 5) (s : ArmState)
   : BitVec width :=
   if idx ≠ 31#5 then
@@ -482,7 +482,7 @@ def read_gpr_zr (width : Nat) (idx : BitVec 5) (s : ArmState)
 -- In practice, we only ever access the low 32 bits or the full 64
 -- bits of these registers in Arm. When we write 32 bits to these
 -- registers, the upper 32 bits are zeroed out.
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def write_gpr (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
   : ArmState :=
     let val := BitVec.zeroExtend 64 val
@@ -490,14 +490,14 @@ def write_gpr (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
 
 -- Use write_gpr_zr when register 31 is mapped to the zero register
 -- ZR, instead of the default (Stack pointer).
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def write_gpr_zr (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState)
   : ArmState :=
   if idx ≠ 31#5 then
     write_gpr n idx val s
   else
     s
--- read_gpr and write_gpr are tagged with @[state_simp_rules], which let us solve
+-- read_gpr and write_gpr are tagged with @[lnsimp, state_simp_rules], which let us solve
 -- the following using just simp, write_gpr, read_gpr, r_of_w_same
 -- (see simp?).
 example (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState) :
@@ -505,39 +505,39 @@ example (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState) :
   BitVec.zeroExtend n (BitVec.zeroExtend 64 val) := by
   simp [state_simp_rules, minimal_theory]
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def read_sfp (width : Nat) (idx : BitVec 5) (s : ArmState) : BitVec width :=
   let val := r (StateField.SFP idx) s
   BitVec.zeroExtend width val
 
 -- Write `val` to the `idx`-th SFP, zeroing the upper bits, if
 -- applicable.
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def write_sfp (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState) : ArmState :=
    let val := BitVec.zeroExtend 128 val
    w (StateField.SFP idx) val s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def read_pc (s : ArmState) : BitVec 64 :=
   r StateField.PC s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def write_pc (v : BitVec 64) (s : ArmState) : ArmState :=
   w StateField.PC v s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def read_flag (flag : PFlag) (s : ArmState) : BitVec 1 :=
   r (StateField.FLAG flag) s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def write_flag (flag : PFlag) (val : BitVec 1) (s : ArmState) : ArmState :=
   w (StateField.FLAG flag) val s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def read_pstate (s : ArmState) : PState :=
   s.pstate
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def write_pstate (pstate : PState) (s : ArmState) : ArmState :=
   open StateField PFlag in
   let s := w (FLAG N) pstate.n s
@@ -546,15 +546,15 @@ def write_pstate (pstate : PState) (s : ArmState) : ArmState :=
   let s := w (FLAG V) pstate.v s
   s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def make_pstate (n z c v : BitVec 1) : PState :=
   { n, z, c, v }
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def read_err (s : ArmState) : StateError :=
   r StateField.ERR s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def write_err (v : StateError) (s : ArmState) : ArmState :=
   w StateField.ERR v s
 
@@ -682,7 +682,7 @@ theorem r_of_write_mem : r fld (write_mem addr val s) = r fld s := by
   unfold write_mem
   split <;> simp
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem r_of_write_mem_bytes :
   r fld (write_mem_bytes n addr val s) = r fld s := by
   induction n generalizing addr s
@@ -698,7 +698,7 @@ theorem fetch_inst_of_write_mem :
   unfold fetch_inst write_mem
   simp
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem fetch_inst_of_write_mem_bytes :
   fetch_inst addr1 (write_mem_bytes n addr2 val s) = fetch_inst addr1 s := by
   induction n generalizing addr2 s
@@ -716,7 +716,7 @@ theorem read_mem_of_w :
   unfold write_base_pc write_base_flag write_base_error
   split <;> simp
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem read_mem_bytes_of_w :
   read_mem_bytes n addr (w fld v s) = read_mem_bytes n addr s := by
   induction n generalizing addr s
@@ -727,7 +727,7 @@ theorem read_mem_bytes_of_w :
     rw [n_ih]
   done
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem read_mem_bytes_w_of_read_mem_eq
     (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
     (fld val n₁ addr₁) :
@@ -735,7 +735,7 @@ theorem read_mem_bytes_w_of_read_mem_eq
     = read_mem_bytes n₁ addr₁ s₂ := by
   simp only [read_mem_bytes_of_w, h]
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n * 8)):
     (write_mem_bytes n addr bytes s).program = s.program := by
   intros

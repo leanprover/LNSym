@@ -13,7 +13,7 @@ namespace DPR
 
 open BitVec
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def decode_op (opc : BitVec 2) (N : BitVec 1) : LogicalShiftedRegType :=
   match opc, N with
   | 0b00, 0b0 => LogicalShiftedRegType.AND
@@ -32,7 +32,7 @@ def logical_shifted_reg_update_pstate (bv : BitVec n) : PState :=
   let V := 0#1
   (make_pstate N Z C V)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_logical_shifted_reg_op (op : LogicalShiftedRegType) (opd1 : BitVec n) (opd2 : BitVec n)
   : (BitVec n × Option PState) :=
   match op with
@@ -49,7 +49,7 @@ def exec_logical_shifted_reg_op (op : LogicalShiftedRegType) (opd1 : BitVec n) (
     let result := opd1 &&& ~~~opd2
     (result, some (logical_shifted_reg_update_pstate result))
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_logical_shifted_reg (inst : Logical_shifted_reg_cls) (s : ArmState) : ArmState :=
   if inst.sf = 0#1 ∧ inst.imm6 &&& 32 ≠ 0 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s

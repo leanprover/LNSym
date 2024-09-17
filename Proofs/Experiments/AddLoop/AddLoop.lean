@@ -515,7 +515,7 @@ theorem effects_of_nextc_from_0x4005b8 (_h_pre : pre s0)
 -------------------------------------------------------------------------------
 
 -- TODO: Upstream?
-@[bitvec_rules]
+@[lnsimp, bitvec_rules]
 theorem BitVec.le_refl (x : BitVec n) :
   x <= x := by
   exact BitVec.le_of_eq x x rfl

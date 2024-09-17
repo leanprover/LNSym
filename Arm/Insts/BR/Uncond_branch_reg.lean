@@ -17,7 +17,7 @@ open BitVec
 
 -- (FIXME) Extend Cfg.addToGraphs when more instructions in this
 -- category are implemented.
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_uncond_branch_reg (inst : Uncond_branch_reg_cls) (s : ArmState) : ArmState :=
     -- Only RET is implemented.
     if not (inst.opc = 0b0010#4 ∧ inst.op2 = 0b11111#5 ∧

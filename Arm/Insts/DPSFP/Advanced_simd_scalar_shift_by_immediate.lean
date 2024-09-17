@@ -15,7 +15,7 @@ namespace DPSFP
 
 open BitVec
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_shift_right_scalar
   (inst : Advanced_simd_scalar_shift_by_immediate_cls) (s : ArmState) : ArmState :=
   if lsb inst.immh 3 ≠ 0b1#1 then
@@ -39,7 +39,7 @@ def exec_shift_right_scalar
     let s := write_pc ((read_pc s) + 4#64) s
     s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_shl_scalar
   (inst : Advanced_simd_scalar_shift_by_immediate_cls) (s : ArmState) : ArmState :=
   if lsb inst.immh 3 ≠ 0b1#1 then
@@ -60,7 +60,7 @@ def exec_shl_scalar
     let s := write_pc ((read_pc s) + 4#64) s
     s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_advanced_simd_scalar_shift_by_immediate
   (inst : Advanced_simd_scalar_shift_by_immediate_cls) (s : ArmState) : ArmState :=
   match inst.U, inst.opcode with

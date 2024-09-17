@@ -15,7 +15,7 @@ namespace BR
 
 open BitVec
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_hints (inst : Hints_cls) (s : ArmState) : ArmState :=
   if inst.CRm = 0b0000#4 ∧ inst.op2 = 0b000#3 then
     write_pc ((read_pc s) + 4#64) s

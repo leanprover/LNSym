@@ -71,7 +71,7 @@ theorem append_byte_of_extract_rest_same_cast (n : Nat) (v : BitVec ((n + 1) * 8
   · omega
   done
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem read_mem_bytes_of_write_mem_bytes_same (hn1 : n <= 2^64) :
   read_mem_bytes n addr (write_mem_bytes n addr v s) = v := by
   by_cases hn0 : n = 0
@@ -116,7 +116,7 @@ theorem read_mem_bytes_of_write_mem_bytes_same (hn1 : n <= 2^64) :
 ----------------------------------------------------------------------
 -- Key theorem: read_mem_bytes_of_write_mem_bytes_different
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem read_mem_bytes_of_write_mem_bytes_different
   (hn1 : n1 <= 2^64) (hn2 : n2 <= 2^64)
   (h : mem_separate addr1 (addr1 + (BitVec.ofNat 64 (n1 - 1))) addr2 (addr2 + (BitVec.ofNat 64 (n2 - 1)))) :
@@ -197,7 +197,7 @@ theorem write_mem_of_write_mem_bytes_commute
       · omega
   done
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem write_mem_bytes_of_write_mem_bytes_commute
   (h1 : n1 <= 2^64) (h2 : n2 <= 2^64)
   (h3 : mem_separate addr2 (addr2 + (BitVec.ofNat 64 (n2 - 1))) addr1 (addr1 + (BitVec.ofNat 64 (n1 - 1)))) :
@@ -236,7 +236,7 @@ theorem write_mem_bytes_of_write_mem_bytes_commute
 -- Key theorems: write_mem_bytes_of_write_mem_bytes_shadow_same_region
 -- and write_mem_bytes_of_write_mem_bytes_shadow_general
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem write_mem_bytes_of_write_mem_bytes_shadow_same_region
   (h : n <= 2^64) :
   write_mem_bytes n addr val2 (write_mem_bytes n addr val1 s) =
@@ -317,7 +317,7 @@ private theorem mem_subset_neq_first_addr_small_second_region
   cases h2
   · rename_i h
     simp only [BitVec.add_sub_self_left_64] at h
-    have l1 : n' = 18446744073709551615 := by      
+    have l1 : n' = 18446744073709551615 := by
       rw [BitVec.toNat_eq] at h
       simp only [toNat_ofNat, Nat.reducePow, Nat.reduceMod] at h
       omega
@@ -462,7 +462,7 @@ private theorem write_mem_bytes_of_write_mem_bytes_shadow_general_n2_eq
           · omega
         · exact h₁
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem write_mem_bytes_of_write_mem_bytes_shadow_general
   (h1u : n1 <= 2^64) (h2l : 0 < n2) (h2u : n2 <= 2^64)
   (h3 : mem_subset addr1 (addr1 + (BitVec.ofNat 64 (n1 - 1))) addr2 (addr2 + (BitVec.ofNat 64 (n2 - 1)))) :
@@ -927,7 +927,7 @@ private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_eq_alt
       simp [my_pow_2_gt_zero]
     · unfold my_pow; decide
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem read_mem_bytes_of_write_mem_bytes_subset
   (h0 : 0 < n1) (h1 : n1 <= 2^64) (h2 : 0 < n2) (h3 : n2 <= 2^64)
   (h4 : mem_subset addr2 (addr2 + (BitVec.ofNat 64 (n2 - 1))) addr1 (addr1 + (BitVec.ofNat 64 (n1 - 1))))
@@ -997,7 +997,7 @@ private theorem extract_byte_of_read_mem_bytes_succ (n : Nat) :
   rw [l0, Nat.mod_eq_of_lt y.isLt]
   done
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 theorem write_mem_bytes_irrelevant :
   write_mem_bytes n addr (read_mem_bytes n addr s) s = s := by
   induction n generalizing addr s

@@ -17,7 +17,7 @@ namespace DPSFP
 
 open BitVec
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_advanced_simd_extract
   (inst : Advanced_simd_extract_cls) (s : ArmState) : ArmState :=
   open BitVec in

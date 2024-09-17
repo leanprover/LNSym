@@ -15,7 +15,7 @@ namespace DPSFP
 
 open BitVec
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_shift_right_vector
   (inst : Advanced_simd_shift_by_immediate_cls) (s : ArmState) : ArmState :=
   if inst.immh = 0b0000#4 then
@@ -50,7 +50,7 @@ def exec_shift_right_vector
     let s := write_pc ((read_pc s) + 4#64) s
     s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_shl_vector
   (inst : Advanced_simd_shift_by_immediate_cls) (s : ArmState) : ArmState :=
   if (lsb inst.immh 3) ++ inst.Q = 0b10#2 then
@@ -73,7 +73,7 @@ def exec_shl_vector
     let s := write_pc ((read_pc s) + 4#64) s
     s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_advanced_simd_shift_by_immediate
   (inst : Advanced_simd_shift_by_immediate_cls) (s : ArmState) : ArmState :=
   if inst.immh = 0b0000#4 then

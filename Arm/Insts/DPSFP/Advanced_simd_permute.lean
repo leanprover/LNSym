@@ -30,7 +30,7 @@ def trn_aux (p : Nat) (pairs : Nat) (esize : Nat) (part : Nat)
     trn_aux (p + 1) pairs esize part operand1 operand2 result h
   termination_by (pairs - p)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_trn (inst : Advanced_simd_permute_cls) (s : ArmState) : ArmState :=
   if inst.size ++ inst.Q = 0b110#3 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
@@ -50,7 +50,7 @@ def exec_trn (inst : Advanced_simd_permute_cls) (s : ArmState) : ArmState :=
     let s := write_pc ((read_pc s) + 4#64) s
     s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_advanced_simd_permute
   (inst : Advanced_simd_permute_cls) (s : ArmState) : ArmState :=
   match inst.opcode with

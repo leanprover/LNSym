@@ -17,7 +17,7 @@ namespace DPSFP
 
 open BitVec
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_aese
   (inst : Crypto_aes_cls) (s : ArmState) : ArmState :=
   -- Assumes IsFeatureImplemented(FEAT_AES)
@@ -82,7 +82,7 @@ def FFmul03 (b : BitVec 8) : BitVec 8 :=
 def AESMixColumns (op : BitVec 128) : BitVec 128 :=
   AESCommon.MixColumns op FFmul02 FFmul03
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_aesmc
   (inst : Crypto_aes_cls) (s : ArmState) : ArmState :=
   -- Assumes IsFeatureImplemented(FEAT_AES)
@@ -94,7 +94,7 @@ def exec_aesmc
   let s := write_pc ((read_pc s) + 4#64) s
   s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_crypto_aes
   (inst : Crypto_aes_cls) (s : ArmState) : ArmState :=
   match inst.size, inst.opcode with

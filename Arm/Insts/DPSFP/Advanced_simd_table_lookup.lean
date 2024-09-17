@@ -46,7 +46,7 @@ def tblx_aux (i : Nat) (elements : Nat) (indices : BitVec datasize)
     tblx_aux (i + 1) elements indices regs table result
   termination_by (elements - i)
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_tblx (inst : Advanced_simd_table_lookup_cls) (s : ArmState) : ArmState :=
   let datasize := 64 <<< inst.Q.toNat
   let elements := datasize / 8
@@ -64,7 +64,7 @@ def exec_tblx (inst : Advanced_simd_table_lookup_cls) (s : ArmState) : ArmState 
   let s := write_pc ((read_pc s) + 4#64) s
   s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_advanced_simd_table_lookup
   (inst : Advanced_simd_table_lookup_cls) (s : ArmState) : ArmState :=
   if inst.op2 = 0b00#2 then

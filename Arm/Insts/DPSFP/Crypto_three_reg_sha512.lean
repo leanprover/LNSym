@@ -70,7 +70,7 @@ def sha512su1 (x : BitVec 128) (y : BitVec 128) (w : BitVec 128)
   let result      := vtmp_127_64 ++ vtmp_63_0
   result
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_crypto_three_reg_sha512
   (inst : Crypto_three_reg_sha512_cls) (s : ArmState) : ArmState :=
   open BitVec in

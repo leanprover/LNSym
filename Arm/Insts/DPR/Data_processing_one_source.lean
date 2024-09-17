@@ -52,7 +52,7 @@ private theorem opc_and_sf_constraint (x : BitVec 2) (y : BitVec 1)
   have h₁ : 3 < 2 ^ 2 := by decide
   simp only [not_and, Nat.reducePow, h₁, true_and, Nat.pow_one, Nat.zero_lt_succ, imp_self]
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_data_processing_rev
   (inst : Data_processing_one_source_cls) (s : ArmState) : ArmState :=
   let opc : BitVec 2 := extractLsb 1 0 inst.opcode
@@ -86,7 +86,7 @@ def exec_data_processing_rev
     let s := write_pc ((read_pc s) + 4#64) s
     s
 
-@[state_simp_rules]
+@[lnsimp, state_simp_rules]
 def exec_data_processing_one_source
   (inst : Data_processing_one_source_cls) (s : ArmState) : ArmState :=
   match inst.sf, inst.S, inst.opcode2, inst.opcode with
