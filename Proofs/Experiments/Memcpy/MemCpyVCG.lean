@@ -19,26 +19,9 @@ import Arm.Insts.Common
 import Arm.Memory.SeparateAutomation
 import Arm.Syntax
 import Tactics.ExtractGoal
-
+import Tactics.SkipProof
 
 namespace Memcpy
-
-set_option showTacticDiff false
-
-
-register_option proven_by.skip_proof : Bool := {
-  defValue := False
-  descr := "If `skip_proof` is true, `proven_by p` skips running `p` and closes the goal with `provenByAx`."
-}
-
-axiom provenByAx {α : Sort _} : α
-syntax (name := parserProvenBy) "proven_by" tactic : tactic
-macro_rules
-| `(tactic| proven_by $_x) =>
-  -- `(tactic| exact provenByAx)
-  `(tactic| $_x)
-
-
 
 /-
 while (x0 != 0) {
@@ -427,8 +410,6 @@ structure Step_8f0_8f4 (scur : ArmState) (snext : ArmState) extends WellFormedAt
   h_x2 : snext.x2 = scur.x2
   h_q4 : snext.q4 = scur.q4
 
-
-
 theorem program.step_8f0_8f4_of_wellformed (scur snext : ArmState)
     (hs : WellFormedAtPc scur 0x8f0#64)
     (hstep : Stepped scur snext) : Step_8f0_8f4 scur snext := by
@@ -514,6 +495,7 @@ end CutTheorems
 
 section PartialCorrectness
 
+-- set_option skip_proof.skip true in
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -541,76 +523,31 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
   have h_upper_bound := hsep.hb.omega_def
   have h_upper_bound₂ := h_pre_1.hb.omega_def
   have h_upper_bound₃ := hsep.ha.omega_def
-  -- have h_upper_bound₄ : (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat < 2 ^ 64 := by bv_omega
-  -- have h_left_upper_bound : (0x10#64 * (s0.x0 - si.x0)).toNat < s0.x0.toNat * 16 := by bv_omega
-  -- have h_upper_bound₄ : 16 * ((s0.x0 - (si.x0 - 0x1#64))).toNat ≤ 2 ^ 64 := by bv_omega
-  -- have want₁ : 16 * s0.x0.toNat < 2 ^ 64 := by sorry -- I seem to need this precondition.
   have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by
     have := mem_separate'.len_le h_pre_1
     bv_omega
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
   · rw [h_assert_6]
     apply mem_separate'.of_le_size hsep
-    -- (0x10#64 * (s0.x0 - si.x0)).toNat ≤ (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat
-    -- should be true, because from `h_pre_1`, we know that `s0.x0.toNat * 16 < 2^64`.
-    -- This will let us show that `(s0.x0 - si.x0) < 2^64`, since this subtraction cannot overflow
-    rw [BitVec.toNat_mul_of_lt (by proven_by bv_omega)]
+    rw [BitVec.toNat_mul_of_lt (by skip_proof bv_omega)]
     rw [BitVec.toNat_mul_of_lt]
-    · proven_by bv_omega
-    · proven_by omega
+    · skip_proof bv_omega
+    · skip_proof omega
   · apply mem_separate'.symm
     apply mem_separate'.of_subset'_of_subset' hsep
     · apply mem_subset'.of_omega
-      constructor
-      · proven_by bv_omega
-      · constructor
-        · proven_by bv_omega
-        · constructor
-          · proven_by bv_omega
-          · proven_by bv_omega
+      refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
     · apply mem_subset'_refl hsep.hb
 
-
-
+-- set_option skip_proof.skip true in
 set_option maxHeartbeats 999999 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
-  -- (h_exit : ¬r StateField.PC si = 0x8f8#64)
-  -- (h_pre : pre s0)
-  -- (pc : state_value StateField.PC)
-  -- (h_si : r StateField.PC si = 0x8f4#64)
-  -- (s1 : ArmState)
-  -- (h_s1_next_si : Sys.next si = s1)
-  -- (si_well_formed : WellFormedAtPc si 0x8f4#64)
-  -- (h_si_x0 : r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64)
-  -- (hz : ¬r (StateField.FLAG PFlag.Z) si = 0x1#1)
-  -- (step_8f4_8e4 : Step_8f4_8e4 si s1)
-  -- (s2 : ArmState)
-  -- (h_s2_next_s1 : Sys.next s1 = s2)
-  -- (step_8e4_8e8 : Step_8e4_8e8 s1 s2)
-  -- (s3 : ArmState)
-  -- (h_s3_next_s2 : Sys.next s2 = s3)
-  -- (step_8e8_8ec : Step_8e8_8ec s2 s3)
-  -- (s4 : ArmState)
-  -- (h_s4_next_s3 : Sys.next s3 = s4)
-  -- (step_8ec_8f0 : Step_8ec_8f0 s3 s4)
-  -- (s5 : ArmState)
-  -- (h_s5_next_s4 : Sys.next s4 = s5)
-  -- (step_8f0_8f4 : Step_8f0_8f4 s4 s5)
-  -- (h_s5_x0 : s5.x0 = si.x0 - 0x1#64)
-  -- (h_s4_x0 : s4.x0 = si.x0 - 0x1#64)
   (h_si_x0_nonzero : si.x0 ≠ 0)
-  -- (h_s5_x1 : s5.x1 = si.x1 + 0x10#64)
-  -- (h_s5_x2 : s5.x2 = si.x2 + 0x10#64)
-  -- (h_si_x1 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
-  -- (h_si_x2 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-  -- (h_s5_z : r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ si.x0 - 0x1#64 = 0x0#64)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
   (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
   (h_assert_1 : si.x0 ≤ s0.x0)
-  -- (h_assert_2 : r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64)
   (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
   (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-  -- (h_assert_7 : r StateField.ERR si = StateError.None ∧ si.program = program ∧ CheckSPAlignment si)
   (h_assert_6 :
     ∀ (n : Nat) (addr : BitVec 64),
       mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat addr n →
@@ -620,9 +557,6 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       i < s0.x0 - si.x0 →
         Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
   (h_pre_1 : mem_separate' s0.x1 (s0.x0.toNat * 16) s0.x2 (s0.x0.toNat * 16)) (h_pre_2 : r StateField.PC s0 = 0x8e0#64)
-  -- (h_pre_3 : s0.program = program)
-  -- (h_pre_4 : r StateField.ERR s0 = StateError.None)
-  -- (h_pre_5 : CheckSPAlignment s0)
   (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
   :
   (∀ (i : BitVec 64),
@@ -640,9 +574,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
   apply And.intro
   · intros i hi
     have h_subset_2 : mem_subset' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat s0.x2 (s0.x0.toNat * 16) := by
-      proven_by simp_mem
+      skip_proof simp_mem
     have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by
-      proven_by {
+      skip_proof {
         simp only [show 0x10#64 * (s0.x0 - si.x0) = (s0.x0 - si.x0) * 0x10#64 by bv_omega]
         apply mem_subset'.of_offset
         · decide
@@ -650,9 +584,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
         · simp_mem
         · rfl
       }
-    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by proven_by bv_omega
+    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by skip_proof bv_omega
     have s2_sum_inbounds := h_pre_1.hb.omega_def
-    have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by proven_by bv_omega
+    have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
 
     rcases icases with hi | hi
     · subst hi
@@ -663,22 +597,18 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           apply mem_separate'.of_subset'_of_subset' h_pre_1 h_subset_1 h_subset_2
       · apply mem_subset'_refl
         have h_s0_x2_legal := h_pre_1.hb
-        have h_s0_sub_si_small : s0.x0 - si.x0 ≤ s0.x0 := by proven_by bv_omega
-        proven_by simp_mem
-        -- sorry -- simp_mem
-      -- What I need to do is to rewrite using h_assert,
-      -- because in this case, we know that i < s0.x0 - si.x0,
-      -- and so we are accessing memory from prior loop iterations.
+        have h_s0_sub_si_small : s0.x0 - si.x0 ≤ s0.x0 := by skip_proof bv_omega
+        skip_proof simp_mem
 
     · rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
       · apply h_assert_5 _ hi
       · constructor
-        · proven_by simp_mem
-        · proven_by simp_mem
+        · skip_proof simp_mem
+        · skip_proof simp_mem
         · left
-          proven_by {
+          skip_proof {
             have s2_sum_inbounds := h_pre_1.hb.omega_def
-            have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by proven_by bv_omega
+            have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
             rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
             rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
             rw [BitVec.toNat_mul_of_lt (by bv_omega)]
@@ -805,7 +735,7 @@ theorem partial_correctness :
             simp only [memory_rules] at h_si_read_sep
             rw [h_si_read_sep]
             rw [h_si_x0_eq_zero]
-            proven_by simp_mem -- nice!
+            skip_proof simp_mem -- nice!
           · simp only [step.h_err, step.h_program, step.h_sp_aligned, and_self]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
@@ -851,7 +781,7 @@ theorem partial_correctness :
         have h_si_x0_nonzero : si.x0 ≠ 0 := by
           intro hcontra
           have := h_si_x0.mpr hcontra
-          proven_by contradiction
+          skip_proof contradiction
 
         have h_s5_x1 : s5.x1 = si.x1 + 0x10#64 := by
           rw [step_8f0_8f4.h_x1,
@@ -879,16 +809,16 @@ theorem partial_correctness :
         simp only [show s5.x0 ≤ s0.x0 by bv_omega, true_and]
         rw [h_s5_x0, h_s5_x1, h_si_x1]
         have h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
-          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by proven_by bv_omega,
+          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega,
             BitVec.BitVec.mul_add,
             BitVec.add_assoc, BitVec.mul_one]
         simp only [h_s0_x1, true_and]
 
         rw [h_s5_x2, h_si_x2]
         have h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
-          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by proven_by bv_omega,
+          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega,
             BitVec.BitVec.mul_add]
-          proven_by bv_omega
+          skip_proof bv_omega
         simp only [h_s0_x2, true_and]
         simp only [step_8f0_8f4.h_err,
           step_8f0_8f4.h_program,
@@ -917,7 +847,6 @@ theorem partial_correctness :
       contradiction
     case h_4 pc h_si =>
       apply False.elim h_assert
-
 /--
 info: 'Memcpy.partial_correctness' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
 -/
