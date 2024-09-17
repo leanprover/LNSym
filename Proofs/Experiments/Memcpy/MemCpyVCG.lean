@@ -25,6 +25,12 @@ namespace Memcpy
 
 set_option showTacticDiff false
 
+
+register_option proven_by.skip_proof : Bool := {
+  defValue := False
+  descr := "If `skip_proof` is true, `proven_by p` skips running `p` and closes the goal with `provenByAx`."
+}
+
 axiom provenByAx {α : Sort _} : α
 syntax (name := parserProvenBy) "proven_by" tactic : tactic
 macro_rules
@@ -507,101 +513,6 @@ theorem program.step_8f4_8f8_of_wellformed_of_z_eq_1 (scur snext : ArmState)
 end CutTheorems
 
 section PartialCorrectness
-
-private theorem eq_or_lt (hy : y ≥ 1) (hi: i < x - (y - 0x1#64)) : (i = x - y ∨ i < x - y) := by
-  bv_decide
-
-theorem mem_separate'.of_le_size (h : mem_separate' addr₁ n₁ addr₂ n₂)
-  (hn : n₁' ≤ n₁) : mem_separate' addr₁ n₁' addr₂ n₂ := by simp_mem
-
-theorem mem_separate'.of_add_le (h : mem_legal' addr₁ n₁) (h' : mem_legal' addr₂ n₂)
-  (h : addr₁.toNat + n₁ ≤ addr₂.toNat) : mem_separate' addr₁ n₁ addr₂ n₂ := by
-  simp_mem
-
-
-theorem mem_separate'.symm (h : mem_separate' addr₁ n₁ addr₂ n₂) : mem_separate' addr₂ n₂ addr₁ n₁ := by
-  simp_mem
-
-theorem mem_separate'.of_subset'_of_subset'
-  (h : mem_separate' addr₁ n₁ addr₂ n₂)
-  (h₁ : mem_subset' addr₁' n₁' addr₁ n₁)
-  (h₂ : mem_subset' addr₂' n₂' addr₂ n₂) : mem_separate' addr₁' n₁' addr₂' n₂' := by simp_mem
-
-
-theorem mem_subset'.of_offset {nblocks sz : Nat} {base k sz' : BitVec 64}
-    (hsz : sz > 0)
-    -- (hnblocks : nblocks > 0)
-    (hk : k.toNat < nblocks)
-    (hlegal : mem_legal' base (nblocks * sz))
-    (hsz_eq_sz' : sz'.toNat = sz)
-    : mem_subset' (base + k * sz') sz base (nblocks * sz) := by
-  have legal' := hlegal.omega_def
-  have hmul' : (k * sz').toNat = k.toNat * sz := by
-    simp
-    rw [hsz_eq_sz']
-    apply Nat.mod_eq_of_lt
-    have := hlegal.omega_def
-    apply Nat.lt_of_lt_of_le (m := nblocks * sz)
-    · apply Nat.mul_lt_mul_of_pos_right hk hsz
-    · omega
-  have hmul_lt : (k * sz').toNat < nblocks * sz := by
-    rw [hmul']
-    apply Nat.mul_lt_mul_of_pos_right hk hsz
-  have hadd : (base + k * sz').toNat = base.toNat + (k * sz').toNat := by
-    proven_by bv_omega'
-
-  constructor
-  · apply mem_legal'.of_omega
-    rw [BitVec.toNat_add_eq_toNat_add_toNat]
-    · rw [hmul']
-      rw [show base.toNat + k.toNat * sz + sz = base.toNat + k.toNat * sz + 1 * sz by omega]
-      rw [Nat.add_assoc]
-      rw [← Nat.add_mul]
-      have : (k.toNat + 1) * sz ≤ nblocks * sz := by
-        apply Nat.mul_le_mul_right
-        proven_by omega
-      proven_by omega
-    · proven_by bv_omega'
-  · exact hlegal
-  · rw [BitVec.le_def, hadd]
-    proven_by bv_omega'
-  · rw [hadd]
-    rw [Nat.add_assoc]
-    apply Nat.add_le_add_iff_left.mpr
-    rw [hmul']
-    rw [show k.toNat * sz + sz = k.toNat * sz + 1 * sz by proven_by omega]
-    rw [← Nat.add_mul]
-    apply Nat.mul_le_mul_right
-    proven_by omega
-
-theorem BitVec.toNat_mul_of_lt {w} {x y : BitVec w} (h : x.toNat * y.toNat < 2^w) :
-    (x * y).toNat = x.toNat * y.toNat := by
-  rw [BitVec.toNat_mul, Nat.mod_eq_of_lt h]
-
-theorem BitVec.toNat_sub_of_lt {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
-    (y - x).toNat = y.toNat - x.toNat := by
-  rw [BitVec.toNat_sub]
-  rw [show (2^w - x.toNat + y.toNat) = 2^w + (y.toNat - x.toNat) by omega]
-  rw [Nat.add_mod]
-  simp only [Nat.mod_self, Nat.zero_add, Nat.mod_mod]
-  rw [Nat.mod_eq_of_lt]
-  omega
-
--- theorem Nat.lt_of_mul_left' {a b c : Nat} (h : a * b < c) (ha : a > 0) : b < c := by sorry
-
-theorem BitVec.toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
-    (hxy : x.toNat * y.toNat ≤ k)
-    (hyz : z ≤ y) :
-  x.toNat * z.toNat ≤ k := by
-  apply Nat.le_trans (m := x.toNat * y.toNat)
-  · apply Nat.mul_le_mul_left
-    bv_omega
-  · exact hxy
-
-theorem mem_separate'.len_le {addr₁ addr₂ : BitVec 64} {n₁ n₂ : Nat}
-    (hsep : mem_separate' addr₁ n₁ addr₂ n₂) : n₁ + n₂ ≤ 2^64 := by
-  have := hsep.omega_def
-  bv_omega
 
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)

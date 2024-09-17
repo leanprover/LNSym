@@ -1061,6 +1061,30 @@ theorem not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
   · simp [h]
     exact Int.not_lt.mp h
 
+
+theorem toNat_mul_of_lt {w} {x y : BitVec w} (h : x.toNat * y.toNat < 2^w) :
+    (x * y).toNat = x.toNat * y.toNat := by
+  rw [BitVec.toNat_mul, Nat.mod_eq_of_lt h]
+
+theorem toNat_sub_of_lt {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
+    (y - x).toNat = y.toNat - x.toNat := by
+  rw [BitVec.toNat_sub]
+  rw [show (2^w - x.toNat + y.toNat) = 2^w + (y.toNat - x.toNat) by omega]
+  rw [Nat.add_mod]
+  simp only [Nat.mod_self, Nat.zero_add, Nat.mod_mod]
+  rw [Nat.mod_eq_of_lt]
+  omega
+
+theorem toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
+    (hxy : x.toNat * y.toNat ≤ k)
+    (hyz : z ≤ y) :
+    x.toNat * z.toNat ≤ k := by
+  apply Nat.le_trans (m := x.toNat * y.toNat)
+  · apply Nat.mul_le_mul_left
+    bv_omega
+  · exact hxy
+
+
 /-! ## Length one bitvector lemmas -/
 
 

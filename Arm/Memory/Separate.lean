@@ -324,6 +324,11 @@ theorem mem_separate'.of_omega
   · unfold mem_legal'; omega
   · omega
 
+theorem mem_separate'.len_le {addr₁ addr₂ : BitVec 64} {n₁ n₂ : Nat}
+    (hsep : mem_separate' addr₁ n₁ addr₂ n₂) : n₁ + n₂ ≤ 2^64 := by
+  have := hsep.omega_def
+  bv_omega
+
 theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
   rw [BitVec.le_def, BitVec.lt_def]
   omega
@@ -409,6 +414,81 @@ theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
   hstart := by simp only [BitVec.le_def, Nat.le_refl]
   hend := by simp only [Nat.le_refl]
 
+theorem mem_separate'.of_le_size (h : mem_separate' addr₁ n₁ addr₂ n₂)
+  (hn : n₁' ≤ n₁) : mem_separate' addr₁ n₁' addr₂ n₂ := by
+  have := h.omega_def
+  apply mem_separate'.of_omega
+  bv_omega
+
+theorem mem_separate'.of_add_le (h : mem_legal' addr₁ n₁) (h' : mem_legal' addr₂ n₂)
+  (h_le : addr₁.toNat + n₁ ≤ addr₂.toNat) : mem_separate' addr₁ n₁ addr₂ n₂ := by
+  have := h'.omega_def
+  have := h.omega_def
+  apply mem_separate'.of_omega
+  bv_omega
+
+theorem mem_separate'.symm (h : mem_separate' addr₁ n₁ addr₂ n₂) : mem_separate' addr₂ n₂ addr₁ n₁ := by
+  have := h.omega_def
+  apply mem_separate'.of_omega
+  bv_omega
+
+theorem mem_separate'.of_subset'_of_subset'
+  (h : mem_separate' addr₁ n₁ addr₂ n₂)
+  (h₁ : mem_subset' addr₁' n₁' addr₁ n₁)
+  (h₂ : mem_subset' addr₂' n₂' addr₂ n₂) :
+  mem_separate' addr₁' n₁' addr₂' n₂' := by
+  have := h.omega_def
+  have := h₁.omega_def
+  have := h₂.omega_def
+  apply mem_separate'.of_omega
+  bv_omega
+
+theorem mem_subset'.of_offset {nblocks sz : Nat} {base k sz' : BitVec 64}
+    (hsz : sz > 0)
+    -- (hnblocks : nblocks > 0)
+    (hk : k.toNat < nblocks)
+    (hlegal : mem_legal' base (nblocks * sz))
+    (hsz_eq_sz' : sz'.toNat = sz)
+    : mem_subset' (base + k * sz') sz base (nblocks * sz) := by
+  have legal' := hlegal.omega_def
+  have hmul' : (k * sz').toNat = k.toNat * sz := by
+    simp
+    rw [hsz_eq_sz']
+    apply Nat.mod_eq_of_lt
+    have := hlegal.omega_def
+    apply Nat.lt_of_lt_of_le (m := nblocks * sz)
+    · apply Nat.mul_lt_mul_of_pos_right hk hsz
+    · omega
+  have hmul_lt : (k * sz').toNat < nblocks * sz := by
+    rw [hmul']
+    apply Nat.mul_lt_mul_of_pos_right hk hsz
+  have hadd : (base + k * sz').toNat = base.toNat + (k * sz').toNat := by
+    bv_omega
+
+  constructor
+  · apply mem_legal'.of_omega
+    rw [BitVec.toNat_add_eq_toNat_add_toNat]
+    · rw [hmul']
+      rw [show base.toNat + k.toNat * sz + sz = base.toNat + k.toNat * sz + 1 * sz by omega]
+      rw [Nat.add_assoc]
+      rw [← Nat.add_mul]
+      have : (k.toNat + 1) * sz ≤ nblocks * sz := by
+        apply Nat.mul_le_mul_right
+        omega
+      omega
+    · bv_omega
+  · exact hlegal
+  · rw [BitVec.le_def, hadd]
+    bv_omega
+  · rw [hadd]
+    rw [Nat.add_assoc]
+    apply Nat.add_le_add_iff_left.mpr
+    rw [hmul']
+    rw [show k.toNat * sz + sz = k.toNat * sz + 1 * sz by omega]
+    rw [← Nat.add_mul]
+    apply Nat.mul_le_mul_right
+    omega
+
 /--
 If `[a'..a'+an')` begins at least where `[a..an)` begins,
 and ends before `[a..an)` ends, and if `[a..an)` is a subset of `[b..bn)`,
@@ -471,6 +551,7 @@ theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hb
   · left
     bv_omega
   · bv_omega
+
 
 /- value of read_mem_bytes when separate from the write. -/
 theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
