@@ -23,6 +23,17 @@ import Tactics.ExtractGoal
 
 namespace Memcpy
 
+set_option showTacticDiff false
+
+axiom provenByAx {α : Sort _} : α
+syntax (name := parserProvenBy) "proven_by" tactic : tactic
+macro_rules
+| `(tactic| proven_by $_x) =>
+  -- `(tactic| exact provenByAx)
+  `(tactic| $_x)
+
+
+
 /-
 while (x0 != 0) {
   q4 := read_mem(16 bytes from address x1)
@@ -537,32 +548,31 @@ theorem mem_subset'.of_offset {nblocks sz : Nat} {base k sz' : BitVec 64}
     rw [hmul']
     apply Nat.mul_lt_mul_of_pos_right hk hsz
   have hadd : (base + k * sz').toNat = base.toNat + (k * sz').toNat := by
-    bv_omega'
+    proven_by bv_omega'
 
   constructor
   · apply mem_legal'.of_omega
     rw [BitVec.toNat_add_eq_toNat_add_toNat]
-    · -- ⊢ base.toNat + (k * sz').toNat + sz ≤ 2 ^ 64
-      rw [hmul']
+    · rw [hmul']
       rw [show base.toNat + k.toNat * sz + sz = base.toNat + k.toNat * sz + 1 * sz by omega]
       rw [Nat.add_assoc]
       rw [← Nat.add_mul]
       have : (k.toNat + 1) * sz ≤ nblocks * sz := by
         apply Nat.mul_le_mul_right
-        omega
-      omega
-    · bv_omega'
+        proven_by omega
+      proven_by omega
+    · proven_by bv_omega'
   · exact hlegal
   · rw [BitVec.le_def, hadd]
-    bv_omega'
+    proven_by bv_omega'
   · rw [hadd]
     rw [Nat.add_assoc]
     apply Nat.add_le_add_iff_left.mpr
     rw [hmul']
-    rw [show k.toNat * sz + sz = k.toNat * sz + 1 * sz by omega]
+    rw [show k.toNat * sz + sz = k.toNat * sz + 1 * sz by proven_by omega]
     rw [← Nat.add_mul]
     apply Nat.mul_le_mul_right
-    omega
+    proven_by omega
 
 theorem BitVec.toNat_mul_of_lt {w} {x y : BitVec w} (h : x.toNat * y.toNat < 2^w) :
     (x * y).toNat = x.toNat * y.toNat := by
@@ -587,114 +597,6 @@ theorem BitVec.toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
   · apply Nat.mul_le_mul_left
     bv_omega
   · exact hxy
-
-
--- theorem mem_separate'.of_offset {base i sz : BitVec 64}
---     (hsz : sz.toNat > 0)
---     (hi : i < n)
---     (hnmul : (sz * n).toNat = sz.toNat * n.toNat)
---     (himul : (sz * i).toNat = sz.toNat * i.toNat)
---     (hlegal : mem_legal' (base + sz * n) sz.toNat)
---     -- (hlegal' : mem_legal' (base + sz * i) sz.toNat)
---     -- (hinbounds_i : base.toNat + (sz * i).toNat < 2 ^ 64)
---     -- (hinbounds_n : base.toNat + (sz * n).toNat < 2 ^ 64)
---     : mem_separate' (base + sz * i) sz.toNat (base + sz * n) sz.toNat := by
---   rw [BitVec.lt_def] at hi
---   constructor
---   · have := hlegal.omega_def
---     apply mem_legal'.of_omega
---     rw [BitVec.toNat_add_eq_toNat_add_toNat]
---     rw [BitVec.toNat_add_eq_toNat_add_toNat] at this
---     · sorry
---   · simp_mem
---   · sorry
-
-set_option showTacticDiff false
-
-
--- theorem Memcpy.extracted_2 (s0 si : ArmState) (h_exit : ¬r StateField.PC si = 0x8f8#64) (h_pre : pre s0)
---   (pc : state_value StateField.PC)
---   (h_si : r StateField.PC si = 0x8f4#64)
---   (s1 : ArmState)
---   (h_s1_next_si : Sys.next si = s1)
---   (si_well_formed : WellFormedAtPc si 0x8f4#64)
---   -- (h_si_x0 : r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64)
---   (hz : ¬r (StateField.FLAG PFlag.Z) si = 0x1#1)
---   -- (step_8f4_8e4 : Step_8f4_8e4 si s1)
---   -- (s2 : ArmState)
---   -- (h_s2_next_s1 : Sys.next s1 = s2)
---   -- (step_8e4_8e8 : Step_8e4_8e8 s1 s2)
---   -- (s3 : ArmState)
---   -- (h_s3_next_s2 : Sys.next s2 = s3)
---   -- (step_8e8_8ec : Step_8e8_8ec s2 s3)
---   -- (s4 : ArmState)
---   -- (h_s4_next_s3 : Sys.next s3 = s4)
---   -- (step_8ec_8f0 : Step_8ec_8f0 s3 s4)
---   -- (s5 : ArmState)
---   -- (h_s5_next_s4 : Sys.next s4 = s5)
---   -- (step_8f0_8f4 : Step_8f0_8f4 s4 s5)
---   -- (h_s5_x0 : s5.x0 = si.x0 - 0x1#64)
---   -- (h_s4_x0 : s4.x0 = si.x0 - 0x1#64)
---   -- (h_si_x0_nonzero : si.x0 ≠ 0)
---   -- (h_s5_x1 : s5.x1 = si.x1 + 0x10#64)
---   -- (h_s5_x2 : s5.x2 = si.x2 + 0x10#64)
---   (h_si_x1 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
---   (h_si_x2 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
---   -- (h_s5_z : r (StateField.FLAG PFlag.Z) s5 = 0x1#1 ↔ si.x0 - 0x1#64 = 0x0#64)
---   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
---   (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
---   (h_assert_1 : si.x0 ≤ s0.x0)
---   (h_assert_2 : r (StateField.FLAG PFlag.Z) si = 0x1#1 ↔ si.x0 = 0x0#64)
---   (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
---   (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
---   (h_assert_5 :
---     ∀ (i : BitVec 64),
---       i < s0.x0 - si.x0 → read_mem_bytes 16 (s0.x2 + 0x10#64 * i) si = read_mem_bytes 16 (s0.x1 + 0x10#64 * i) s0)
---   (h_assert_6 :
---     ∀ (n : Nat)
---     (addr : BitVec 64),
---       mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat addr n →
---         read_mem_bytes n addr si = read_mem_bytes n addr s0)
---   (h_assert_7 : r StateField.ERR si = StateError.None ∧ si.program = program ∧ CheckSPAlignment si)
---   (n : Nat)
---   (addr : BitVec 64)
---   (h_sep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n) :
---   Memory.read_bytes n addr
---       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
---       (read_mem_bytes 16 s1.x1 s1) si.mem) =
---     Memory.read_bytes n addr s0.mem := sorry
---     -- intros mem_sep
---     -- simp only [memory_rules]
---     -- rw [step_8f0_8f4.h_mem]
---     -- rw [step_8ec_8f0.h_mem]
---     -- rw [step_8e8_8ec.h_mem]
---     -- rw [step_8e4_8e8.h_mem]
---     -- rw [step_8e4_8e8.h_q4]
---     -- rw [step_8e4_8e8.h_x2]
---     -- rw [step_8f4_8e4.h_x2]
---     -- rw [h_si_x2]
---     -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
---     -- · rw [step_8f4_8e4.h_mem]
---     --   have ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
---     --   simp only [memory_rules] at h_assert_6
---     --   rw [h_assert_6]
---     --   apply mem_separate'.of_le_size mem_sep
---     --   sorry -- bv_omega
-
---     -- · apply mem_separate'.symm
---     --   -- because mem_sep : mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
---     --   -- we want to show mem_separate' (si.x2 + 0x10#64 * (si.x0 - s2.x0)) 16 (si.x2 + 0x10#64 * (si.x0 - s0.x0)) 16
---     --   -- but see that the base pointer is moved up.
---     --   -- so in this case, we maintain separation because we have touched
---     --   -- a strictly smaller portion of memory.
---     --   sorry
-
-syntax (name := parserProvenBy) "proven_by" tactic : tactic
-macro_rules
-| `(tactic| proven_by $_x) =>
-  -- `(tactic| sorry)
-  `(tactic| $_x)
-
 
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
@@ -907,8 +809,7 @@ theorem partial_correctness :
       name h_s1_next_si : s1 := Sys.next si
       have h_si_wellformed : WellFormedAtPc si 2272 := by
         have {..} := h_pre
-        constructor <;> simp [*]
-
+        constructor <;> assumption
       have step_8e0_8f0 := program.step_8e0_8f0_of_wellformed si s1 h_si_wellformed (.of_next h_s1_next_si)
       rw [Correctness.snd_cassert_of_not_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si, step_8e0_8f0.h_cut])];
       simp only [Nat.zero_add]
@@ -943,11 +844,6 @@ theorem partial_correctness :
         simp only [BitVec.sub_self, BitVec.reduceMul, BitVec.add_zero]
       simp only [h_s2_x2, true_and]
 
-      -- have h_mem : ∀ (i : BitVec 64), i < si.x0 - s2.x0 →
-      --   read_mem_bytes 16 (si.x2 + 0x10#64 * i) s2 = read_mem_bytes 16 (si.x1 + 0x10#64 * i) si := by
-      --   intro i hi
-      --   rw [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0] at hi
-      --   simp [hi] -- contradiction
       constructor
       · intro i hi
         rw [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0] at hi
@@ -992,7 +888,7 @@ theorem partial_correctness :
             simp only [memory_rules] at h_si_read_sep
             rw [h_si_read_sep]
             rw [h_si_x0_eq_zero]
-            simp_mem -- nice!
+            proven_by simp_mem -- nice!
           · simp only [step.h_err, step.h_program, step.h_sp_aligned, and_self]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
@@ -1038,7 +934,7 @@ theorem partial_correctness :
         have h_si_x0_nonzero : si.x0 ≠ 0 := by
           intro hcontra
           have := h_si_x0.mpr hcontra
-          contradiction
+          proven_by contradiction
 
         have h_s5_x1 : s5.x1 = si.x1 + 0x10#64 := by
           rw [step_8f0_8f4.h_x1,
@@ -1066,16 +962,16 @@ theorem partial_correctness :
         simp only [show s5.x0 ≤ s0.x0 by bv_omega, true_and]
         rw [h_s5_x0, h_s5_x1, h_si_x1]
         have h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
-          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by bv_omega,
+          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by proven_by bv_omega,
             BitVec.BitVec.mul_add,
             BitVec.add_assoc, BitVec.mul_one]
         simp only [h_s0_x1, true_and]
 
         rw [h_s5_x2, h_si_x2]
         have h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
-          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by bv_omega,
+          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by proven_by bv_omega,
             BitVec.BitVec.mul_add]
-          bv_omega
+          proven_by bv_omega
         simp only [h_s0_x2, true_and]
         simp only [step_8f0_8f4.h_err,
           step_8f0_8f4.h_program,
