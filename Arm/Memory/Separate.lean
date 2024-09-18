@@ -1,4 +1,4 @@
-/-
+/-Mem
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Shilpi Goel, Siddharth Bhat
@@ -324,11 +324,6 @@ theorem mem_separate'.of_omega
   · unfold mem_legal'; omega
   · omega
 
-theorem mem_separate'.len_le {addr₁ addr₂ : BitVec 64} {n₁ n₂ : Nat}
-    (hsep : mem_separate' addr₁ n₁ addr₂ n₂) : n₁ + n₂ ≤ 2^64 := by
-  have := hsep.omega_def
-  bv_omega
-
 theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
   rw [BitVec.le_def, BitVec.lt_def]
   omega
@@ -336,19 +331,6 @@ theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
 theorem mem_separate'_comm (h : mem_separate' a an b bn) :
     mem_separate' b bn a an := by
   have := h.omega_def
-  apply mem_separate'.of_omega
-  omega
-
-/--
-`[a..an)` is disjoint from `[b..bn)`
-if they are both legal, and  `a.toNat + an < b.tNat` -/
-theorem mem_separate'.of_add_lt {a b : BitVec 64} {an bn : Nat}
-    (hlegal : mem_legal' a an)
-    (hlegal' : mem_legal' b bn)
-    (h : a.toNat + an < b.toNat) :
-    mem_separate' a an b bn := by
-  have := hlegal.omega_def
-  have := hlegal'.omega_def
   apply mem_separate'.of_omega
   omega
 
@@ -413,19 +395,6 @@ theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
   hb := h
   hstart := by simp only [BitVec.le_def, Nat.le_refl]
   hend := by simp only [Nat.le_refl]
-
-theorem mem_separate'.of_le_size (h : mem_separate' addr₁ n₁ addr₂ n₂)
-  (hn : n₁' ≤ n₁) : mem_separate' addr₁ n₁' addr₂ n₂ := by
-  have := h.omega_def
-  apply mem_separate'.of_omega
-  bv_omega
-
-theorem mem_separate'.of_add_le (h : mem_legal' addr₁ n₁) (h' : mem_legal' addr₂ n₂)
-  (h_le : addr₁.toNat + n₁ ≤ addr₂.toNat) : mem_separate' addr₁ n₁ addr₂ n₂ := by
-  have := h'.omega_def
-  have := h.omega_def
-  apply mem_separate'.of_omega
-  bv_omega
 
 theorem mem_separate'.symm (h : mem_separate' addr₁ n₁ addr₂ n₂) : mem_separate' addr₂ n₂ addr₁ n₁ := by
   have := h.omega_def

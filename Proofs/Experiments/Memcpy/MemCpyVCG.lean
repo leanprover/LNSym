@@ -504,17 +504,12 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
   have h_upper_bound := hsep.hb.omega_def
   have h_upper_bound₂ := h_pre_1.hb.omega_def
   have h_upper_bound₃ := hsep.ha.omega_def
-  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by
-    have := mem_separate'.len_le h_pre_1
-    bv_omega
+  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by simp_mem
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
   · rw [h_assert_6]
-    apply mem_separate'.of_le_size hsep
-    rw [BitVec.toNat_mul_of_lt (by skip_proof bv_omega)]
-    rw [BitVec.toNat_mul_of_lt]
-    · skip_proof bv_omega
-    · skip_proof omega
-  · apply mem_separate'.symm
+    simp_mem
+  · -- @bollu: TODO: figure out why this is so slow!
+    apply mem_separate'.symm
     apply mem_separate'.of_subset'_of_subset' hsep
     · apply mem_subset'.of_omega
       refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
