@@ -236,6 +236,7 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
               let (ctx, simprocs) ←
                 LNSymSimpContext
                   (config := {failIfUnchanged := false, decide := true})
+                  (simp_attrs := #[`lnsimp])
                   (decls := #[hSp])
               LNSymSimp subGoal ctx simprocs
 

@@ -184,6 +184,20 @@ def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
       state_prefix := "s",
       curr_state_number := 1 }
 
+/-- Add a set of new simp-theorems to the simp-theorems used
+for effect aggregation -/
+def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
+  let addSimpThms := simpThms.foldl addSimpTheoremEntry
+
+  let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
+  let simpTheorems :=
+    if oldSimpTheorems.isEmpty then
+      oldSimpTheorems.push <| addSimpThms {}
+    else
+      oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
+
+  { c with aggregateSimpCtx.simpTheorems := simpTheorems }
+
 /-- Annotate any errors thrown by `k` with a local variable (and its type) -/
 private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
     MetaM α :=
@@ -276,14 +290,17 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
           #generateStepEqTheorems {program}"
 
   -- Initialize the axiomatic hypotheses with hypotheses for the initial state
-  let axHyps := #[h_program, h_pc] ++ h_err?.toArray ++ h_sp?.toArray
   let (aggregateSimpCtx, aggregateSimprocs) ←
     LNSymSimpContext
       (config := {decide := true, failIfUnchanged := false})
-      (decls := axHyps)
+      (simp_attrs := #[`lnsimp])
       (noIndexAtArgs := false)
+  let axHyps := #[h_program, h_pc] ++ h_err?.toArray ++ h_sp?.toArray
+  let axHyps ← axHyps.mapM (fun decl =>
+    mkSimpTheorems (.fvar decl.fvarId) #[] decl.toExpr)
+  let axHyps := axHyps.flatten
 
-  return inferStatePrefixAndNumber {
+  return addSimpTheorems (simpThms := axHyps) <| inferStatePrefixAndNumber {
     state, finalState, runSteps?, program, pc,
     h_run := h_run.userName,
     h_program := h_program.userName,
@@ -422,17 +439,3 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
     pc          := nextPc?.getD (c.pc + 4#64)
     curr_state_number
   }
-
-/-- Add a set of new simp-theorems to the simp-theorems used
-for effect aggregation -/
-def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
-  let addSimpThms := simpThms.foldl addSimpTheoremEntry
-
-  let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
-  let simpTheorems :=
-    if oldSimpTheorems.isEmpty then
-      oldSimpTheorems.push <| addSimpThms {}
-    else
-      oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
-
-  { c with aggregateSimpCtx.simpTheorems := simpTheorems }
