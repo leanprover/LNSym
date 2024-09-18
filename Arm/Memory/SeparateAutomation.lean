@@ -702,6 +702,21 @@ For example, `mem_legal.of_omega` is a function of type:
 class OmegaReducible (α : Type) where
   reduceToOmega : α → Expr
 
+/--
+This is a wrapper around an `Expr` to provide an `OmegaReducible` instance,
+which as a hail mary, tries to directly invoke `omega` on this expression.
+We perform this as a last-ditch effort, after trying to pattern match
+on the expression.
+-/
+structure TryOmegaOnExpr where
+   /-- The hypothesis to try to use `omega` to close. -/
+   e: Expr
+
+instance : OmegaReducible TryOmegaOnExpr where
+  reduceToOmega e := e.e
+
+instance : ToMessageData TryOmegaOnExpr where
+  toMessageData e := toMessageData e.e
 
 /--
 info: mem_legal'.of_omega {n : Nat} {a : BitVec 64} (h : a.toNat + n ≤ 2 ^ 64) : mem_legal' a n
@@ -962,11 +977,15 @@ partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM
           g.assign proof.h
     if let .some e := MemSubsetProp.ofExpr? gt then
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-        if let .some proof ←  proveWithOmega? e hyps then
+        if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
     if let .some e := MemSeparateProp.ofExpr? gt then
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-        if let .some proof ←  proveWithOmega? e hyps then
+        if let .some proof ← proveWithOmega? e hyps then
+          g.assign proof.h
+
+    withTraceNode m!"Unknown memory expression kind ⊢ {gt}. Trying a reduction to omega..." do
+        if let .some proof ← proveWithOmega? (TryOmegaOnExpr.mk gt) hyps then
           g.assign proof.h
   return ← g.isAssigned
 
