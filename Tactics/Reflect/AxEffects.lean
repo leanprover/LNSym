@@ -377,6 +377,28 @@ private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
     throwError "expected:\n  {expected}\nbut found:\n  {e}"
 
 /-- Given an expression `e : ArmState`,
+which is a sequence of `w`/`write_mem`s to `eff.currentState`,
+return an `AxEffects` where `e` is `currentState`.
+
+Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
+the whole expression is taken to be the initial state,
+even if there might be more `w`/`write_mem`s in sub-expressions. -/
+partial def updateWithExpr (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
+  let msg := m!"Updating effects with writes from: {e}"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
+    | write_mem_bytes n addr val e =>
+        let eff ← eff.updateWithExpr e
+        eff.update_write_mem n addr val
+
+    | w field value e =>
+        let eff ← eff.updateWithExpr e
+        eff.update_w field value
+
+    | _ =>
+        assertIsDefEq e eff.currentState
+        return eff
+
+/-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to the some state `s`,
 return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
 
