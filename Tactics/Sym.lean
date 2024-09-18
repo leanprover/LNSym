@@ -42,25 +42,30 @@ macro "init_next_step" h_run:ident stepi_eq:ident sn:ident : tactic =>
 
 section stepiTac
 
-/-- Apply the relevant pre-generated stepi lemma to a local hypothesis
+/-- Apply the relevant pre-generated stepi lemma to an expression
   `stepi_eq : stepi ?s = ?s'`
-to obtain a new local hypothesis in terms of `w` and `write_mem`
+to add a new local hypothesis in terms of `w` and `write_mem`
   `h_step : ?s' = w _ _ (w _ _ (... ?s))`
 -/
-def stepiTac (stepi_eq h_step : Ident) (ctx : SymContext)
-  : TacticM Unit := withMainContext do
+def stepiTac (stepiEq : Expr) (hStep : Name) (ctx : SymContext)
+    : TacticM Unit := withMainContext do
   let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
   --  ^^ The PC in hex
-  let step_lemma := mkIdent <| Name.str ctx.program s!"stepi_eq_0x{pc}"
+  let stepLemma := Name.str ctx.program s!"stepi_eq_0x{pc}"
+  -- let stepLemma := Expr.const stepLemma []
 
-  evalTacticAndTrace <|← `(tactic| (
-    have $h_step :=
-      _root_.Eq.trans (Eq.symm $stepi_eq)
-        ($step_lemma:ident
-          $ctx.h_program_ident:ident
-          $ctx.h_pc_ident:ident
-          $ctx.h_err_ident:ident)
-  ))
+  let eff := ctx.effects
+  let hStepExpr ← mkEqTrans
+    (← mkEqSymm stepiEq)
+    (← mkAppM stepLemma #[
+      eff.programProof,
+      (← eff.getField .PC).proof,
+      (← eff.getField .ERR).proof
+    ])
+
+  let goal ← getMainGoal
+  let ⟨_, goal⟩ ← goal.note hStep hStepExpr
+  replaceMainGoal [goal]
 
 end stepiTac
 
@@ -273,7 +278,7 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
         {err.toMessageData}"
       pure none
 
-    return c.next nextPc?
+    return { c.next nextPc? with effects := eff }
 
 /-- A tactic wrapper around `explodeStep`.
 Note the use of `SymContext.fromLocalContext`,
@@ -309,7 +314,9 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
     )
 
     -- Apply relevant pre-generated `stepi` lemma
-    stepiTac stepi_eq h_step c
+    withMainContext <| do
+      let stepiEq ← SymContext.findFromUserName stepi_eq.getId
+      stepiTac stepiEq.toExpr h_step.getId c
 
     -- WORKAROUND: eventually we'd like to eagerly simp away `if`s in the
     -- pre-generation of instruction semantics. For now, though, we keep a
