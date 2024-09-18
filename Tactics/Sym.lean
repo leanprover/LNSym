@@ -206,11 +206,8 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
       throwError "[explodeStep] expected initial state {stateExpr}, but found:\n  \
         {eff.initialState}\nin\n\n{eff}"
 
-    let hProgram ← SymContext.findFromUserName c.h_program
-    eff ← eff.withProgramEq hProgram.toExpr
-
-    let hErr ← SymContext.findFromUserName c.h_err
-    eff ← eff.withField hErr.toExpr
+    eff ← eff.withProgramEq c.effects.programProof
+    eff ← eff.withField (← c.effects.getField .ERR).proof
 
     if let some h_sp := c.h_sp? then
       let hSp ← SymContext.findFromUserName h_sp
