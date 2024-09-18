@@ -1082,19 +1082,22 @@ theorem BitVec.ofBool_getLsbD (a : BitVec w) (i : Nat) :
   intro ⟨0, _⟩
   simp
 
+/-- If multiplication does not overflow,
+then `(x * y).toNat` equals `x.toNat * y.toNat` -/
 theorem toNat_mul_of_lt {w} {x y : BitVec w} (h : x.toNat * y.toNat < 2^w) :
     (x * y).toNat = x.toNat * y.toNat := by
   rw [BitVec.toNat_mul, Nat.mod_eq_of_lt h]
 
+/-- If subtraction does not overflow,
+then `(x - y).toNat` equals `x.toNat - y.toNat` -/
 theorem toNat_sub_of_lt {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
     (y - x).toNat = y.toNat - x.toNat := by
-  rw [BitVec.toNat_sub]
-  rw [show (2^w - x.toNat + y.toNat) = 2^w + (y.toNat - x.toNat) by omega]
-  rw [Nat.add_mod]
-  simp only [Nat.mod_self, Nat.zero_add, Nat.mod_mod]
-  rw [Nat.mod_eq_of_lt]
-  omega
+  rw [BitVec.toNat_sub,
+    show (2^w - x.toNat + y.toNat) = 2^w + (y.toNat - x.toNat) by omega,
+    Nat.add_mod, Nat.mod_self, Nat.zero_add, Nat.mod_mod,
+    Nat.mod_eq_of_lt (by omega)]
 
+/-- `x.toNat * z.toNat ≤ k` if `z ≤ y` and `x.toNat * y.toNat ≤ k` -/
 theorem toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
     (hxy : x.toNat * y.toNat ≤ k)
     (hyz : z ≤ y) :
@@ -1107,8 +1110,8 @@ theorem toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
 
 /-! ## Length one bitvector lemmas -/
 
-
 theorem eq_one_iff_neq_zero {a : BitVec 1} : a ≠ 0#1 ↔ a = 1#1 := by bv_omega
+
 theorem eq_zero_iff_neq_one {a : BitVec 1} : a ≠ 1#1 ↔ a = 0#1 := by bv_omega
 
 /-! ## `Quote` instance -/
