@@ -396,6 +396,22 @@ theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
   hstart := by simp only [BitVec.le_def, Nat.le_refl]
   hend := by simp only [Nat.le_refl]
 
+theorem mem_separate'.symm (h : mem_separate' addr₁ n₁ addr₂ n₂) : mem_separate' addr₂ n₂ addr₁ n₁ := by
+  have := h.omega_def
+  apply mem_separate'.of_omega
+  bv_omega
+
+theorem mem_separate'.of_subset'_of_subset'
+  (h : mem_separate' addr₁ n₁ addr₂ n₂)
+  (h₁ : mem_subset' addr₁' n₁' addr₁ n₁)
+  (h₂ : mem_subset' addr₂' n₂' addr₂ n₂) :
+  mem_separate' addr₁' n₁' addr₂' n₂' := by
+  have := h.omega_def
+  have := h₁.omega_def
+  have := h₂.omega_def
+  apply mem_separate'.of_omega
+  bv_omega
+
 /--
 If `[a'..a'+an')` begins at least where `[a..an)` begins,
 and ends before `[a..an)` ends, and if `[a..an)` is a subset of `[b..bn)`,
