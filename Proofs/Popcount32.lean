@@ -68,7 +68,6 @@ def popcount32_program : Program :=
    (0x400618#64 , 0x910043ff#32), -- add sp, sp, #0x10
    (0x40061c#64 , 0xd65f03c0#32)] -- ret
 
-
 #genStepEqTheorems popcount32_program
 
 theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
@@ -91,34 +90,18 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   -- Final Steps
   -- Split all the Ands in the conclusion.
   repeat' apply And.intro
-  · simp only [popcount32_spec,
-               fst_AddWithCarry_eq_add,
-               fst_AddWithCarry_eq_sub_neg]
-    simp only [popcount32_spec_rec]
+  · simp only [popcount32_spec, popcount32_spec_rec]
     bv_decide
   · sym_aggregate
-  · -- (TODO @alex) Let's do away with
-    -- ∀ (n : Nat) (addr : BitVec 64), read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂
-    -- in favor of
-    -- s₁.mem = s₂.mem
-    -- as Sid said.
-    simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *
+  · intro n addr h_separate
     simp only [memory_rules] at *
-    intro n addr h_separate
-
-    -- (TODO @alex/@bollu) Can we hope to make this shorter after the marriage
-    -- of `sym_n` and `simp_mem`?
-    simp (config := {ground := true}) only
-          [fst_AddWithCarry_eq_add, fst_AddWithCarry_eq_sub_neg]
-    simp only [*, bitvec_rules]
-    simp_mem
-    sym_aggregate
-
-    simp (config := {ground := true}) only
-          [fst_AddWithCarry_eq_add, fst_AddWithCarry_eq_sub_neg]
-    simp only [*, bitvec_rules]
-    simp_mem
-    rfl
+    repeat (simp_mem; sym_aggregate)
+  · apply Aligned_BitVecSub_64_4 -- TODO(@bollu): match goal.
+    · assumption
+    · decide
+  · apply Aligned_BitVecAdd_64_4
+    · assumption
+    · decide
 
 
 -------------------------------------------------------------------------------
