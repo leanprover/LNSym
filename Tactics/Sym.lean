@@ -44,25 +44,30 @@ macro "init_next_step" h_run:ident stepi_eq:ident sn:ident : tactic =>
 
 section stepiTac
 
-/-- Apply the relevant pre-generated stepi lemma to a local hypothesis
+/-- Apply the relevant pre-generated stepi lemma to an expression
   `stepi_eq : stepi ?s = ?s'`
-to obtain a new local hypothesis in terms of `w` and `write_mem`
+to add a new local hypothesis in terms of `w` and `write_mem`
   `h_step : ?s' = w _ _ (w _ _ (... ?s))`
 -/
-def stepiTac (stepi_eq h_step : Ident) : SymReaderM Unit := fun ctx =>
-  withMainContext do
+def stepiTac (stepiEq : Expr) (hStep : Name) : SymReaderM Unit := fun ctx =>
+  withMainContext' do
     let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
     --  ^^ The PC in hex
-    let step_lemma := mkIdent <| Name.str ctx.program s!"stepi_eq_0x{pc}"
+    let stepLemma := Name.str ctx.program s!"stepi_eq_0x{pc}"
+    -- let stepLemma := Expr.const stepLemma []
 
-    evalTacticAndTrace <|← `(tactic| (
-      have $h_step :=
-        _root_.Eq.trans (Eq.symm $stepi_eq)
-          ($step_lemma:ident
-            $ctx.h_program_ident:ident
-            $ctx.h_pc_ident:ident
-            $ctx.h_err_ident:ident)
-    ))
+    let eff := ctx.effects
+    let hStepExpr ← mkEqTrans
+      (← mkEqSymm stepiEq)
+      (← mkAppM stepLemma #[
+        eff.programProof,
+        (← eff.getField .PC).proof,
+        (← eff.getField .ERR).proof
+      ])
+
+    let goal ← getMainGoal
+    let ⟨_, goal⟩ ← goal.note hStep hStepExpr
+    replaceMainGoal [goal]
 
 end stepiTac
 
@@ -284,7 +289,9 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
     )
 
     -- Apply relevant pre-generated `stepi` lemma
-    stepiTac stepi_eq h_step
+    withMainContext' <| do
+      let stepiEq ← SymContext.findFromUserName stepi_eq.getId
+      stepiTac stepiEq.toExpr h_step.getId
 
     -- WORKAROUND: eventually we'd like to eagerly simp away `if`s in the
     -- pre-generation of instruction semantics. For now, though, we keep a
