@@ -21,7 +21,7 @@ open BitVec
          Xi -- current hash/tag value, should match with input to aes_gcm_enc_kernel (x3)
          ivec -- counter, should match with input to aes_gcm_enc_kernel (x4)
          key -- AES key schedule and rounds (x5)
-         Htable -- powers of H precomputed up to H^12 (x6)
+         Htable -- powers of H precomputed up to H^8 (x6)
   output: out -- plaintext (x2)
           Xi -- current hash/tag value, decryption function will recalculate
                 the hash based on the ciphertext, the top-level c function

@@ -631,19 +631,18 @@ theorem partial_correctness :
     split at h_assert
     case h_1 pc h_si =>
       subst h_assert
+      simp [show (Sys.run si 1 = Sys.next si) by rfl]
       name h_s1_next_si : s1 := Sys.next si
       have h_si_wellformed : WellFormedAtPc si 2272 := by
         have {..} := h_pre
         constructor <;> assumption
       have step_8e0_8f0 := program.step_8e0_8f0_of_wellformed si s1 h_si_wellformed (.of_next h_s1_next_si)
-      simp [show (Sys.run si 1 = Sys.next si) by rfl]
-      rw [Correctness.snd_cassert_of_not_cut
-        (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si, step_8e0_8f0.h_cut])];
+      rw [Correctness.snd_cassert_of_not_cut (by simp [Spec'.cut, h_s1_next_si, step_8e0_8f0.h_cut])];
       simp only [Nat.zero_add]
       name h_s2_next_s1 : s2 := Sys.next s1
 
       have step_8f0_8f4 := program.step_8f0_8f4_of_wellformed s1 s2  step_8e0_8f0.toWellFormedAtPc (.of_next h_s2_next_s1)
-      rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si, step_8f0_8f4.h_cut])];
+      rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, h_s2_next_s1, step_8f0_8f4.h_cut])];
       simp only [Spec'.assert, assert, h_pre,
         BitVec.ofNat_eq_ofNat, loop_inv, Nat.reduceMul, id_eq, true_and]
       simp only [step_8f0_8f4.h_pc, BitVec.ofNat_eq_ofNat, Nat.reducePow]
@@ -682,6 +681,7 @@ theorem partial_correctness :
         rw [step_8f0_8f4.h_mem]
         rw [step_8e0_8f0.h_mem]
     case h_2 pc h_si =>
+      simp [show (Sys.run si 1 = Sys.next si) by rfl]
       name h_s1_next_si : s1 := Sys.next si
       have si_well_formed : WellFormedAtPc si 0x8f4#64 := by
         simp [loop_inv] at h_assert
@@ -692,7 +692,7 @@ theorem partial_correctness :
       · have step :=
           program.step_8f4_8f8_of_wellformed_of_z_eq_1
             si s1 si_well_formed hz (Stepped.of_next h_s1_next_si)
-        rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si,  step.h_cut])];
+        rw [Correctness.snd_cassert_of_cut (by simp [Spec'.cut, Sys.next, h_s1_next_si,  step.h_cut])];
         simp only [Spec'.assert, assert, h_pre, step.h_pc, BitVec.ofNat_eq_ofNat, post,
           Nat.reduceMul, id_eq, BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod,
           true_and]

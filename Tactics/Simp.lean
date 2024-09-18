@@ -8,6 +8,35 @@ import Arm.Attr
 open Lean Elab Tactic Expr Meta
 open BitVec
 
+open Meta.DiscrTree in
+/-- `fixSimpTheoremKey` will regenerate the key of a simp theorem with
+`noIndexAtArgs` set to `false`.
+
+For context: `mkSimpTheorems` sets `noIndexAtArgs := true`, meaning that all
+a rewrite like `h_x0_s10 : r (.GPR 0#5) s10 = 42` will have `[r, *, *]` as key
+in the discrimination tree.
+This causes many unneeded, and expensive, attempts at unification.
+
+`fixSimpTheoremKey` fixes up those keys, so that the `h_x0_s10` example will get
+a key that includes the state and statefield constant
+
+FIXME: we should suggest a PR upstream that adds `noIndexAtArgs` as
+an optional argument to `mkSimpTheorems`, so that we can control
+this properly -/
+def fixSimpTheoremKey (thm : SimpTheorem) : MetaM SimpTheorem := do
+  let type ← inferType thm.proof
+  let ⟨_, _, type⟩ ← forallMetaTelescope type
+  match type.eq? with
+    | none =>
+        trace[Tactic.sym] "{Lean.crossEmoji} {type} is not an equality\
+          , giving up on fixing the discrtree keys.
+
+          Currently, the keys are:\n{thm.keys}"
+        pure thm
+    | some (_eqType, lhs, _rhs) =>
+        let keys ← mkPath lhs simpDtConfig (noIndexAtArgs := false)
+        pure { thm with keys }
+
 /- Create a context for using the `simp` tactic during symbolic
 simulation in LNSym proofs. -/
 def LNSymSimpContext
@@ -21,6 +50,8 @@ def LNSymSimpContext
   (decls : Array LocalDecl := #[])
   -- Simprocs to add to the default set.
   (simprocs : Array Name := #[])
+  -- argument to `DiscrTree.mkPath`
+  (noIndexAtArgs : Bool := true)
   : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
   let mut ext_simpTheorems := #[]
   let default_simprocs ← Simp.getSimprocs
@@ -42,7 +73,10 @@ def LNSymSimpContext
   for l in decls do
     let proof := l.toExpr
     let fvar := l.fvarId
-    const_simpTheorems ← const_simpTheorems.add (.fvar fvar) #[] proof
+    let mut newThms ← mkSimpTheorems (.fvar fvar) #[] proof
+    if noIndexAtArgs = false then
+      newThms ← newThms.mapM fixSimpTheoremKey
+    const_simpTheorems := newThms.foldl addSimpTheoremEntry const_simpTheorems
   let all_simpTheorems := (#[const_simpTheorems] ++ ext_simpTheorems)
   let (ctx : Simp.Context) := { config := config,
                                 simpTheorems := all_simpTheorems,

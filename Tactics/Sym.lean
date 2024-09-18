@@ -6,8 +6,6 @@ Author(s): Shilpi Goel, Alex Keizer
 import Arm.Exec
 import Arm.Memory.MemoryProofs
 import Tactics.FetchAndDecode
-import Tactics.ExecInst
-import Tactics.ChangeHyps
 import Tactics.SymContext
 
 import Lean
@@ -261,10 +259,7 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
       withMainContext <| eff.toSimpTheorems
 
     -- Add the new (non-)effect hyps to the aggregation simp context
-    let aggregateSimpCtx := { c.aggregateSimpCtx with
-      simpTheorems := c.aggregateSimpCtx.simpTheorems.push simpThms
-    }
-    let c := { c with aggregateSimpCtx}
+    let c := c.addSimpTheorems simpThms
 
     -- Attempt to reflect the new PC
     let nextPc ← eff.getField .PC
@@ -427,19 +422,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
     catch err =>
       throwErrorAt err.getRef "{err.toMessageData}\n
 Did you remember to generate step theorems with:
-  #generateStepEqTheorems {c.program}"
--- TODO: can we make this error ^^ into a `Try this:` suggestion that
---       automatically adds the right command just before the theorem?
-
-    -- Check that step theorems have been pre-generated
-    try
-      let pc := c.pc.toHexWithoutLeadingZeroes
-      let step_thm := Name.str c.program ("stepi_eq_0x" ++ pc)
-      let _ ← getConstInfo step_thm
-    catch err =>
-      throwErrorAt err.getRef "{err.toMessageData}\n
-Did you remember to generate step theorems with:
-  #generateStepEqTheorems {c.program}"
+  #genStepEqTheorems {c.program}"
 -- TODO: can we make this error ^^ into a `Try this:` suggestion that
 --       automatically adds the right command just before the theorem?
 

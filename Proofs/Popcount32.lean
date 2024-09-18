@@ -28,7 +28,7 @@ def popcount32_spec_rec (i : Nat) (x : BitVec 32) : (BitVec 32) :=
   match i with
   | 0 => BitVec.zero 32
   | i' + 1 =>
-    let bit_idx := BitVec.getLsb x i'
+    let bit_idx := BitVec.getLsbD x i'
     ((BitVec.zeroExtend 32 (BitVec.ofBool bit_idx)) + (popcount32_spec_rec i' x))
 
 def popcount32_spec (x : BitVec 32) : BitVec 32 :=
