@@ -336,7 +336,7 @@ def r (fld : StateField) (s : ArmState) : (state_value fld) :=
 /-!
 
 We define helpers for reading and writing registers on the `ArmState` with the colloquial
-names. For example, the stack pointer (`sp`) refers to register 31. 
+names. For example, the stack pointer (`sp`) refers to register 31.
 These mnemonics make it much easier to read and write theorems about assembly programs.
 
 -/
@@ -1142,7 +1142,7 @@ theorem Memory.eq_of_read_mem_bytes_eq {m₁ m₂ : Memory}
   rw [BitVec.zero_append, BitVec.zero_append] at h
   simpa only [Nat.reduceAdd, BitVec.cast_eq] using h
 
-theorem mem_eq_iff_read_mem_bytes_eq {s₁ s₂ : ArmState} :
+theorem Memory.mem_eq_iff_read_mem_bytes_eq {s₁ s₂ : ArmState} :
     s₁.mem = s₂.mem
     ↔ ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂ := by
   simp only [memory_rules]
@@ -1156,7 +1156,7 @@ theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq
     read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₁)
     = read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₂) := by
   revert n₁ addr₁
-  simp only [← mem_eq_iff_read_mem_bytes_eq] at h ⊢
+  simp only [← Memory.mem_eq_iff_read_mem_bytes_eq] at h ⊢
   simp only [memory_rules, h]
 
 /- Helper lemma for `state_eq_iff_components_eq` -/
