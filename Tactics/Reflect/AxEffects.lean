@@ -378,7 +378,7 @@ partial def updateWithExpr (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
         eff.update_w field value
 
     | _ =>
-        assertIsDefEq e eff.initialState
+        assertIsDefEq e eff.currentState
         return eff
 
 /-- Given an expression `e : ArmState`,
