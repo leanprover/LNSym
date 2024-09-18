@@ -56,6 +56,7 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   (result, (make_pstate N Z C V))
 
 /-- When the carry bit is `0`, `AddWithCarry x y 0 = x + y` -/
+@[bitvec_rules]
 theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 0#1).fst = x + y := by
   simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
@@ -67,6 +68,7 @@ theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   rw [Nat.mod_eq_of_lt this]
 
 /-- When the carry bit is `1`, `AddWithCarry x y 1 = x - ~~~y` -/
+@[bitvec_rules]
 theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 1#1).fst = x - ~~~y := by
   simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
@@ -551,7 +553,7 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
     BitVec.cast h3 (element ++ rest_ans)
    termination_by n
 
-example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by 
+example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by
   native_decide
 example : rev_elems 8 4 0xAB#8 (by decide) (by decide) = 0xBA#8 := by native_decide
 example : rev_elems 8 4 (rev_elems 8 4 0xAB#8 (by decide) (by decide))
