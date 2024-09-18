@@ -31,10 +31,8 @@ def popcount32_spec_rec (i : Nat) (x : BitVec 32) : (BitVec 32) :=
   match i with
   | 0 => 0#32
   | i' + 1 =>
-    -- We do not use .ofBool here because it is unsupported by `bv_decide`.
-    -- let bit_idx := BitVec.getLsbD x i'
-    -- ((BitVec.zeroExtend 32 (BitVec.ofBool bit_idx)) + (popcount32_spec_rec i' x))
-    ((x >>> i') &&& 1#32) + (popcount32_spec_rec i' x)
+    let bit_idx := BitVec.getLsbD x i'
+    ((BitVec.zeroExtend 32 (BitVec.ofBool bit_idx)) + (popcount32_spec_rec i' x))
 
 def popcount32_spec (x : BitVec 32) : BitVec 32 :=
   popcount32_spec_rec 32 x
