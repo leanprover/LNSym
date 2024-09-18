@@ -61,6 +61,9 @@ structure SymContext where
   /-- `programInfo` is the relevant cached `ProgramInfo` -/
   programInfo : ProgramInfo
 
+  /-- TODO -/
+  effects : AxEffects
+
   /-- `pc` is the *concrete* value of the program counter
 
   Note that for now we only support symbolic evaluation of programs
@@ -283,6 +286,12 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
       (decls := axHyps)
       (noIndexAtArgs := false)
 
+  -- Build an initial AxEffects
+  let effects := {
+    AxEffects.initial stateExpr with
+      programProof := h_program.toExpr
+  }
+
   return inferStatePrefixAndNumber {
     state, finalState, runSteps?, program, pc,
     h_run := h_run.userName,
@@ -291,6 +300,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     h_err? := (·.userName) <$> h_err?,
     h_sp? := (·.userName) <$> h_sp?,
     programInfo,
+    effects,
     aggregateSimpCtx, aggregateSimprocs
   }
 where
@@ -341,7 +351,10 @@ def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
             return goal'
 
           newGoals := newGoal :: newGoals
-          ctx := { ctx with h_err? }
+          ctx := { ctx with
+            h_err?
+            effects := ← ctx.effects.withField (.mvar newGoal)
+          }
       | some h_err =>
           let h_err ← userNameToMessageData h_err
           trace[Tactic.sym] "h_err? is {h_err}, no new goal needed"
@@ -362,7 +375,10 @@ def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
               return goal'
 
             newGoals := newGoal :: newGoals
-            ctx := { ctx with h_sp? }
+            ctx := { ctx with
+              h_sp?
+              effects.stackAlignmentProof? := some (Expr.mvar newGoal)
+            }
           else
             trace[Tactic.sym] "h_sp? is none, but addHSp is false, \
               so no new goal is added"
