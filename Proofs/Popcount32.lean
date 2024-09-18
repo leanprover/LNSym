@@ -5,6 +5,8 @@ Author(s): Nathan Wetzler, Shilpi Goel, Alex Keizer
 -/
 import Arm.Exec
 import Arm.Util
+import Arm.Syntax
+import Arm.Memory.SeparateAutomation
 import Tactics.Sym
 import Tactics.Aggregate
 import Tactics.StepThms
@@ -79,20 +81,47 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   (h_run : s_final = run 27 s0) :
   read_gpr 32 0#5 s_final = popcount32_spec (read_gpr 32 0#5 s0) ∧
   read_err s_final = StateError.None ∧
-  ∀ f, f ≠ (.GPR 0#5) ∧ f ≠ (.GPR 1#5) ∧ f ≠ (.GPR 31#5) ∧ f ≠ .PC →
-       r f s_final = r f s0 := by
+  (∀ f, f ≠ (.GPR 0#5) ∧ f ≠ (.GPR 1#5) ∧ f ≠ (.GPR 31#5) ∧ f ≠ .PC →
+       r f s_final = r f s0) ∧
+  (∀ (n : Nat) (addr : BitVec 64),
+    mem_separate' addr n (r (.GPR 31) s0 - 16#64) 16 →
+    s_final[addr, n] = s0[addr, n]) := by
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation
   sym_n 27
   -- Final Steps
-  constructor
+  -- Split all the Ands in the conclusion.
+  repeat (any_goals apply And.intro)
   · simp only [popcount32_spec,
                fst_AddWithCarry_eq_add,
                fst_AddWithCarry_eq_sub_neg]
     repeat (simp only [popcount32_spec_rec])
     bv_decide
   · sym_aggregate
+  · -- (TODO @alex) Let's do away with
+    -- ∀ (n : Nat) (addr : BitVec 64), read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂
+    -- in favor of
+    -- s₁.mem = s₂.mem
+    -- as Sid said.
+    simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *
+    simp only [memory_rules] at *
+    intro n addr h_separate
+
+    -- (TODO @alex/@bollu) Can we hope to make this shorter after the marriage
+    -- of `sym_n` and `simp_mem`?
+    simp (config := {ground := true}) only
+          [fst_AddWithCarry_eq_add, fst_AddWithCarry_eq_sub_neg]
+    simp only [*, bitvec_rules]
+    simp_mem
+    sym_aggregate
+
+    simp (config := {ground := true}) only
+          [fst_AddWithCarry_eq_add, fst_AddWithCarry_eq_sub_neg]
+    simp only [*, bitvec_rules]
+    simp_mem
+    rfl
+
 
 -------------------------------------------------------------------------------
 
