@@ -90,11 +90,11 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   sym_n 27
   -- Final Steps
   -- Split all the Ands in the conclusion.
-  repeat (any_goals apply And.intro)
+  repeat' apply And.intro
   · simp only [popcount32_spec,
                fst_AddWithCarry_eq_add,
                fst_AddWithCarry_eq_sub_neg]
-    repeat (simp only [popcount32_spec_rec])
+    simp only [popcount32_spec_rec]
     bv_decide
   · sym_aggregate
   · -- (TODO @alex) Let's do away with
