@@ -44,10 +44,12 @@ abbrev num_blocks (s : ArmState) : BitVec 64 := r (StateField.GPR 2#5) s
 -- (0x1264d8#64 , 0x910c0063#32),      --  add     x3, x3, #0x300
 abbrev ktbl_addr : BitVec 64 := 0x1b4300#64
 
+set_option trace.Tactic.sym true
+
 -- set_option profiler true in
 -- set_option profiler.threshold 1 in
 -- set_option pp.deepTerms false in
-theorem sha512_block_armv8_1block (s0 sf : ArmState)
+#time theorem sha512_block_armv8_1block (s0 sf : ArmState)
   -- (FIXME) Ignore the `stp` instruction for now.
   (h_s0_pc : read_pc s0 = 0x1264c4#64)
   (h_s0_err : read_err s0 = StateError.None)
@@ -71,13 +73,15 @@ theorem sha512_block_armv8_1block (s0 sf : ArmState)
                   ktbl_addr      (SHA2.k_512.length * 8))
   -- (FIXME) Use program.length instead of 20 here (depends on the
   -- performance of the new symbolic simulation tactic).
-  (h_run : sf = run 20 s0) :
+  (h_run : sf = run 100 s0) :
   r (StateField.GPR 2#5) sf = 0#64 ∧
   r StateField.ERR sf = StateError.None := by
-  sym_n 20
+  sym_n 63
+  -- sym_n 63
 
-  simp (config := {decide := true, ground := true}) only
-    [AddWithCarry, bitvec_rules, minimal_theory, Nat.reduceAdd]
+  -- simp (config := {decide := true, ground := true}) only
+  --   [AddWithCarry, bitvec_rules, minimal_theory, Nat.reduceAdd]
+
   cse (config := { processHyps := .allHyps })
   sorry
 

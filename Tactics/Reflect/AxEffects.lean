@@ -11,7 +11,7 @@ import Tactics.Simp
 
 import Std.Data.HashMap
 
-open Lean Meta
+open Lean Meta Elab.Tactic
 
 /-- A reflected `ArmState` field, see `AxEffects.fields` for more context -/
 structure AxEffects.FieldEffect where
@@ -20,6 +20,14 @@ structure AxEffects.FieldEffect where
   proof : Expr
   deriving Repr
 open AxEffects.FieldEffect
+
+structure AxEffects.CSEState where
+  /-- A map from expressions to variable ids plus a proof that the returned
+  variable is equal to the original expression -/
+  vars : Std.HashMap Expr (FVarId × Expr) := ∅
+  /-- A counter to generate new names. -/
+  gensymCount : Nat := 1
+  deriving Repr, Inhabited
 
 /-- `AxEffects` is an axiomatic representation of effects,
 i.e., `AxEffects` transforms a description of an `ArmState` written as
@@ -78,9 +86,86 @@ structure AxEffects where
   However, if SP is written to, no effort is made to prove alignment of the
   new value; the field will be set to `none` -/
   stackAlignmentProof? : Option Expr
-  deriving Repr
+  deriving Repr, Inhabited
 
 namespace AxEffects
+
+/-! ## AxEffects State Monad -/
+
+/-- `AxEffectsM` is a monad with `AxEffects` state, it's an implementation
+detail that shouldn't surface in public-facing APIs -/
+abbrev AxEffectsM := StateT (AxEffects × CSEState) TacticM
+
+/-- Modify the `AxEffects` component of `AxEffectsM` -/
+def modifyAxEffects (f : AxEffects → α × AxEffects) : AxEffectsM α :=
+  modifyGet fun (eff, cseState) =>
+    let (a, eff) := f eff
+    (a, (eff, cseState))
+
+/-- Modify the `CSEState` component of `AxEffectsM` -/
+def modifyCSEState (f : CSEState → α × CSEState) : AxEffectsM α :=
+  modifyGet fun (eff, cseState) =>
+    let (a, cseState) := f cseState
+    (a, (eff, cseState))
+
+/-! ## Common Subexpression Elimination -/
+
+/-- Generate a fresh variable name, incrementing the `genSymCount` -/
+protected def CSEState.generateName : AxEffectsM Name :=
+  modifyCSEState fun state =>
+    let i := state.gensymCount
+    let name := Name.mkSimple s!"x{i}"
+    let state := { state with gensymCount := i + 1 }
+    (name, state)
+
+protected def CSEState.lookupVar? (e : Expr) :
+    AxEffectsM (Option (FVarId × Expr)) := do
+  let (_, state) ← get
+  return state.vars.get? e
+
+protected def CSEState.insertVar (e : Expr) (x : FVarId) (h : Expr) :
+    AxEffectsM Unit :=
+  modifyCSEState fun state => ((), { state with
+    vars := state.vars.insert e (x, h) })
+
+def mkStateValue : StateField → Expr
+  | .GPR _ | .PC  => mkApp (mkConst ``BitVec) (toExpr 64)
+  | .SFP _        => mkApp (mkConst ``BitVec) (toExpr 128)
+  | .FLAG _       => mkApp (mkConst ``BitVec) (toExpr 1)
+  | .ERR          => mkConst ``StateError
+
+/-- Given an expression, run the continuation `k` with a CSE'd expresion that is
+equal to the original, as witnessed by the second argument.
+
+Note that the returned expression is guaranteed to be well-formed in the
+context of the main goal, which might've been modified and thus different from
+the ambient context; a call to `withMainContext` might be needed.
+We *do* guarantee that `k` is called with the right context.
+
+This will lookup the expression in the CSEState, and if not found,
+might add a new variable to the local context. Note that it is *not* guaranteed
+that the returned expression is a variable.
+The original expression could be returned as-is, for example,
+if it is a literal. -/
+def cseExpr (e : Expr) (k : Expr → Expr → AxEffectsM α) : AxEffectsM α := do
+  if e.isFVar || !e.hasFVar then
+    let h ← mkEqRefl e
+    k e h
+  else
+    match ← CSEState.lookupVar? e with
+    | some (x, h) => k (Expr.fvar x) h
+    | none =>
+        let type ← inferType e
+        let mvar ← getMainGoal
+        let name ← CSEState.generateName
+        let mvar ← mvar.define name type e
+        let ⟨x, mvar⟩ ← mvar.intro name
+        replaceMainGoal [mvar]
+        mvar.withContext <| do
+          let xE := Expr.fvar x
+          let h ← mkEqRefl xE
+          CSEState.insertVar e x h
+          k xE h
 
 /-! ## Initial Reflected State -/
 
@@ -209,7 +294,7 @@ and all other fields are updated accordingly.
 Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
 -/
 private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
-    MetaM AxEffects := do
+    TacticM AxEffects := withMainContext <| do
   trace[Tactic.sym] "adding write of {n} bytes of value {val} \
     to memory address {addr}"
 
@@ -266,7 +351,7 @@ and all other fields are updated accordingly.
 Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
 -/
 private def update_w (eff : AxEffects) (fld val : Expr) :
-    MetaM AxEffects := do
+    TacticM AxEffects := withMainContext <| do
   let rField ← reflectStateField fld
   trace[Tactic.sym] "adding write of value {val} to register {rField}"
 
@@ -287,67 +372,79 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
         return none
 
   -- Update the main field
-  let newField : FieldEffect := {
-    value := val
-    proof :=
-      -- `r_of_w_same <fld> <val> <currentState>`
-      mkApp3 (mkConst ``r_of_w_same) fld val eff.currentState
-  }
-  let fields := (rField, newField) :: fields
+  let val ← do
+    if val.isFVar || !val.hasFVar then
+      pure val
+    else
+      let type := mkStateValue rField
+      let mvar ← getMainGoal
+      let mvar ← mvar.define `x type val
+      let ⟨x, mvar⟩ ← mvar.intro1P
+      replaceMainGoal [mvar]
+      pure (Expr.fvar x)
 
-  -- Update the non-effects proof
-  let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
-    let f := args[0]!
+  withMainContext <| do
+    let newField : FieldEffect := {
+      value := val
+      proof :=
+        -- `r_of_w_same <fld> <val> <currentState>`
+        mkApp3 (mkConst ``r_of_w_same) fld val eff.currentState
+    }
+    let fields := (rField, newField) :: fields
 
-    /- First, assume we have a proof `h_neq : <f> ≠ <fld>`, and use that
-    to compute the new `nonEffectProof` -/
-    let k := fun args h_neq => do
-      let r_of_w := mkApp5 (mkConst ``r_of_w_different)
-                    f fld val eff.currentState h_neq
-      let proof ← mkEqTrans r_of_w proof
-      mkLambdaFVars args proof
-      -- ^^ `fun f ... => Eq.trans (r_of_w_different ... <h_neq>) <proof>`
+    -- Update the non-effects proof
+    let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
+      let f := args[0]!
 
-    /- Then, determine `h_neq` so that we can pass it to `k`.
-    Notice how we have to modify the environment, to add `h_neq` as a new local
-    hypothesis if it wan't present yet, but only in some branches.
-    This is why we had to define `k` as a monadic continuation,
-    so we can nest `k` under a `withLocalDeclD` -/
-    let h_neq_type := mkApp3 (.const ``Ne [1]) (mkConst ``StateField) f fld
-    let h_neq? ← args.findM? fun h => do
-        let hTy ← inferType h
-        return hTy == h_neq_type
-    match h_neq? with
-      | some h_neq => k args h_neq
-      | none =>
-        let name := Name.mkSimple s!"h_neq_{rField}"
-        withLocalDeclD name h_neq_type fun h_neq =>
-          k (args.push h_neq) h_neq
+      /- First, assume we have a proof `h_neq : <f> ≠ <fld>`, and use that
+      to compute the new `nonEffectProof` -/
+      let k := fun args h_neq => do
+        let r_of_w := mkApp5 (mkConst ``r_of_w_different)
+                      f fld val eff.currentState h_neq
+        let proof ← mkEqTrans r_of_w proof
+        mkLambdaFVars args proof
+        -- ^^ `fun f ... => Eq.trans (r_of_w_different ... <h_neq>) <proof>`
 
-  -- Update the memory effect proof
-  let memoryEffectProof :=
-    -- `read_mem_bytes_w_of_read_mem_eq ...`
-    mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
-      #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, fld, val]
+      /- Then, determine `h_neq` so that we can pass it to `k`.
+      Notice how we have to modify the environment, to add `h_neq` as a new local
+      hypothesis if it wan't present yet, but only in some branches.
+      This is why we had to define `k` as a monadic continuation,
+      so we can nest `k` under a `withLocalDeclD` -/
+      let h_neq_type := mkApp3 (.const ``Ne [1]) (mkConst ``StateField) f fld
+      let h_neq? ← args.findM? fun h => do
+          let hTy ← inferType h
+          return hTy == h_neq_type
+      match h_neq? with
+        | some h_neq => k args h_neq
+        | none =>
+          let name := Name.mkSimple s!"h_neq_{rField}"
+          withLocalDeclD name h_neq_type fun h_neq =>
+            k (args.push h_neq) h_neq
 
-  -- Update the program proof
-  let programProof ←
-    -- `Eq.trans (w_program ...) <programProof>`
-    mkEqTrans
-      (mkAppN (mkConst ``w_program) #[fld, val, eff.currentState])
-      eff.programProof
+    -- Update the memory effect proof
+    let memoryEffectProof :=
+      -- `read_mem_bytes_w_of_read_mem_eq ...`
+      mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
+        #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, fld, val]
 
-  -- Assemble the result
-  let eff := { eff with
-    currentState    := mkApp3 (mkConst ``w) fld val eff.currentState
-    fields := Std.HashMap.ofList fields
-    nonEffectProof
-    -- memory effects are unchanged
-    memoryEffectProof
-    programProof
-  }
-  eff.traceCurrentState "new state"
-  return eff
+    -- Update the program proof
+    let programProof ←
+      -- `Eq.trans (w_program ...) <programProof>`
+      mkEqTrans
+        (mkAppN (mkConst ``w_program) #[fld, val, eff.currentState])
+        eff.programProof
+
+    -- Assemble the result
+    let eff : AxEffects := { eff with
+      currentState    := mkApp3 (mkConst ``w) fld val eff.currentState
+      fields := Std.HashMap.ofList fields
+      nonEffectProof
+      -- memory effects are unchanged
+      memoryEffectProof
+      programProof
+    }
+    eff.traceCurrentState "new state"
+    return eff
 
 /-- Throw an error if `e` is not of type `expectedType` -/
 private def assertHasType (e expectedType : Expr) : MetaM Unit := do
@@ -366,7 +463,7 @@ return an `AxEffects` where `e` is `currentState`.
 Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
 the whole expression is taken to be the initial state,
 even if there might be more `w`/`write_mem`s in sub-expressions. -/
-partial def updateWithExpr (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
+partial def updateWithExpr (eff : AxEffects) (e : Expr) : TacticM AxEffects := do
   let msg := m!"Updating effects with writes from: {e}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
     | write_mem_bytes n addr val e =>
@@ -377,7 +474,7 @@ partial def updateWithExpr (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
         let eff ← eff.updateWithExpr e
         eff.update_w field value
 
-    | _ =>
+    | _ => withMainContext do
         assertIsDefEq e eff.currentState
         return eff
 
@@ -388,12 +485,11 @@ return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
 Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
 the whole expression is taken to be the initial state,
 even if there might be more `w`/`write_mem`s in sub-expressions. -/
-def fromExpr (e : Expr) : MetaM AxEffects := do
+def fromExpr (e : Expr) : TacticM AxEffects := do
   let s0 ← mkFreshExprMVar mkArmState
   let eff := initial s0
   let eff ← eff.updateWithExpr e
   return { eff with initialState := ← instantiateMVars eff.initialState}
-
 
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
@@ -415,7 +511,8 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
         pure (field, {fieldEff with proof})
     let fields := .ofList fields
 
-    let nonEffectProof ← rewriteType eff.nonEffectProof eq
+    let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
+      mkLambdaFVars args <|← rewriteType proof eq
     let memoryEffectProof ← rewriteType eff.memoryEffectProof eq
     -- ^^ TODO: what happens if `memoryEffect` is the same as `currentState`?
     --    Presumably, we would *not* want to encapsulate `memoryEffect` here
@@ -429,7 +526,7 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
 where `?s` and `?s0` are arbitrary `ArmState`s,
 return an `AxEffect` with the rhs of the equality as the current state,
 and the (non-)effects updated accordingly -/
-def updateWithEq (eff : AxEffects) (eq : Expr) : MetaM AxEffects :=
+def updateWithEq (eff : AxEffects) (eq : Expr) : TacticM AxEffects :=
   let msg := m!"Building effects with equality: {eq}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     let s ← mkFreshExprMVar mkArmState
@@ -447,7 +544,7 @@ where `?s` and `?s0` are arbitrary `ArmState`s,
 return an `AxEffect` with `?s0` as the initial state,
 the rhs of the equality as the current state,
 and the (non-)effects updated accordingly -/
-def fromEq (eq : Expr) : MetaM AxEffects := do
+def fromEq (eq : Expr) : TacticM AxEffects := do
   let s0 ← mkFreshExprMVar mkArmState
   let eff := initial s0
   let eff ← eff.updateWithEq eq
@@ -586,6 +683,35 @@ def validate (eff : AxEffects) : MetaM Unit := do
 section Tactic
 open Elab.Tactic
 
+def cse (eff : AxEffects) : TacticM AxEffects :=
+  withMainContext <| do
+    let mut goal ← getMainGoal
+
+    let mut fields := Std.HashMap.empty
+    for (field, fieldEff) in eff.fields do
+      let fieldEff ← if fieldEff.value.isFVar || !fieldEff.value.hasFVar then
+        pure fieldEff
+      else
+        let newGoal ← goal.assertExt `x (← inferType fieldEff.value) fieldEff.value
+        let (#[x, hx], newGoal) ← newGoal.introN 2
+          | throwError "internal error (THIS IS A BUG): \
+            expected exactly two variables"
+        goal := newGoal
+
+        goal.withContext <| do
+          trace[Tactic.sym] "[cse] {Expr.fvar x} / {Expr.fvar hx}"
+
+          pure {
+            value := Expr.fvar x
+            proof := ← rewriteType fieldEff.proof
+              (← mkEqSymm <| Expr.fvar hx)
+          }
+      fields := fields.insert field fieldEff
+
+    replaceMainGoal [goal]
+    return { eff with fields }
+
+
 /-- Add new hypotheses to the local context of a given mvar (or the main goal,
 by default):
 - one for every field in `eff.fields`
@@ -676,7 +802,7 @@ where
 
 /-- Return an array of `SimpTheorem`s of the proofs contained in
 the given `AxEffects` -/
-def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
+def toSimpTheoremArray (eff : AxEffects) : MetaM (Array SimpTheorem) := do
   let msg := m!"computing SimpTheorems for (non-)effect hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     let lctx ← getLCtx
@@ -720,5 +846,15 @@ def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
     trace[Tactic.sym] "done"
 
     pure thms
+
+/-- Return a `SimpTheorems` object with the proofs contained in
+the given `AxEffects`.
+
+NOTE: be mindful that each `SimpTheorems` maintains a separate discrimination
+tree. If you are combining the theorems from a lot of `AxEffects` together,
+you probably want `AxEffects.toSimpTheoremArray` -/
+def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
+  let simpThms ← eff.toSimpTheoremArray
+  return simpThms.foldl (addSimpTheoremEntry) {}
 
 end Tactic

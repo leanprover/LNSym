@@ -195,87 +195,77 @@ we attempt to determine the new PC by reflecting the obtained effects,
 falling back to incrementing the PC if reflection failed. -/
 def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
   withMainContext do
-    let mut eff ← AxEffects.fromEq hStep
+    let mut eff ← c.effects.updateWithEq hStep
 
-    let stateExpr ← c.stateExpr
-    /- Assert that the initial state of the obtained `AxEffects` is equal to
-    the state tracked by `c`.
-    This will catch and throw an error if the semantics of the current
-    instruction still contains unsupported constructs (e.g., an `if`) -/
-    if !(← isDefEq eff.initialState stateExpr) then
-      throwError "[explodeStep] expected initial state {stateExpr}, but found:\n  \
-        {eff.initialState}\nin\n\n{eff}"
+    -- if let some h_sp := c.h_sp? then
+    --   let hSp ← SymContext.findFromUserName h_sp
+    --   -- let effWithSp?
+    --   eff ← match ← eff.withStackAlignment? hSp.toExpr with
+    --     | some newEff => pure newEff
+    --     | none => do
+    --         trace[Tactic.sym] "failed to show stack alignment"
+    --         -- FIXME: in future, we'd like to detect when the `sp_aligned`
+    --         -- hypothesis is actually necessary, and add the proof obligation
+    --         -- on-demand. For now, however, we over-approximate, and say that
+    --         -- if the original state was known to be aligned, and something
+    --         -- writes to the SP, then we eagerly add the obligation to proof
+    --         -- that the result is aligned as well.
+    --         -- If you don't want this obligation, simply remove the hypothesis
+    --         -- that the original state is aligned
+    --         let spEff ← eff.getField .SP
+    --         let subGoal ← mkFreshMVarId
+    --         -- subGoal.setTag <|
+    --         let hAligned ← do
+    --           let name := Name.mkSimple s!"h_{c.next_state}_sp_aligned"
+    --           mkFreshExprMVarWithId subGoal (userName := name) <|
+    --             mkAppN (mkConst ``Aligned) #[toExpr 64, spEff.value, toExpr 4]
 
-    eff ← eff.withProgramEq c.effects.programProof
-    eff ← eff.withField (← c.effects.getField .ERR).proof
+    --         trace[Tactic.sym] "created subgoal to show alignment:\n{subGoal}"
 
-    if let some h_sp := c.h_sp? then
-      let hSp ← SymContext.findFromUserName h_sp
-      -- let effWithSp?
-      eff ← match ← eff.withStackAlignment? hSp.toExpr with
-        | some newEff => pure newEff
-        | none => do
-            trace[Tactic.sym] "failed to show stack alignment"
-            -- FIXME: in future, we'd like to detect when the `sp_aligned`
-            -- hypothesis is actually necessary, and add the proof obligation
-            -- on-demand. For now, however, we over-approximate, and say that
-            -- if the original state was known to be aligned, and something
-            -- writes to the SP, then we eagerly add the obligation to proof
-            -- that the result is aligned as well.
-            -- If you don't want this obligation, simply remove the hypothesis
-            -- that the original state is aligned
-            let spEff ← eff.getField .SP
-            let subGoal ← mkFreshMVarId
-            -- subGoal.setTag <|
-            let hAligned ← do
-              let name := Name.mkSimple s!"h_{c.next_state}_sp_aligned"
-              mkFreshExprMVarWithId subGoal (userName := name) <|
-                mkAppN (mkConst ``Aligned) #[toExpr 64, spEff.value, toExpr 4]
+    --         let subGoal? ← do
+    --           let (ctx, simprocs) ←
+    --             LNSymSimpContext
+    --               (config := {failIfUnchanged := false, decide := true})
+    --               (decls := #[hSp])
+    --           LNSymSimp subGoal ctx simprocs
 
-            trace[Tactic.sym] "created subgoal to show alignment:\n{subGoal}"
+    --         if let some subGoal := subGoal? then
+    --           trace[Tactic.sym] "subgoal got simplified to:\n{subGoal}"
+    --           appendGoals [subGoal]
+    --         else
+    --           trace[Tactic.sym] "subgoal got closed by simplification"
 
-            let subGoal? ← do
-              let (ctx, simprocs) ←
-                LNSymSimpContext
-                  (config := {failIfUnchanged := false, decide := true})
-                  (decls := #[hSp])
-              LNSymSimp subGoal ctx simprocs
-
-            if let some subGoal := subGoal? then
-              trace[Tactic.sym] "subgoal got simplified to:\n{subGoal}"
-              appendGoals [subGoal]
-            else
-              trace[Tactic.sym] "subgoal got closed by simplification"
-
-            let stackAlignmentProof? := some <|
-              mkAppN (mkConst ``CheckSPAlignment_of_r_sp_aligned)
-                #[eff.currentState, spEff.value, spEff.proof, hAligned]
-            pure { eff with stackAlignmentProof? }
+    --         let stackAlignmentProof? := some <|
+    --           mkAppN (mkConst ``CheckSPAlignment_of_r_sp_aligned)
+    --             #[eff.currentState, spEff.value, spEff.proof, hAligned]
+    --         pure { eff with stackAlignmentProof? }
 
     -- Add new (non-)effect hyps to the context
     let simpThms ← withMainContext <| do
       if ←(getBoolOption `Tactic.sym.debug) then
         eff.validate
 
-      let eff ← eff.addHypothesesToLContext s!"h_{c.next_state}_"
-      withMainContext <| eff.toSimpTheorems
+      -- let eff ← eff.addHypothesesToLContext s!"h_{c.next_state}_"
+      -- let eff ← eff.cse
+      withMainContext <| eff.toSimpTheoremArray
 
-    -- Add the new (non-)effect hyps to the aggregation simp context
-    let c := c.addSimpTheorems simpThms
+    withMainContext <| do
+      -- Add the new (non-)effect hyps to the aggregation simp context
+      let c := c.addSimpTheorems simpThms
 
-    -- Attempt to reflect the new PC
-    let nextPc ← eff.getField .PC
-    let nextPc? ← try
-      let nextPc ← reflectBitVecLiteral 64 nextPc.value
-      -- NOTE: `reflectBitVecLiteral` is fast when the value is a literal,
-      -- but might involve an expensive reduction when it is not
-      pure <| some nextPc
-    catch err =>
-      trace[Tactic.sym] "failed to reflect {nextPc.value}\n\n\
-        {err.toMessageData}"
-      pure none
+      -- Attempt to reflect the new PC
+      let nextPc ← eff.getField .PC
+      let nextPc? ← try
+        let nextPc ← reflectBitVecLiteral 64 nextPc.value
+        -- NOTE: `reflectBitVecLiteral` is fast when the value is a literal,
+        -- but might involve an expensive reduction when it is not
+        pure <| some nextPc
+      catch err =>
+        trace[Tactic.sym] "failed to reflect {nextPc.value}\n\n\
+          {err.toMessageData}"
+        pure none
 
-    return { c.next nextPc? with effects := eff }
+      return { c.next nextPc? with effects := eff }
 
 /-- A tactic wrapper around `explodeStep`.
 Note the use of `SymContext.fromLocalContext`,
@@ -320,25 +310,19 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
     -- `simp` here
     withMainContext <| do
       let hStep ← SymContext.findFromUserName h_step.getId
-      let lctx ← getLCtx
-      let decls := (c.h_sp?.bind lctx.findFromUserName?).toArray
-      -- If we know SP is aligned, `simp` with that fact
 
-      if !decls.isEmpty then
-        trace[Tactic.sym] "simplifying {hStep.toExpr} \
-          with {decls.map (·.toExpr)}"
-        -- If `decls` is empty, we have no more knowledge than before, so
-        -- everything that could've been `simp`ed, already should have been
-        let some goal ← do
-            let (ctx, simprocs) ← LNSymSimpContext
-              (config := {decide := false}) (decls := decls)
-            let goal ← getMainGoal
-            LNSymSimp goal ctx simprocs hStep.fvarId
-          | throwError "internal error: simp closed goal unexpectedly"
-        replaceMainGoal [goal]
-      else
-        trace[Tactic.sym] "we have no relevant local hypotheses, \
-          skipping simplification step"
+      -- Simplify to aggregate effects
+      -- TODO(@bollu): integrate simp_mem to simplify memory reads here
+      let goal ← getMainGoal
+      let some goal ← do
+          LNSymSimp goal c.aggregateSimpCtx c.aggregateSimprocs hStep.fvarId
+        | throwError "internal error: simp closed goal unexpectedly"
+      replaceMainGoal [goal]
+
+      -- let effThms ← c.effects.toSimpTheorems
+      -- let simpCtx := { c.aggregateSimpCtx with
+      --   simpTheorems := c.aggregateSimpCtx.simpTheorems.push effThms
+      -- }
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
     withMainContext <| do
@@ -458,6 +442,8 @@ Did you remember to generate step theorems with:
         traceHeartbeats
 
         replaceMainGoal [goal]
+
+    let _eff ← c.effects.addHypothesesToLContext
 
     -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
     -- added while symbolically evaluating to `simp`
