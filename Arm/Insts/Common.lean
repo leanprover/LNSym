@@ -55,6 +55,32 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   let V := if signExtend (n + 1) result = signed_sum then 0#1 else 1#1
   (result, (make_pstate N Z C V))
 
+/-- When the carry bit is `0`, `AddWithCarry x y 0 = x + y` -/
+theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
+  (AddWithCarry x y 0#1).fst = x + y := by
+  simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
+  apply BitVec.eq_of_toNat_eq
+  simp only [toNat_truncate, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod]
+  have : 2^n < 2^(n + 1) := by
+    refine Nat.pow_lt_pow_of_lt (by omega) (by omega)
+  have : x.toNat + y.toNat < 2^(n + 1) := by omega
+  rw [Nat.mod_eq_of_lt this]
+
+/-- When the carry bit is `1`, `AddWithCarry x y 1 = x - ~~~y` -/
+theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
+  (AddWithCarry x y 1#1).fst = x - ~~~y := by
+  simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
+  apply BitVec.eq_of_toNat_eq
+  simp only [toNat_truncate, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod, toNat_ofNat, Nat.pow_one,
+    Nat.reduceMod, toNat_sub, toNat_not]
+  simp only [show 2 ^ n - (2 ^ n - 1 - y.toNat) = 1 + y.toNat by omega]
+  have : 2^n < 2^(n + 1) := by
+    refine Nat.pow_lt_pow_of_lt (by omega) (by omega)
+  have : x.toNat + y.toNat + 1 < 2^(n + 1) := by omega
+  rw [Nat.mod_eq_of_lt this]
+  congr 1
+  omega
+
 -- TODO: Is this rule helpful at all?
 @[bitvec_rules]
 theorem zeroExtend_eq_of_AddWithCarry :
@@ -83,6 +109,43 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   else
     result
 
+/-- `x > y` iff `(N = V) ∧ Z = 0` . -/
+theorem sgt_iff_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
+  (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
+   (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.slt y x := by
+  simp [AddWithCarry, make_pstate]
+  split
+  · bv_decide
+  · bv_decide
+
+/-- `x > y` iff `(N = V) ∧ Z = 0` . -/
+theorem sgt_iff_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
+  (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
+   (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.slt y x := by
+  simp [AddWithCarry, make_pstate]
+  split
+  · bv_decide
+  · bv_decide
+
+/-- `x ≤ y` iff `¬ ((N = V) ∧ (Z = 0))`. -/
+theorem sle_iff_not_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
+  (¬(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
+   (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
+  simp [AddWithCarry, make_pstate]
+  split
+  · bv_decide
+  · bv_decide
+
+/-- `x ≤ y` iff `¬ ((N = V) ∧ (Z = 0))`. -/
+theorem sle_iff_not_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
+  (¬(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
+   (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
+  simp [AddWithCarry, make_pstate]
+  split
+  · bv_decide
+  · bv_decide
+
+
 /-- `Aligned x a` witnesses that the bitvector `x` is `a`-bit aligned. -/
 def Aligned (x : BitVec n) (a : Nat) : Prop :=
   match a with
@@ -92,6 +155,13 @@ def Aligned (x : BitVec n) (a : Nat) : Prop :=
 /-- We need to prove why the Aligned predicate is Decidable. -/
 instance : Decidable (Aligned x a) := by
   cases a <;> simp [Aligned] <;> infer_instance
+
+theorem Aligned_BitVecSub_64_4 {x : BitVec 64} {y : BitVec 64}
+  (x_aligned : Aligned x 4)
+  (y_aligned : Aligned y 4)
+  : Aligned (x - y) 4 := by
+  simp_all only [Aligned, Nat.sub_zero, zero_eq]
+  bv_decide
 
 theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
   (x_aligned : Aligned x 4)
@@ -481,8 +551,9 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
     BitVec.cast h3 (element ++ rest_ans)
    termination_by n
 
-example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by rfl
-example : rev_elems 8 4 0xAB#8 (by decide) (by decide) = 0xBA#8 := by rfl
+example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by 
+  native_decide
+example : rev_elems 8 4 0xAB#8 (by decide) (by decide) = 0xBA#8 := by native_decide
 example : rev_elems 8 4 (rev_elems 8 4 0xAB#8 (by decide) (by decide))
           (by decide) (by decide) = 0xAB#8 := by native_decide
 

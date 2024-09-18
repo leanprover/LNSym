@@ -328,6 +328,12 @@ theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
   rw [BitVec.le_def, BitVec.lt_def]
   omega
 
+theorem mem_separate'_comm (h : mem_separate' a an b bn) :
+    mem_separate' b bn a an := by
+  have := h.omega_def
+  apply mem_separate'.of_omega
+  omega
+
 /-#
 This is a theorem we ought to prove, which establishes the equivalence
 between the old and new defintions of 'mem_separate'.
@@ -459,12 +465,12 @@ theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
     (val : BitVec (yn * 8)) :
     Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
     Memory.read_bytes xn x mem := by
-  apply BitVec.eq_of_getLsb_eq
+  apply BitVec.eq_of_getLsbD_eq
   intros i
   obtain := hsep.omega_def
-  rw [Memory.getLsb_read_bytes (by omega),
-     Memory.getLsb_write_bytes (by omega),
-     Memory.getLsb_read_bytes (by omega)]
+  rw [Memory.getLsbD_read_bytes (by omega),
+     Memory.getLsbD_write_bytes (by omega),
+     Memory.getLsbD_read_bytes (by omega)]
   simp only [i.isLt]
   simp only [decide_True, ite_eq_left_iff, Bool.true_and]
   intros h₁
@@ -477,22 +483,22 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
     (val : BitVec (yn * 8)) :
     Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
       val.extractLsBytes (x.toNat - y.toNat) xn := by
-  apply BitVec.eq_of_getLsb_eq
+  apply BitVec.eq_of_getLsbD_eq
   intros i
   obtain ⟨hx, hy, hstart, hend⟩ := hsep
 
   obtain hx' := hx.size_le_two_pow
   obtain hy' := mem_legal'_def hy
 
-  rw [Memory.getLsb_read_bytes (by omega)]
-  rw [Memory.getLsb_write_bytes (by omega)]
-  rw [BitVec.getLsb_extractLsByte]
-  rw [BitVec.getLsb_extractLsBytes]
+  rw [Memory.getLsbD_read_bytes (by omega)]
+  rw [Memory.getLsbD_write_bytes (by omega)]
+  rw [BitVec.getLsbD_extractLsByte]
+  rw [BitVec.getLsbD_extractLsBytes]
   by_cases hxn : xn = 0
   · subst hxn
     exfalso
     have h := i.isLt
-    simp at h
+    simp only [Nat.reduceMul, Nat.zero_mul, Nat.not_lt_zero] at h
   · by_cases h₁ : ↑i < xn * 8
     · simp only [h₁]
       simp only [decide_True, Bool.true_and]
@@ -519,7 +525,7 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
         · simp only [h₃, if_false]
           simp only [show i % 8 ≤ 7 by omega]
           simp only [decide_True, Bool.true_and]
-          -- ⊢ val.getLsb ((x + BitVec.ofNat 64 (i / 8) - y).toNat * 8 + i % 8) = val.getLsb ((y.toNat - x.toNat) * 8 + i)
+          -- ⊢ val.getLsbD ((x + BitVec.ofNat 64 (i / 8) - y).toNat * 8 + i % 8) = val.getLsbD ((y.toNat - x.toNat) * 8 + i)
           /-
           This is clearly true, it simplifes to (x.toNat - y.toNat) * 8 + (i/8)*8 + i % 8.
           which equals (x.toNat - y.toNat + i)
@@ -551,7 +557,7 @@ theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
     rw [BitVec.extractLsByte_extractLsBytes]
     by_cases h : i < an
     · simp only [h, ↓reduceIte]
-      apply BitVec.eq_of_getLsb_eq
+      apply BitVec.eq_of_getLsbD_eq
       intros j
       rw [← hread]
       rw [extractLsByte_read_bytes (by bv_omega)]
@@ -559,5 +565,54 @@ theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
       congr 2
       bv_omega
     · simp only [h, ↓reduceIte]
+
+/-- A region of memory, given by (base pointer, length) -/
+abbrev Memory.Region := BitVec 64 × Nat
+
+def Memory.Region.mk (a : BitVec 64) (n : Nat) : Memory.Region := (a, n)
+
+/-- A hypothesis that memory regions `a` and `b` are separate. -/
+def Memory.Region.separate (a b : Memory.Region) : Prop :=
+  mem_separate' a.fst a.snd b.fst b.snd
+
+/-- A list of memory regions, that are known to be pairwise disjoint. -/
+def Memory.Region.pairwiseSeparate (mems : List Memory.Region) : Prop :=
+  mems.Pairwise Memory.Region.separate
+
+/-- If `i ≠ j`, then prove that `mems[i] ⟂ mems[j]`.
+The theorem is stated in mildly awkward fashion for ease of use during proof automation.
+-/
+def Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
+  (h : Memory.Region.pairwiseSeparate mems)
+  (i j : Nat)
+  (hij : i ≠ j)
+  (a b : Memory.Region)
+  (ha : mems.get? i = some a) (hb : mems.get? j = some b) :
+    mem_separate' a.fst a.snd b.fst b.snd := by
+  induction h generalizing a b i j
+  case nil => simp only [List.get?_eq_getElem?, List.getElem?_nil, reduceCtorEq] at ha
+  case cons x xs ihx _ihxs ihxs' =>
+    simp only [List.get?_eq_getElem?] at ha hb
+    rcases i with rfl | i'
+    · simp at ha
+      · rcases j with rfl | j'
+        · simp only [ne_eq, not_true_eq_false] at hij
+        · subst ha
+          simp only [List.getElem?_cons_succ] at hb
+          apply ihx
+          exact List.getElem?_mem hb
+    · rcases j with rfl | j'
+      · simp only [List.length_cons, Nat.zero_lt_succ, List.getElem?_eq_getElem,
+        List.getElem_cons_zero, Option.some.injEq] at hb
+        · subst hb
+          simp only [List.getElem?_cons_succ] at ha
+          apply mem_separate'_comm
+          apply ihx
+          exact List.getElem?_mem ha
+      · simp only [List.getElem?_cons_succ] at ha hb
+        apply ihxs' i' j'
+        · omega
+        · simp only [List.get?_eq_getElem?, ha]
+        · simp only [List.get?_eq_getElem?, hb]
 
 end NewDefinitions

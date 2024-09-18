@@ -7,6 +7,8 @@ Author(s): Alex Keizer
 import Arm.State
 import Tactics.Common
 import Tactics.Attr
+import Tactics.Simp
+
 import Std.Data.HashMap
 
 open Lean Meta
@@ -593,8 +595,9 @@ by default):
 - `eff.programProof`, and
 - `eff.stackAlignmentProof?` (if the field is not `none`)
 
-Return an `AxEffect` where these expression have been replaced by a reference
-to the newly created fvar -/
+Return an `AxEffect` where the expressions mentioned above have been replaced by
+`Expr.fvar <fvarId>`, with `fvarId` the id of the corresponding hypothesis
+that was just added to the local context -/
 def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
     (mvar : Option MVarId := none) :
     TacticM AxEffects :=
@@ -672,11 +675,9 @@ where
         let ⟨fvar, goal⟩ ← goal.note h v t?
         return ⟨fvar, goal⟩
 
-/-- Return a `SimpTheorems` with the proofs contained in the given `AxEffects`
-
-Note this adds *only* the (non-)effect proofs, to get a simp configuration with
-more default simp-lemmas, see `AxEffects.toSimp` -/
-def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
+/-- Return an array of `SimpTheorem`s of the proofs contained in
+the given `AxEffects` -/
+def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
   let msg := m!"computing SimpTheorems for (non-)effect hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     let lctx ← getLCtx
@@ -688,19 +689,28 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
         none
     let baseName := baseName?.getD (Name.mkSimple "AxEffects")
 
-    let add (thms : SimpTheorems) (e : Expr) (name : String) := do
-      trace[Tactic.sym] "adding {e} with name {name}"
-      let origin : Origin :=
-        if e.isFVar then
-          .fvar e.fvarId!
-        else
-          .other <| Name.str baseName name
-      thms.add origin #[] e
+    let add (thms : Array SimpTheorem) (e : Expr) (name : String)
+        (prio : Nat := 1000) :=
+      let msg := m!"adding {e} with name {name}"
+      withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+        let origin : Origin :=
+          if e.isFVar then
+            .fvar e.fvarId!
+          else
+            .other <| Name.str baseName name
+        let newThms ← mkSimpTheorems origin #[] e (prio := prio)
+        let newThms ← newThms.mapM fixSimpTheoremKey
+        pure <| thms ++ newThms
 
-    let mut thms : SimpTheorems := {}
+    let mut thms := #[]
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
-      thms ← add thms proof s!"field_{field}"
+      /- We give the field-specific lemmas a high priority, since their
+      applicability is determined entirely by discrtree matching.
+      This is important for performance, because it avoids unneccesary
+      (expensive!) attempts to discharge the `field ≠ otherField`
+      side-conditions of the non-effect proof -/
+      thms ← add thms proof s!"field_{field}" (prio := 1500)
 
     thms ← add thms eff.nonEffectProof "nonEffectProof"
     thms ← add thms eff.memoryEffectProof "memoryEffectProof"

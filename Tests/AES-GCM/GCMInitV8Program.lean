@@ -14,7 +14,7 @@ open BitVec
  void gcm_init_v8(u128 Htable[16], const uint64_t H[2]);
 
  input:  H - initial hash (x1)
- output: Htable - powers of H precomputed up to H^12 (x0)
+ output: Htable - powers of H precomputed up to H^8 (x0)
 -/
 
 def gcm_init_v8_program : Program :=
