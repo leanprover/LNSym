@@ -85,6 +85,11 @@ structure WellFormedAtPc (s : ArmState) (pc : BitVec 64) : Prop where
 structure Pre (s : ArmState) (num_blks : Nat) (src_base dst_base : BitVec 64) : Prop where
   -- 16 bytes are copied in each iteration of the loop.
   h_mem_sep : mem_separate' src_base (num_blks * 16) dst_base (num_blks * 16)
+  -- -- (TODO) Also allow for the possibility of src_base = dst_base
+  -- -- or even more generally,
+  -- -- dst_base ≤ src_base ∨
+  -- -- src_base + num_bytes ≤ dst_base.
+  -- mem_separate' src_base num_bytes.toNat dst_base num_bytes.toNat ∧
   h_pc : r StateField.PC s = 0x8e0#64
   h_program : s.program = program
   h_err : r StateField.ERR s = StateError.None
@@ -97,20 +102,6 @@ def pre (s : ArmState) : Prop :=
   let src_base  := ArmState.x1 s
   let dst_base  := ArmState.x2 s
   Pre s num_blks.toNat src_base dst_base
-
-  -- -- (TODO) Also allow for the possibility of src_base = dst_base
-  -- -- or even more generally,
-  -- -- dst_base ≤ src_base ∨
-  -- -- src_base + num_bytes ≤ dst_base.
-  -- mem_separate' src_base num_bytes.toNat dst_base num_bytes.toNat ∧
-  -- r StateField.PC s = 0x8e0#64 ∧
-  -- s.program = program ∧
-  -- r StateField.ERR s = .None ∧
-  -- -- (FIXME) We don't really need the stack pointer to be aligned, but the
-  -- -- `sym1_n` tactic currently expects this. Remove this conjunct when `sym1_n`
-  -- -- is updated to make this requirement optional.
-  -- CheckSPAlignment s
-
 
 structure Post (s0 sf : ArmState)
     (num_blks : Nat)
@@ -128,7 +119,6 @@ structure Post (s0 sf : ArmState)
   err_eq : r StateField.ERR sf = .None
   program_eq : sf.program = program
   sp_aligned : CheckSPAlignment sf
-
 
 /-- Postcondition for the correctness of the MemCpy program. -/
 def post (s0 sf : ArmState) : Prop :=
@@ -292,20 +282,12 @@ theorem program.step_8e0_8f0_of_wellformed (s sn : ArmState)
   · constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
   · decide
 
-/-
-  w StateField.PC 0x8e8#64
-    (w (StateField.GPR 0x1#5) (r (StateField.GPR 0x1#5) s + 0x10#64)
-      (w (StateField.SFP 0x4#5)
-        (BitVec.zeroExtend 128
-          (read_mem_bytes (8 <<< (BitVec.extractLsb 1 1 0x3#2 ++ 0x0#2).toNat / 8) (r (StateField.GPR 0x1#5) s) s))
--/
 structure Step_8e4_8e8 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8e8 : Prop where
   h_x1 : snext.x1 = scur.x1 + 0x10#64
   h_mem : snext.mem = scur.mem
   h_q4 : snext.q4 = scur[scur.x1, 16]
   h_x0 : snext.x0 = scur.x0
   h_x2 : snext.x2 = scur.x2
-
 
 def Step_8e4_8e8.h_cut (h : Step_8e4_8e8 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
@@ -622,7 +604,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by
-  apply Correctness.partial_correctness_from_assertions'
+  apply Correctness.partial_correctness_from_assertions_next
   case v1 =>
     intro s0 h_pre
     have {..} := h_pre
