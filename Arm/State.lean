@@ -983,19 +983,6 @@ theorem write_mem_bytes_eq_mem_write_bytes (s : ArmState) :
       write_mem, write_bytes]
     rfl
 
-@[memory_rules]
-theorem write_mem_bytes_eq_mem_write_bytes' (s : ArmState) :
-    write_mem_bytes n addr val s =
-    { s with mem := s.mem.write_bytes n addr val } := by
-  induction n generalizing addr s
-  case zero => simp [write_mem_bytes, write_bytes_zero]
-  case succ n' ih =>
-    simp [write_mem_bytes, ArmState.read_mem_eq_mem_read, ih,
-      write_mem, write_bytes]
-    rfl
-
-
-
 /--
 Writing (n + 1) bytes can be described as writing `n` bytes
 and then recursing to write the rest.
