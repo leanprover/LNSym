@@ -599,12 +599,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           }
   · intros n addr hsep
     apply Memcpy.extracted_2 <;> assumption
-
--- #exit
-
 theorem partial_correctness :
   PartialCorrectness ArmState := by
-  apply Correctness.partial_correctness_from_assertions_next
+  apply Correctness.partial_correctness_from_assertions
   case v1 =>
     intro s0 h_pre
     have {..} := h_pre
@@ -639,7 +636,9 @@ theorem partial_correctness :
         have {..} := h_pre
         constructor <;> assumption
       have step_8e0_8f0 := program.step_8e0_8f0_of_wellformed si s1 h_si_wellformed (.of_next h_s1_next_si)
-      rw [Correctness.snd_cassert_of_not_cut (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si, step_8e0_8f0.h_cut])];
+      simp [show (Sys.run si 1 = Sys.next si) by rfl]
+      rw [Correctness.snd_cassert_of_not_cut
+        (by simp [Spec'.cut, Sys.run, Sys.next, h_s1_next_si, step_8e0_8f0.h_cut])];
       simp only [Nat.zero_add]
       name h_s2_next_s1 : s2 := Sys.next s1
 

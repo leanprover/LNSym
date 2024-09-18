@@ -431,32 +431,6 @@ theorem partial_correctness_from_assertions [Sys σ] [Spec' σ]
         ⟨n, Nat.le_refl _, hexit, hpost⟩
     find 0 (v1 s0 hp) (Nat.zero_le ..)
 
-/--
-Prove partial correctness from inductive assertions using `cassert`
-function.
-
-We use `s0`, `si`, and `sf` to refer to initial, intermediate, and
-final (exit) states respectively.
-
-This is a variant of `partial_correctness_from_assertions`, which
-uses `next si` instead of `run 1 si` in the verification condition.
-TODO: Establish `simp`-normal forms for the VCG framework.
--/
-theorem partial_correctness_from_assertions_next [Sys σ] [Spec' σ]
-    (v1 : ∀ s0 : σ, pre s0 → assert s0 s0)
-    -- (FIXME) Is it possible to remove v2 and combine v3 and v4 into
-    -- a single verification condition as follows?
-    -- As @bollu noted, this has the benefit of not having `post` be a
-    -- callee of `assert`.
-    --
-    --  ∀ s0 si : σ, assert s0 si → (cassert s0 (run si 1) 0).snd ∨
-    --                              (exit si → post s0 si)
-    (v2 : ∀ sf : σ, exit sf → cut sf)
-    (v3 : ∀ s0 sf : σ, assert s0 sf → exit sf → post s0 sf)
-    (v4 : ∀ s0 si : σ, assert s0 si → ¬ exit si → (cassert s0 (next si) 0).snd)
-    : PartialCorrectness σ := by
-  apply partial_correctness_from_assertions <;> assumption
-
 ----------------------------------------------------------------------
 
 -- Method to prove Termination
