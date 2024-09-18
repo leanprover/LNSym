@@ -985,8 +985,21 @@ partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM
           g.assign proof.h
 
     withTraceNode m!"Unknown memory expression kind ⊢ {gt}. Trying a reduction to omega..." do
-        if let .some proof ← proveWithOmega? (TryOmegaOnExpr.mk gt) hyps then
-          g.assign proof.h
+      let oldGoals := (← getGoals)
+      try
+        let gproof ← mkFreshExprMVar (type? := gt)
+        setGoals (gproof.mvarId! :: (← getGoals))
+        SimpMemM.withMainContext do
+        let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
+        trace[simp_mem.info] m!"Executing `omega` to close {gt}"
+        SimpMemM.withTraceNode m!"goal (Note: can be large)" do
+          trace[simp_mem.info] "{← getMainGoal}"
+        omega
+        trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+        g.assign gproof
+      catch e =>
+        trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+        setGoals oldGoals
   return ← g.isAssigned
 
 
