@@ -11,15 +11,25 @@ open Lean Meta Elab.Tactic
 
 namespace Sym
 
+/-- The default `simp` configuration for `aggregate` -/
+def aggregate.defaultSimpConfig : Simp.Config := {
+  decide := true,     -- to discharge side-conditions for non-effect hypotheses
+  contextual := true, -- to automatically prove non-effect goals
+  failIfUnchanged := false,
+}
+
 /-- Given an array of (non-)effects hypotheses, aggregate these effects by
 `simp`ing at the specified location -/
-def aggregate (axHyps : Array LocalDecl) (location : Location) : TacticM Unit :=
+def aggregate (axHyps : Array LocalDecl) (location : Location)
+    (simpConfig? : Option Simp.Config := none) :
+    TacticM Unit :=
   let msg := m!"aggregating (non-)effects"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     trace[Tactic.sym] "using hypotheses: {axHyps.map (·.toExpr)}"
 
+    let config := simpConfig?.getD aggregate.defaultSimpConfig
     let (ctx, simprocs) ← LNSymSimpContext
-        (config := {decide := true, failIfUnchanged := false})
+        (config := config)
         (decls := axHyps)
 
     withLocation location
@@ -35,7 +45,7 @@ def aggregate (axHyps : Array LocalDecl) (location : Location) : TacticM Unit :=
       )
       (fun _ => pure ())
 
-open Parser.Tactic (location) in
+open Parser.Tactic (location config) in
 /--
 `sym_aggregate` will search for all local hypotheses of the form
   `r ?fld ?state = _` or `∀ f ..., r ?fld ?state = _`,
@@ -43,10 +53,18 @@ and use those hypotheses to simplify the goal
 
 `sym_aggregate at ...` will use those same hypotheses to simplify at the
 specified locations, using the same syntax as `simp at ...`
+
+`sym_aggregate (config := ...)` will pass the specified configuration through
+to the `simp` call, for fine-grained control. Note that if you do this,
+you'll likely want to set `decide := true` yourself, or you might find that
+non-effect theorems no longer apply automatically
 -/
-elab "sym_aggregate" loc:(location)? : tactic => withMainContext do
+elab "sym_aggregate" simpConfig?:(config)? loc?:(location)? : tactic => withMainContext do
   let msg := m!"aggregating local (non-)effect hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    let simpConfig? ← simpConfig?.mapM fun cfg =>
+      elabSimpConfig (mkNullNode #[cfg]) (kind := .simp)
+
     let lctx ← getLCtx
     -- We keep `expectedRead`/`expectedAlign` as monadic values,
     -- so that we get new metavariables for each localdecl we check
@@ -76,5 +94,5 @@ elab "sym_aggregate" loc:(location)? : tactic => withMainContext do
               trace[Tactic.sym] "{Lean.crossEmoji} no match"
               return axHyps
 
-    let loc := (loc.map expandLocation).getD (.targets #[] true)
-    aggregate axHyps loc
+    let loc := (loc?.map expandLocation).getD (.targets #[] true)
+    aggregate axHyps loc simpConfig?
