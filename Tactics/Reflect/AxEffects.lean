@@ -490,7 +490,10 @@ def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
     trace[Tactic.sym] "current field effect: {fieldEff}"
 
     if field ∉ eff.fields then
-      let proof ← mkEqTrans fieldEff.proof eq
+      let proof ← if eff.currentState == eff.initialState then
+          pure eq
+        else
+          mkEqTrans fieldEff.proof eq
       let fields := eff.fields.insert field { value, proof }
       return { eff with fields }
     else

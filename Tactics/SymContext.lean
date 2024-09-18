@@ -269,12 +269,13 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     findProgramHyp stateExpr
 
   -- Then, try to find `h_pc`
-  let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
-  let h_pc ← findLocalDeclOfTypeOrError <| h_pc_type stateExpr pc
+  let pcE ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
+  let h_pc ← findLocalDeclOfTypeOrError <| h_pc_type stateExpr pcE
 
   -- Unwrap and reflect `pc`
-  let pc ← instantiateMVars pc
-  let pc ← withErrorContext h_pc.userName h_pc.type <| reflectBitVecLiteral 64 pc
+  let pcE ← instantiateMVars pcE
+  let pc ← withErrorContext h_pc.userName h_pc.type <|
+    reflectBitVecLiteral 64 pcE
 
   -- Attempt to find `h_err` and `h_sp`
   let h_err? ← findLocalDeclOfType? (h_err_type stateExpr)
@@ -299,9 +300,18 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
       (noIndexAtArgs := false)
 
   -- Build an initial AxEffects
-  let effects := {
-    AxEffects.initial stateExpr with
+  let effects := AxEffects.initial stateExpr
+  let mut fields :=
+    effects.fields.insert .PC { value := pcE, proof := h_pc.toExpr}
+  if let some hErr := h_err? then
+    fields := fields.insert .ERR {
+      value := mkConst ``StateError.None,
+      proof := hErr.toExpr
+    }
+  let effects := { effects with
       programProof := h_program.toExpr
+      stackAlignmentProof? := h_sp?.map (·.toExpr)
+      fields
   }
 
   return inferStatePrefixAndNumber {
