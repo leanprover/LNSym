@@ -552,14 +552,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
     have h_subset_2 : mem_subset' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat s0.x2 (s0.x0.toNat * 16) := by
       skip_proof simp_mem
     have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by
-      skip_proof {
-        simp only [show 0x10#64 * (s0.x0 - si.x0) = (s0.x0 - si.x0) * 0x10#64 by bv_omega]
-        apply mem_subset'.of_offset
-        · decide
-        · bv_omega
-        · simp_mem
-        · rfl
-      }
+      skip_proof simp_mem
     have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by skip_proof bv_omega
     have s2_sum_inbounds := h_pre_1.hb.omega_def
     have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
@@ -567,14 +560,11 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
     rcases icases with hi | hi
     · subst hi
       rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
-      · simp [bitvec_rules]
-        rw [h_assert_6]
-        · apply mem_separate'.symm
-          apply mem_separate'.of_subset'_of_subset' h_pre_1 h_subset_1 h_subset_2
-      · apply mem_subset'_refl
-        have h_s0_x2_legal := h_pre_1.hb
-        have h_s0_sub_si_small : s0.x0 - si.x0 ≤ s0.x0 := by skip_proof bv_omega
-        skip_proof simp_mem
+      · simp only [Nat.reduceMul, BitVec.toNat_add, BitVec.toNat_mul, BitVec.toNat_ofNat,
+        Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
+        BitVec.extractLsBytes_eq_self]
+        rw [h_assert_6 _ _ (by simp_mem)]
+      · simp_mem
 
     · rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
       · apply h_assert_5 _ hi
@@ -582,6 +572,8 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
         · skip_proof simp_mem
         · skip_proof simp_mem
         · left
+          -- @bollu: TODO, see if `simp_mem` can figure this out given less aggressive
+          -- proof states.
           skip_proof {
             have s2_sum_inbounds := h_pre_1.hb.omega_def
             have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega

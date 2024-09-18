@@ -412,51 +412,54 @@ theorem mem_separate'.of_subset'_of_subset'
   apply mem_separate'.of_omega
   bv_omega
 
+/--
+A memory region [base..nblocks*sz) has subregions
+of the form [base+k*sz..sz) if `k < nblocks`.
+-/
 theorem mem_subset'.of_offset {nblocks sz : Nat} {base k sz' : BitVec 64}
-    (hsz : sz > 0)
-    -- (hnblocks : nblocks > 0)
     (hk : k.toNat < nblocks)
     (hlegal : mem_legal' base (nblocks * sz))
     (hsz_eq_sz' : sz'.toNat = sz)
     : mem_subset' (base + k * sz') sz base (nblocks * sz) := by
-  have legal' := hlegal.omega_def
-  have hmul' : (k * sz').toNat = k.toNat * sz := by
-    simp
-    rw [hsz_eq_sz']
-    apply Nat.mod_eq_of_lt
-    have := hlegal.omega_def
-    apply Nat.lt_of_lt_of_le (m := nblocks * sz)
-    · apply Nat.mul_lt_mul_of_pos_right hk hsz
-    · omega
-  have hmul_lt : (k * sz').toNat < nblocks * sz := by
-    rw [hmul']
-    apply Nat.mul_lt_mul_of_pos_right hk hsz
-  have hadd : (base + k * sz').toNat = base.toNat + (k * sz').toNat := by
+  have hsz : sz = 0 ∨ 0 < sz := by omega 
+  rcases hsz with rfl | hsz 
+  · apply mem_subset'.of_omega
+    have hsz' : sz' = 0 := by bv_omega
+    subst hsz'
     bv_omega
+  · have legal' := hlegal.omega_def
+    have hmul' : (k * sz').toNat = k.toNat * sz := by
+      simp
+      rw [hsz_eq_sz']
+      apply Nat.mod_eq_of_lt
+      have := hlegal.omega_def
+      apply Nat.lt_of_lt_of_le (m := nblocks * sz)
+      · apply Nat.mul_lt_mul_of_pos_right hk hsz
+      · omega
+    have hmul_lt : (k * sz').toNat < nblocks * sz := by
+      rw [hmul']
+      apply Nat.mul_lt_mul_of_pos_right hk hsz
+    have hadd : (base + k * sz').toNat = base.toNat + (k * sz').toNat := by
+      bv_omega
 
-  constructor
-  · apply mem_legal'.of_omega
-    rw [BitVec.toNat_add_eq_toNat_add_toNat]
-    · rw [hmul']
-      rw [show base.toNat + k.toNat * sz + sz = base.toNat + k.toNat * sz + 1 * sz by omega]
-      rw [Nat.add_assoc]
-      rw [← Nat.add_mul]
-      have : (k.toNat + 1) * sz ≤ nblocks * sz := by
-        apply Nat.mul_le_mul_right
+    constructor
+    · apply mem_legal'.of_omega
+      rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
+      · rw [hmul',
+          show base.toNat + k.toNat * sz + sz = base.toNat + k.toNat * sz + 1 * sz by omega,
+          Nat.add_assoc, ← Nat.add_mul]
+        have : (k.toNat + 1) * sz ≤ nblocks * sz := by
+          apply Nat.mul_le_mul_right
+          omega
         omega
-      omega
+    · exact hlegal
     · bv_omega
-  · exact hlegal
-  · rw [BitVec.le_def, hadd]
-    bv_omega
-  · rw [hadd]
-    rw [Nat.add_assoc]
-    apply Nat.add_le_add_iff_left.mpr
-    rw [hmul']
-    rw [show k.toNat * sz + sz = k.toNat * sz + 1 * sz by omega]
-    rw [← Nat.add_mul]
-    apply Nat.mul_le_mul_right
-    omega
+    · rw [hadd, Nat.add_assoc]
+      apply Nat.add_le_add_iff_left.mpr
+      rw [hmul', show k.toNat * sz + sz = k.toNat * sz + 1 * sz by omega,
+        ← Nat.add_mul]
+      apply Nat.mul_le_mul_right
+      omega
 
 /--
 If `[a'..a'+an')` begins at least where `[a..an)` begins,
@@ -520,7 +523,6 @@ theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hb
   · left
     bv_omega
   · bv_omega
-
 
 /- value of read_mem_bytes when separate from the write. -/
 theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
