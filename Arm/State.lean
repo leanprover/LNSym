@@ -347,6 +347,16 @@ These mnemonics make it much easier to read and write theorems about assembly pr
 
 @[state_simp_rules] abbrev ArmState.x2 (s : ArmState) : BitVec 64 := r (StateField.GPR 2) s
 
+@[state_simp_rules] abbrev ArmState.q0 (s : ArmState) : BitVec 128 := r (StateField.SFP 0) s
+
+@[state_simp_rules] abbrev ArmState.q1 (s : ArmState) : BitVec 128 := r (StateField.SFP 1) s
+
+@[state_simp_rules] abbrev ArmState.q2 (s : ArmState) : BitVec 128 := r (StateField.SFP 2) s
+
+@[state_simp_rules] abbrev ArmState.q3 (s : ArmState) : BitVec 128 := r (StateField.SFP 3) s
+
+@[state_simp_rules] abbrev ArmState.q4 (s : ArmState) : BitVec 128 := r (StateField.SFP 4) s
+
 @[state_simp_rules] abbrev ArmState.sp (s : ArmState) : BitVec 64 := r (StateField.GPR 31) s
 
 @[state_simp_rules] abbrev ArmState.V (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.V) s
