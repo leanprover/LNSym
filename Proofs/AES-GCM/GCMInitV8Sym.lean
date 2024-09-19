@@ -91,5 +91,6 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   · simp only
     [shift_left_common_aux_64_2
     , shift_right_common_aux_64_2_tff
-    , shift_right_common_aux_32_4_fff];
-    sorry
+    , shift_right_common_aux_32_4_fff
+    , DPSFP.AdvSIMDExpandImm];
+    bv_decide
