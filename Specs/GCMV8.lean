@@ -41,10 +41,10 @@ def pmult (x: BitVec (m + 1)) (y : BitVec (n + 1)) : BitVec (m + n + 1) :=
     | 0 => acc
     | j + 1 =>
       let acc := acc <<< 1
-      have h : m + n + 1 = n + (m + 1) := by omega
       let tmp := if getMsbD y (n + 1 - i)
                  then (BitVec.zero n) ++ x
-                 else BitVec.cast h (BitVec.zero (m + n + 1))
+                 else BitVec.zero (n + (m + 1))
+      have h : m + n + 1 = n + (m + 1) := by omega
       let acc := (BitVec.cast h acc) ^^^ tmp
       pmultTR x y j (BitVec.cast h.symm acc)
   pmultTR x y (n + 1) (BitVec.zero (m + n + 1))
@@ -66,29 +66,23 @@ private def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
   if getLsbD y (GCMV8.degree x) then y ^^^ x else y
 
 /-- Performs division of polynomials over GF(2). -/
-def pdiv (x: BitVec n) (y : BitVec m) (h : 0 < m): BitVec n :=
+def pdiv (x: BitVec n) (y : BitVec m): BitVec n :=
   let rec pdivTR (x : BitVec n) (y : BitVec m) (i : Nat) (z : BitVec m)
     (acc : BitVec n) : BitVec n :=
     match i with
     | 0 => acc
     | j + 1 =>
-      have h2 : (i - 1) - (i - 1) + 1 = 1 := by omega
-      let xi : BitVec 1 := BitVec.cast h2 (extractLsb (i - 1) (i - 1) x)
-      have h3 : m - 1 - 0 + 1 = m := by omega
-      let zi : BitVec m :=
-        BitVec.cast h3 (extractLsb (m - 1) 0 ((GCMV8.reduce y z) ++ xi))
-      have h1 : GCMV8.degree y - GCMV8.degree y + 1 = 1 := by omega
-      let bit : BitVec 1 :=
-        BitVec.cast h1 $ extractLsb (GCMV8.degree y) (GCMV8.degree y) zi
-      have h4 : 1 = (i - 1) - (i - 1) + 1 := by omega
+      let xi := extractLsb' (i - 1) 1 x
+      let zi := extractLsb' 0 m ((GCMV8.reduce y z) ++ xi)
+      let bit := extractLsb' (GCMV8.degree y) 1 zi
       let newacc : BitVec n :=
-        partInstall (i - 1) (i - 1) (BitVec.cast h4 bit) acc
+        partInstall (i - 1) (i - 1) (bit.cast (by omega)) acc
       pdivTR x y j zi newacc
   pdivTR x y n (BitVec.zero m) (BitVec.zero n)
 
-example : pdiv 0b1101#4 0b10#2 (by omega) = 0b110#4 := by rfl
-example : pdiv 0x1a#5 0b10#2 (by omega) = 0b1101#5 := by rfl
-example : pdiv 0b1#1 0b10#2 (by omega) = 0b0#1 := by rfl
+example : pdiv 0b1101#4 0b10#2 = 0b110#4 := by rfl
+example : pdiv 0x1a#5 0b10#2 = 0b1101#5 := by rfl
+example : pdiv 0b1#1 0b10#2 = 0b0#1 := by rfl
 
 /-- Performs modulus of polynomials over GF(2). -/
 def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : 0 < m) : BitVec m :=
@@ -98,13 +92,10 @@ def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : 0 < m) : BitVec m :=
     | 0 => r
     | j + 1 =>
       let xi := getLsbD x (n - i)
-      have h : m - 1 + 1 = m := by omega
-      let tmp : BitVec (m - 1 + 1) :=
-        if xi
-        then extractLsb (m - 1) 0 p
-        else BitVec.cast h.symm (BitVec.zero m)
-      let r := (BitVec.cast h.symm r) ^^^ tmp
-      pmodTR x y (GCMV8.reduce y (p <<< 1)) j (BitVec.cast h r) H
+      let tmp :=
+        if xi then extractLsb' 0 m p else BitVec.zero m
+      let r := r ^^^ tmp
+      pmodTR x y (GCMV8.reduce y (p <<< 1)) j r H
   if y = 0 then 0 else pmodTR x y (GCMV8.reduce y 1) n (BitVec.zero m) H
 
 example: pmod 0b011#3 0b00#2 (by omega) = 0b0#1 := by rfl
@@ -187,8 +178,7 @@ def GCMInitV8 (H : BitVec 128) : (List (BitVec 128)) :=
   [H0_rev, H1, H2_rev, H3_rev, H4, H5_rev, H6_rev,
    H7, H8_rev, H9_rev, H10, H11_rev]
 
-set_option maxRecDepth 20000 in
-set_option maxHeartbeats 200000 in
+set_option maxRecDepth 8000 in
 example :  GCMInitV8 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128 ==
   [ 0x1099f4b39468565ccdd297a9df145877#128,
     0x62d81a7fe5da3296dd4b631a4b7c0e2b#128,
@@ -213,8 +203,7 @@ def GCMGmultV8 (H : BitVec 128) (Xi : List (BitVec 8)) (h : 8 * Xi.length = 128)
   let H := (lo H) ++ (hi H)
   split (GCMV8.gcm_polyval H (BitVec.cast h (BitVec.flatten Xi))) 8 (by omega)
 
-set_option maxRecDepth 20000 in
-set_option maxHeartbeats 200000 in
+set_option maxRecDepth 8000 in
 example : GCMGmultV8 0x1099f4b39468565ccdd297a9df145877#128
   [ 0x10#8, 0x54#8, 0x43#8, 0xb0#8, 0x2c#8, 0x4b#8, 0x1f#8, 0x24#8,
     0x3b#8, 0xcd#8, 0xd4#8, 0x87#8, 0x16#8, 0x65#8, 0xb3#8, 0x2b#8 ] (by decide) =
@@ -242,9 +231,7 @@ def GCMGhashV8 (H : BitVec 128) (Xi : List (BitVec 8))
     | 0 => Xi
     | j + 1 =>
       let lo := (i - 1) * 128
-      let hi := lo + 127
-      have h2 : hi - lo + 1 = 128 := by omega
-      let inpi : BitVec 128 := BitVec.cast h2 $ extractLsb hi lo inp
+      let inpi := extractLsb' lo 128 inp
       let Xj := GCMV8.gcm_ghash_block H Xi inpi
       GCMGhashV8TR H Xj inp j h1
   have h3 : 128 ∣ 8 * inp.length := by omega
@@ -253,8 +240,7 @@ def GCMGhashV8 (H : BitVec 128) (Xi : List (BitVec 8))
   let flat_inp := BitVec.flatten inp
   split (GCMGhashV8TR H flat_Xi flat_inp (8 * inp.length / 128) h3) 8 (by omega)
 
-set_option maxRecDepth 20000 in
-set_option maxHeartbeats 200000 in
+set_option maxRecDepth 8000 in
 example : GCMGhashV8 0x1099f4b39468565ccdd297a9df145877#128
   [ 0xa2#8, 0xc9#8, 0x9c#8, 0x56#8, 0xeb#8, 0xa7#8, 0x91#8, 0xf6#8,
     0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ]

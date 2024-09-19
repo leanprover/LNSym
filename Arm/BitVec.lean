@@ -311,10 +311,8 @@ def reverse (x : BitVec n) : BitVec n :=
     match i with
     | 0 => acc
     | j + 1 =>
-      have h1 : i - 1 - (i - 1) + 1 = 1 := by omega
-      let xi : BitVec 1 := BitVec.cast h1 $ extractLsb (i - 1) (i - 1) x
-      have h2 : 1 = (n - i) - (n - i) + 1 := by omega
-      let acc := BitVec.partInstall (n - i) (n - i) (BitVec.cast h2 xi) acc
+      let xi : BitVec 1 := extractLsb' (i - 1) 1 x
+      let acc := BitVec.partInstall (n - i) (n - i) (xi.cast (by omega)) acc
       reverseTR x j acc
   reverseTR x n $ BitVec.zero n
 
@@ -328,9 +326,7 @@ def split (x : BitVec n) (e : Nat) (h : 0 < e): List (BitVec e) :=
     | 0 => acc
     | j + 1 =>
       let lo := (n / e - i) * e
-      let hi := lo + e - 1
-      have h₀ : hi - lo + 1 = e := by simp only [hi, lo]; omega
-      let part : BitVec e := BitVec.cast h₀ (extractLsb hi lo x)
+      let part : BitVec e := extractLsb' lo e x
       let newacc := part :: acc
       splitTR x e h j newacc
   splitTR x e h (n / e) []
