@@ -1,3 +1,10 @@
+/-
+Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author(s): Siddharth Bhat
+
+Tactic to skip proof checking for interactive use.
+-/
 import Lean
 
 open Lean Meta Elab Tactic
@@ -11,13 +18,14 @@ register_option skip_proof.skip : Bool := {
 
 /--
 Surrounding a tactic with `skip_proof` will skip running the tactic and close the goal with `skipProofAx`.
-We only skip proofs `skip_proof.skip` is set to `true`,
+We only skip proofs if `skip_proof.skip` is set to `true`,
 and we emit a warning to remind the user that proofs are being skipped.
 
 This is to be used, during development, with expensive tactics such as `omega`, `bv_omega`, `bv_decide`, `simp_mem`.
 This allows one to run `have expensive_hyp : ... := by omega`, check that this can be proven,
-and to then replace this with `have expensive_hyp : ... := by skip_proof omega`,
-which will skip the use of `omega`, and instead of `skipProoxAx`, ensuring Lean stays interactive.
+and to then replace this with `have expensive_hyp : ... := by skip_proof omega`.
+This will skip the use of `omega`, and instead use `skipProoxAx`.
+This ensures that Lean stays performant during interactive development.
 
 `skip_proof p` signals that when `set_option skip_proof.skip false` is set, the proof `p` *will go through*.
 This makes `skip_proof p` morally different from a `sorry`:
