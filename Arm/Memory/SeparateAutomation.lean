@@ -702,7 +702,6 @@ For example, `mem_legal.of_omega` is a function of type:
 class OmegaReducible (α : Type) where
   reduceToOmega : α → Expr
 
-
 /--
 info: mem_legal'.of_omega {n : Nat} {a : BitVec 64} (h : a.toNat + n ≤ 2 ^ 64) : mem_legal' a n
 -/
@@ -962,12 +961,29 @@ partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM
           g.assign proof.h
     if let .some e := MemSubsetProp.ofExpr? gt then
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-        if let .some proof ←  proveWithOmega? e hyps then
+        if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
     if let .some e := MemSeparateProp.ofExpr? gt then
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-        if let .some proof ←  proveWithOmega? e hyps then
+        if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
+
+    withTraceNode m!"Unknown memory expression kind ⊢ {gt}. Trying a reduction to omega..." do
+      let oldGoals := (← getGoals)
+      try
+        let gproof ← mkFreshExprMVar (type? := gt)
+        setGoals (gproof.mvarId! :: (← getGoals))
+        SimpMemM.withMainContext do
+        let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
+        trace[simp_mem.info] m!"Executing `omega` to close {gt}"
+        SimpMemM.withTraceNode m!"goal (Note: can be large)" do
+          trace[simp_mem.info] "{← getMainGoal}"
+        omega
+        trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+        g.assign gproof
+      catch e =>
+        trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+        setGoals oldGoals
   return ← g.isAssigned
 
 
