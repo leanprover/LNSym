@@ -777,17 +777,17 @@ theorem ofInt_eq_signExtend (x : BitVec 32) :
   exact rfl
 
 -- FIXME: where to put this?
-theorem msb_signExtend (x : BitVec w) (hw: w < w'):
-      (signExtend w' x).msb = x.msb := by
-  rcases w' with rfl | w'
-  · simp only [show w = 0 by omega,
+theorem msb_signExtend (x : BitVec n) (hw: n < n'):
+      (signExtend n' x).msb = x.msb := by
+  rcases n' with rfl | n'
+  · simp only [show n = 0 by omega,
                msb_eq_getLsbD_last, Nat.zero_sub, Nat.le_refl,
                getLsbD_ge]
   · simp only [msb_eq_getLsbD_last, Nat.add_one_sub_one,
                getLsbD_signExtend, Nat.lt_add_one,
                decide_True, Bool.true_and, ite_eq_right_iff]
-    by_cases h : w' < w
-    · rcases w with rfl | w
+    by_cases h : n' < n
+    · rcases n with rfl | n
       · simp
       · simp only [h, Nat.add_one_sub_one, true_implies]
         omega
@@ -861,15 +861,15 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
                decide_False, Bool.not_false, Bool.true_and]
     simp only [show ¬32 ≤ (i : Nat) by omega,
                decide_False, Bool.not_false, Bool.true_and]
-    by_cases h : s + (i : Nat) < 32
+    by_cases h : shift + (i : Nat) < 32
     · simp only [h, reduceIte]
-      simp only [show s + (i : Nat) < 33 by omega,
+      simp only [show shift + (i : Nat) < 33 by omega,
                  ↓reduceIte, decide_True, Bool.true_and]
     · simp only [h, reduceIte]
-      have icases : s + (i : Nat) = 32 ∨ 32 < s + (i : Nat) := by omega
+      have icases : shift + (i : Nat) = 32 ∨ 32 < shift + (i : Nat) := by omega
       rcases icases with (h' | h')
       · simp only [h', Nat.lt_add_one, ↓reduceIte, decide_True, Bool.true_and]
-      · simp only [show ¬(s + (i : Nat) < 33) by omega, ↓reduceIte]
+      · simp only [show ¬(shift + (i : Nat) < 33) by omega, ↓reduceIte]
         apply msb_signExtend; trivial
   simp only [h]
   clear h
