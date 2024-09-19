@@ -155,7 +155,6 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
                  state_simp_rules, bitvec_rules, minimal_theory, pcs]
   simp only [List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
-  simp only [fst_AddWithCarry_eq_sub_neg, BitVec.reduceNot, true_and]
   /- Toy automation for deciding Aligned, will be converted to a decision procedure in a follow up PR -/
   repeat first
   | simp (config := { ground := true, decide := true}) [aligned_rules, state_simp_rules]
@@ -558,7 +557,6 @@ theorem program.stepi_0x8c8_cut (s sn : ArmState)
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp (config := {ground := true, decide := true})
-  simp only [fst_AddWithCarry_eq_add, true_and]
   apply Aligned_BitVecAdd_64_4
   · assumption
   · decide
