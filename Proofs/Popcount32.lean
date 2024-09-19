@@ -83,26 +83,27 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   (∀ (n : Nat) (addr : BitVec 64),
     mem_separate' addr n (r (.GPR 31) s0 - 16#64) 16 →
     s_final[addr, n] = s0[addr, n]) := by
-  -- Prelude
-  simp_all only [state_simp_rules, -h_run]
-  -- Symbolic Simulation
-  sym_n 27
-  -- Final Steps
-  -- Split all the Ands in the conclusion.
-  repeat' apply And.intro
+  simp_all only [state_simp_rules, -h_run] -- prelude
+  sym_n 27 -- Symbolic simulation
+  repeat' apply And.intro -- split conjunction.
   · simp only [popcount32_spec, popcount32_spec_rec]
     bv_decide
   · sym_aggregate
   · intro n addr h_separate
     simp only [memory_rules] at *
     repeat (simp_mem; sym_aggregate)
-  · apply Aligned_BitVecSub_64_4 -- TODO(@bollu): match goal.
+  · apply Aligned_BitVecSub_64_4 -- TODO(@bollu): automation
     · assumption
     · decide
   · apply Aligned_BitVecAdd_64_4
     · assumption
     · decide
 
+/--
+info: 'popcount32_sym_meets_spec' depends on axioms:
+[propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms popcount32_sym_meets_spec
 
 -------------------------------------------------------------------------------
 
