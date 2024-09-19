@@ -147,6 +147,18 @@ theorem sle_iff_not_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
   · bv_decide
   · bv_decide
 
+/--
+`x = 0` iff `Z = 0`.
+This is implemented by testing whether `x + (-1) + 1 = 0`
+-/
+theorem zero_iff_z_eq_one (x : BitVec 64) :
+  ((AddWithCarry x 0xffffffffffffffff#64 0x1#1).snd.z = 1#1) ↔
+  (x = 0#64) := by
+  simp only [AddWithCarry, bitvec_rules, state_simp_rules]
+  repeat split
+  · bv_decide
+  · bv_decide
+  done
 
 /-- `Aligned x a` witnesses that the bitvector `x` is `a`-bit aligned. -/
 def Aligned (x : BitVec n) (a : Nat) : Prop :=
