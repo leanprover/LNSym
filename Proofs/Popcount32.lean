@@ -1,11 +1,14 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Nathan Wetzler
+Author(s): Nathan Wetzler, Shilpi Goel, Alex Keizer
 -/
 import Arm.Exec
 import Arm.Util
+import Arm.Syntax
+import Arm.Memory.SeparateAutomation
 import Tactics.Sym
+import Tactics.Aggregate
 import Tactics.StepThms
 
 section popcount32
@@ -26,7 +29,7 @@ int popcount_32 (unsigned int v) {
 
 def popcount32_spec_rec (i : Nat) (x : BitVec 32) : (BitVec 32) :=
   match i with
-  | 0 => BitVec.zero 32
+  | 0 => 0#32
   | i' + 1 =>
     let bit_idx := BitVec.getLsbD x i'
     ((BitVec.zeroExtend 32 (BitVec.ofBool bit_idx)) + (popcount32_spec_rec i' x))
@@ -68,44 +71,57 @@ def popcount32_program : Program :=
 
 #genStepEqTheorems popcount32_program
 
-theorem popcount32_sym_no_error (s0 s_final : ArmState)
+theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x4005b4#64)
   (h_s0_program : s0.program = popcount32_program)
   (h_s0_sp_aligned : CheckSPAlignment s0)
   (h_s0_err : read_err s0 = StateError.None)
   (h_run : s_final = run 27 s0) :
-  read_err s_final = StateError.None := by
+  read_gpr 32 0#5 s_final = popcount32_spec (read_gpr 32 0#5 s0) ∧
+  read_err s_final = StateError.None ∧
+  (∀ f, f ≠ (.GPR 0#5) ∧ f ≠ (.GPR 1#5) ∧ f ≠ (.GPR 31#5) ∧ f ≠ .PC →
+       r f s_final = r f s0) ∧
+  (∀ (n : Nat) (addr : BitVec 64),
+    mem_separate' addr n (r (.GPR 31) s0 - 16#64) 16 →
+    s_final[addr, n] = s0[addr, n]) := by
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic Simulation
   sym_n 27
-  done
+  -- Final Steps
+  -- Split all the Ands in the conclusion.
+  repeat' apply And.intro
+  · simp only [popcount32_spec,
+               fst_AddWithCarry_eq_add,
+               fst_AddWithCarry_eq_sub_neg]
+    simp only [popcount32_spec_rec]
+    bv_decide
+  · sym_aggregate
+  · -- (TODO @alex) Let's do away with
+    -- ∀ (n : Nat) (addr : BitVec 64), read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂
+    -- in favor of
+    -- s₁.mem = s₂.mem
+    -- as Sid said.
+    simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *
+    simp only [memory_rules] at *
+    intro n addr h_separate
 
--- theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
---   (h_s0_pc : read_pc s0 = 0x4005b4#64)
---   (h_s0_program : s0.program = popcount32_program)
---   (h_s0_sp_aligned : CheckSPAlignment s0)
---   (h_s0_err : read_err s0 = StateError.None)
---   (h_run : s_final = run 27 s0) :
---   read_gpr 32 0#5 s_final = popcount32_spec (read_gpr 32 0#5 s0) ∧
---   read_err s_final = StateError.None := by
---   -- Prelude
---   simp_all only [state_simp_rules, -h_run]
---   -- Symbolic Simulation
---   sym_n 27
---   try (clear h_step_1 h_step_2 h_step_3 h_step_4;
---        clear h_step_5 h_step_6 h_step_7 h_step_8;
---        clear h_step_9 h_step_10;
---        clear h_step_11 h_step_12 h_step_13 h_step_14;
---        clear h_step_15 h_step_16 h_step_17 h_step_18;
---        clear h_step_19 h_step_20;
---        clear h_step_21 h_step_22 h_step_23 h_step_24;
---        clear h_step_25 h_step_26)
---   -- Final Steps
---   unfold run at h_run
---   subst s_final
---   unfold popcount32_spec
---   sorry
+    -- (TODO @alex/@bollu) Can we hope to make this shorter after the marriage
+    -- of `sym_n` and `simp_mem`?
+    simp (config := {ground := true}) only
+          [fst_AddWithCarry_eq_add, fst_AddWithCarry_eq_sub_neg]
+    simp only [*, bitvec_rules]
+    simp_mem
+    sym_aggregate
+
+    simp (config := {ground := true}) only
+          [fst_AddWithCarry_eq_add, fst_AddWithCarry_eq_sub_neg]
+    simp only [*, bitvec_rules]
+    simp_mem
+    rfl
+
+
+-------------------------------------------------------------------------------
 
 /-! ## Tests for step theorem generation -/
 section Tests
