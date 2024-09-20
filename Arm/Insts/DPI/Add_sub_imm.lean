@@ -29,6 +29,9 @@ def exec_add_sub_imm (inst : Add_sub_imm_cls) (s : ArmState) : ArmState :=
                           (1#1, ~~~imm)
                         else
                           (0#1, imm)
+    -- `carry, operand2` is written as a let binding followed by strucure projections to
+    -- work aroud a lean bug that desurgars `let (x, y) := if c then t else e` poorly:
+    -- https://github.com/leanprover/lean4/issues/5388
     let carry := carryInAndOperand2.fst
     let operand2 := carryInAndOperand2.snd
     let operand2         := BitVec.zeroExtend datasize operand2
