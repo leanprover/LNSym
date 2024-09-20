@@ -269,3 +269,12 @@ def traceHeartbeats (cls : Name) (header : Option String := none) :
   let percent ← heartbeatsPercent
   trace cls fun _ =>
     m!"{header}used {heartbeats} heartbeats ({percent}% of maximum)"
+
+/-! ## `withMainContext'` -/
+
+variable {m} [Monad m] [MonadLiftT TacticM m] [MonadControlT MetaM m]
+/-- Execute `x` using the main goal local context and instances.
+
+Unlike the standard `withMainContext`, `x` may live in a generic monad `m`. -/
+def withMainContext' (x : m α) : m α := do
+  (← getMainGoal).withContext x

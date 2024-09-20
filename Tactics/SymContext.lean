@@ -100,6 +100,24 @@ structure SymContext where
   to determine the name of the next state variable that is added by `sym` -/
   curr_state_number : Nat := 0
 
+/-! ## Monad -/
+
+/-- `SymM` is a wrapper around `TacticM` with a mutable `SymContext` state -/
+abbrev SymM := StateT SymContext TacticM
+
+/-- `SymM` is a wrapper around `TacticM` with a read-only `SymContext` state -/
+abbrev SymReaderM := ReaderT SymContext TacticM
+
+namespace SymM
+
+def run (ctx : SymContext) (k : SymM α) : TacticM (α × SymContext) :=
+  StateT.run k ctx
+
+instance : MonadLift SymReaderM SymM where
+  monadLift x c := do return (←x c, c)
+
+end SymM
+
 namespace SymContext
 
 /-! ## Simple projections -/
@@ -142,9 +160,35 @@ or throw an error if no local variable of that name exists -/
 def hRunDecl : MetaM LocalDecl := do
   findFromUserName c.h_run
 
+section Monad
+variable {m} [Monad m] [MonadReaderOf SymContext m]
+
+def getCurrentStateNumber : m Nat := do return (← read).curr_state_number
+
+/-- Retrieve the name of the current state -/
+def getCurrentStateName : m Name := do
+  return (← read).state
+
+/-- Retrieve an expression for the current state,
+or throw an error if no local variable of that name exists -/
+def getCurrentState [MonadLiftT MetaM m] : m Expr := do
+  (← read).stateExpr
+
+/-- Return the name of the hypothesis
+  `h_run : <finalState> = run <runSteps> <initialState>` -/
+def getHRunName : m Name := do return (← read).h_run
+
+/-- Retrieve the name for the next state
+
+NOTE: does not increment the state;
+consecutive calls to `getNextStateName` will give the same name -/
+def getNextStateName : m Name := do return (← read).next_state
+
+end Monad
+
 end
 
-/-! ## `ToMessageData` instance -/
+/-! ## `ToMessageData` instance and tracing -/
 
 /-- Convert a `SymContext` to `MessageData` for tracing.
 This is not a `ToMessageData` instance because we need access to `MetaM` -/
@@ -164,6 +208,11 @@ def toMessageData (c : SymContext) : MetaM MessageData := do
   h_sp? := {h_sp?},
   state_prefix := {c.state_prefix},
   curr_state_number := {c.curr_state_number} }"
+
+def traceSymContext : SymM Unit :=
+  withTraceNode `Tactic.sym (fun _ => pure m!"SymContext: ") <| do
+    let m ← (← getThe SymContext).toMessageData
+    trace[Tactic.sym] m
 
 /-! ## Creating initial contexts -/
 
