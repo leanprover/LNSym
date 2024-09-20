@@ -662,8 +662,7 @@ def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool)
       BitVec.ofInt (n + 1) rounded
     else
       BitVec.ofInt (n + 1) value
-  have h₀ : n - 1 - 0 + 1 = n := by omega
-  BitVec.cast h₀ $ extractLsb (n-1) 0 (fn rounded_bv shift)
+  extractLsb' 0 n (fn rounded_bv shift)
 
 @[state_simp_rules]
 def Int_with_unsigned (unsigned : Bool) (value : BitVec n) : Int :=
@@ -689,6 +688,13 @@ theorem shift_le (x : Nat) (shift :Nat) :
   simp only [Nat.shiftRight_eq_div_pow]
   exact Nat.div_le_self x (2 ^ shift)
 
+-- FIXME: should this be upstreamed?
+theorem extractLsb'_ofNat (x n : Nat) (lo size : Nat) :
+  extractLsb' lo size (BitVec.ofNat n x) = .ofNat size ((x % 2^n) >>> lo) := by
+  apply eq_of_getLsbD_eq
+  intro ⟨i, _lt⟩
+  simp [BitVec.ofNat]
+
 @[state_simp_rules]
 theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
   (shift : Nat) (result : BitVec 128):
@@ -697,8 +703,8 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
      unsigned := true, round := false, accumulate := false,
      h := (by omega)}
     operand 0#128 result =
-  (ushiftRight (extractLsb 127 64 operand) shift)
-    ++ (ushiftRight (extractLsb 63 0 operand) shift) := by
+  (ushiftRight (extractLsb' 64 64 operand) shift)
+    ++ (ushiftRight (extractLsb' 0 64 operand) shift) := by
   unfold shift_right_common_aux
   simp only [minimal_theory, bitvec_rules]
   unfold shift_right_common_aux
@@ -734,16 +740,17 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
              -- Eliminating casting functions
              Int.ofNat_eq_coe, ofInt_natCast, ofNat_toNat
     ]
-  generalize (extractLsb 127 64 operand) = x; simp at x
-  generalize (extractLsb 63 0 operand) = y; simp at y
-  have h0 : ∀ (z : BitVec 64), extractLsb 63 0 ((zeroExtend 65 z).ushiftRight shift)
+  simp only [reduceExtracLsb', BitVec.zero_add]
+  generalize (extractLsb' 64 64 operand) = x
+  generalize (extractLsb' 0 64 operand) = y
+  have h0 : ∀ (z : BitVec 64), extractLsb' 0 64 ((zeroExtend 65 z).ushiftRight shift)
     = z.ushiftRight shift := by
     intro z
     simp only [ushiftRight, toNat_truncate]
     have h1: z.toNat % 2 ^ 65 = z.toNat := by omega
     simp only [h1]
     simp only [Std.Tactic.BVDecide.Normalize.BitVec.ofNatLt_reduce]
-    simp only [Nat.sub_zero, Nat.reduceAdd, BitVec.extractLsb_ofNat, Nat.shiftRight_zero]
+    simp only [Nat.sub_zero, Nat.reduceAdd, extractLsb'_ofNat, Nat.shiftRight_zero]
     have h2 : z.toNat >>> shift % 2 ^ 65 = z.toNat >>> shift := by
       refine Nat.mod_eq_of_lt ?h3
       have h4 : z.toNat >>> shift ≤ z.toNat := by exact shift_le z.toNat shift
@@ -786,10 +793,10 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
       unsigned := false, round := false, accumulate := false,
       h := (by omega) }
       operand 0#128 result =
-  (sshiftRight (extractLsb 127 96 operand) shift)
-    ++ (sshiftRight (extractLsb 95 64 operand) shift)
-    ++ (sshiftRight (extractLsb 63 32 operand) shift)
-    ++ (sshiftRight (extractLsb 31 0 operand) shift) := by
+  (sshiftRight (extractLsb' 96 32 operand) shift)
+    ++ (sshiftRight (extractLsb' 64 32 operand) shift)
+    ++ (sshiftRight (extractLsb' 32 32 operand) shift)
+    ++ (sshiftRight (extractLsb' 0 32 operand) shift) := by
   unfold shift_right_common_aux
   simp only [minimal_theory, bitvec_rules]
   unfold shift_right_common_aux
@@ -829,20 +836,19 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
              -- Eliminating casting functions
              ofInt_eq_signExtend
     ]
-  generalize extractLsb 31 0 operand = a; simp at a
-  generalize extractLsb 63 32 operand = b; simp at b
-  generalize extractLsb 95 64 operand = c; simp at c
-  generalize extractLsb 127 96 operand = d; simp at d
+  generalize extractLsb' 0 32 operand = a
+  generalize extractLsb' 32 32 operand = b
+  generalize extractLsb' 64 32 operand = c
+  generalize extractLsb' 96 32 operand = d
   have h : ∀ (x : BitVec 32),
-    extractLsb 31 0 ((signExtend 33 x).sshiftRight shift)
+    extractLsb' 0 32 ((signExtend 33 x).sshiftRight shift)
     = x.sshiftRight shift := by
     intros x
     apply eq_of_getLsbD_eq; intros i; simp at i
     simp only [getLsbD_sshiftRight]
-    simp only [Nat.sub_zero, Nat.reduceAdd, getLsbD_extract, Nat.zero_add,
-               getLsbD_sshiftRight, getLsbD_signExtend]
-    simp only [show (i : Nat) ≤ 31 by omega,
-               decide_True, Bool.true_and]
+    simp only [getLsbD_extractLsb', Fin.is_lt, decide_True,
+               Nat.zero_add, getLsbD_sshiftRight,
+               getLsbD_signExtend, Bool.true_and]
     simp only [show ¬33 ≤ (i : Nat) by omega,
                decide_False, Bool.not_false, Bool.true_and]
     simp only [show ¬32 ≤ (i : Nat) by omega,
@@ -897,8 +903,8 @@ theorem shift_left_common_aux_64_2 (operand : BitVec 128)
      unsigned := unsigned, round := round, accumulate := accumulate,
      h := (by omega)}
     operand result =
-  (extractLsb 127 64 operand <<< shift)
-    ++ (extractLsb 63 0 operand <<< shift) := by
+  (extractLsb' 64 64 operand <<< shift)
+    ++ (extractLsb' 0 64 operand <<< shift) := by
   unfold shift_left_common_aux
   simp only [minimal_theory, bitvec_rules]
   unfold shift_left_common_aux
