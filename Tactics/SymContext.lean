@@ -100,6 +100,18 @@ structure SymContext where
   to determine the name of the next state variable that is added by `sym` -/
   curr_state_number : Nat := 0
 
+/-! ## Monad -/
+
+/-- `SymM` is a wrapper around `TacticM` with a `SymContext` state -/
+abbrev SymM := StateT SymContext TacticM
+
+namespace SymM
+
+def run (ctx : SymContext) (k : SymM α) : TacticM (α × SymContext) :=
+  StateT.run k ctx
+
+end SymM
+
 namespace SymContext
 
 /-! ## Simple projections -/
