@@ -9,6 +9,7 @@ import Arm.Syntax
 import Tactics.Sym
 import Tactics.Aggregate
 import Tactics.CSE
+import Tactics.ClearNamed
 import Arm.Memory.SeparateAutomation
 import Correctness.ArmSpec
 import Tests.SHA2.SHA512ProgramTest
@@ -166,7 +167,11 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   (h_s0_init : sha512_init_pre 0x1264c0#64
                                N SP CtxBase InputBase s0)
   (h_run : sf = run 16 s0) :
-  sha512_prelude 0x126500#64 N SP CtxBase InputBase sf := by
+  sha512_prelude 0x126500#64 N SP CtxBase InputBase sf ∧
+  -- (TODO @shilpi) State register non-effects here.
+  ∀ (n : Nat) (addr : BitVec 64),
+    mem_separate' addr n (SP - 16#64) 16 →
+    sf[addr, n] = s0[addr, n] := by
   -- Prelude
   obtain ⟨h_s0_program, h_s0_pc, h_s0_err, h_s0_sp_aligned,
           h_s0_num_blocks, h_s0_sp, h_s0_ctx_base,
@@ -234,24 +239,44 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   -- defs.
   simp only [num_blocks, stack_ptr, ctx_addr, input_addr] at *
   constructor
-  · -- (TODO @bollu) Think about whether `simp_mem` should be powerful enough to solve this goal.
-    -- Also, `mem_omega` name suggestion from Alex for the already souped up `simp_mem`.
-    simp_mem
-    simp only [h_s0_ctx_base, Nat.sub_self, bitvec_rules]
   · constructor
-    · -- (FIXME @bollu) simp_mem doesn't make progress here. :-(
-      -- simp only [←h_s0_sp] at h_s0_mem_sep
-      rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-      simp only [h_s0_ktbl]
-      -- (FIXME @bollu) Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
-      -- works here, but using it is painful. Also, mispelled lemma.
-      have := Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
-              h_s0_mem_sep 3 0 (by decide)
-              (ktbl_addr, (SHA2.k_512.length * 8))
-              ((SP + 0xfffffffffffffff0#64), 16)
-      simp at this
-      simp only [h_s0_sp, this]
-    · simp only [h_s0_sp, h_s0_num_blocks, h_s0_input_base, h_s0_ctx_base,
-                 h_s0_mem_sep,
-                 BitVec.add_assoc, BitVec.add_sub_cancel, bitvec_rules, minimal_theory]
+    · -- (TODO @bollu) Think about whether `simp_mem` should be powerful enough to solve this goal.
+      -- Also, `mem_omega` name suggestion from Alex for the already souped up `simp_mem`.
+      simp_mem
+      simp only [h_s0_ctx_base, Nat.sub_self, minimal_theory, bitvec_rules]
+    · constructor
+      · -- (FIXME @bollu) simp_mem doesn't make progress here. :-(
+        -- simp only [←h_s0_sp] at h_s0_mem_sep
+        rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+        simp only [h_s0_ktbl]
+        -- (FIXME @bollu) Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
+        -- works here, but using it is painful. Also, mispelled lemma.
+        have := Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
+                h_s0_mem_sep 3 0 (by decide)
+                (ktbl_addr, (SHA2.k_512.length * 8))
+                ((SP + 0xfffffffffffffff0#64), 16)
+        simp at this
+        simp only [h_s0_sp, this]
+      · simp only [h_s0_sp, h_s0_num_blocks, h_s0_input_base, h_s0_ctx_base,
+                   h_s0_mem_sep,
+                   BitVec.add_assoc, bitvec_rules, minimal_theory]
+  · intro n addr h
+    simp only [←h_s0_sp] at h
+    clear_named [h_, stepi]
+    simp_mem
+    /-
+    (NOTE @bollu): Without the `clear_named...` above, we run into the following
+    error(s):
+
+    At this point, the conclusion is:
+    `Memory.read_bytes n addr s0.mem = Memory.read_bytes n addr s0.mem`
+    which rfl can't close (error: `The rfl tactic failed. Possible reasons:...`)
+    and
+    `exact Eq.refl _` errors out like so:
+    `(deterministic) timeout at elaborator, maximum number of heartbeats
+     (200000) has been reached...`
+    -/
+    rfl
   done
+
+end SHA512
