@@ -206,7 +206,6 @@ private theorem mem_subset_one_addr_region_lemma_helper (n1 addr1 addr2 : BitVec
 
 theorem mem_subset_one_addr_region_lemma (addr1 addr2 : BitVec 64) (h : n1 <= 2 ^ 64) :
   mem_subset addr1 (addr1 + (BitVec.ofNat 64 n1) - 1#64) addr2 addr2 → (n1 = 1) ∧ (addr1 = addr2) := by
-  -- simp (config := {ground := true}) at h
   simp [mem_subset]
   have h0 := mem_subset_one_addr_region_lemma_helper (BitVec.ofNat 64 n1) addr1 addr2
   have h1 : 0#64 ≠ 18446744073709551615#64 := by bv_omega
