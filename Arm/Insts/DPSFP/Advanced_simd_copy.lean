@@ -25,6 +25,11 @@ def dup_aux (e : Nat) (elements : Nat) (esize : Nat)
     dup_aux (e + 1) elements esize element result
   termination_by (elements - e)
 
+theorem dup_aux_0_4_32 (element : BitVec 32) (result : BitVec 128) :
+  dup_aux 0 4 32 element result (by omega)
+  = element ++ element ++ element ++ element := by
+  sorry
+
 @[state_simp_rules]
 def exec_dup_element (inst : Advanced_simd_copy_cls) (s : ArmState) : ArmState :=
   let size := lowest_set_bit inst.imm5

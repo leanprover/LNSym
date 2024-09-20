@@ -92,5 +92,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     [shift_left_common_aux_64_2
     , shift_right_common_aux_64_2_tff
     , shift_right_common_aux_32_4_fff
-    , DPSFP.AdvSIMDExpandImm];
-    bv_decide
+    , DPSFP.AdvSIMDExpandImm
+    , DPSFP.dup_aux_0_4_32]
+    generalize read_mem_bytes 16 (r (StateField.GPR 1#5) s0) s0 = Hinit
+    sorry
