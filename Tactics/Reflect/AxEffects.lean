@@ -82,6 +82,23 @@ structure AxEffects where
 
 namespace AxEffects
 
+/-! ## Monad getters -/
+
+section Monad
+variable {m} [Monad m] [MonadStateOf AxEffects m]
+
+def getCurrentState       : m Expr := do return (← get).currentState
+def getInitialState       : m Expr := do return (← get).initialState
+def getNonEffectProof     : m Expr := do return (← get).nonEffectProof
+def getMemoryEffect       : m Expr := do return (← get).memoryEffect
+def getMemoryEffectProof  : m Expr := do return (← get).memoryEffectProof
+def getProgramProof       : m Expr := do return (← get).programProof
+
+def getStackAlignmentProof? : m (Option Expr) := do
+  return (← get).stackAlignmentProof?
+
+end Monad
+
 /-! ## Initial Reflected State -/
 
 /-- An initial `AxEffects` state which has no writes.
