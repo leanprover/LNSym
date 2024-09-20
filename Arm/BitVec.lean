@@ -142,6 +142,7 @@ attribute [bitvec_rules] BitVec.toFin_neg
 attribute [bitvec_rules] BitVec.neg_zero
 attribute [bitvec_rules] BitVec.toNat_mul
 attribute [bitvec_rules] BitVec.toFin_mul
+attribute [bitvec_rules] BitVec.mul_zero
 attribute [bitvec_rules] BitVec.mul_one
 attribute [bitvec_rules] BitVec.one_mul
 attribute [bitvec_rules] BitVec.toInt_mul
@@ -160,6 +161,9 @@ attribute [bitvec_rules] BitVec.ofBool_false
 attribute [bitvec_rules] BitVec.ofNat_eq_ofNat
 attribute [bitvec_rules] BitVec.zero_eq
 attribute [bitvec_rules] BitVec.truncate_eq_zeroExtend
+
+attribute [bitvec_rules] BitVec.add_sub_cancel
+attribute [bitvec_rules] BitVec.sub_add_cancel
 
 -- BitVec Simproc rules:
 -- See Lean/Meta/Tactic/Simp/BuiltinSimprocs for the built-in
@@ -1047,10 +1051,18 @@ theorem extractLsBytes_zero {w : Nat} (base : Nat) :
   simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, getLsbD_zero, Bool.and_false,
     implies_true]
 
-/-- Extracting out all the bytes is equal to the bitvector. -/
+/-- Extracting out all the bytes is equal to the bitvector.
+The constraint on the width being `n * 8` is written as
+an arbitrary `m` with a hypothesis `hm : m = n * 8`.
+This is known in some circles as `fording`. See [1]
+
+[1] https://personal.cis.strath.ac.uk/conor.mcbride/levitation.pdf
+-/
 @[bitvec_rules]
-theorem extractLsBytes_eq_self {n : Nat} (x : BitVec (n * 8)) :
-    x.extractLsBytes 0 n = x := by
+theorem extractLsBytes_eq_self {n : Nat} {m : Nat}
+    (hm : m = n * 8 := by omega)
+    (x : BitVec (no_index m)) :
+    x.extractLsBytes 0 n = x.cast hm := by
   apply BitVec.eq_of_getLsbD_eq
   intros i
   simp only [getLsbD_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero]
