@@ -32,13 +32,13 @@ def exec_add_sub_imm (inst : Add_sub_imm_cls) (s : ArmState) : ArmState :=
     let carry := carryInAndOperand2.fst
     let operand2 := carryInAndOperand2.snd
     let operand2         := BitVec.zeroExtend datasize operand2
-    let resultAndPState := AddWithCarry operand1 operand2 carry
+    let (result, pstate) := AddWithCarry operand1 operand2 carry
     -- State Updates
     let s'            := write_pc ((read_pc s) + 4#64) s
-    let s'            := if setflags then write_pstate resultAndPState.snd s' else s'
+    let s'            := if setflags then write_pstate pstate s' else s'
     let s'            := if inst.Rd = 31#5 ∧ ¬ setflags
-                         then write_gpr datasize inst.Rd resultAndPState.fst s'
-                         else write_gpr_zr datasize inst.Rd resultAndPState.fst s'
+                         then write_gpr datasize inst.Rd result s'
+                         else write_gpr_zr datasize inst.Rd result s'
     s'
 
 ----------------------------------------------------------------------
