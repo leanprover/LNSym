@@ -111,6 +111,20 @@ namespace SymM
 def run (ctx : SymContext) (k : SymM α) : TacticM (α × SymContext) :=
   StateT.run k ctx
 
+instance : MonadStateOf AxEffects SymM where
+  get         := do return (← get).effects
+  set effects := modify ({· with effects })
+  modifyGet f := modifyGet fun ctx =>
+                    let (a, effects) := f ctx.effects
+                    (a, { ctx with effects })
+
+-- We need an alternative to `withMainContext`, which has a continuation in
+-- `SymM` rather than `TacticM`
+@[inherit_doc Lean.Elab.Tactic.withMainContext]
+def withMainContext (k : SymM α) : SymM α := do
+  let goal ← getMainGoal
+  goal.withContext k
+
 end SymM
 
 namespace SymContext
@@ -145,9 +159,43 @@ or throw an error if no local variable of that name exists -/
 def hRunDecl : MetaM LocalDecl := do
   findFromUserName c.h_run
 
+section Monad
+variable {m} [Monad m] [MonadStateOf SymContext m]
+
+def getCurrentStateNumber : m Nat := do return (← get).curr_state_number
+
+/-- Retrieve the name of the current state:
+* if `AxEffects.getCurrentState` returns a free variable,
+    which is in scope in the current ambient local context,
+    return the corresponding username
+* otherwise, generate a name based on `curr_state_number` and
+    `state_prefix` -/
+def getCurrentStateName [MonadLCtx m] : m Name := do
+  let c ← get
+  let fallback := Name.mkSimple s!"{c.state_prefix}{c.curr_state_number}"
+  if let Expr.fvar fvar := c.effects.currentState then
+    let decl? := (← getLCtx).find? fvar
+    return match decl? with
+      | some d => d.userName
+      | none   => fallback
+  else
+    return fallback
+
+/-- Return the name of the hypothesis
+  `h_run : <finalState> = run <runSteps> <initialState>` -/
+def getHRunName : m Name := do return (← get).h_run
+
+/-- Retrieve the name for the next state
+
+NOTE: does not increment the state;
+consecutive calls to `getNextStateName` will give the same name -/
+def getNextStateName : m Name := do return (← get).next_state
+
+end Monad
+
 end
 
-/-! ## `ToMessageData` instance -/
+/-! ## `ToMessageData` instance and tracing -/
 
 /-- Convert a `SymContext` to `MessageData` for tracing.
 This is not a `ToMessageData` instance because we need access to `MetaM` -/
@@ -167,6 +215,11 @@ def toMessageData (c : SymContext) : MetaM MessageData := do
   h_sp? := {h_sp?},
   state_prefix := {c.state_prefix},
   curr_state_number := {c.curr_state_number} }"
+
+def traceSymContext : SymM Unit :=
+  withTraceNode `Tactic.sym (fun _ => pure m!"SymContext: ") <| do
+    let m ← (← getThe SymContext).toMessageData
+    trace[Tactic.sym] m
 
 /-! ## Creating initial contexts -/
 
