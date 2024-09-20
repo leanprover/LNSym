@@ -56,10 +56,11 @@ structure SymContext where
   h_run : Name
   /-- `program` is a *constant* which represents the program being evaluated -/
   program : Name
-  /-- `h_program` is a local hypothesis of the form `state.program = program` -/
-  h_program : Name
   /-- `programInfo` is the relevant cached `ProgramInfo` -/
   programInfo : ProgramInfo
+
+  /-- TODO -/
+  effects : AxEffects
 
   /-- `pc` is the *concrete* value of the program counter
 
@@ -123,19 +124,9 @@ variable (c : SymContext)
 def next_state (c : SymContext) : Name :=
   .mkSimple s!"{c.state_prefix}{c.curr_state_number + 1}"
 
-/-- return `h_err?` if given, or a default hardcoded name -/
-def h_err : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_err")
-
-/-- return `h_sp?` if given, or a default hardcoded name -/
-def h_sp  : Name := c.h_err?.getD (.mkSimple s!"h_{c.state}_sp")
-
 def state_ident       : Ident := mkIdent c.state
 def next_state_ident  : Ident := mkIdent c.next_state
 def h_run_ident       : Ident := mkIdent c.h_run
-def h_program_ident   : Ident := mkIdent c.h_program
-def h_pc_ident        : Ident := mkIdent c.h_pc
-def h_err_ident       : Ident := mkIdent c.h_err
-def h_sp_ident        : Ident := mkIdent c.h_sp
 
 /-- Find the local declaration that corresponds to a given name,
 or throw an error if no local variable of that name exists -/
@@ -266,12 +257,13 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     findProgramHyp stateExpr
 
   -- Then, try to find `h_pc`
-  let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
-  let h_pc ← findLocalDeclOfTypeOrError <| h_pc_type stateExpr pc
+  let pcE ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
+  let h_pc ← findLocalDeclOfTypeOrError <| h_pc_type stateExpr pcE
 
   -- Unwrap and reflect `pc`
-  let pc ← instantiateMVars pc
-  let pc ← withErrorContext h_pc.userName h_pc.type <| reflectBitVecLiteral 64 pc
+  let pcE ← instantiateMVars pcE
+  let pc ← withErrorContext h_pc.userName h_pc.type <|
+    reflectBitVecLiteral 64 pcE
 
   -- Attempt to find `h_err` and `h_sp`
   let h_err? ← findLocalDeclOfType? (h_err_type stateExpr)
@@ -295,14 +287,29 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
       (decls := axHyps)
       (noIndexAtArgs := false)
 
+  -- Build an initial AxEffects
+  let effects := AxEffects.initial stateExpr
+  let mut fields :=
+    effects.fields.insert .PC { value := pcE, proof := h_pc.toExpr}
+  if let some hErr := h_err? then
+    fields := fields.insert .ERR {
+      value := mkConst ``StateError.None,
+      proof := hErr.toExpr
+    }
+  let effects := { effects with
+      programProof := h_program.toExpr
+      stackAlignmentProof? := h_sp?.map (·.toExpr)
+      fields
+  }
+
   return inferStatePrefixAndNumber {
     state, finalState, runSteps?, program, pc,
     h_run := h_run.userName,
-    h_program := h_program.userName,
     h_pc := h_pc.userName
     h_err? := (·.userName) <$> h_err?,
     h_sp? := (·.userName) <$> h_sp?,
     programInfo,
+    effects,
     aggregateSimpCtx, aggregateSimprocs
   }
 where
@@ -353,7 +360,10 @@ def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
             return goal'
 
           newGoals := newGoal :: newGoals
-          ctx := { ctx with h_err? }
+          ctx := { ctx with
+            h_err?
+            effects := ← ctx.effects.withField (.mvar newGoal)
+          }
       | some h_err =>
           let h_err ← userNameToMessageData h_err
           trace[Tactic.sym] "h_err? is {h_err}, no new goal needed"
@@ -374,7 +384,10 @@ def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
               return goal'
 
             newGoals := newGoal :: newGoals
-            ctx := { ctx with h_sp? }
+            ctx := { ctx with
+              h_sp?
+              effects.stackAlignmentProof? := some (Expr.mvar newGoal)
+            }
           else
             trace[Tactic.sym] "h_sp? is none, but addHSp is false, \
               so no new goal is added"
@@ -395,10 +408,8 @@ def canonicalizeHypothesisTypes (c : SymContext) : TacticM Unit := withMainConte
   let lctx ← getLCtx
   let mut goal ← getMainGoal
   let state ← c.stateExpr
-  let program := mkConst c.program
 
   let mut hyps := #[
-    (c.h_program, h_program_type state program),
     (c.h_pc, h_pc_type state (toExpr c.pc))
   ]
   if let some runSteps := c.runSteps? then
@@ -426,7 +437,6 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
   let s := c.next_state
   { c with
     state       := s
-    h_program   := .mkSimple s!"h_{s}_program"
     h_pc        := .mkSimple s!"h_{s}_pc"
     h_err?      := c.h_err?.map (fun _ => .mkSimple s!"h_{s}_err")
     h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")

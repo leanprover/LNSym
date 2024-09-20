@@ -360,25 +360,40 @@ private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
     throwError "expected:\n  {expected}\nbut found:\n  {e}"
 
 /-- Given an expression `e : ArmState`,
+which is a sequence of `w`/`write_mem`s to `eff.currentState`,
+return an `AxEffects` where `e` is `currentState`.
+
+Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
+the whole expression is taken to be the initial state,
+even if there might be more `w`/`write_mem`s in sub-expressions. -/
+partial def updateWithExpr (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
+  let msg := m!"Updating effects with writes from: {e}"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
+    | write_mem_bytes n addr val e =>
+        let eff ← eff.updateWithExpr e
+        eff.update_write_mem n addr val
+
+    | w field value e =>
+        let eff ← eff.updateWithExpr e
+        eff.update_w field value
+
+    | _ =>
+        assertIsDefEq e eff.currentState
+        return eff
+
+/-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to the some state `s`,
 return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
 
 Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
 the whole expression is taken to be the initial state,
 even if there might be more `w`/`write_mem`s in sub-expressions. -/
-partial def fromExpr (e : Expr) : MetaM AxEffects := do
-  let msg := m!"Building effects with writes from: {e}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
-    | write_mem_bytes n addr val e =>
-        let eff ← fromExpr e
-        eff.update_write_mem n addr val
+def fromExpr (e : Expr) : MetaM AxEffects := do
+  let s0 ← mkFreshExprMVar mkArmState
+  let eff := initial s0
+  let eff ← eff.updateWithExpr e
+  return { eff with initialState := ← instantiateMVars eff.initialState}
 
-    | w field value e =>
-        let eff ← fromExpr e
-        eff.update_w field value
-
-    | _ =>
-        return initial e
 
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
@@ -410,24 +425,33 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
       currentState, fields, nonEffectProof, memoryEffectProof, programProof
     }
 
-/-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
+/-- Given a proof `eq : ?s = <sequence of w/write_mem to eff.currentState>`,
 where `?s` and `?s0` are arbitrary `ArmState`s,
-return an `AxEffect` with `?s0` as the initial state,
-the rhs of the equality as the current state, and
-`eq` stored as `currentStateEq`,
-so that `?s` is the public-facing current state -/
-def fromEq (eq : Expr) : MetaM AxEffects :=
+return an `AxEffect` with the rhs of the equality as the current state,
+and the (non-)effects updated accordingly -/
+def updateWithEq (eff : AxEffects) (eq : Expr) : MetaM AxEffects :=
   let msg := m!"Building effects with equality: {eq}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     let s ← mkFreshExprMVar mkArmState
     let rhs ← mkFreshExprMVar mkArmState
     assertHasType eq <| mkEqArmState s rhs
 
-    let eff ← fromExpr (← instantiateMVars rhs)
+    let eff ← eff.updateWithExpr (← instantiateMVars rhs)
     let eff ← eff.adjustCurrentStateWithEq s eq
     withTraceNode `Tactic.sym (fun _ => pure "new state") do
       trace[Tactic.sym] "{eff}"
     return eff
+
+/-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
+where `?s` and `?s0` are arbitrary `ArmState`s,
+return an `AxEffect` with `?s0` as the initial state,
+the rhs of the equality as the current state,
+and the (non-)effects updated accordingly -/
+def fromEq (eq : Expr) : MetaM AxEffects := do
+  let s0 ← mkFreshExprMVar mkArmState
+  let eff := initial s0
+  let eff ← eff.updateWithEq eq
+  return { eff with initialState := ← instantiateMVars eff.initialState}
 
 /-- Given an equality `eq : ?currentProgram = ?newProgram`,
 where `currentProgram` is the rhs of `eff.programProof`,
@@ -466,7 +490,10 @@ def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
     trace[Tactic.sym] "current field effect: {fieldEff}"
 
     if field ∉ eff.fields then
-      let proof ← mkEqTrans fieldEff.proof eq
+      let proof ← if eff.currentState == eff.initialState then
+          pure eq
+        else
+          mkEqTrans fieldEff.proof eq
       let fields := eff.fields.insert field { value, proof }
       return { eff with fields }
     else
