@@ -49,7 +49,7 @@ def pmult (x: BitVec (m + 1)) (y : BitVec (n + 1)) : BitVec (m + n + 1) :=
       pmultTR x y j (BitVec.cast h.symm acc)
   pmultTR x y (n + 1) (BitVec.zero (m + n + 1))
 
-example: pmult 0b1101#4 0b10#2 = 0b11010#5 := by rfl
+example: pmult 0b1101#4 0b10#2 = 0b11010#5 := rfl
 
 /-- Degree of x. -/
 private def degree (x : BitVec n) : Nat :=
@@ -59,7 +59,7 @@ private def degree (x : BitVec n) : Nat :=
     | m + 1 =>
       if getLsbD x n then n else degreeTR x m
   degreeTR x (n - 1)
-example: GCMV8.degree 0b0101#4 = 2 := by rfl
+example: GCMV8.degree 0b0101#4 = 2 := rfl
 
 /-- Subtract x from y if y's x-degree-th bit is 1. -/
 private def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
@@ -80,9 +80,9 @@ def pdiv (x: BitVec n) (y : BitVec m): BitVec n :=
       pdivTR x y j zi newacc
   pdivTR x y n (BitVec.zero m) (BitVec.zero n)
 
-example : pdiv 0b1101#4 0b10#2 = 0b110#4 := by rfl
-example : pdiv 0x1a#5 0b10#2 = 0b1101#5 := by rfl
-example : pdiv 0b1#1 0b10#2 = 0b0#1 := by rfl
+example : pdiv 0b1101#4 0b10#2 = 0b110#4 := rfl
+example : pdiv 0x1a#5 0b10#2 = 0b1101#5 := rfl
+example : pdiv 0b1#1 0b10#2 = 0b0#1 := rfl
 
 /-- Performs modulus of polynomials over GF(2). -/
 def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : 0 < m) : BitVec m :=
@@ -98,12 +98,12 @@ def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : 0 < m) : BitVec m :=
       pmodTR x y (GCMV8.reduce y (p <<< 1)) j r H
   if y = 0 then 0 else pmodTR x y (GCMV8.reduce y 1) n (BitVec.zero m) H
 
-example: pmod 0b011#3 0b00#2 (by omega) = 0b0#1 := by rfl
-example: pmod 0b011#3 0b01#2 (by omega) = 0b0#1 := by rfl
-example: pmod 0b011#3 0b10#2 (by omega) = 0b1#1 := by rfl
-example: pmod 0b011#3 0b11#2 (by omega) = 0b0#1 := by rfl
-example: pmod 0b011#3 0b100#3 (by omega) = 0b11#2 := by rfl
-example: pmod 0b011#3 0b1001#4 (by omega) = 0b11#3 := by rfl
+example: pmod 0b011#3 0b00#2 (by omega) = 0b0#1 := rfl
+example: pmod 0b011#3 0b01#2 (by omega) = 0b0#1 := rfl
+example: pmod 0b011#3 0b10#2 (by omega) = 0b1#1 := rfl
+example: pmod 0b011#3 0b11#2 (by omega) = 0b0#1 := rfl
+example: pmod 0b011#3 0b100#3 (by omega) = 0b11#2 := rfl
+example: pmod 0b011#3 0b1001#4 (by omega) = 0b11#3 := rfl
 
 ------------------------------------------------------------------------------
 -- Functions related to GCM
@@ -191,7 +191,7 @@ example :  GCMInitV8 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128 ==
     0x4af32418184aee1eec87cfb0e19d1c4e#128,
     0xf109e6e0b31d1eee7d1998bcfc545474#128,
     0x7498729da40cd2808c107e5c4f494a9a#128,
-    0xa47c653dfbeac924d0e417a05fe61ba4#128 ] := by rfl
+    0xa47c653dfbeac924d0e417a05fe61ba4#128 ] := rfl
 
 /-- GCMGmultV8 specification:
     H  : [128] -- the first element in Htable, not the initial H input to GCMInitV8
@@ -208,7 +208,7 @@ example : GCMGmultV8 0x1099f4b39468565ccdd297a9df145877#128
   [ 0x10#8, 0x54#8, 0x43#8, 0xb0#8, 0x2c#8, 0x4b#8, 0x1f#8, 0x24#8,
     0x3b#8, 0xcd#8, 0xd4#8, 0x87#8, 0x16#8, 0x65#8, 0xb3#8, 0x2b#8 ] (by decide) =
   [ 0xa2#8, 0xc9#8, 0x9c#8, 0x56#8, 0xeb#8, 0xa7#8, 0x91#8, 0xf6#8,
-    0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ] := by rfl
+    0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ] := rfl
 
 
 private def gcm_ghash_block (H : BitVec 128) (Xi : BitVec 128)
@@ -246,6 +246,6 @@ example : GCMGhashV8 0x1099f4b39468565ccdd297a9df145877#128
     0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ]
   (List.replicate 16 0x2a#8) (by simp) (by simp only [List.length_replicate]; omega) =
   [ 0x20#8, 0x60#8, 0x2e#8, 0x75#8, 0x7a#8, 0x4e#8, 0xec#8, 0x90#8,
-    0xc0#8, 0x9d#8, 0x49#8, 0xfd#8, 0xdc#8, 0xf2#8, 0xc9#8, 0x35#8 ] := by rfl
+    0xc0#8, 0x9d#8, 0x49#8, 0xfd#8, 0xdc#8, 0xf2#8, 0xc9#8, 0x35#8 ] := rfl
 
 end GCMV8

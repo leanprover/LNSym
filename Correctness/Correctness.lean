@@ -501,7 +501,7 @@ theorem cassert_when_cut_exists [Sys σ] [Spec' σ] (s0 si : σ) (n i : Nat)
           simp only [run_run, Nat.add_comm, h_cut]
         have := @cassert_lower_bound σ (i+1)
                 (cassert s0 (run si 1) (i + 1)).fst _ _ s0 (run si 1)
-                n this (by rfl)
+                n this rfl
         omega
       rw [this] at h_inv''
       rw [cassert_eq]
@@ -630,7 +630,7 @@ theorem termination_from_decreasing_rank [Sys σ] [Spec' σ] (rank : σ → Nat)
       intro x
       exact h_not_exit (n' + x)
     exact h_inv (rank (run s n')) (h_rank ▸ h_term_helper.right) (run s n')
-                 h_exit_assump (h_term_helper.left) (by rfl)
+                 h_exit_assump (h_term_helper.left) rfl
     done
 
 ----------------------------------------------------------------------
