@@ -136,7 +136,7 @@ attribute [minimal_theory] Nat.le_refl
 
 @[minimal_theory]
 theorem option_get_bang_of_some [Inhabited α] (v : α) :
-  Option.get! (some v) = v := by rfl
+  Option.get! (some v) = v := rfl
 attribute [minimal_theory] Option.isNone_some
 
 attribute [minimal_theory] Fin.isValue

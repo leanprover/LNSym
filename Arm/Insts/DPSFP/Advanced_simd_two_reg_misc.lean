@@ -27,12 +27,12 @@ theorem Nat_lt_of_le_of_le (x y z : Nat) (h1 : x < y) (h2 : y <= z) : x <= z := 
   exact Nat.lt_of_lt_of_le h1 h2
 
 theorem pow2_helper1 (i : Nat) : 8 * 2 ^ i = 2 ^ (3 + i) := by
-  have h : 8 = 2^3 := by rfl
+  have h : 8 = 2^3 := rfl
   rw [h]
   exact (Nat.pow_add 2 3 i).symm
 
 theorem pow2_helper2 (j : Nat) (h : j <= 6) : 64 / 2 ^ j = 2 ^ (6 - j) := by
-  have h0 : 64 = 2^6 := by rfl
+  have h0 : 64 = 2^6 := rfl
   rw [h0]
   refine Nat.pow_div ?h ?hx
   repeat simp_all!
