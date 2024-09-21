@@ -201,6 +201,14 @@ partial def mkAppNonEffect (eff : AxEffects) (field : Expr) : MetaM Expr := do
       trace[Tactic.sym] "constructed: {nonEffectProof}"
       return nonEffectProof
 
+/-- The expected type of `proof`. Note that this is based on the `value` field,
+and might thus be (syntactically) different from `inferType` -/
+def FieldEff.type (fieldEff : FieldEffect) : MetaM Expr := do
+  let type ← inferType fieldEff.proof
+  return match type.eq? with
+  | some ⟨ty, lhs, _rhs⟩  => mkApp3 (.const ``Eq [1]) ty lhs fieldEff.value
+  | none                  => type
+
 /-- Get the value for a field, if one is stored in `eff.fields`,
 or assemble an instantiation of the non-effects proof -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
