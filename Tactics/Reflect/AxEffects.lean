@@ -21,14 +21,6 @@ structure AxEffects.FieldEffect where
   deriving Repr
 open AxEffects.FieldEffect
 
-structure AxEffects.CSEState where
-  /-- A map from expressions to variable ids plus a proof that the returned
-  variable is equal to the original expression -/
-  vars : Std.HashMap Expr (FVarId × Expr) := ∅
-  /-- A counter to generate new names. -/
-  gensymCount : Nat := 1
-  deriving Repr, Inhabited
-
 /-- `AxEffects` is an axiomatic representation of effects,
 i.e., `AxEffects` transforms a description of an `ArmState` written as
 a sequence of `w` and `write_mem`s to some initial state
@@ -106,83 +98,6 @@ def getStackAlignmentProof? : m (Option Expr) := do
   return (← get).stackAlignmentProof?
 
 end Monad
-
-/-! ## AxEffects State Monad -/
-
-/-- `AxEffectsM` is a monad with `AxEffects` state, it's an implementation
-detail that shouldn't surface in public-facing APIs -/
-abbrev AxEffectsM := StateT (AxEffects × CSEState) TacticM
-
-/-- Modify the `AxEffects` component of `AxEffectsM` -/
-def modifyAxEffects (f : AxEffects → α × AxEffects) : AxEffectsM α :=
-  modifyGet fun (eff, cseState) =>
-    let (a, eff) := f eff
-    (a, (eff, cseState))
-
-/-- Modify the `CSEState` component of `AxEffectsM` -/
-def modifyCSEState (f : CSEState → α × CSEState) : AxEffectsM α :=
-  modifyGet fun (eff, cseState) =>
-    let (a, cseState) := f cseState
-    (a, (eff, cseState))
-
-/-! ## Common Subexpression Elimination -/
-
-/-- Generate a fresh variable name, incrementing the `genSymCount` -/
-protected def CSEState.generateName : AxEffectsM Name :=
-  modifyCSEState fun state =>
-    let i := state.gensymCount
-    let name := Name.mkSimple s!"x{i}"
-    let state := { state with gensymCount := i + 1 }
-    (name, state)
-
-protected def CSEState.lookupVar? (e : Expr) :
-    AxEffectsM (Option (FVarId × Expr)) := do
-  let (_, state) ← get
-  return state.vars.get? e
-
-protected def CSEState.insertVar (e : Expr) (x : FVarId) (h : Expr) :
-    AxEffectsM Unit :=
-  modifyCSEState fun state => ((), { state with
-    vars := state.vars.insert e (x, h) })
-
-def mkStateValue : StateField → Expr
-  | .GPR _ | .PC  => mkApp (mkConst ``BitVec) (toExpr 64)
-  | .SFP _        => mkApp (mkConst ``BitVec) (toExpr 128)
-  | .FLAG _       => mkApp (mkConst ``BitVec) (toExpr 1)
-  | .ERR          => mkConst ``StateError
-
-/-- Given an expression, run the continuation `k` with a CSE'd expresion that is
-equal to the original, as witnessed by the second argument.
-
-Note that the returned expression is guaranteed to be well-formed in the
-context of the main goal, which might've been modified and thus different from
-the ambient context; a call to `withMainContext` might be needed.
-We *do* guarantee that `k` is called with the right context.
-
-This will lookup the expression in the CSEState, and if not found,
-might add a new variable to the local context. Note that it is *not* guaranteed
-that the returned expression is a variable.
-The original expression could be returned as-is, for example,
-if it is a literal. -/
-def cseExpr (e : Expr) (k : Expr → Expr → AxEffectsM α) : AxEffectsM α := do
-  if e.isFVar || !e.hasFVar then
-    let h ← mkEqRefl e
-    k e h
-  else
-    match ← CSEState.lookupVar? e with
-    | some (x, h) => k (Expr.fvar x) h
-    | none =>
-        let type ← inferType e
-        let mvar ← getMainGoal
-        let name ← CSEState.generateName
-        let mvar ← mvar.define name type e
-        let ⟨x, mvar⟩ ← mvar.intro name
-        replaceMainGoal [mvar]
-        mvar.withContext <| do
-          let xE := Expr.fvar x
-          let h ← mkEqRefl xE
-          CSEState.insertVar e x h
-          k xE h
 
 /-! ## Initial Reflected State -/
 
@@ -317,6 +232,10 @@ def getFieldM (field : StateField) : m FieldEffect := do
 
 /-! ## Update a Reflected State -/
 
+section Update
+variable {m} [Monad m] [MonadStateOf AxEffects m] [MonadLiftT TacticM m]
+  [MonadLiftT MetaM m]
+
 /-- Execute `write_mem <n> <addr> <val>` against the state stored in `eff`
 That is, `currentState` of the returned struct will be
   `write_mem <n> <addr> <val> <eff.currentState>`
@@ -373,6 +292,12 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
   withTraceNode `Tactic.sym (fun _ => pure "new state") <| do
       trace[Tactic.sym] "{eff}"
   return eff
+
+def mkStateValue : StateField → Expr
+  | .GPR _ | .PC  => mkApp (mkConst ``BitVec) (toExpr 64)
+  | .SFP _        => mkApp (mkConst ``BitVec) (toExpr 128)
+  | .FLAG _       => mkApp (mkConst ``BitVec) (toExpr 1)
+  | .ERR          => mkConst ``StateError
 
 /-- Execute `w <fld> <val>` against the state stored in `eff`
 That is, `currentState` of the returned struct will be
@@ -667,6 +592,8 @@ def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
         #[eff.initialState, eff.currentState, proof, spAlignment]
     trace[Tactic.sym] "constructed stackAlignmentProof: {stackAlignmentProof?}"
     return some { eff with stackAlignmentProof? }
+
+end Update
 
 /-! ## Composition -/
 
