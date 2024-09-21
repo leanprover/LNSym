@@ -75,8 +75,6 @@ structure SymContext where
   and we assume that no overflow happens
   (i.e., `base - x` can never be equal to `base + y`) -/
   pc : BitVec 64
-  /-- `h_pc` is a local hypothesis of the form `r StateField.PC state = pc` -/
-  h_pc  : Name
   /-- `h_err?`, if present, is a local hypothesis of the form
   `r StateField.ERR state = .None` -/
   h_err? : Option Name
@@ -336,7 +334,6 @@ def fromLocalContext (state? : Option Name) : TacticM SymContext := do
   let c : SymContext := {
     finalState, runSteps?, pc,
     h_run := h_run.userName,
-    h_pc := h_pc.userName
     h_err? := (·.userName) <$> h_err?,
     h_sp? := (·.userName) <$> h_sp?,
     programInfo,
@@ -440,9 +437,7 @@ def canonicalizeHypothesisTypes : SymReaderM Unit := fun c => withMainContext do
   let mut goal ← getMainGoal
   let state := c.effects.currentState
 
-  let mut hyps := #[
-    (c.h_pc, h_pc_type state (toExpr c.pc))
-  ]
+  let mut hyps := #[]
   if let some runSteps := c.runSteps? then
     hyps := hyps.push (c.h_run, h_run_type c.finalState (toExpr runSteps) state)
   if let some h_err := c.h_err? then
@@ -467,7 +462,6 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
   let curr_state_number := c.curr_state_number + 1
   let s := c.next_state
   { c with
-    h_pc        := .mkSimple s!"h_{s}_pc"
     h_err?      := c.h_err?.map (fun _ => .mkSimple s!"h_{s}_err")
     h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")
     runSteps?   := (· - 1) <$> c.runSteps?
