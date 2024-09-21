@@ -55,7 +55,11 @@ structure SymContext where
   /-- `programInfo` is the relevant cached `ProgramInfo` -/
   programInfo : ProgramInfo
 
-  /-- TODO -/
+  /-- the effects of the current state, such as:
+  - a proof that the PC is equal to `pc`
+  - a proof that the current state is valid (`read_err _ = .None`)
+  - a proof that the current state has the right program
+  - and more, see `AxEffects` for the full list -/
   effects : AxEffects
 
   /-- `pc` is the *concrete* value of the program counter
