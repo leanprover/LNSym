@@ -288,6 +288,8 @@ def fromLocalContext (state? : Option Name) : TacticM SymContext := do
       trace[Tactic.sym] "got: {runSteps?}"
       pure runSteps?
   let finalState ← instantiateMVars finalState
+  if let some n := runSteps? then
+    changeType (h_run_type finalState (toExpr n) stateExpr) h_run
 
   -- At this point, `stateExpr` should have been assigned (if it was an mvar),
   -- so we can unwrap it to get the underlying name
@@ -305,6 +307,7 @@ def fromLocalContext (state? : Option Name) : TacticM SymContext := do
   let pcE ← instantiateMVars pcE
   let pc ← withErrorContext h_pc.userName h_pc.type <|
     reflectBitVecLiteral 64 pcE
+  changeType (h_pc_type stateExpr (toExpr pc)) h_pc
 
   -- Attempt to find `h_err`, adding a new subgoal if it couldn't be found
   let errHyp ← do
@@ -358,16 +361,16 @@ where
   ensure the type of the fvar is syntactically equal to `expectedType`,
   by modifying the local context of the main goal  -/
   changeType (expectedType : Expr) (decl : LocalDecl) : TacticM Unit := do
-    if decl.type != expectedType then
-      let goal ← getMainGoal
-      let goal ← goal.replaceLocalDeclDefEq decl.fvarId expectedType
-      replaceMainGoal [goal]
+    let goal ← getMainGoal
+    let goal ← goal.replaceLocalDeclDefEq decl.fvarId expectedType
+    replaceMainGoal [goal]
 
   findLocalDeclOfType? (expectedType : Expr) : TacticM (Option LocalDecl) := do
     let msg := m!"Searching for hypothesis of type: {expectedType}"
     withTraceNode `Tactic.sym (fun _ => pure msg) <| do
       let decl? ← _root_.findLocalDeclOfType? expectedType
-      let _ ← decl?.mapM (changeType expectedType)
+      if let some decl := decl? then
+        changeType expectedType decl
       trace[Tactic.sym] "Found: {(·.toExpr) <$> decl?}"
       return decl?
 
@@ -403,7 +406,7 @@ def prepareForNextStep : SymM Unit := do
 
   modifyThe SymContext (fun c => { c with
     pc
-    h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")
+    h_sp?       := none -- c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")
     runSteps?   := (· - 1) <$> c.runSteps?
     currentStateNumber := c.currentStateNumber + 1
   })

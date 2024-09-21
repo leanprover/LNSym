@@ -333,16 +333,16 @@ private def update_w (fld val : Expr) : m Unit := withMainContext' <| do
         return none
 
   -- Update the main field
-  let val ← do
-    if val.isFVar || !val.hasFVar then
-      pure val
-    else
-      let type := mkStateValue rField
-      let mvar ← getMainGoal
-      let mvar ← mvar.define `x type val
-      let ⟨x, mvar⟩ ← mvar.intro1P
-      replaceMainGoal [mvar]
-      pure (Expr.fvar x)
+  -- let val ← do
+  --   if val.isFVar || !val.hasFVar then
+  --     pure val
+  --   else
+  --     let type := mkStateValue rField
+  --     let mvar ← getMainGoal
+  --     let mvar ← mvar.define `x type val
+  --     let ⟨x, mvar⟩ ← mvar.intro1P
+  --     replaceMainGoal [mvar]
+  --     pure (Expr.fvar x)
 
   withMainContext' <| do
     let newField : FieldEffect := {
@@ -451,8 +451,9 @@ def fromExpr (e : Expr) : TacticM AxEffects := do
 
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
-def adjustCurrentStateWithEq (s eq : Expr) : m Unit := do
-  withTraceNode `Tactic.sym (fun _ => pure "adjusting `currenstState`") do
+def adjustCurrentStateWithEq (s eq : Expr) : m Unit :=
+  let msg := "adjusting `currenstState`"
+  withMainContext' <| withTraceNode `Tactic.sym (fun _ => pure msg) do
     let eff ← getThe AxEffects
     eff.traceCurrentState
     trace[Tactic.sym] "rewriting along {eq}"
@@ -707,7 +708,7 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
       let name := .mkSimple s!"{hypPrefix}non_effects"
       let proof := eff.nonEffectProof
       replaceOrNote goal name proof
-    let nonEffectProof := Expr.fvar nonEffectProof
+    -- let nonEffectProof := Expr.fvar nonEffectProof
     goal := goal'
 
     trace[Tactic.sym] "adding memory effects with {eff.memoryEffectProof}"
@@ -741,7 +742,8 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
 
     replaceMainGoal [goal]
     return { eff with
-      fields, nonEffectProof, memoryEffectProof, programProof,
+      -- nonEffectProof
+      fields, memoryEffectProof, programProof,
       stackAlignmentProof?
     }
 where

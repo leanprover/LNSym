@@ -222,7 +222,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
       if ←(getBoolOption `Tactic.sym.debug) then
         eff.validate
 
-      let eff ← eff.addHypothesesToLContext s!"h_{← getNextStateName}_"
+      -- let eff ← eff.addHypothesesToLContext s!"h_{← getNextStateName}_"
       withMainContext' <| do
         traceSymContext
         let simpThms ← eff.toSimpTheoremArray

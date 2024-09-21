@@ -51,21 +51,21 @@ that the returned expression is a variable.
 The original expression could be returned as-is, for example,
 if it is a literal. -/
 def cseExpr (e : Expr) (k : Expr → Expr → m α) : m α := do
-  if e.isFVar || !e.hasFVar then
+  -- if e.isFVar || !e.hasFVar then
     let h ← mkEqRefl e
     k e h
-  else
-    match ← CSEState.lookupVar? e with
-    | some (x, h) => k (Expr.fvar x) h
-    | none =>
-        let type ← inferType e
-        let mvar ← getMainGoal
-        let name ← CSEState.generateName
-        let mvar ← mvar.define name type e
-        let ⟨x, mvar⟩ ← mvar.intro name
-        replaceMainGoal [mvar]
-        mvar.withContext <| do
-          let xE := Expr.fvar x
-          let h ← mkEqRefl xE
-          CSEState.insertVar e x h
-          k xE h
+  -- else
+  --   match ← CSEState.lookupVar? e with
+  --   | some (x, h) => k (Expr.fvar x) h
+  --   | none =>
+  --       let type ← inferType e
+  --       let mvar ← getMainGoal
+  --       let name ← CSEState.generateName
+  --       let mvar ← mvar.define name type e
+  --       let ⟨x, mvar⟩ ← mvar.intro name
+  --       replaceMainGoal [mvar]
+  --       mvar.withContext <| do
+  --         let xE := Expr.fvar x
+  --         let h ← mkEqRefl xE
+  --         CSEState.insertVar e x h
+  --         k xE h
