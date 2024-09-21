@@ -210,7 +210,7 @@ def FieldEff.type (fieldEff : FieldEffect) : MetaM Expr := do
   | none                  => type
 
 /-- Get the value for a field, if one is stored in `eff.fields`,
-or assemble an instantiation of the non-effects proof -/
+or assemble an instantiation of the non-effects proof otherwise -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
   let msg := m!"getField {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -224,6 +224,11 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
       let value := mkApp2 (mkConst ``r) (toExpr fld) eff.initialState
       let proof  ← eff.mkAppNonEffect (toExpr fld)
       pure { value, proof }
+
+variable {m} [Monad m] [MonadStateOf AxEffects m] [MonadLiftT MetaM m] in
+@[inherit_doc getField]
+def getFieldM (field : StateField) : m FieldEffect := do
+  (← get).getField field
 
 /-! ## Update a Reflected State -/
 
