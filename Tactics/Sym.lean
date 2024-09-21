@@ -160,13 +160,11 @@ def unfoldRun (whileTac : Unit → TacticM Unit) : SymReaderM Unit := do
           originalGoals := originalGoals.concat subGoal
         setGoals (res.mvarId :: originalGoals)
 
-/-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
-add hypotheses that axiomatically describe the effects in terms of
-reads from `s{i+1}`.
-
-Return the context for the next step (see `SymContext.next`), where
-we attempt to determine the new PC by reflecting the obtained effects,
-falling back to incrementing the PC if reflection failed. -/
+/-- Break an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)` into an
+`AxEffects` that characterizes the effects in terms of reads from `s{i+1}`,
+add the relevant hypotheses to the local context, and
+store an `AxEffects` object with the newly added variables in the monad state
+-/
 def explodeStep (hStep : Expr) : SymM Unit :=
   withMainContext' do
     let c ← getThe SymContext
@@ -236,22 +234,6 @@ def explodeStep (hStep : Expr) : SymM Unit :=
         let simpThms ← eff.toSimpTheorems
         modifyThe SymContext (·.addSimpTheorems simpThms)
       set eff
-
-    -- Prepare sym context for the next step
-    withMainContext' <| do
-      -- Attempt to reflect the new PC
-      let nextPc ← eff.getField .PC
-      let nextPc? ← try
-        let nextPc ← reflectBitVecLiteral 64 nextPc.value
-        -- NOTE: `reflectBitVecLiteral` is fast when the value is a literal,
-        -- but might involve an expensive reduction when it is not
-        pure <| some nextPc
-      catch err =>
-        trace[Tactic.sym] "failed to reflect {nextPc.value}\n\n\
-          {err.toMessageData}"
-        pure none
-
-      modifyThe SymContext (·.next nextPc?)
 
 /-- A tactic wrapper around `explodeStep`.
 Note the use of `SymContext.fromLocalContext`,
@@ -324,6 +306,7 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
       -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`
       explodeStep hStep.toExpr
+      prepareForNextStep
 
       let goal ← getMainGoal
       let goal ← goal.clear hStep.fvarId

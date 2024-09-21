@@ -97,7 +97,7 @@ structure SymContext where
   /-- `curr_state_number` is incremented each simulation step,
   and used together with `curr_state_number`
   to determine the name of the next state variable that is added by `sym` -/
-  curr_state_number : Nat := 0
+  currentStateNumber : Nat := 0
 
 /-! ## Monad -/
 
@@ -141,9 +141,9 @@ variable (c : SymContext)
 /-- `program` is a *constant* which represents the program being evaluated -/
 def program : Name := c.programInfo.name
 
-/-- `next_state` generates the name for the next intermediate state -/
+/-- `next_state` generates the name for the next intermediate state. -/
 def next_state (c : SymContext) : Name :=
-  .mkSimple s!"{c.state_prefix}{c.curr_state_number + 1}"
+  .mkSimple s!"{c.state_prefix}{c.currentStateNumber + 1}"
 
 /-- Find the local declaration that corresponds to a given name,
 or throw an error if no local variable of that name exists -/
@@ -160,7 +160,7 @@ def hRunDecl : MetaM LocalDecl := do
 section Monad
 variable {m} [Monad m] [MonadReaderOf SymContext m]
 
-def getCurrentStateNumber : m Nat := do return (← read).curr_state_number
+def getCurrentStateNumber : m Nat := do return (← read).currentStateNumber
 
 /-- Return the name of the hypothesis
   `h_run : <finalState> = run <runSteps> <initialState>` -/
@@ -168,8 +168,9 @@ def getHRunName : m Name := do return (← read).h_run
 
 /-- Retrieve the name for the next state
 
-NOTE: does not increment the state;
-consecutive calls to `getNextStateName` will give the same name -/
+NOTE: `getNextStateName` does not increment the state, so consecutive calls
+will give the same name. Calling `prepareForNextStep` will increment the state.
+-/
 def getNextStateName : m Name := do return (← read).next_state
 
 end Monad
@@ -191,7 +192,7 @@ def toMessageData (c : SymContext) : MetaM MessageData := do
   pc := {c.pc},
   h_sp? := {h_sp?},
   state_prefix := {c.state_prefix},
-  curr_state_number := {c.curr_state_number},
+  curr_state_number := {c.currentStateNumber},
   effects := {c.effects} }"
 
 variable {α : Type} {m : Type → Type} [Monad m] [MonadTrace m] [MonadLiftT IO m]
@@ -222,14 +223,14 @@ def inferStatePrefixAndNumber : SymM Unit := do
   let tail := state.toSubstring.drop 1
 
   modifyThe SymContext fun ctxt =>
-    if let some curr_state_number := tail.toNat? then
+    if let some currentStateNumber := tail.toNat? then
       { ctxt with
         state_prefix := (state.get? 0).getD 's' |>.toString,
-        curr_state_number }
+        currentStateNumber }
     else
       { ctxt with
         state_prefix := "s",
-        curr_state_number := 1 }
+        currentStateNumber := 1 }
 
 /-- Annotate any errors thrown by `k` with a local variable (and its type) -/
 private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
@@ -369,7 +370,6 @@ def addGoalsForMissingHypotheses (addHSp : Bool := false) : SymM Unit :=
     let mut ctx ← getThe SymContext
     let mut goal ← getMainGoal
     let mut newGoals := []
-    let lCtx ← getLCtx
     let stateExpr ← AxEffects.getCurrentState
     let stateName ← AxEffects.getCurrentStateName
 
@@ -453,21 +453,28 @@ def canonicalizeHypothesisTypes : SymReaderM Unit := fun c => withMainContext do
 
 /-! ## Incrementing the context to the next state -/
 
-/-- `c.next` generates names for the next intermediate state and its hypotheses
+/-- `prepareForNextStep` prepares the state for the next step of symbolic
+evaluation:
+  * `pc` is reflected from the stored `effects`
+  * `runSteps?`, if specified, is decremented,
+  * the `currentStateNumber` is incremented
+-/
+def prepareForNextStep : SymM Unit := do
+  let s ← getNextStateName
+  let pc ← do
+    let { value, ..} ← AxEffects.getFieldM .PC
+    try
+      reflectBitVecLiteral 64 value
+    catch err =>
+      trace[Tactic.sym] "failed to reflect PC: {err.toMessageData}"
+      pure <| (← getThe SymContext).pc + 4
 
-`nextPc?`, if given, will be the pc of the next context.
-If `nextPC?` is `none`, then the previous pc is incremented by 4 -/
-def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
-    SymContext :=
-  let curr_state_number := c.curr_state_number + 1
-  let s := c.next_state
-  { c with
-    h_err?      := c.h_err?.map (fun _ => .mkSimple s!"h_{s}_err")
+  modifyThe SymContext (fun c => { c with
+    pc
     h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")
     runSteps?   := (· - 1) <$> c.runSteps?
-    pc          := nextPc?.getD (c.pc + 4#64)
-    curr_state_number
-  }
+    currentStateNumber := c.currentStateNumber + 1
+  })
 
 /-- Add a set of new simp-theorems to the simp-theorems used
 for effect aggregation -/
