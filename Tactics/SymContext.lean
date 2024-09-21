@@ -130,10 +130,6 @@ variable (c : SymContext)
 /-- `program` is a *constant* which represents the program being evaluated -/
 def program : Name := c.programInfo.name
 
-/-- `next_state` generates the name for the next intermediate state. -/
-def next_state (c : SymContext) : Name :=
-  .mkSimple s!"{c.state_prefix}{c.currentStateNumber + 1}"
-
 /-- Find the local declaration that corresponds to a given name,
 or throw an error if no local variable of that name exists -/
 def findFromUserName (name : Name) : MetaM LocalDecl := do
@@ -175,8 +171,11 @@ def getHRunName : m Name := do return (← get).h_run
 /-- Retrieve the name for the next state
 
 NOTE: `getNextStateName` does not increment the state, so consecutive calls
-will give the same name. You should use `next` to increment the state -/
-def getNextStateName : m Name := do return (← get).next_state
+will give the same name. You should use `prepareForNextStep` to increment the
+state -/
+def getNextStateName : m Name := do
+  let c ← get
+  return Name.mkSimple s!"{c.state_prefix}{c.currentStateNumber + 1}"
 
 end Monad
 
@@ -371,8 +370,6 @@ where
       changeType expectedType decl
       trace[Tactic.sym] "Found: {decl.toExpr}"
       return decl
-
-
 
 /-! ## Massaging the local context -/
 
