@@ -71,8 +71,6 @@ structure SymContext where
   and we assume that no overflow happens
   (i.e., `base - x` can never be equal to `base + y`) -/
   pc : BitVec 64
-  /-- `h_pc` is a local hypothesis of the form `r StateField.PC state = pc` -/
-  h_pc  : Name
   /-- `h_sp?`, if present, is a local hypothesis of the form
   `CheckSPAlignment state` -/
   h_sp?  : Option Name
@@ -342,7 +340,6 @@ def fromLocalContext (state? : Option Name) : TacticM SymContext := do
   let c : SymContext := {
     finalState, runSteps?, pc,
     h_run := h_run.userName,
-    h_pc := h_pc.userName
     h_sp? := (·.userName) <$> h_sp?,
     programInfo,
     effects,
@@ -392,7 +389,6 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
   let curr_state_number := c.curr_state_number + 1
   let s := c.next_state
   { c with
-    h_pc        := .mkSimple s!"h_{s}_pc"
     h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")
     runSteps?   := (· - 1) <$> c.runSteps?
     pc          := nextPc?.getD (c.pc + 4#64)
