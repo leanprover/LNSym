@@ -48,6 +48,8 @@ def LNSymSimpContext
   (thms : Array Name := #[])
   -- Local hypotheses to use during simp.
   (decls : Array LocalDecl := #[])
+  -- Other expressions to use during simp
+  (exprs : Array Expr := #[])
   -- Simprocs to add to the default set.
   (simprocs : Array Name := #[])
   -- argument to `DiscrTree.mkPath`
@@ -77,6 +79,18 @@ def LNSymSimpContext
     if noIndexAtArgs = false then
       newThms ← newThms.mapM fixSimpTheoremKey
     const_simpTheorems := newThms.foldl addSimpTheoremEntry const_simpTheorems
+
+  for e in exprs do
+    let origin :=
+      if let Expr.fvar id := e then
+        .fvar id
+      else
+        .other (← mkFreshUserName `sym_n)
+    let mut newThms ← mkSimpTheorems origin #[] e
+    if noIndexAtArgs = false then
+      newThms ← newThms.mapM fixSimpTheoremKey
+    const_simpTheorems := newThms.foldl addSimpTheoremEntry const_simpTheorems
+
   let all_simpTheorems := (#[const_simpTheorems] ++ ext_simpTheorems)
   let (ctx : Simp.Context) := { config := config,
                                 simpTheorems := all_simpTheorems,

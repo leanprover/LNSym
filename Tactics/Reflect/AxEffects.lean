@@ -90,6 +90,23 @@ structure AxEffects where
 
 namespace AxEffects
 
+/-! ## Monad getters -/
+
+section Monad
+variable {m} [Monad m] [MonadStateOf AxEffects m]
+
+def getCurrentState       : m Expr := do return (← get).currentState
+def getInitialState       : m Expr := do return (← get).initialState
+def getNonEffectProof     : m Expr := do return (← get).nonEffectProof
+def getMemoryEffect       : m Expr := do return (← get).memoryEffect
+def getMemoryEffectProof  : m Expr := do return (← get).memoryEffectProof
+def getProgramProof       : m Expr := do return (← get).programProof
+
+def getStackAlignmentProof? : m (Option Expr) := do
+  return (← get).stackAlignmentProof?
+
+end Monad
+
 /-! ## AxEffects State Monad -/
 
 /-- `AxEffectsM` is a monad with `AxEffects` state, it's an implementation
@@ -269,8 +286,16 @@ partial def mkAppNonEffect (eff : AxEffects) (field : Expr) : MetaM Expr := do
       trace[Tactic.sym] "constructed: {nonEffectProof}"
       return nonEffectProof
 
+/-- The expected type of `proof`. Note that this is based on the `value` field,
+and might thus be (syntactically) different from `inferType` -/
+def FieldEff.type (fieldEff : FieldEffect) : MetaM Expr := do
+  let type ← inferType fieldEff.proof
+  return match type.eq? with
+  | some ⟨ty, lhs, _rhs⟩  => mkApp3 (.const ``Eq [1]) ty lhs fieldEff.value
+  | none                  => type
+
 /-- Get the value for a field, if one is stored in `eff.fields`,
-or assemble an instantiation of the non-effects proof -/
+or assemble an instantiation of the non-effects proof otherwise -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
   let msg := m!"getField {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -284,6 +309,11 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
       let value := mkApp2 (mkConst ``r) (toExpr fld) eff.initialState
       let proof  ← eff.mkAppNonEffect (toExpr fld)
       pure { value, proof }
+
+variable {m} [Monad m] [MonadStateOf AxEffects m] [MonadLiftT MetaM m] in
+@[inherit_doc getField]
+def getFieldM (field : StateField) : m FieldEffect := do
+  (← get).getField field
 
 /-! ## Update a Reflected State -/
 
@@ -723,13 +753,12 @@ by default):
 Return an `AxEffect` where the expressions mentioned above have been replaced by
 `Expr.fvar <fvarId>`, with `fvarId` the id of the corresponding hypothesis
 that was just added to the local context -/
-def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
-    (mvar : Option MVarId := none) :
+def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
     TacticM AxEffects :=
   let msg := m!"adding hypotheses to local context"
-  withTraceNode `Tactic.sym (fun _ => pure msg) do
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
     eff.traceCurrentState
-    let mut goal ← mvar.getDM getMainGoal
+    let mut goal ← getMainGoal
 
     let fields ← do
       let mut fields := []
@@ -782,7 +811,7 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
     goal := goal'
 
     replaceMainGoal [goal]
-    return {eff with
+    return { eff with
       fields, nonEffectProof, memoryEffectProof, programProof,
       stackAlignmentProof?
     }

@@ -1073,6 +1073,14 @@ theorem not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
   · simp [h]
     exact Int.not_lt.mp h
 
+-- TODO: delete once https://github.com/leanprover/lean4/pull/5375/files
+--       is merged
+@[bv_normalize]
+theorem BitVec.ofBool_getLsbD (a : BitVec w) (i : Nat) :
+    BitVec.ofBool (a.getLsbD i) = a.extractLsb' i 1 := by
+  apply BitVec.eq_of_getLsbD_eq
+  intro ⟨0, _⟩
+  simp
 
 /-! ## `Quote` instance -/
 
