@@ -11,6 +11,7 @@ import Tactics.Common
 import Tactics.Attr
 import Tactics.Reflect.ProgramInfo
 import Tactics.Reflect.AxEffects
+import Tactics.Reflect.CSEState
 import Tactics.Simp
 
 /-!
@@ -96,6 +97,8 @@ structure SymContext where
   to determine the name of the next state variable that is added by `sym` -/
   currentStateNumber : Nat := 0
 
+  cseState : CSEState := {}
+
 /-! ## Monad -/
 
 /-- `SymM` is a wrapper around `TacticM` with a `SymContext` state -/
@@ -110,17 +113,18 @@ def run' (ctx : SymContext) (k : SymM α) : TacticM α :=
   StateT.run' k ctx
 
 instance : MonadStateOf AxEffects SymM where
-  get         := do return (← get).effects
-  set effects := modify ({· with effects })
-  modifyGet f := modifyGet fun ctx =>
+  get         := do return (← getThe SymContext).effects
+  set effects := modifyThe SymContext ({· with effects })
+  modifyGet f := modifyGetThe SymContext fun ctx =>
                     let (a, effects) := f ctx.effects
                     (a, { ctx with effects })
 
--- We need an alternative to `withMainContext`, which has a continuation in
--- `SymM` rather than `TacticM`
-@[inherit_doc Lean.Elab.Tactic.withMainContext]
-def withMainContext (k : SymM α) : SymM α := do
-  (← getMainGoal).withContext k
+instance : MonadStateOf CSEState SymM where
+  get           := do return (← getThe SymContext).cseState
+  set cseState  := modifyThe SymContext ({· with cseState })
+  modifyGet f   := modifyGetThe SymContext fun ctx =>
+                    let (a, cseState) := f ctx.cseState
+                    (a, { ctx with cseState })
 
 end SymM
 

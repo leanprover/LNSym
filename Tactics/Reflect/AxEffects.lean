@@ -8,6 +8,7 @@ import Arm.State
 import Tactics.Common
 import Tactics.Attr
 import Tactics.Simp
+import Tactics.Reflect.CSEState
 
 import Std.Data.HashMap
 
@@ -233,8 +234,13 @@ def getFieldM (field : StateField) : m FieldEffect := do
 /-! ## Update a Reflected State -/
 
 section Update
-variable {m} [Monad m] [MonadStateOf AxEffects m] [MonadLiftT TacticM m]
-  [MonadLiftT MetaM m]
+variable {m} [Monad m] [MonadStateOf AxEffects m] [MonadStateOf CSEState m]
+  [MonadLiftT TacticM m] [MonadLiftT MetaM m] [MonadControlT MetaM m]
+  [MonadMCtx m]
+
+-- The following instances are all needed for tracing...
+variable [MonadTrace m] [MonadOptions m] [MonadLiftT IO m] [MonadRef m]
+  [AddMessageContext m] {ε} [MonadAlwaysExcept ε m] [MonadLiftT BaseIO m]
 
 /-- Execute `write_mem <n> <addr> <val>` against the state stored in `eff`
 That is, `currentState` of the returned struct will be
@@ -242,8 +248,8 @@ That is, `currentState` of the returned struct will be
 and all other fields are updated accordingly.
 Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
 -/
-private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
-    TacticM AxEffects := withMainContext <| do
+private def update_write_mem (n addr val : Expr) : m Unit := withMainContext' <| do
+  let eff ← getThe AxEffects
   trace[Tactic.sym] "adding write of {n} bytes of value {val} \
     to memory address {addr}"
 
@@ -291,7 +297,7 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
   }
   withTraceNode `Tactic.sym (fun _ => pure "new state") <| do
       trace[Tactic.sym] "{eff}"
-  return eff
+  set eff
 
 def mkStateValue : StateField → Expr
   | .GPR _ | .PC  => mkApp (mkConst ``BitVec) (toExpr 64)
@@ -305,8 +311,8 @@ That is, `currentState` of the returned struct will be
 and all other fields are updated accordingly.
 Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
 -/
-private def update_w (eff : AxEffects) (fld val : Expr) :
-    TacticM AxEffects := withMainContext <| do
+private def update_w (fld val : Expr) : m Unit := withMainContext' <| do
+  let eff ← getThe AxEffects
   let rField ← reflectStateField fld
   trace[Tactic.sym] "adding write of value {val} to register {rField}"
 
@@ -338,7 +344,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
       replaceMainGoal [mvar]
       pure (Expr.fvar x)
 
-  withMainContext <| do
+  withMainContext' <| do
     let newField : FieldEffect := {
       value := val
       proof :=
@@ -399,7 +405,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
       programProof
     }
     eff.traceCurrentState "new state"
-    return eff
+    set eff
 
 /-- Throw an error if `e` is not of type `expectedType` -/
 private def assertHasType (e expectedType : Expr) : MetaM Unit := do
@@ -418,20 +424,17 @@ return an `AxEffects` where `e` is `currentState`.
 Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
 the whole expression is taken to be the initial state,
 even if there might be more `w`/`write_mem`s in sub-expressions. -/
-partial def updateWithExpr (eff : AxEffects) (e : Expr) : TacticM AxEffects := do
+partial def updateWithExpr (e : Expr) : m Unit := do
   let msg := m!"Updating effects with writes from: {e}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
     | write_mem_bytes n addr val e =>
-        let eff ← eff.updateWithExpr e
-        eff.update_write_mem n addr val
-
+        updateWithExpr e
+        update_write_mem n addr val
     | w field value e =>
-        let eff ← eff.updateWithExpr e
-        eff.update_w field value
-
-    | _ => withMainContext do
-        assertIsDefEq e eff.currentState
-        return eff
+        updateWithExpr e
+        update_w field value
+    | _ => withMainContext' do
+        assertIsDefEq e (← getCurrentState)
 
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to the some state `s`,
@@ -443,14 +446,14 @@ even if there might be more `w`/`write_mem`s in sub-expressions. -/
 def fromExpr (e : Expr) : TacticM AxEffects := do
   let s0 ← mkFreshExprMVar mkArmState
   let eff := initial s0
-  let eff ← eff.updateWithExpr e
+  let ((), eff) ← StateT.run (updateWithExpr e) eff
   return { eff with initialState := ← instantiateMVars eff.initialState}
 
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
-def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
-    MetaM AxEffects := do
+def adjustCurrentStateWithEq (s eq : Expr) : m Unit := do
   withTraceNode `Tactic.sym (fun _ => pure "adjusting `currenstState`") do
+    let eff ← getThe AxEffects
     eff.traceCurrentState
     trace[Tactic.sym] "rewriting along {eq}"
     assertHasType eq <| mkEqArmState s eff.currentState
@@ -473,7 +476,7 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     --    Presumably, we would *not* want to encapsulate `memoryEffect` here
     let programProof ← rewriteType eff.programProof eq
 
-    return { eff with
+    set { eff with
       currentState, fields, nonEffectProof, memoryEffectProof, programProof
     }
 
@@ -481,18 +484,17 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
 where `?s` and `?s0` are arbitrary `ArmState`s,
 return an `AxEffect` with the rhs of the equality as the current state,
 and the (non-)effects updated accordingly -/
-def updateWithEq (eff : AxEffects) (eq : Expr) : TacticM AxEffects :=
+def updateWithEq (eq : Expr) : m Unit :=
   let msg := m!"Building effects with equality: {eq}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     let s ← mkFreshExprMVar mkArmState
     let rhs ← mkFreshExprMVar mkArmState
     assertHasType eq <| mkEqArmState s rhs
 
-    let eff ← eff.updateWithExpr (← instantiateMVars rhs)
-    let eff ← eff.adjustCurrentStateWithEq s eq
+    updateWithExpr (← instantiateMVars rhs)
+    adjustCurrentStateWithEq s eq
     withTraceNode `Tactic.sym (fun _ => pure "new state") do
-      trace[Tactic.sym] "{eff}"
-    return eff
+      trace[Tactic.sym] "{← getThe AxEffects}"
 
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
 where `?s` and `?s0` are arbitrary `ArmState`s,
@@ -502,7 +504,7 @@ and the (non-)effects updated accordingly -/
 def fromEq (eq : Expr) : TacticM AxEffects := do
   let s0 ← mkFreshExprMVar mkArmState
   let eff := initial s0
-  let eff ← eff.updateWithEq eq
+  let ((), eff) ← StateT.run (updateWithEq eq) eff
   return { eff with initialState := ← instantiateMVars eff.initialState}
 
 /-- Given an equality `eq : ?currentProgram = ?newProgram`,

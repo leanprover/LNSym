@@ -172,7 +172,8 @@ store an `AxEffects` object with the newly added variables in the monad state
 def explodeStep (hStep : Expr) : SymM Unit :=
   withMainContext' do
     let oldEff ← getThe AxEffects
-    let mut eff ← oldEff.updateWithEq hStep
+    AxEffects.updateWithEq hStep
+    let mut eff ← getThe AxEffects
 
     if let some h_sp := (← getThe SymContext).h_sp? then
       let hSp ← SymContext.findFromUserName h_sp
