@@ -35,8 +35,6 @@ open BitVec
 /-- A `SymContext` collects the names of various variables/hypotheses in
 the local context required for symbolic evaluation -/
 structure SymContext where
-  /-- `state` is a local variable of type `ArmState` -/
-  state : Name
   /-- `finalState` is an expression of type `ArmState` -/
   finalState : Expr
   /-- `runSteps?` stores the number of steps that we can *maximally* simulate,
@@ -54,8 +52,6 @@ structure SymContext where
 
   See also `SymContext.runSteps?` -/
   h_run : Name
-  /-- `program` is a *constant* which represents the program being evaluated -/
-  program : Name
   /-- `programInfo` is the relevant cached `ProgramInfo` -/
   programInfo : ProgramInfo
 
@@ -118,18 +114,22 @@ namespace SymM
 def run (ctx : SymContext) (k : SymM α) : TacticM (α × SymContext) :=
   StateT.run k ctx
 
+def run' (ctx : SymContext) (k : SymM α) : TacticM α :=
+  StateT.run' k ctx
+
 instance : MonadLift SymReaderM SymM where
   monadLift x c := do return (←x c, c)
 
+instance : MonadReaderOf AxEffects SymReaderM where
+  read := do return (← readThe SymContext).effects
+
 instance : MonadStateOf AxEffects SymM where
-  get := do return (← getThe SymContext).effects
+  get := readThe AxEffects
   set effects := do modifyThe SymContext ({· with effects})
   modifyGet f := do
     let (a, effects) := f (← getThe SymContext).effects
     modifyThe SymContext ({· with effects})
     return a
-instance : MonadReaderOf AxEffects SymM where
-  read := getThe AxEffects
 
 end SymM
 
@@ -140,13 +140,12 @@ section
 open Lean (Ident mkIdent)
 variable (c : SymContext)
 
+/-- `program` is a *constant* which represents the program being evaluated -/
+def program : Name := c.programInfo.name
+
 /-- `next_state` generates the name for the next intermediate state -/
 def next_state (c : SymContext) : Name :=
   .mkSimple s!"{c.state_prefix}{c.curr_state_number + 1}"
-
-def state_ident       : Ident := mkIdent c.state
-def next_state_ident  : Ident := mkIdent c.next_state
-def h_run_ident       : Ident := mkIdent c.h_run
 
 /-- Find the local declaration that corresponds to a given name,
 or throw an error if no local variable of that name exists -/
@@ -154,11 +153,6 @@ def findFromUserName (name : Name) : MetaM LocalDecl := do
   let some decl := (← getLCtx).findFromUserName? name
     | throwError "Unknown local variable `{name}`"
   return decl
-
-/-- Return an expression for `c.state`,
-or throw an error if no local variable of that name exists -/
-def stateExpr : MetaM Expr :=
-  (·.toExpr) <$> findFromUserName c.state
 
 /-- Find the local declaration that corresponds to `c.h_run`,
 or throw an error if no local variable of that name exists -/
@@ -169,15 +163,6 @@ section Monad
 variable {m} [Monad m] [MonadReaderOf SymContext m]
 
 def getCurrentStateNumber : m Nat := do return (← read).curr_state_number
-
-/-- Retrieve the name of the current state -/
-def getCurrentStateName : m Name := do
-  return (← read).state
-
-/-- Retrieve an expression for the current state,
-or throw an error if no local variable of that name exists -/
-def getCurrentState [MonadLiftT MetaM m] : m Expr := do
-  (← read).stateExpr
 
 /-- Return the name of the hypothesis
   `h_run : <finalState> = run <runSteps> <initialState>` -/
@@ -198,21 +183,24 @@ end
 /-- Convert a `SymContext` to `MessageData` for tracing.
 This is not a `ToMessageData` instance because we need access to `MetaM` -/
 def toMessageData (c : SymContext) : MetaM MessageData := do
-  let state ← c.stateExpr
   let h_run ← userNameToMessageData c.h_run
-  let h_err? ← c.h_err?.mapM userNameToMessageData
   let h_sp?  ← c.h_sp?.mapM userNameToMessageData
 
-  return m!"\{ state := {state},
-  finalState := {c.finalState},
+  return m!"\{ finalState := {c.finalState},
   runSteps? := {c.runSteps?},
   h_run := {h_run},
   program := {c.program},
   pc := {c.pc},
-  h_err? := {h_err?},
   h_sp? := {h_sp?},
   state_prefix := {c.state_prefix},
-  curr_state_number := {c.curr_state_number} }"
+  curr_state_number := {c.curr_state_number},
+  effects := {c.effects} }"
+
+variable {α : Type} {m : Type → Type} [Monad m] [MonadTrace m] [MonadLiftT IO m]
+  [MonadRef m] [AddMessageContext m] [MonadOptions m] {ε : Type}
+  [MonadAlwaysExcept ε m] [MonadLiftT BaseIO m] in
+def withSymTraceNode (msg : MessageData) (k : m α) : m α := do
+  withTraceNode `Tactic.sym (fun _ => pure msg) k
 
 def traceSymContext : SymM Unit :=
   withTraceNode `Tactic.sym (fun _ => pure m!"SymContext: ") <| do
@@ -221,22 +209,29 @@ def traceSymContext : SymM Unit :=
 
 /-! ## Creating initial contexts -/
 
+/-- Modify a `SymContext` with a monadic action `k : SymM Unit` -/
+def modify (ctxt : SymContext) (k : SymM Unit) : TacticM SymContext := do
+  let ((), ctxt) ← SymM.run ctxt k
+  return ctxt
+
 /-- Infer `state_prefix` and `curr_state_number` from the `state` name
 as follows: if `state` is `s{i}` for some number `i` and a single character `s`,
 then `s` is the prefix and `i` the number,
 otherwise ignore `state`, and start counting from `s1` -/
-def inferStatePrefixAndNumber (ctxt : SymContext) : SymContext :=
-  let state := ctxt.state.toString
+def inferStatePrefixAndNumber : SymM Unit := do
+  let state ← AxEffects.getCurrentStateName
+  let state := state.toString
   let tail := state.toSubstring.drop 1
 
-  if let some curr_state_number := tail.toNat? then
-    { ctxt with
-      state_prefix := (state.get? 0).getD 's' |>.toString,
-      curr_state_number }
-  else
-    { ctxt with
-      state_prefix := "s",
-      curr_state_number := 1 }
+  modifyThe SymContext fun ctxt =>
+    if let some curr_state_number := tail.toNat? then
+      { ctxt with
+        state_prefix := (state.get? 0).getD 's' |>.toString,
+        curr_state_number }
+    else
+      { ctxt with
+        state_prefix := "s",
+        curr_state_number := 1 }
 
 /-- Annotate any errors thrown by `k` with a local variable (and its type) -/
 private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
@@ -249,8 +244,13 @@ private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) 
     throwErrorAt e.getRef "{e.toMessageData}\n\nIn {h}{type}"
 
 /-- Build a `SymContext` by searching the local context for hypotheses of the
-required types (up-to defeq) -/
-def fromLocalContext (state? : Option Name) : MetaM SymContext := do
+required types (up-to defeq) . The local context is modified to unfold the types
+to be syntactically equal to the expected type.
+
+If an hypothesis `h_err : r <state> .ERR = None` is not found,
+we create a new subgoal of this type
+-/
+def fromLocalContext (state? : Option Name) : TacticM SymContext := do
   let msg := m!"Building a `SymContext` from the local context"
   withTraceNode `Tactic.sym (fun _ => pure msg) do
   trace[Tactic.Sym] "state? := {state?}"
@@ -283,25 +283,6 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
   -- At this point, `stateExpr` should have been assigned (if it was an mvar),
   -- so we can unwrap it to get the underlying name
   let stateExpr ← instantiateMVars stateExpr
-  let state ← state?.getDM <| do
-    let .fvar state := stateExpr
-      | let h_run_type ← instantiateMVars h_run.type
-        let h_run := h_run.toExpr
-        throwError
-  "Expected a free variable, found:
-    {stateExpr}
-  We inferred this as the initial state because we found:
-    {h_run} : {h_run_type}
-  in the local context.
-
-  If this is wrong, please explicitly provide the right initial state,
-  as in `sym {runSteps} at ?s0`
-  "
-    let some state := lctx.find? state
-      /- I don't expect this error to be possible in a well-formed state,
-      but you never know -/
-      | throwError "Failed to find local variable for state {stateExpr}"
-    pure state.userName
 
   -- Try to find `h_program`, and infer `program` from it
   let ⟨h_program, program⟩ ← withErrorContext h_run.userName h_run.type <|
@@ -352,9 +333,8 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
       stackAlignmentProof? := h_sp?.map (·.toExpr)
       fields
   }
-
-  return inferStatePrefixAndNumber {
-    state, finalState, runSteps?, program, pc,
+  let c : SymContext := {
+    finalState, runSteps?, pc,
     h_run := h_run.userName,
     h_pc := h_pc.userName
     h_err? := (·.userName) <$> h_err?,
@@ -363,6 +343,8 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     effects,
     aggregateSimpCtx, aggregateSimprocs
   }
+  c.modify <|
+    inferStatePrefixAndNumber
 where
   findLocalDeclOfType? (expectedType : Expr) : MetaM (Option LocalDecl) := do
     let msg := m!"Searching for hypothesis of type: {expectedType}"
@@ -384,23 +366,21 @@ where
 /-- If `h_sp` or `h_err` are missing from the `SymContext`,
 add new goals of the expected types,
 and use these to add `h_sp` and `h_err` to the main goal context -/
-def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
-    TacticM SymContext :=
+def addGoalsForMissingHypotheses (addHSp : Bool := false) : SymM Unit :=
   let msg := "Adding goals for missing hypotheses"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
-    let mut ctx := ctx
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
+    let mut ctx ← getThe SymContext
     let mut goal ← getMainGoal
     let mut newGoals := []
     let lCtx ← getLCtx
-    let some stateExpr :=
-      (Expr.fvar ·.fvarId) <$> lCtx.findFromUserName? ctx.state
-      | throwError "Could not find '{ctx.state}' in the local context"
+    let stateExpr ← AxEffects.getCurrentState
+    let stateName ← AxEffects.getCurrentStateName
 
     match ctx.h_err? with
       | none =>
           trace[Tactic.sym] "h_err? is none, adding a new goal"
 
-          let h_err? := Name.mkSimple s!"h_{ctx.state}_run"
+          let h_err? := Name.mkSimple s!"h_{stateName}_err"
           let newGoal ← mkFreshMVarId
 
           goal := ← do
@@ -424,7 +404,7 @@ def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
           if addHSp then
             trace[Tactic.sym] "h_sp? is none, adding a new goal"
 
-            let h_sp? := Name.mkSimple s!"h_{ctx.state}_sp"
+            let h_sp? := Name.mkSimple s!"h_{stateName}_sp"
             let newGoal ← mkFreshMVarId
 
             goal := ← do
@@ -447,7 +427,7 @@ def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
           trace[Tactic.sym] "h_sp? is {h_sp}, no new goal needed"
 
     replaceMainGoal (goal :: newGoals)
-    return ctx
+    set ctx
 
 /-- change the type (in the local context of the main goal)
 of the hypotheses tracked by the given `SymContext` to be *exactly* of the shape
@@ -455,10 +435,10 @@ described in the relevant docstrings.
 
 That is, (un)fold types which were definitionally, but not syntactically,
 equal to the expected shape. -/
-def canonicalizeHypothesisTypes (c : SymContext) : TacticM Unit := withMainContext do
+def canonicalizeHypothesisTypes : SymReaderM Unit := fun c => withMainContext do
   let lctx ← getLCtx
   let mut goal ← getMainGoal
-  let state ← c.stateExpr
+  let state := c.effects.currentState
 
   let mut hyps := #[
     (c.h_pc, h_pc_type state (toExpr c.pc))
@@ -472,7 +452,7 @@ def canonicalizeHypothesisTypes (c : SymContext) : TacticM Unit := withMainConte
 
   for ⟨name, type⟩ in hyps do
     let some decl := lctx.findFromUserName? name
-      | throwError "Unknown local hypothesis `{c.state}`"
+      | throwError "Unknown local hypothesis `{name}`"
     goal ← goal.replaceLocalDeclDefEq decl.fvarId type
   replaceMainGoal [goal]
 
@@ -487,7 +467,6 @@ def next (c : SymContext) (nextPc? : Option (BitVec 64) := none) :
   let curr_state_number := c.curr_state_number + 1
   let s := c.next_state
   { c with
-    state       := s
     h_pc        := .mkSimple s!"h_{s}_pc"
     h_err?      := c.h_err?.map (fun _ => .mkSimple s!"h_{s}_err")
     h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")

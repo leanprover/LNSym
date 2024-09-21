@@ -97,6 +97,20 @@ def getProgramProof       : m Expr := do return (← read).programProof
 def getStackAlignmentProof? : m (Option Expr) := do
   return (← read).stackAlignmentProof?
 
+variable [MonadLiftT MetaM m] in
+/-- Retrieve the user-facing name of the current state, assuming that
+the current state is a free variable in the ambient local context -/
+def getCurrentStateName : m Name := do
+  let state ← getCurrentState
+  @id (MetaM _) <| do
+    let state ← instantiateMVars state
+    let Expr.fvar id := state.consumeMData
+      | throwError "error: expected a free variable, found:\n  {state} WHHOPS"
+    let lctx ← getLCtx
+    let some decl := lctx.find? id
+      | throwError "error: unknown fvar: {state}"
+    return decl.userName
+
 end Monad
 
 /-! ## Initial Reflected State -/
