@@ -622,13 +622,12 @@ by default):
 Return an `AxEffect` where the expressions mentioned above have been replaced by
 `Expr.fvar <fvarId>`, with `fvarId` the id of the corresponding hypothesis
 that was just added to the local context -/
-def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
-    (mvar : Option MVarId := none) :
+def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_") :
     TacticM AxEffects :=
   let msg := m!"adding hypotheses to local context"
-  withTraceNode `Tactic.sym (fun _ => pure msg) do
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
     eff.traceCurrentState
-    let mut goal ← mvar.getDM getMainGoal
+    let mut goal ← getMainGoal
 
     let fields ← do
       let mut fields := []
@@ -681,7 +680,7 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
     goal := goal'
 
     replaceMainGoal [goal]
-    return {eff with
+    return { eff with
       fields, nonEffectProof, memoryEffectProof, programProof,
       stackAlignmentProof?
     }
