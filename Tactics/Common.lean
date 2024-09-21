@@ -274,7 +274,7 @@ def traceHeartbeats (cls : Name) (header : Option String := none) :
 
 /- `withMainContext'` can operate in arbitary monads, unlike
 `withMainContext`, which forces the continuation to live in `TacticM` -/
-variable {m} [Monad m] [MonadLift TacticM m] [MonadControlT MetaM m] in
+variable {m} [Monad m] [MonadLiftT TacticM m] [MonadControlT MetaM m] in
 @[inherit_doc Lean.Elab.Tactic.withMainContext]
 def withMainContext' (k : m α) : m α := do
   (← getMainGoal).withContext k
