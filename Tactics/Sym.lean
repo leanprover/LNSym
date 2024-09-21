@@ -105,7 +105,7 @@ def unfoldRun (whileTac : Unit → TacticM Unit) : SymM Unit := do
         -- NOTE: this error shouldn't occur, as we should have checked in
         -- `sym_n` that, if the number of runSteps is statically known,
         -- that we never simulate more than that many steps
-    | none => SymM.withMainContext do
+    | none => withMainContext' do
         let mut goal :: originalGoals ← getGoals
           | throwNoGoalsToBeSolved
         let hRunDecl ← c.hRunDecl
@@ -170,7 +170,7 @@ add the relevant hypotheses to the local context, and
 store an `AxEffects` object with the newly added variables in the monad state
 -/
 def explodeStep (hStep : Expr) : SymM Unit :=
-  SymM.withMainContext do
+  withMainContext' do
     let oldEff ← getThe AxEffects
     let mut eff ← oldEff.updateWithEq hStep
 
@@ -217,12 +217,12 @@ def explodeStep (hStep : Expr) : SymM Unit :=
             pure { eff with stackAlignmentProof? }
 
     -- Add new (non-)effect hyps to the context
-    eff ← SymM.withMainContext <| do
+    eff ← withMainContext' <| do
       if ←(getBoolOption `Tactic.sym.debug) then
         eff.validate
 
       let eff ← eff.addHypothesesToLContext s!"h_{← getNextStateName}_"
-      SymM.withMainContext <| do
+      withMainContext' <| do
         traceSymContext
         let simpThms ← eff.toSimpTheoremArray
         modifyThe SymContext (·.addSimpTheorems simpThms)
@@ -250,7 +250,7 @@ context `c`, returning the context for the next step in simulation. -/
 def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
   let stateNumber ← getCurrentStateNumber
   let msg := m!"(sym1): simulating step {stateNumber}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| SymM.withMainContext do
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
     withTraceNode `Tactic.sym (fun _ => pure "verbose context") <| do
       traceSymContext
       trace[Tactic.sym] "Goal state:\n {← getMainGoal}"
@@ -267,14 +267,14 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
     )
 
     -- Apply relevant pre-generated `stepi` lemma
-    SymM.withMainContext <| do
+    withMainContext' <| do
       let stepiEq ← SymContext.findFromUserName stepi_eq.getId
       stepiTacM stepiEq.toExpr h_step.getId
 
     -- WORKAROUND: eventually we'd like to eagerly simp away `if`s in the
     -- pre-generation of instruction semantics. For now, though, we keep a
     -- `simp` here
-    SymM.withMainContext <| do
+    withMainContext' <| do
       let hStep ← SymContext.findFromUserName h_step.getId
 
       -- Simplify to aggregate effects
@@ -292,7 +292,7 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
       -- }
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
-    SymM.withMainContext <| do
+    withMainContext' <| do
       let hStep ← SymContext.findFromUserName h_step.getId
       -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`
@@ -394,7 +394,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
     assertStepTheoremsGenerated
     let n ← ensureAtMostRunSteps n.getNat
 
-    SymM.withMainContext <| do
+    withMainContext' <| do
       -- The main loop
       for _ in List.range n do
         sym1 whileTac
@@ -406,7 +406,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
       let msg := do
         let hRun ← userNameToMessageData c.h_run
         pure m!"runSteps := 0, substituting along {hRun}"
-      withTraceNode `Tactic.sym (fun _ => msg) <| SymM.withMainContext do
+      withTraceNode `Tactic.sym (fun _ => msg) <| withMainContext' do
         let sfEq ← mkEq (← getCurrentState) c.finalState
 
         let goal ← getMainGoal
@@ -429,7 +429,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
     -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
     -- added while symbolically evaluating to `simp`
     let msg := m!"aggregating (non-)effects"
-    withTraceNode `Tactic.sym (fun _ => pure msg) <| SymM.withMainContext do
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
       traceHeartbeats "pre"
       let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
       replaceMainGoal goal?.toList

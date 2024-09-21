@@ -269,3 +269,12 @@ def traceHeartbeats (cls : Name) (header : Option String := none) :
   let percent ← heartbeatsPercent
   trace cls fun _ =>
     m!"{header}used {heartbeats} heartbeats ({percent}% of maximum)"
+
+/-! ## withMainContext' -/
+
+/- `withMainContext'` can operate in arbitary monads, unlike
+`withMainContext`, which forces the continuation to live in `TacticM` -/
+variable {m} [Monad m] [MonadLift TacticM m] [MonadControlT MetaM m] in
+@[inherit_doc Lean.Elab.Tactic.withMainContext]
+def withMainContext' (k : m α) : m α := do
+  (← getMainGoal).withContext k
