@@ -24,13 +24,18 @@ def exec_add_sub_imm (inst : Add_sub_imm_cls) (s : ArmState) : ArmState :=
                         else
                           imm <<< 12
     let operand1      := read_gpr datasize inst.Rn s
-    let (carry_in, operand2)
+    let carryInAndOperand2
                       := if sub_op then
                           (1#1, ~~~imm)
                         else
                           (0#1, imm)
+    -- `carry, operand2` is written as a let binding followed by strucure projections to
+    -- work aroud a lean bug that desurgars `let (x, y) := if c then t else e` poorly:
+    -- https://github.com/leanprover/lean4/issues/5388
+    let carry := carryInAndOperand2.fst
+    let operand2 := carryInAndOperand2.snd
     let operand2         := BitVec.zeroExtend datasize operand2
-    let (result, pstate) := AddWithCarry operand1 operand2 carry_in
+    let (result, pstate) := AddWithCarry operand1 operand2 carry
     -- State Updates
     let s'            := write_pc ((read_pc s) + 4#64) s
     let s'            := if setflags then write_pstate pstate s' else s'
