@@ -108,18 +108,18 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
 
     -- (TODO @alex/@bollu) Can we hope to make this shorter after the marriage
     -- of `sym_n` and `simp_mem`?
-    simp (config := {ground := true}) only
-          [fst_AddWithCarry_eq_add, fst_AddWithCarry_eq_sub_neg]
-    simp only [*, bitvec_rules]
     simp_mem
     sym_aggregate
-
-    simp (config := {ground := true}) only
-          [fst_AddWithCarry_eq_add, fst_AddWithCarry_eq_sub_neg]
     simp only [*, bitvec_rules]
+    sym_aggregate
     simp_mem
     rfl
-
+  · apply Aligned_BitVecSub_64_4
+    · assumption
+    · decide
+  · apply Aligned_BitVecAdd_64_4
+    · assumption
+    · decide
 
 -------------------------------------------------------------------------------
 

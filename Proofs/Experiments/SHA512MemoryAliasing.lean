@@ -149,7 +149,7 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   simp_all only [memory_rules]
   -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
   -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.
-  have hSHA2_k512_length : SHA2.k_512.length = 80 := by rfl
+  have hSHA2_k512_length : SHA2.k_512.length = 80 := rfl
   simp_mem -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
   rfl
 
