@@ -13,7 +13,7 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   let n := 5
   let mut runTimes := #[]
   let mut totalRunTime := 0
-  for _ in List.range n do
+  for _ in [0:n] do
     let start ← IO.monoMsNow
     elabCommand stx
     let endTime ← IO.monoMsNow
