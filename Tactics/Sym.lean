@@ -153,34 +153,6 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
           originalGoals := originalGoals.concat subGoal
         setGoals (res.mvarId :: originalGoals)
 
-/-- `withoutHyp h` will remove `h` from the main goals context,
-run the continuation `k`,
-and finally, attempt to re-add the hypothesis `h` to the new main goal.
-
-This is a work-around for `intro_fetch_decode` behaving badly when we have
-`stepi s0 = s1` in the local context.
-
-Returns the fvarid of `h` in the new context.
-If `h` could not be found, execute `k` anyway (with an unmodified context),
-and return none -/
-def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
-  withMainContext do
-    let goal ← getMainGoal
-    let lctx ← getLCtx
-    match lctx.findFromUserName? hyp with
-      | none =>
-          k
-          return none
-      | some hypDecl =>
-          replaceMainGoal [← goal.clear hypDecl.fvarId]
-          k -- run the continuation
-          -- Attempt to re-add `hyp`
-          let newGoal ← getMainGoal -- `k` might have changed the goal
-          let ⟨newHyp, newGoal⟩ ←
-            newGoal.note hypDecl.userName hypDecl.toExpr hypDecl.type
-          replaceMainGoal [newGoal]
-          return newHyp
-
 /-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
 add hypotheses that axiomatically describe the effects in terms of
 reads from `s{i+1}`.

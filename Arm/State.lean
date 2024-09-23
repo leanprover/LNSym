@@ -336,7 +336,7 @@ def r (fld : StateField) (s : ArmState) : (state_value fld) :=
 /-!
 
 We define helpers for reading and writing registers on the `ArmState` with the colloquial
-names. For example, the stack pointer (`sp`) refers to register 31. 
+names. For example, the stack pointer (`sp`) refers to register 31.
 These mnemonics make it much easier to read and write theorems about assembly programs.
 
 -/
@@ -346,6 +346,16 @@ These mnemonics make it much easier to read and write theorems about assembly pr
 @[state_simp_rules] abbrev ArmState.x1 (s : ArmState) : BitVec 64 := r (StateField.GPR 1) s
 
 @[state_simp_rules] abbrev ArmState.x2 (s : ArmState) : BitVec 64 := r (StateField.GPR 2) s
+
+@[state_simp_rules] abbrev ArmState.q0 (s : ArmState) : BitVec 128 := r (StateField.SFP 0) s
+
+@[state_simp_rules] abbrev ArmState.q1 (s : ArmState) : BitVec 128 := r (StateField.SFP 1) s
+
+@[state_simp_rules] abbrev ArmState.q2 (s : ArmState) : BitVec 128 := r (StateField.SFP 2) s
+
+@[state_simp_rules] abbrev ArmState.q3 (s : ArmState) : BitVec 128 := r (StateField.SFP 3) s
+
+@[state_simp_rules] abbrev ArmState.q4 (s : ArmState) : BitVec 128 := r (StateField.SFP 4) s
 
 @[state_simp_rules] abbrev ArmState.sp (s : ArmState) : BitVec 64 := r (StateField.GPR 31) s
 
@@ -357,19 +367,19 @@ These mnemonics make it much easier to read and write theorems about assembly pr
 
 @[state_simp_rules] abbrev ArmState.N (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.N) s
 
-def ArmState.r_GPR_0_eq_x0 (s : ArmState) : r (StateField.GPR 0) s = s.x0 := by rfl
+def ArmState.r_GPR_0_eq_x0 (s : ArmState) : r (StateField.GPR 0) s = s.x0 := rfl
 
-def ArmState.r_GPR_1_eq_x1 (s : ArmState) : r (StateField.GPR 1) s = s.x1 := by rfl
+def ArmState.r_GPR_1_eq_x1 (s : ArmState) : r (StateField.GPR 1) s = s.x1 := rfl
 
-def ArmState.r_GPR_31_eq_sp (s : ArmState) : r (StateField.GPR 31) s = s.sp := by rfl
+def ArmState.r_GPR_31_eq_sp (s : ArmState) : r (StateField.GPR 31) s = s.sp := rfl
 
-def ArmState.r_FLAG_V_eq_V (s : ArmState) : r (StateField.FLAG PFlag.V) s = s.V := by rfl
+def ArmState.r_FLAG_V_eq_V (s : ArmState) : r (StateField.FLAG PFlag.V) s = s.V := rfl
 
-def ArmState.r_FLAG_C_eq_C (s : ArmState) : r (StateField.FLAG PFlag.C) s = s.C := by rfl
+def ArmState.r_FLAG_C_eq_C (s : ArmState) : r (StateField.FLAG PFlag.C) s = s.C := rfl
 
-def ArmState.r_FLAG_Z_eq_Z (s : ArmState) : r (StateField.FLAG PFlag.Z) s = s.Z := by rfl
+def ArmState.r_FLAG_Z_eq_Z (s : ArmState) : r (StateField.FLAG PFlag.Z) s = s.Z := rfl
 
-def ArmState.r_FLAG_N_eq_N (s : ArmState) : r (StateField.FLAG PFlag.N) s = s.N := by rfl
+def ArmState.r_FLAG_N_eq_N (s : ArmState) : r (StateField.FLAG PFlag.N) s = s.N := rfl
 
 
 @[irreducible]
@@ -1142,7 +1152,7 @@ theorem Memory.eq_of_read_mem_bytes_eq {m₁ m₂ : Memory}
   rw [BitVec.zero_append, BitVec.zero_append] at h
   simpa only [Nat.reduceAdd, BitVec.cast_eq] using h
 
-theorem mem_eq_iff_read_mem_bytes_eq {s₁ s₂ : ArmState} :
+theorem Memory.mem_eq_iff_read_mem_bytes_eq {s₁ s₂ : ArmState} :
     s₁.mem = s₂.mem
     ↔ ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂ := by
   simp only [memory_rules]
@@ -1156,7 +1166,7 @@ theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq
     read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₁)
     = read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₂) := by
   revert n₁ addr₁
-  simp only [← mem_eq_iff_read_mem_bytes_eq] at h ⊢
+  simp only [← Memory.mem_eq_iff_read_mem_bytes_eq] at h ⊢
   simp only [memory_rules, h]
 
 /- Helper lemma for `state_eq_iff_components_eq` -/

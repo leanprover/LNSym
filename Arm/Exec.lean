@@ -132,8 +132,7 @@ def run (n : Nat) (s : ArmState) : ArmState :=
     run n' s'
 
 theorem run_opener_zero (s : ArmState) :
-  run 0 s = s := by
-  rfl
+  run 0 s = s := rfl
 
 theorem run_opener_general
   (n : Nat) (s : ArmState) :

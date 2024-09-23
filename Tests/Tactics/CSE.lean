@@ -134,14 +134,14 @@ info: [Tactic.cse.summary] CSE collecting hypotheses:
     [Tactic.cse.summary] expr: y
   [Tactic.cse.summary] ⏭️ Unprofitable { occs := 2, size := 1 } . (NOTE: can be large)
     [Tactic.cse.summary] expr: x
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 23 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: y + y + (y + y) + (y + y + (y + y)) + (y + y + (y + y))
   [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 3 } . (NOTE: can be large)
     [Tactic.cse.summary] expr: x + x
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 15 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: y + y + (y + y) + (y + y + (y + y))
+  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 23 } . (NOTE: can be large)
+    [Tactic.cse.summary] expr: y + y + (y + y) + (y + y + (y + y)) + (y + y + (y + y))
   [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 11 } . (NOTE: can be large)
     [Tactic.cse.summary] expr: x + x + (y + y + (y + y))
+  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 15 } . (NOTE: can be large)
+    [Tactic.cse.summary] expr: y + y + (y + y) + (y + y + (y + y))
 [Tactic.cse.summary] CSE summary of profitable expressions (#expressions:2):
   [Tactic.cse.summary] 1) { occs := 8, size := 3 } (NOTE: can be large)
     [Tactic.cse.summary] y + y
@@ -269,80 +269,81 @@ hx2 : x9 + x3 = x2
 x10 x11 : BitVec 128
 hx4 : x10 ||| x11 = x4
 x12 : BitVec 128
-hx11 : x12 <<< 64 = x11
+hx10 : x12 &&& 18446744073709551615#128 = x10
 x13 : BitVec 128
-hx10 : x13 &&& 18446744073709551615#128 = x10
+hx11 : x13 <<< 64 = x11
 x14 : BitVec 64
-hx13 : BitVec.zeroExtend 128 x14 = x13
+hx12 : BitVec.zeroExtend 128 x14 = x12
 x15 : BitVec 64
-hx12 : BitVec.zeroExtend 128 x15 = x12
-x16 : BitVec (127 - 64 + 1)
-x17 : BitVec (63 - 0 + 1)
+hx13 : BitVec.zeroExtend 128 x15 = x13
+x16 : BitVec (63 - 0 + 1)
+x17 : BitVec (127 - 64 + 1)
 x18 : BitVec 128
-hx16 : BitVec.extractLsb 127 64 x18 = x16
-hx17 : BitVec.extractLsb 63 0 x18 = x17
+hx16 : BitVec.extractLsb 63 0 x18 = x16
+hx17 : BitVec.extractLsb 127 64 x18 = x17
 x19 x20 : BitVec 64
 hx8 : x19 + x20 = x8
 x21 : BitVec 64
 hx9 : x20 + x21 = x9
-x22 x23 : BitVec 128
-hx18 : x22 ||| x23 = x18
-x24 x25 : BitVec 64
+x22 : BitVec 128
+x23 : BitVec 64
+x24 : BitVec 128
+hx18 : x22 ||| x24 = x18
+x25 : BitVec 64
 x26 : BitVec 128
-hx23 : x26 <<< 64 = x23
+hx22 : x26 &&& 18446744073709551615#128 = x22
 x27 : BitVec 128
-hx22 : x27 &&& 18446744073709551615#128 = x22
+hx24 : x27 <<< 64 = x24
 x28 : BitVec 64
 hx27 : BitVec.zeroExtend 128 x28 = x27
 x29 : BitVec 64
-hx26 : BitVec.zeroExtend 128 x29 = x26
+hx20 : x29 ^^^ x25 = x20
 x30 : BitVec 64
-hx20 : x30 ^^^ x25 = x20
-x31 : BitVec 64
-hx21 : x24 ^^^ x31 = x21
-x32 x33 : BitVec 64
-hx24 : x33 ^^^ x32 = x24
-x34 : BitVec 64
-x35 : BitVec (63 - 0 + 1)
-hx35 : BitVec.extractLsb 63 0 d = x35
+hx26 : BitVec.zeroExtend 128 x30 = x26
+x31 x32 : BitVec 64
+hx23 : x31 ^^^ x32 = x23
+x33 x34 : BitVec 64
+hx21 : x23 ^^^ x34 = x21
+x35 : BitVec (127 - 64 + 1)
+hx35 : BitVec.extractLsb 127 64 d = x35
+hx7 : x8 + x35 = x7
 x36 : BitVec (63 - 0 + 1)
-hx36 : BitVec.extractLsb 63 0 c = x36
-hx28 : x36 + x35 = x28
-x37 : BitVec (127 - 64 + 1)
-hx37 : BitVec.extractLsb 127 64 c = x37
-hx19 : x37 + x21 = x19
-x38 : BitVec (63 - 0 + 1)
-hx38 : BitVec.extractLsb 63 0 a = x38
-x39 : BitVec (63 - 0 + 1)
-hx39 : BitVec.extractLsb 63 0 b = x39
-hx1 : x2 + x39 = x1
-hx5 : x39 + x6 = x5
-x40 : BitVec (127 - 64 + 1)
-hx40 : BitVec.extractLsb 127 64 b = x40
-hx31 : x40.rotateRight 41 = x31
-hx32 : x40.rotateRight 18 = x32
-hx33 : x40.rotateRight 14 = x33
-hx34 : ~~~x40 = x34
-hx30 : x40 &&& x38 = x30
-x41 : BitVec (127 - 64 + 1)
-hx41 : BitVec.extractLsb 127 64 a = x41
-hx25 : x34 &&& x41 = x25
+hx36 : BitVec.extractLsb 63 0 a = x36
+x37 : BitVec (63 - 0 + 1)
+hx37 : BitVec.extractLsb 63 0 c = x37
+x38 : BitVec (127 - 64 + 1)
+hx38 : BitVec.extractLsb 127 64 c = x38
+hx19 : x38 + x21 = x19
+hx28 : x38 + x35 = x28
+x39 : BitVec (127 - 64 + 1)
+hx39 : BitVec.extractLsb 127 64 e = x39
+hx6 : x7 + x39 = x6
+hx15 : x17 + x39 = x15
+x40 : BitVec (63 - 0 + 1)
+hx40 : BitVec.extractLsb 63 0 b = x40
+hx1 : x2 + x40 = x1
+hx5 : x40 + x6 = x5
+x41 : BitVec (63 - 0 + 1)
+hx41 : BitVec.extractLsb 63 0 d = x41
+hx30 : x37 + x41 = x30
 x42 : BitVec (127 - 64 + 1)
-hx42 : BitVec.extractLsb 127 64 e = x42
-hx6 : x7 + x42 = x6
-hx15 : x16 + x42 = x15
+hx42 : BitVec.extractLsb 127 64 a = x42
+hx25 : x33 &&& x42 = x25
 x43 : BitVec (127 - 64 + 1)
-hx43 : BitVec.extractLsb 127 64 d = x43
-hx7 : x8 + x43 = x7
-hx29 : x37 + x43 = x29
+hx43 : BitVec.extractLsb 127 64 b = x43
+hx31 : x43.rotateRight 14 = x31
+hx32 : x43.rotateRight 18 = x32
+hx33 : ~~~x43 = x33
+hx34 : x43.rotateRight 41 = x34
+hx29 : x43 &&& x36 = x29
 x44 : BitVec (63 - 0 + 1)
 hx44 : BitVec.extractLsb 63 0 e = x44
-hx14 : x17 + x44 = x14
+hx14 : x16 + x44 = x14
 ⊢ x2 ++
-      ((x1 &&& x40 ^^^ ~~~x1 &&& x38) + (x1.rotateRight 14 ^^^ x1.rotateRight 18 ^^^ x1.rotateRight 41) +
+      ((x1 &&& x43 ^^^ ~~~x1 &&& x36) + (x1.rotateRight 14 ^^^ x1.rotateRight 18 ^^^ x1.rotateRight 41) +
         BitVec.extractLsb 63 0 x4) =
     x6 ++
-      (x36 + (x5.rotateRight 14 ^^^ x5.rotateRight 18 ^^^ x5.rotateRight 41) + (x5 &&& x40 ^^^ ~~~x5 &&& x38) + x35 +
+      (x37 + (x5.rotateRight 14 ^^^ x5.rotateRight 18 ^^^ x5.rotateRight 41) + (x5 &&& x43 ^^^ ~~~x5 &&& x36) + x41 +
         x44)
 -/
 #guard_msgs in theorem sha512h_rule_1 (a b c d e : BitVec 128) :
@@ -390,9 +391,9 @@ x4 : BitVec 128
 hx3 : BitVec.extractLsb 127 64 x4 = x3
 x5 : BitVec 64
 x6 x7 : BitVec 128
-hx6 : x7 <<< 64 = x6
+hx4 : x7 ||| x6 = x4
 x8 : BitVec 128
-hx4 : x8 ||| x6 = x4
+hx6 : x8 <<< 64 = x6
 x9 : BitVec 64
 hx7 : BitVec.zeroExtend 128 x9 = x7
 x10 : BitVec 64
@@ -400,12 +401,12 @@ hx8 : BitVec.zeroExtend 128 x10 = x8
 x11 : BitVec 64
 x12 : BitVec (127 - 64 + 1)
 x13 : BitVec (63 - 0 + 1)
-x14 : BitVec (191 - 64 + 1)
-hx12 : BitVec.extractLsb 127 64 x14 = x12
-hx13 : BitVec.extractLsb 63 0 x14 = x13
-x15 : BitVec 64
+x14 : BitVec 64
+x15 : BitVec (191 - 64 + 1)
+hx12 : BitVec.extractLsb 127 64 x15 = x12
+hx13 : BitVec.extractLsb 63 0 x15 = x13
 x16 : BitVec 256
-hx14 : BitVec.extractLsb 191 64 x16 = x14
+hx15 : BitVec.extractLsb 191 64 x16 = x15
 x17 x18 : BitVec 64
 hx2 : x18 + x3 = x2
 x19 : BitVec 128
@@ -414,62 +415,63 @@ x20 x21 : BitVec 64
 hx17 : x20 + x21 = x17
 x22 : BitVec 64
 hx18 : x21 + x22 = x18
-x23 : BitVec 64
-x24 x25 : BitVec 128
-hx19 : x25 ||| x24 = x19
+x23 : BitVec 128
+x24 : BitVec 64
+x25 : BitVec 128
+hx19 : x25 ||| x23 = x19
 x26 : BitVec 128
-hx24 : x26 <<< 64 = x24
+hx23 : x26 <<< 64 = x23
 x27 x28 : BitVec 64
-hx21 : x28 ^^^ x27 = x21
+hx25 : BitVec.zeroExtend 128 x28 = x25
 x29 : BitVec 64
 hx26 : BitVec.zeroExtend 128 x29 = x26
 x30 : BitVec 64
-hx25 : BitVec.zeroExtend 128 x30 = x25
-x31 x32 : BitVec 64
-hx23 : x31 ^^^ x32 = x23
-x33 x34 : BitVec 64
-hx22 : x23 ^^^ x34 = x22
-x35 : BitVec (127 - 64 + 1)
-hx35 : BitVec.extractLsb 127 64 d = x35
-x36 : BitVec (127 - 64 + 1)
-hx36 : BitVec.extractLsb 127 64 e = x36
-hx29 : x35 + x36 = x29
+hx21 : x30 ^^^ x27 = x21
+x31 : BitVec 64
+hx22 : x24 ^^^ x31 = x22
+x32 x33 x34 : BitVec 64
+hx24 : x33 ^^^ x34 = x24
+x35 : BitVec (63 - 0 + 1)
+hx35 : BitVec.extractLsb 63 0 b = x35
+hx1 : x2 + x35 = x1
+hx5 : x35 + x11 = x5
+x36 : BitVec (63 - 0 + 1)
+hx36 : BitVec.extractLsb 63 0 a = x36
 x37 : BitVec (127 - 64 + 1)
 hx37 : BitVec.extractLsb 127 64 b = x37
-hx31 : x37.rotateRight 14 = x31
-hx32 : x37.rotateRight 18 = x32
-hx33 : ~~~x37 = x33
-hx34 : x37.rotateRight 41 = x34
-x38 : BitVec (63 - 0 + 1)
-hx38 : BitVec.extractLsb 63 0 d = x38
-hx15 : x17 + x38 = x15
-x39 : BitVec (63 - 0 + 1)
-hx39 : BitVec.extractLsb 63 0 b = x39
-hx1 : x2 + x39 = x1
-hx5 : x39 + x11 = x5
-x40 : BitVec (127 - 64 + 1)
-hx40 : BitVec.extractLsb 127 64 a = x40
-hx27 : x33 &&& x40 = x27
-x41 : BitVec (63 - 0 + 1)
-hx41 : BitVec.extractLsb 63 0 e = x41
-hx11 : x15 + x41 = x11
-hx30 : x38 + x41 = x30
+hx31 : x37.rotateRight 41 = x31
+hx32 : ~~~x37 = x32
+hx33 : x37.rotateRight 14 = x33
+hx34 : x37.rotateRight 18 = x34
+hx30 : x37 &&& x36 = x30
+x38 : BitVec (127 - 64 + 1)
+hx38 : BitVec.extractLsb 127 64 a = x38
+hx27 : x32 &&& x38 = x27
+x39 : BitVec (127 - 64 + 1)
+hx39 : BitVec.extractLsb 127 64 e = x39
+x40 : BitVec (63 - 0 + 1)
+hx40 : BitVec.extractLsb 63 0 c = x40
+hx9 : x40 + x13 = x9
+x41 : BitVec (127 - 64 + 1)
+hx41 : BitVec.extractLsb 127 64 d = x41
+hx29 : x41 + x39 = x29
 x42 : BitVec (63 - 0 + 1)
-hx42 : BitVec.extractLsb 63 0 a = x42
-hx28 : x37 &&& x42 = x28
-x43 : BitVec (63 - 0 + 1)
-hx43 : BitVec.extractLsb 63 0 c = x43
-hx10 : x43 + x13 = x10
-x44 : BitVec (127 - 64 + 1)
-hx44 : BitVec.extractLsb 127 64 c = x44
-hx9 : x44 + x12 = x9
-hx20 : x44 + x22 = x20
+hx42 : BitVec.extractLsb 63 0 e = x42
+hx11 : x14 + x42 = x11
+x43 : BitVec (127 - 64 + 1)
+hx43 : BitVec.extractLsb 127 64 c = x43
+hx10 : x43 + x12 = x10
+hx20 : x43 + x22 = x20
+x44 : BitVec (63 - 0 + 1)
+hx44 : BitVec.extractLsb 63 0 d = x44
+hx14 : x17 + x44 = x14
+hx28 : x44 + x42 = x28
 ⊢ x2 ++
-      ((x1 &&& x37 ^^^ ~~~x1 &&& x42) + (x1.rotateRight 14 ^^^ x1.rotateRight 18 ^^^ x1.rotateRight 41) +
+      ((x1 &&& x37 ^^^ ~~~x1 &&& x36) + (x1.rotateRight 14 ^^^ x1.rotateRight 18 ^^^ x1.rotateRight 41) +
         BitVec.extractLsb 63 0 x4) =
     x11 ++
-      (x43 + (x5.rotateRight 14 ^^^ x5.rotateRight 18 ^^^ x5.rotateRight 41) + (x5 &&& x37 ^^^ ~~~x5 &&& x42) + x35 +
-        x36)
+      (x40 + (x5.rotateRight 14 ^^^ x5.rotateRight 18 ^^^ x5.rotateRight 41) + (x5 &&& x37 ^^^ ~~~x5 &&& x36) + x41 +
+        x39)
 -/
 #guard_msgs in theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   let a0 := extractLsb 63 0   a

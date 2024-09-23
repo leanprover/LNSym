@@ -98,17 +98,17 @@ def reduceDecodeInstExpr (rawInst : Expr) : MetaM Expr := do
   -- ^^ NOTE: possibly expensive reduction
   canonicalizeBitVec expr
 
-/-! ## SymM Monad -/
+/-! ## StepThmsM Monad -/
 
-abbrev SymM.CacheKey := BitVec 32
-abbrev SymM.CacheM := MonadCacheT CacheKey Expr MetaM
-abbrev SymM := ProgramInfoT <| MonadCacheT SymM.CacheKey Expr MetaM
+abbrev StepThmsM.CacheKey := BitVec 32
+abbrev StepThmsM.CacheM := MonadCacheT CacheKey Expr MetaM
+abbrev StepThmsM := ProgramInfoT <| MonadCacheT StepThmsM.CacheKey Expr MetaM
 
 @[inherit_doc ProgramInfoT.run]
-abbrev SymM.run (name : Name) (k : SymM α) (persist : Bool := true) : MetaM α :=
+abbrev StepThmsM.run (name : Name) (k : StepThmsM α) (persist : Bool := true) : MetaM α :=
   MonadCacheT.run <| ProgramInfoT.run name k persist
 
-open SymM in
+open StepThmsM in
 /-- Given a (reflected) raw instruction,
 return an expr of type `Option ArmInst` representing what `rawInst` decodes to.
 The resulting expr is guaranteed to be def-eq to `decode_raw_inst $rawInst`.
@@ -133,7 +133,7 @@ and then a proof of this fact.
 That is, in
   `let ⟨type, value⟩ ← reduceStepi ...`
 `value` is an expr whose type is `type` -/
-def reduceStepi (addr : BitVec 64) : SymM (Expr × Expr) := do
+def reduceStepi (addr : BitVec 64) : StepThmsM (Expr × Expr) := do
   let pi : ProgramInfo ← get
   let ⟨_, type, proof⟩ ← modifyInstInfoAt addr <| getInstSemantics fun _ => do
     let rawInst ← getRawInst
@@ -187,7 +187,7 @@ def reduceStepi (addr : BitVec 64) : SymM (Expr × Expr) := do
       return ⟨sem, type, proof⟩
   return ⟨type, proof⟩
 
-def genStepEqTheorems : SymM Unit := do
+def genStepEqTheorems : StepThmsM Unit := do
   let pi ← get
   for ⟨addr, instInfo⟩ in pi.instructions do
     let startTime ← IO.monoMsNow
@@ -216,7 +216,7 @@ elab "#genStepEqTheorems" program:term : command => liftTermElabM do
   let .const name _ ← Elab.Term.elabTerm program (mkConst ``Program)
     | throwError "Expected a constant, found: {program}"
 
-  SymM.run name (persist := true) <|
+  StepThmsM.run name (persist := true) <|
     genStepEqTheorems
 
 -----------------------------------------------------------------------------
