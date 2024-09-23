@@ -5,10 +5,11 @@ Author(s): Alex Keizer
 -/
 import Tactics.Sym
 import Benchmarks.SHA512
+import Benchmarks.Command
 
-set_option linter.unusedVariables false in
-set_option trace.Tactic.sym.heartbeats true in
-#time theorem Benchmarks.sha512_400_instructions : SHA512Bench 400 := by
+open Benchmarks
+
+benchmark sha512_400_instructions : SHA512Bench 400 := by
   unfold SHA512Bench
   intros
   sym_n 400
