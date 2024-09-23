@@ -5,6 +5,7 @@ Author(s): Alex Keizer
 -/
 import Arm.Map
 import Tactics.Common
+import Std
 
 /-!
 # ProgramInfo
@@ -61,7 +62,7 @@ structure InstInfo where
 
 structure ProgramInfo where
   name : Name
-  instructions : HashMap (BitVec 64) InstInfo
+  instructions : Std.HashMap (BitVec 64) InstInfo
 
 --------------------------------------------------------------------------------
 
@@ -115,14 +116,14 @@ def expr (pi : ProgramInfo) : Expr := mkConst pi.name
 
 def getInstInfoAt? (pi : ProgramInfo) (addr : BitVec 64) :
     Option InstInfo :=
-  pi.instructions.find? addr
+  pi.instructions[addr]?
 
 def getRawInstAt? (pi : ProgramInfo) (addr : BitVec 64) :
     Option (BitVec 32) :=
   (·.rawInst) <$> pi.getInstInfoAt? addr
 
 -- TODO: this instance could be upstreamed (after cleaning it up)
-instance [BEq α] [Hashable α] : ForIn m (HashMap α β) (α × β) where
+instance [BEq α] [Hashable α] : ForIn m (Std.HashMap α β) (α × β) where
   forIn map acc f := do
     let f := fun (acc : ForInStep _) key val => do
       match acc with
@@ -141,7 +142,7 @@ partial def generateFromExpr (name : Name) (e : Expr) : MetaM ProgramInfo := do
   if !(←isDefEq type (mkConst ``Program)) then
     throwError "type mismatch: {e} {← mkHasTypeButIsExpectedMsg type (mkConst ``Program)}"
 
-  let rec go (instructions : HashMap _ _) (e : Expr) : MetaM (HashMap _ _) := do
+  let rec go (instructions : Std.HashMap _ _) (e : Expr) : MetaM (Std.HashMap _ _) := do
     let e ← whnfD e
     match_expr e with
     | List.cons _ hd tl => do

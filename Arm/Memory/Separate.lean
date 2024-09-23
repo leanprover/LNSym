@@ -228,6 +228,21 @@ def mem_legal'.of_omega (h : a.toNat + n ≤ 2^64) : mem_legal' a n := h
 
 theorem mem_legal'.omega_def (h : mem_legal' a n) : a.toNat + n ≤ 2^64 := h
 
+/-- The linear constraint is equivalent to `mem_legal'`. -/
+theorem mem_legal'.iff_omega (a : BitVec 64) (n : Nat) :
+    (a.toNat + n ≤ 2^64) ↔ mem_legal' a n := by
+  constructor
+  · intros h
+    apply mem_legal'.of_omega h
+  · intros h
+    apply h.omega_def
+
+instance : Decidable (mem_legal' a n) :=
+  if h : a.toNat + n ≤ 2^64 then
+    isTrue (mem_legal'.of_omega h)
+  else
+    isFalse (fun h' => h h')
+
 /--
 @bollu: have proof automation exploit this.
 Equation lemma for `mem_legal'`.
@@ -324,6 +339,23 @@ theorem mem_separate'.of_omega
   · unfold mem_legal'; omega
   · omega
 
+/-- The linear constraint is equivalent to `mem_separate'`. -/
+theorem mem_separate'.iff_omega (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
+    (a.toNat + an ≤ 2^64 ∧
+    b.toNat + bn ≤ 2^64 ∧
+    (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn)) ↔ mem_separate' a an b bn := by
+  constructor
+  · intros h
+    apply mem_separate'.of_omega h
+  · intros h
+    apply h.omega_def
+
+instance : Decidable (mem_separate' a an b bn) :=
+  if h : (a.toNat + an ≤ 2^64 ∧ b.toNat + bn ≤ 2^64 ∧ (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn)) then
+    isTrue (mem_separate'.of_omega h)
+  else
+    isFalse (fun h' => h ⟨h'.ha.omega_def, h'.hb.omega_def, h'.h⟩)
+
 theorem BitVec.not_le_eq_lt {a b : BitVec w₁} : (¬ (a ≤ b)) ↔ b < a := by
   rw [BitVec.le_def, BitVec.lt_def]
   omega
@@ -389,6 +421,24 @@ constructor
 · unfold mem_legal'; omega
 · rw [BitVec.le_def]; omega
 · omega
+
+/-- The linear constraint is equivalent to `mem_subset'`. -/
+theorem mem_subset'.iff_omega (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
+    (a.toNat + an ≤ 2^64 ∧
+    b.toNat + bn ≤ 2^64 ∧
+    b.toNat ≤ a.toNat ∧
+    a.toNat + an ≤ b.toNat + bn) ↔ mem_subset' a an b bn := by
+  constructor
+  · intros h
+    apply mem_subset'.of_omega h
+  · intros h
+    apply h.omega_def
+
+instance : Decidable (mem_subset' a an b bn) :=
+  if h : (a.toNat + an ≤ 2^64 ∧ b.toNat + bn ≤ 2^64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn) then
+    isTrue (mem_subset'.of_omega h)
+  else
+    isFalse (fun h' => h ⟨h'.ha.omega_def, h'.hb.omega_def, h'.hstart, h'.hend⟩)
 
 theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
   ha := h

@@ -477,6 +477,7 @@ end CutTheorems
 section PartialCorrectness
 
 -- set_option skip_proof.skip true in
+set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -507,16 +508,16 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
   have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by simp_mem
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
   · rw [h_assert_6]
-    simp_mem
+    skip_proof simp_mem
   · -- @bollu: TODO: figure out why this is so slow!
     apply mem_separate'.symm
     apply mem_separate'.of_subset'_of_subset' hsep
     · apply mem_subset'.of_omega
-      refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
+      skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
     · apply mem_subset'_refl hsep.hb
 
 -- set_option skip_proof.skip true in
-set_option maxHeartbeats 999999 in
+set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -562,10 +563,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
       · simp only [Nat.reduceMul, BitVec.toNat_add, BitVec.toNat_mul, BitVec.toNat_ofNat,
         Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
-        BitVec.extractLsBytes_eq_self]
+        BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
         rw [h_assert_6 _ _ (by simp_mem)]
-      · simp_mem
-
+      · skip_proof simp_mem
     · rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
       · apply h_assert_5 _ hi
       · constructor

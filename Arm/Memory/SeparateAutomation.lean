@@ -101,6 +101,18 @@ structure SimpMemConfig where
   rewriteFuel : Nat := 1000
   /-- whether an error should be thrown if the tactic makes no progress. -/
   failIfUnchanged : Bool := true
+  /-- whether `simp_mem` should always try to use `omega` to close the goal,
+    even if goal state is not recognized as one of the blessed states.
+    This is useful when one is trying to establish some numerical invariant
+    about addresses based on knowledge of memory.
+    e.g.
+    ```
+    h : mem_separate' a 10 b 10
+    hab : a < b
+    ⊢ a + 5 < b
+    ```
+  -/
+  useOmegaToClose : Bool := true
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
 structure Context where
@@ -396,7 +408,7 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
 
     -- unfold `state_value.
     simpTheorems := simpTheorems.push <| ← ({} : SimpTheorems).addDeclToUnfold `state_value
-    let simpCtx : Simp.Context := { 
+    let simpCtx : Simp.Context := {
       simpTheorems,
       config := { decide := true, failIfUnchanged := false },
       congrTheorems := (← Meta.getSimpCongrTheorems)
@@ -703,22 +715,6 @@ class OmegaReducible (α : Type) where
   reduceToOmega : α → Expr
 
 /--
-This is a wrapper around an `Expr` to provide an `OmegaReducible` instance,
-which as a hail mary, tries to directly invoke `omega` on this expression.
-We perform this as a last-ditch effort, after trying to pattern match
-on the expression.
--/
-structure TryOmegaOnExpr where
-   /-- The hypothesis to try to use `omega` to close. -/
-   e: Expr
-
-instance : OmegaReducible TryOmegaOnExpr where
-  reduceToOmega e := e.e
-
-instance : ToMessageData TryOmegaOnExpr where
-  toMessageData e := toMessageData e.e
-
-/--
 info: mem_legal'.of_omega {n : Nat} {a : BitVec 64} (h : a.toNat + n ≤ 2 ^ 64) : mem_legal' a n
 -/
 #guard_msgs in #check mem_legal'.of_omega
@@ -984,22 +980,23 @@ partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM
         if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
 
-    withTraceNode m!"Unknown memory expression kind ⊢ {gt}. Trying a reduction to omega..." do
-      let oldGoals := (← getGoals)
-      try
-        let gproof ← mkFreshExprMVar (type? := gt)
-        setGoals (gproof.mvarId! :: (← getGoals))
-        SimpMemM.withMainContext do
-        let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
-        trace[simp_mem.info] m!"Executing `omega` to close {gt}"
-        SimpMemM.withTraceNode m!"goal (Note: can be large)" do
-          trace[simp_mem.info] "{← getMainGoal}"
-        omega
-        trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
-        g.assign gproof
-      catch e =>
-        trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
-        setGoals oldGoals
+    if (← getConfig).useOmegaToClose then
+      withTraceNode m!"Unknown memory expression ⊢ {gt}. Trying reduction to omega (`config.useOmegaToClose = true`):" do
+        let oldGoals := (← getGoals)
+        try
+          let gproof ← mkFreshExprMVar (type? := gt)
+          setGoals (gproof.mvarId! :: (← getGoals))
+          SimpMemM.withMainContext do
+          let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
+          trace[simp_mem.info] m!"Executing `omega` to close {gt}"
+          SimpMemM.withTraceNode m!"goal (Note: can be large)" do
+            trace[simp_mem.info] "{← getMainGoal}"
+          omega
+          trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+          g.assign gproof
+        catch e =>
+          trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+          setGoals oldGoals
   return ← g.isAssigned
 
 
