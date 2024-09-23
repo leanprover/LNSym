@@ -214,7 +214,7 @@ def modify (ctxt : SymContext) (k : SymM Unit) : TacticM SymContext := do
 /-- Infer `state_prefix` and `curr_state_number` from the `state` name
 as follows: if `state` is `s{i}` for some number `i` and a single character `s`,
 then `s` is the prefix and `i` the number,
-otherwise ignore `state`, and start counting from `s1` -/
+otherwise ignore `state`, log a warning, and start counting from `s1` -/
 def inferStatePrefixAndNumber : SymM Unit := do
   let state ← AxEffects.getCurrentStateName
   let state := state.toString
