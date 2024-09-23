@@ -150,14 +150,14 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
   subst h_step
   have := Max.program.stepi_eq_0x894 h_program h_pc h_err
   -- clear Decidable.rec (...)
-  simp (config := { decide := true, ground := true }) only [minimal_theory] at this
+  simp only [minimal_theory] at this
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory, pcs]
   simp only [List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
   /- Toy automation for deciding Aligned, will be converted to a decision procedure in a follow up PR -/
   repeat first
-  | simp (config := { ground := true, decide := true}) [aligned_rules, state_simp_rules]
+  | simp [aligned_rules, state_simp_rules]
   | apply Aligned_BitVecSub_64_4;
   | apply Aligned_BitVecAdd_64_4;
   | apply Aligned_AddWithCarry_64_4;
@@ -556,7 +556,8 @@ theorem program.stepi_0x8c8_cut (s sn : ArmState)
   have := program.stepi_eq_0x8c8 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
-  simp (config := {ground := true, decide := true})
+  simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_true, true_and, false_or,
+    true_or]
   apply Aligned_BitVecAdd_64_4
   · assumption
   · decide

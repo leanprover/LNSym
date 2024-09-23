@@ -56,7 +56,7 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   (result, (make_pstate N Z C V))
 
 /-- When the carry bit is `0`, `AddWithCarry x y 0 = x + y` -/
-@[bitvec_rules]
+@[bitvec_rules, state_simp_rules]
 theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 0#1).fst = x + y := by
   simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
@@ -68,7 +68,7 @@ theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   rw [Nat.mod_eq_of_lt this]
 
 /-- When the carry bit is `1`, `AddWithCarry x y 1 = x - ~~~y` -/
-@[bitvec_rules]
+@[bitvec_rules, state_simp_rules]
 theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 1#1).fst = x - ~~~y := by
   simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
@@ -98,14 +98,16 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   let V := read_flag V s
   let result :=
     match (extractLsb 3 1 cond) with
-      | 0b000#3 => Z = 1#1
-      | 0b001#3 => C = 1#1
-      | 0b010#3 => N = 1#1
-      | 0b011#3 => V = 1#1
-      | 0b100#3 => C = 1#1 ∧ Z = 0#1
-      | 0b101#3 => N = V
-      | 0b110#3 => N = V ∧ Z = 0#1
-      | 0b111#3 => true
+      | 0b000#3 => Z = 1#1           -- EQ or NE
+      | 0b001#3 => C = 1#1           -- CS or CC
+      | 0b010#3 => N = 1#1           -- MI or PL
+      | 0b011#3 => V = 1#1           -- VS or VC
+      | 0b100#3 => C = 1#1 ∧ Z = 0#1 -- HI or LS
+      | 0b101#3 => N = V             -- GE or LT
+      | 0b110#3 => N = V ∧ Z = 0#1   -- GT or LE
+      | 0b111#3 => true              -- AL
+  -- Condition flag values in the set 111x indicate always true
+  -- Otherwise, invert condition if necessary.
   if (lsb cond 0) = 1#1 ∧ cond ≠ 0b1111#4 then
     not result
   else
@@ -162,6 +164,7 @@ theorem zero_iff_z_eq_one (x : BitVec 64) :
 
 /-- `Aligned x a` witnesses that the bitvector `x` is `a`-bit aligned. -/
 def Aligned (x : BitVec n) (a : Nat) : Prop :=
+  -- (TODO @alex) Switch to using extractLsb' to unify the two cases.
   match a with
   | 0 => True
   | a' + 1 => extractLsb a' 0 x = BitVec.zero _
