@@ -75,9 +75,6 @@ structure SymContext where
   and we assume that no overflow happens
   (i.e., `base - x` can never be equal to `base + y`) -/
   pc : BitVec 64
-  /-- `h_err?`, if present, is a local hypothesis of the form
-  `r StateField.ERR state = .None` -/
-  h_err? : Option Name
   /-- `h_sp?`, if present, is a local hypothesis of the form
   `CheckSPAlignment state` -/
   h_sp?  : Option Name
@@ -316,10 +313,16 @@ def fromLocalContext (state? : Option Name) : TacticM SymContext := do
   let pc ← withErrorContext h_pc.userName h_pc.type <|
     reflectBitVecLiteral 64 pcE
 
-  -- Attempt to find `h_err` and `h_sp`
-  let h_err? ← findLocalDeclOfType? (h_err_type stateExpr)
-  if h_err?.isNone then
-    trace[Sym] "Could not find local hypothesis of type {h_err_type stateExpr}"
+  -- Attempt to find `h_err`, adding a new subgoal if it couldn't be found
+  let errHyp ← do
+    let h_err? ← findLocalDeclOfType? (h_err_type stateExpr)
+    match h_err? with
+    | some d => pure d.toExpr
+    | none => do
+        let errHyp ← mkFreshExprMVar (h_err_type stateExpr)
+        replaceMainGoal [← getMainGoal, errHyp.mvarId!]
+        pure errHyp
+
   let h_sp?  ← findLocalDeclOfType? (h_sp_type stateExpr)
   if h_sp?.isNone then
     trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
@@ -331,31 +334,26 @@ def fromLocalContext (state? : Option Name) : TacticM SymContext := do
           #generateStepEqTheorems {program}"
 
   -- Initialize the axiomatic hypotheses with hypotheses for the initial state
-  let axHyps := #[h_program, h_pc] ++ h_err?.toArray ++ h_sp?.toArray
+  let axHyps := #[h_program, h_pc] ++ h_sp?.toArray
   let (aggregateSimpCtx, aggregateSimprocs) ←
     LNSymSimpContext
       (config := {decide := true, failIfUnchanged := false})
       (decls := axHyps)
+      (exprs := #[errHyp])
       (noIndexAtArgs := false)
 
   -- Build an initial AxEffects
   let effects := AxEffects.initial stateExpr
-  let mut fields :=
-    effects.fields.insert .PC { value := pcE, proof := h_pc.toExpr}
-  if let some hErr := h_err? then
-    fields := fields.insert .ERR {
-      value := mkConst ``StateError.None,
-      proof := hErr.toExpr
-    }
   let effects := { effects with
-      programProof := h_program.toExpr
-      stackAlignmentProof? := h_sp?.map (·.toExpr)
-      fields
+    fields := effects.fields
+      |>.insert .PC { value := pcE, proof := h_pc.toExpr}
+      |>.insert .ERR { value := mkConst ``StateError.None, proof := errHyp}
+    programProof := h_program.toExpr
+    stackAlignmentProof? := h_sp?.map (·.toExpr)
   }
   let c : SymContext := {
     finalState, runSteps?, pc,
     h_run := h_run.userName,
-    h_err? := (·.userName) <$> h_err?,
     h_sp? := (·.userName) <$> h_sp?,
     programInfo,
     effects,
@@ -379,78 +377,14 @@ where
 
 /-! ## Massaging the local context -/
 
-/-- If `h_sp` or `h_err` are missing from the `SymContext`,
-add new goals of the expected types,
-and use these to add `h_sp` and `h_err` to the main goal context -/
-def addGoalsForMissingHypotheses (addHSp : Bool := false) : SymM Unit :=
-  let msg := "Adding goals for missing hypotheses"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
-    let mut ctx ← getThe SymContext
-    let mut goal ← getMainGoal
-    let mut newGoals := []
-    let stateExpr ← AxEffects.getCurrentState
-    let stateName ← AxEffects.getCurrentStateName
-
-    match ctx.h_err? with
-      | none =>
-          trace[Tactic.sym] "h_err? is none, adding a new goal"
-
-          let h_err? := Name.mkSimple s!"h_{stateName}_err"
-          let newGoal ← mkFreshMVarId
-
-          goal := ← do
-            let goalType := h_err_type stateExpr
-            let newGoalExpr ← mkFreshExprMVarWithId newGoal goalType
-            let goal' ← goal.assert h_err? goalType newGoalExpr
-            let ⟨_, goal'⟩ ← goal'.intro1P
-            return goal'
-
-          newGoals := newGoal :: newGoals
-          ctx := { ctx with
-            h_err?
-            effects := ← ctx.effects.withField (.mvar newGoal)
-          }
-      | some h_err =>
-          let h_err ← userNameToMessageData h_err
-          trace[Tactic.sym] "h_err? is {h_err}, no new goal needed"
-
-    match ctx.h_sp? with
-      | none =>
-          if addHSp then
-            trace[Tactic.sym] "h_sp? is none, adding a new goal"
-
-            let h_sp? := Name.mkSimple s!"h_{stateName}_sp"
-            let newGoal ← mkFreshMVarId
-
-            goal := ← do
-              let h_sp_type := h_sp_type stateExpr
-              let newGoalExpr ← mkFreshExprMVarWithId newGoal h_sp_type
-              let goal' ← goal.assert h_sp? h_sp_type newGoalExpr
-              let ⟨_, goal'⟩ ← goal'.intro1P
-              return goal'
-
-            newGoals := newGoal :: newGoals
-            ctx := { ctx with
-              h_sp?
-              effects.stackAlignmentProof? := some (Expr.mvar newGoal)
-            }
-          else
-            trace[Tactic.sym] "h_sp? is none, but addHSp is false, \
-              so no new goal is added"
-      | some h_sp =>
-          let h_sp ← userNameToMessageData h_sp
-          trace[Tactic.sym] "h_sp? is {h_sp}, no new goal needed"
-
-    replaceMainGoal (goal :: newGoals)
-    set ctx
-
 /-- change the type (in the local context of the main goal)
 of the hypotheses tracked by the given `SymContext` to be *exactly* of the shape
 described in the relevant docstrings.
 
 That is, (un)fold types which were definitionally, but not syntactically,
 equal to the expected shape. -/
-def canonicalizeHypothesisTypes : SymReaderM Unit := fun c => withMainContext do
+def canonicalizeHypothesisTypes : SymReaderM Unit := withMainContext' do
+  let c ← readThe SymContext
   let lctx ← getLCtx
   let mut goal ← getMainGoal
   let state := c.effects.currentState
@@ -458,15 +392,19 @@ def canonicalizeHypothesisTypes : SymReaderM Unit := fun c => withMainContext do
   let mut hyps := #[]
   if let some runSteps := c.runSteps? then
     hyps := hyps.push (c.h_run, h_run_type c.finalState (toExpr runSteps) state)
-  if let some h_err := c.h_err? then
-    hyps := hyps.push (h_err, h_err_type state)
   if let some h_sp := c.h_sp? then
     hyps := hyps.push (h_sp, h_sp_type state)
 
-  for ⟨name, type⟩ in hyps do
+  let mut hypIds ← hyps.mapM fun ⟨name, type⟩ => do
     let some decl := lctx.findFromUserName? name
       | throwError "Unknown local hypothesis `{name}`"
-    goal ← goal.replaceLocalDeclDefEq decl.fvarId type
+    pure (decl.fvarId, type)
+
+  let errHyp ← AxEffects.getFieldM .ERR
+  if let Expr.fvar id := errHyp.proof then
+    hypIds := hypIds.push (id, h_err_type state)
+  for ⟨fvarId, type⟩ in hypIds do
+    goal ← goal.replaceLocalDeclDefEq fvarId type
   replaceMainGoal [goal]
 
 /-! ## Incrementing the context to the next state -/
