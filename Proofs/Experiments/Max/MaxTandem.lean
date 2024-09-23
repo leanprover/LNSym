@@ -8,7 +8,6 @@ computes the maximum of two numbers.
 -/
 import Arm
 import Tactics.CSE
-import Tactics.Rename
 import Tactics.Sym
 import Tactics.Rename
 import Tactics.Name

@@ -756,7 +756,6 @@ theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n 
     rw [h_n]
     simp only [write_mem]
 
-
 /-! ### Memory RoW/WoW lemmas -/
 
 theorem read_mem_of_write_mem_same :
