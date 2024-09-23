@@ -104,7 +104,7 @@ structure SymContext where
 /-- `SymM` is a wrapper around `TacticM` with a mutable `SymContext` state -/
 abbrev SymM := StateT SymContext TacticM
 
-/-- `SymM` is a wrapper around `TacticM` with a read-only `SymContext` state -/
+/-- `SymReaderM` is a wrapper around `TacticM` with a read-only `SymContext` state -/
 abbrev SymReaderM := ReaderT SymContext TacticM
 
 namespace SymM
