@@ -30,3 +30,18 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   indidividual runtimes:
     {runTimes}
 "
+
+/-- The default `maxHeartbeats` setting.
+
+NOTE: even if the actual default value changes at some point in the future,
+this value should *NOT* be updated, to ensure the percentages we've reported
+in previous versions remain comparable. -/
+def defaultMaxHeartbeats : Nat := 200000
+
+open Elab.Tactic in
+elab "logHeartbeats" tac:tactic : tactic => do
+  let ((), heartbeats) ← withHeartbeats <|
+    evalTactic tac
+  let percent := heartbeats / (defaultMaxHeartbeats * 10)
+
+  logInfo m!"used {heartbeats / 1000} heartbeats ({percent}% of the default maximum)"
