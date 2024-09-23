@@ -231,10 +231,10 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
       let proof  ← eff.mkAppNonEffect (toExpr fld)
       pure { value, proof }
 
-variable {m} [Monad m] [MonadStateOf AxEffects m] [MonadLiftT MetaM m] in
+variable {m} [Monad m] [MonadReaderOf AxEffects m] [MonadLiftT MetaM m] in
 @[inherit_doc getField]
 def getFieldM (field : StateField) : m FieldEffect := do
-  (← get).getField field
+  (← read).getField field
 
 /-! ## Update a Reflected State -/
 
