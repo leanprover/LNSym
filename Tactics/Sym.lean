@@ -338,15 +338,22 @@ if it does not. -/
 def assertStepTheoremsGenerated : SymM Unit := do
   let c ← getThe SymContext
   let pc := c.pc.toHexWithoutLeadingZeroes
+  if !c.programInfo.instructions.contains c.pc then
+    let pcEff ← AxEffects.getFieldM .PC
+    throwError "\
+      Program {c.program} has no instruction at address {c.pc}.
+
+      We inferred this address as the program-counter from {pcEff.proof}, \
+      which has type:
+        {← inferType pcEff.proof}"
+
   let step_thm := Name.str c.program ("stepi_eq_0x" ++ pc)
   try
     let _ ← getConstInfo step_thm
   catch err =>
     throwErrorAt err.getRef "{err.toMessageData}\n
 Did you remember to generate step theorems with:
-  #genStepEqTheorems {c.program}
-
-Alternatively, are you sure that {pc} is a valid value for the program counter?"
+  #genStepEqTheorems {c.program}"
 -- TODO: can we make this error ^^ into a `Try this:` suggestion that
 --       automatically adds the right command just before the theorem?
 
