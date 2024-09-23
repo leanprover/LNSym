@@ -70,6 +70,7 @@ def popcount32_program : Program :=
 
 #genStepEqTheorems popcount32_program
 
+set_option maxHeartbeats 0 in
 theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x4005b4#64)
   (h_s0_program : s0.program = popcount32_program)
