@@ -397,11 +397,7 @@ private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
 
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to `eff.currentState`,
-return an `AxEffects` where `e` is `currentState`.
-
-Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
-the whole expression is taken to be the initial state,
-even if there might be more `w`/`write_mem`s in sub-expressions. -/
+return an `AxEffects` where `e` is the new `currentState`. -/
 partial def updateWithExpr (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
   let msg := m!"Updating effects with writes from: {e}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
