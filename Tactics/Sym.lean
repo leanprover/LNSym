@@ -166,7 +166,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
     let c ← getThe SymContext
     let mut eff ← AxEffects.fromEq hStep
 
-    let stateExpr ← getCurrentState
+    let stateExpr ← SymContext.getCurrentState
     /- Assert that the initial state of the obtained `AxEffects` is equal to
     the state tracked by `c`.
     This will catch and throw an error if the semantics of the current
@@ -246,6 +246,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
         {err.toMessageData}"
       pure none
 
+    set eff
     modifyThe SymContext (·.next nextPc?)
 
 /-- A tactic wrapper around `explodeStep`.

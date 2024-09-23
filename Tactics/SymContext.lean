@@ -61,6 +61,13 @@ structure SymContext where
   /-- `programInfo` is the relevant cached `ProgramInfo` -/
   programInfo : ProgramInfo
 
+  /-- the effects of the current state, such as:
+  - a proof that the PC is equal to `pc`
+  - a proof that the current state is valid (`read_err _ = .None`)
+  - a proof that the current state has the right program
+  - and more, see `AxEffects` for the full list -/
+  effects : AxEffects
+
   /-- `pc` is the *concrete* value of the program counter
 
   Note that for now we only support symbolic evaluation of programs
@@ -115,6 +122,16 @@ def run (ctx : SymContext) (k : SymM α) : TacticM (α × SymContext) :=
 
 instance : MonadLift SymReaderM SymM where
   monadLift x c := do return (←x c, c)
+
+instance : MonadStateOf AxEffects SymM where
+  get := do return (← getThe SymContext).effects
+  set effects := do modifyThe SymContext ({· with effects})
+  modifyGet f := do
+    let (a, effects) := f (← getThe SymContext).effects
+    modifyThe SymContext ({· with effects})
+    return a
+instance : MonadReaderOf AxEffects SymM where
+  read := getThe AxEffects
 
 end SymM
 
@@ -332,6 +349,12 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
       (decls := axHyps)
       (noIndexAtArgs := false)
 
+  -- Build an initial AxEffects
+  let effects := {
+    AxEffects.initial stateExpr with
+      programProof := h_program.toExpr
+  }
+
   return inferStatePrefixAndNumber {
     state, finalState, runSteps?, program, pc,
     h_run := h_run.userName,
@@ -340,6 +363,7 @@ def fromLocalContext (state? : Option Name) : MetaM SymContext := do
     h_err? := (·.userName) <$> h_err?,
     h_sp? := (·.userName) <$> h_sp?,
     programInfo,
+    effects,
     aggregateSimpCtx, aggregateSimprocs
   }
 where
@@ -390,7 +414,10 @@ def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
             return goal'
 
           newGoals := newGoal :: newGoals
-          ctx := { ctx with h_err? }
+          ctx := { ctx with
+            h_err?
+            effects := ← ctx.effects.withField (.mvar newGoal)
+          }
       | some h_err =>
           let h_err ← userNameToMessageData h_err
           trace[Tactic.sym] "h_err? is {h_err}, no new goal needed"
@@ -411,7 +438,10 @@ def addGoalsForMissingHypotheses (ctx : SymContext) (addHSp : Bool := false) :
               return goal'
 
             newGoals := newGoal :: newGoals
-            ctx := { ctx with h_sp? }
+            ctx := { ctx with
+              h_sp?
+              effects.stackAlignmentProof? := some (Expr.mvar newGoal)
+            }
           else
             trace[Tactic.sym] "h_sp? is none, but addHSp is false, \
               so no new goal is added"

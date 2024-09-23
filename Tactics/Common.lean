@@ -223,9 +223,9 @@ def findLocalDeclOfType? (expectedType : Expr) : MetaM (Option LocalDecl) := do
     --    the local context, so we can safely pass it to `get!`
 
 def findLocalDeclOfTypeOrError (expectedType : Expr) : MetaM LocalDecl := do
-    let some name ← findLocalDeclOfType? expectedType
+    let some decl ← findLocalDeclOfType? expectedType
       | throwError "Failed to find a local hypothesis of type {expectedType}"
-    return name
+    return decl
 
 /-- `findProgramHyp` searches the local context for an hypothesis of type
   `state.program = ?concreteProgram`,
