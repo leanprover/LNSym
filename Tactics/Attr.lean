@@ -15,6 +15,9 @@ initialize
   -- enable tracing for heartbeat usage of `sym_n`
   registerTraceClass `Tactic.sym.heartbeats
 
+  -- Matchgoal tactic's tracing.
+  registerTraceClass `Tactic.matchgoal
+
   -- enable extra checks for debugging `sym_n`,
   -- see `AxEffects.validate` for more detail on what is being type-checked
   registerOption `Tactic.sym.debug {
