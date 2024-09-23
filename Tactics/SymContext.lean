@@ -220,15 +220,23 @@ def inferStatePrefixAndNumber : SymM Unit := do
   let state := state.toString
   let tail := state.toSubstring.drop 1
 
-  modifyThe SymContext fun ctxt =>
+  let ctxt ← getThe SymContext
+  let ctxt : SymContext ← do
     if let some currentStateNumber := tail.toNat? then
-      { ctxt with
+      pure { ctxt with
         state_prefix := (state.get? 0).getD 's' |>.toString,
         currentStateNumber }
     else
-      { ctxt with
+      logWarning "\
+        Expected state to be a single letter followed by a number, but found:
+          {state}
+
+        Falling back to the default numbering schema,
+        with `s1` as the first new intermediate state"
+      pure { ctxt with
         state_prefix := "s",
         currentStateNumber := 1 }
+  set ctxt
 
 /-- Annotate any errors thrown by `k` with a local variable (and its type) -/
 private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
