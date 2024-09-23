@@ -161,6 +161,10 @@ private theorem add_eq_sub_16 (x : BitVec 64) :
 
 -- (TODO) Modifying this theorem is an exercise in patience because of
 -- user-interactivity delays. Let's report this.
+set_option maxRecDepth 0 in
+-- | error: ././././Proofs/SHA512/SHA512Prelude.lean:164:0: linter Lean.Linter.constructorNameAsVariable failed: maximum recursion depth has been reached
+set_option linter.all false in
+set_option linter.constructorNameAsVariable false in
 theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   -- We fix the number of blocks to hash to 1.
   (h_N : N = 1#64)
