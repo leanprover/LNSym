@@ -272,7 +272,7 @@ def traceHeartbeats (cls : Name) (header : Option String := none) :
 
 /-! ## `withMainContext'` -/
 
-variable {m} [Monad m] [MonadLiftT TacticM m] [MonadControlT MetaM m]
+variable {m} [Monad m] [MonadLiftT TacticM m] [MonadControlT MetaM m] in
 /-- Execute `x` using the main goal local context and instances.
 
 Unlike the standard `withMainContext`, `x` may live in a generic monad `m`. -/
