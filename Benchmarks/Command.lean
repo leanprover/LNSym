@@ -22,10 +22,13 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
     totalRunTime := totalRunTime + runTime
 
   let avg := totalRunTime.toFloat / n.toFloat / 1000
+  let geomean := (totalRunTime.toFloat.pow (1.0 / n.toFloat)) / 1000.0
   logInfo m!"\
 {id}:
   average runtime over {n} runs:
     {avg}s
+  geomean over {n} runs:
+    {geomean}s
 
   indidividual runtimes:
     {runTimes}
