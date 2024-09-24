@@ -23,7 +23,11 @@ variable (m) [Monad m]
 inductive LCtxSearchResult
   /-- This occurence of the pattern should be ignored -/
   | skip
-  /-- This should be counted as a successful occurence -/
+  /-- This should be counted as a successful occurence,
+  and we should *continue* matching for more variables -/
+  | continu
+  /-- This should be counted as a successful occurence,
+  and we can *stop* matching against this particular pattern -/
   | done
   deriving DecidableEq
 
@@ -57,11 +61,14 @@ structure LCtxSearchState.Pattern where
   whenNotFound : Unit → m Unit
   /-- How many times have we (successfully) found the pattern -/
   occurences : Nat := 0
+  /-- Whether the pattern is active; is `isActive = false`,
+  then no further matches are attempted -/
+  isActive : Bool := true
 
 structure LCtxSearchState where
   patterns : Array (LCtxSearchState.Pattern m)
 
-abbrev SearchLCtxForM := StateM (LCtxSearchState m)
+abbrev SearchLCtxForM := StateT (LCtxSearchState m) m
 
 variable {m}
 
@@ -98,12 +105,23 @@ def searchLCtxFor
     : SearchLCtxForM m Unit := do
   let pattern := {
     -- Placeholder value, since we can't evaluate `m` inside of `LCtxSearchM`
-    cachedExpectedType := .bvar 0
+    cachedExpectedType :=← expectedType
     expectedType, whenFound, whenNotFound
   }
   modify fun state => { state with
     patterns := state.patterns.push pattern
   }
+
+/-- A wrapper around `searchLCtxFor`, which is simplified for matching at most
+one occurence of `expectedType` -/
+def searchLCtxForOnce
+    (expectedType : Expr)
+    (whenFound : Expr → m Unit)
+    (whenNotFound : Unit → m Unit := pure)
+    : SearchLCtxForM m Unit := do
+  searchLCtxFor (pure expectedType)
+    (fun e => do whenFound e; return .done)
+    whenNotFound
 
 section Run
 open Meta (isDefEq)
@@ -118,14 +136,16 @@ Attempt to match `e` against the given pattern:
 -/
 def LCtxSearchState.Pattern.match? (pat : Pattern m) (e : Expr) :
     m (Option (Pattern m × LCtxSearchResult)) := do
-  if !(← isDefEq e pat.cachedExpectedType) then
+  if !pat.isActive then
+    return none
+  else if !(← isDefEq e pat.cachedExpectedType) then
     return none
   else
     let cachedExpectedType ← pat.expectedType
     let res ← pat.whenFound pat.cachedExpectedType
     let occurences := match res with
       | .skip => pat.occurences
-      | .done => pat.occurences + 1
+      | .done | .continu => pat.occurences + 1
     return some ({pat with cachedExpectedType, occurences}, res)
 
 /-- Search the local context for variables of certain types, in a single pass.
@@ -133,11 +153,7 @@ def LCtxSearchState.Pattern.match? (pat : Pattern m) (e : Expr) :
 see `searchLCtxFor` to see how to register those patterns
 -/
 def searchLCtx (k : SearchLCtxForM m Unit) : m Unit := do
-  let ((), { patterns }) := StateT.run k ⟨#[]⟩
-  -- Properly initialize the `cachedExpectedType`s
-  let patterns ← patterns.mapM fun pat => do
-    pure { pat with cachedExpectedType := ← pat.expectedType }
-
+  let ((), { patterns }) ← StateT.run k ⟨#[]⟩
   -- We have to keep `patterns` in a Subtype to be able to prove our indexes
   -- are valid even after mutation
   -- TODO(@alexkeizer): consider using `Batteries.Data.Vector`, if we can
@@ -157,7 +173,7 @@ def searchLCtx (k : SearchLCtxForM m Unit) : m Unit := do
           patterns.val.set ⟨i, hi⟩ pat,
           by simp[patterns.property]
         ⟩
-        if res = .done then
+        if res = .done || res = .continu then
           break -- break out of the inner loop
 
   -- Finally, check each pattern and call `whenNotFound` if appropriate
