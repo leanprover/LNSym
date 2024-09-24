@@ -9,13 +9,9 @@ guidelines.
 
 ## Prerequisites
 
-1. Install the [Cadical SAT
-   Solver](https://github.com/arminbiere/cadical), and make sure that
-   it is in your path.
-
-2. Install Lean4 and your preferred editor's plug-in on your machine
-   by following [these
-   instructions](https://leanprover-community.github.io/get_started.html).
+Install Lean4 and your preferred editor's plug-in on your machine by
+following [these
+instructions](https://leanprover-community.github.io/get_started.html).
 
 ## Build Instructions
 
