@@ -280,7 +280,6 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
      (200000) has been reached...`
     -/
     rfl
-
   done
 
 end SHA512
