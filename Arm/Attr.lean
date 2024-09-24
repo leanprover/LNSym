@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author(s): Shilpi Goel
+-/
+
 import Lean
 
 -- A minimal theory, safe for all LNSym proofs
@@ -9,21 +15,3 @@ register_simp_attr state_simp_rules
 register_simp_attr bitvec_rules
 -- Rules for memory lemmas
 register_simp_attr memory_rules
-
-/-
-syntax "state_simp" : tactic
-macro_rules
-  | `(tactic| state_simp) => `(tactic| simp only [state_simp_rules])
-
-syntax "state_simp?" : tactic
-macro_rules
-  | `(tactic| state_simp?) => `(tactic| simp? only [state_simp_rules])
-
-syntax "state_simp_all" : tactic
-macro_rules
-  | `(tactic| state_simp_all) => `(tactic| simp_all only [state_simp_rules])
-
-syntax "state_simp_all?" : tactic
-macro_rules
-  | `(tactic| state_simp_all?) => `(tactic| simp_all? only [state_simp_rules])
--/
