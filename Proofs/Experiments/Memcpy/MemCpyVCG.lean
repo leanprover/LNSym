@@ -15,10 +15,12 @@ import Tactics.Name
 import Tactics.ClearNamed
 import Tactics.StepThms
 import Correctness.ArmSpec
-import Arm.Insts.Common
 import Arm.Memory.SeparateAutomation
 import Arm.Syntax
 import Tactics.SkipProof
+
+-- Disable linters, they take too much time.
+set_option linter.all false
 
 namespace Memcpy
 
@@ -103,23 +105,6 @@ def pre (s : ArmState) : Prop :=
   let dst_base  := ArmState.x2 s
   Pre s num_blks.toNat src_base dst_base
 
-structure Post (s0 sf : ArmState)
-    (num_blks : Nat)
-    (src_base dst_base : BitVec 64) : Prop where
-  num_blks_le : num_blks ≤ ArmState.x0 s0
-  z_eq_zero_iff_x_eq_0 : r (StateField.FLAG PFlag.Z) sf = 1#1 ↔ ArmState.x0 sf = 0#64
-  src_base_eq : ArmState.x1 sf = src_base + 16 * (ArmState.x0 s0 - num_blks)
-  dst_base_eq : ArmState.x2 sf = dst_base + 16 * (ArmState.x0 s0 - num_blks)
-  mem_eq : ∀ i : BitVec 64, i < num_blks →
-    read_mem_bytes 16 (dst_base + (16 * i)) sf =
-    id (read_mem_bytes 16 (src_base + (16 * i)) s0)
-  mem_sep_eq : ∀ (n : Nat) (addr : BitVec 64),
-      mem_separate' dst_base num_blks addr n →
-      read_mem_bytes n addr sf = read_mem_bytes n addr s0
-  err_eq : r StateField.ERR sf = .None
-  program_eq : sf.program = program
-  sp_aligned : CheckSPAlignment sf
-
 /-- Postcondition for the correctness of the MemCpy program. -/
 def post (s0 sf : ArmState) : Prop :=
   let num_blks := ArmState.x0 s0
@@ -144,9 +129,6 @@ def post (s0 sf : ArmState) : Prop :=
   (∀ i : BitVec 64, i < num_blks →
     read_mem_bytes 16 (dst_base + (16 * i)) sf =
     id (read_mem_bytes 16 (src_base + (16 * i)) s0)) ∧
-  -- TODO (@bollu): we can't prove this, because we don't have this in the loop invariant
-  -- to show that emory regions separate from the destination are unchanged.
-  -- -- All memory regions separate from the destination are unchanged.
   (∀ (n : Nat) (addr : BitVec 64),
       mem_separate' dst_base num_bytes addr n →
       read_mem_bytes n addr sf = read_mem_bytes n addr s0) ∧
@@ -168,24 +150,6 @@ def cut (s : ArmState) : Bool :=
   -- First instruction following the loop
   -- which also happens to be the program's last instruction
   r StateField.PC s = 0x8f8#64
-
-structure LoopInv (s0 si : ArmState)
-    (num_blks : Nat)
-    (curr_num_blks : Nat)
-    (src_base dst_base : BitVec 64) : Prop where
-  num_blks_le : curr_num_blks ≤ num_blks
-  z_eq_zero_iff_x_eq_0 : r (StateField.FLAG PFlag.Z) si = 1#1 ↔ curr_num_blks = 0#64
-  src_base_eq : ArmState.x1 si = src_base + 16 * (num_blks - curr_num_blks)
-  dst_base_eq : ArmState.x2 si = dst_base + 16 * (num_blks - curr_num_blks)
-  mem_eq : ∀ i : BitVec 64, i < curr_num_blks →
-    read_mem_bytes 16 (dst_base + (16 * i)) si =
-    id (read_mem_bytes 16 (src_base + (16 * i)) s0)
-  mem_sep_eq : ∀ (n : Nat) (addr : BitVec 64),
-      mem_separate' dst_base curr_num_blks addr n →
-      read_mem_bytes n addr si = read_mem_bytes n addr s0
-  err_eq : r StateField.ERR si = .None
-  program_eq : si.program = program
-  sp_aligned : CheckSPAlignment si
 
 def loop_inv (s0 si : ArmState) : Prop :=
   let num_blks := ArmState.x0 s0
