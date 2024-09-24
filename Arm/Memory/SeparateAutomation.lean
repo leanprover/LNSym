@@ -459,7 +459,8 @@ def omega : TacticM Unit := do
       (simprocs := #[])
   let _ ← simpLocation simpCtx simprocs (loc := Location.wildcard)
   let g ← getMainGoal
-  trace[simp_mem] "omega goal: {g}"
+  TacticM.withTraceNode m!"omega goal (Note: can be large)" do
+    trace[simp_mem] "{g}"
   g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
 
 section Hypotheses
@@ -926,18 +927,23 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
       trace[simp_mem.info] "{processingEmoji} read({er.span})⟂/⊆write({ew.span})"
 
       let separate := MemSeparateProp.mk er.span ew.span
-      let subset := MemSubsetProp.mk er.span ew.span
+      trace[simp_mem.info] "{processingEmoji} {separate}"
       if let .some separateProof ← proveWithOmega? separate hyps then do
         trace[simp_mem.info] "{checkEmoji} {separate}"
         rewriteReadOfSeparatedWrite er ew separateProof
         return true
-      else if let .some subsetProof ← proveWithOmega? subset hyps then do
-        trace[simp_mem.info] "{checkEmoji} {subset}"
-        rewriteReadOfSubsetWrite er ew subsetProof
-        return true
-      else
-        trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
-        return false
+      else do
+        trace[simp_mem.info] "{crossEmoji} {separate}"
+        let subset := MemSubsetProp.mk er.span ew.span
+        trace[simp_mem.info] "{processingEmoji} {subset}"
+        if let .some subsetProof ← proveWithOmega? subset hyps then do
+          trace[simp_mem.info] "{checkEmoji} {subset}"
+          rewriteReadOfSubsetWrite er ew subsetProof
+          return true
+        else
+          trace[simp_mem.info] "{crossEmoji} {subset}"
+          trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
+          return false
     else
       -- read
       trace[simp_mem.info] "{checkEmoji} Found read {er}."
