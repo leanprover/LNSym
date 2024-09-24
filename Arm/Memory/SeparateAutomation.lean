@@ -433,38 +433,34 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : TacticM FVarId  := do
 attribute [bv_toNat] BitVec.le_def
 -- bv_omega' := (try simp only [bv_toNat, BitVec.le_def] at *) <;> omega)
 -- #check Lean.Elab.Tactic.Omega.omega
--- #check Lean.Elab.Tactic.Omega.bvOmega
+-- #check Lean.Elab.Tactic.Omega.
 -- simpTargetStar
 
 
+    -- let proof  := localDecl.toExpr
+
+    -- let simpTheorems ← ctx.simpTheorems.addTheorem (.fvar h) proof
+    -- ctx := { ctx with simpTheorems }
+
 /-- SimpMemM's omega invoker -/
 def omega : TacticM Unit := do
-  let g ← getMainGoal
+  let g ← match ← (← getMainGoal).falseOrByContra with
+    | none =>
+      trace[simp_mem] "omega converting goal to false/contra *closed* goal."
+      return ()
+    | some g' =>
+      pure g'
+  replaceMainGoal [g]
   let (simpCtx, simprocs) ← LNSymSimpContext
-      (config := {})
-      (simp_attrs := #[`bv_toNat]) (useDefaultSimprocs := false) (simprocs := #[])
-  let (result, stats) ← simpTargetStar g simpCtx simprocs
-  trace[simp_mem] "simp stats: {stats.usedTheorems.toArray.map Origin.key}"
-  if let .closed := result then
-    trace[simp_mem] "omega preprocessor *closed* goal."
-    replaceMainGoal []
-    return ()
-  else
-    let g :=
-      match result with
-      | .modified g' => g'
-      | .noChange | .closed => g
-    -- Step 2: prove goal with omega.
-    let g ←
-      match ← g.falseOrByContra with
-      | none =>
-        trace[simp_mem] "omega converting goal to false/contra *closed* goal."
-        return ()
-      | some g' =>
-        pure g'
-    trace[simp_mem] "omega goal: {g}"
-    replaceMainGoal [g]
-    g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
+      (config := { failIfUnchanged := false })
+      (simp_attrs := #[`bv_toNat])
+      (useDefaultSimprocs := false)
+      (thms := #[``mem_legal'.iff_omega, ``mem_separate'.iff_omega, ``mem_subset'.iff_omega, ``BitVec.le_def])
+      (simprocs := #[])
+  let _ ← simpLocation simpCtx simprocs (loc := Location.wildcard)
+  let g ← getMainGoal
+  trace[simp_mem] "omega goal: {g}"
+  g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
 
 section Hypotheses
 
@@ -1016,23 +1012,23 @@ partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
         if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
-    else if (← getConfig).useOmegaToClose then
-      withTraceNode m!"Unknown memory expression ⊢ {gt}. Trying reduction to omega (`config.useOmegaToClose = true`):" do
-        let oldGoals := (← getGoals)
-        try
-          let gproof ← mkFreshExprMVar (type? := gt)
-          setGoals (gproof.mvarId! :: (← getGoals))
-          SimpMemM.withMainContext do
-          let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
-          trace[simp_mem.info] m!"Executing `omega` to close {gt}"
-          SimpMemM.withTraceNode m!"goal (Note: can be large)" do
-            trace[simp_mem.info] "{← getMainGoal}"
-          omega
-          trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
-          g.assign gproof
-        catch e =>
-          trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
-          setGoals oldGoals
+    -- else if false && (← getConfig).useOmegaToClose then
+    --   withTraceNode m!"Unknown memory expression ⊢ {gt}. Trying reduction to omega (`config.useOmegaToClose = true`):" do
+    --     let oldGoals := (← getGoals)
+    --     try
+    --       let gproof ← mkFreshExprMVar (type? := gt)
+    --       setGoals (gproof.mvarId! :: (← getGoals))
+    --       SimpMemM.withMainContext do
+    --       let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
+    --       trace[simp_mem.info] m!"Executing `omega` to close {gt}"
+    --       SimpMemM.withTraceNode m!"goal (Note: can be large)" do
+    --         trace[simp_mem.info] "{← getMainGoal}"
+    --       omega
+    --       trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+    --       g.assign gproof
+    --     catch e =>
+    --       trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+    --       setGoals oldGoals
   return ← g.isAssigned
 
 
@@ -1068,9 +1064,9 @@ partial def SimpMemM.simplifyLoop : SimpMemM Unit := do
       for (i, h) in foundHyps.toList.enum do
         trace[simp_mem.info] m!"{i+1}) {h}"
 
-    if ← SimpMemM.closeGoal g foundHyps then
-      trace[simp_mem.info] "{checkEmoji} goal closed."
-      return ()
+    -- if ← SimpMemM.closeGoal g foundHyps then
+    --   trace[simp_mem.info] "{checkEmoji} goal closed."
+    --   return ()
 
     -- goal was not closed, try and improve.
     let mut changedInAnyIter? := false

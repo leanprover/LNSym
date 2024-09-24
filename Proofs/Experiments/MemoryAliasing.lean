@@ -10,16 +10,16 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
-set_option trace.simp_mem true
-set_option trace.simp_mem.info true
-set_option trace.Tactic.addressNormalization true
+-- set_option trace.simp_mem true
+-- set_option trace.simp_mem.info true
+-- set_option trace.Tactic.addressNormalization true
 
 namespace MemLegal
 /-- Show reflexivity of legality. -/
 theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
-  simp_mem
+  mem_omega
 
-/-- info: 'MemLegal.legal_1' depends on axioms: [propext] -/
+/-- info: 'MemLegal.legal_1' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms legal_1
 
 end MemLegal
@@ -27,28 +27,28 @@ end MemLegal
 namespace MemSubset
 /-- Reflexivity. -/
 theorem subset_1 (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSubset.subset_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms subset_1
 
 /-- Show that smaller subsets are also subsets. -/
 theorem subset_2 (l : mem_subset' a 16 b 16) : mem_subset' a 10 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSubset.subset_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms subset_2
 
 /-- Show that smaller subsets are also subsets, even when moving base pointer. -/
 theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSubset.subset_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms subset_3
 
 /-- Show that we can perform address arithmetic based on subset constraints. -/
 theorem subset_4 (l : mem_subset' a 16 b 16) : a = b := by
-  simp_mem
+  mem_omega
 
 /-- Show that we can perform address arithmetic based on subset constraints.
 Only two configurations possible:
@@ -60,7 +60,7 @@ a0 a1 a2 ..
 b0 b1 b2 b3
 -/
 theorem subset_5 (l : mem_subset' a 3 b 4) : a ≤ b + 1 := by
-  simp_mem
+  mem_omega
 
 end MemSubset
 
@@ -68,7 +68,7 @@ namespace MemSeparate
 
 /-- Reflexivity. -/
 theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_1
@@ -76,14 +76,14 @@ theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
 
 /-- Symmetry. -/
 theorem separate_2 (l : mem_separate' a 16 b 16) : mem_separate' b 16 a 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_2
 
 /-- Smaller subsets. -/
 theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_3
@@ -91,7 +91,7 @@ theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
 /-- sliding subset to the right. -/
 theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
     mem_separate' a 17 (b+1) 15 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_4
@@ -100,7 +100,7 @@ theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
 theorem separate_5 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
     mem_separate' a 16 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_5' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_5
@@ -109,7 +109,7 @@ theorem separate_5 {n : Nat} (hn : n ≠ 0)
 theorem separate_6 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
     mem_separate' a (n <<< 3 + 8) b (n <<< 4) := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_6
@@ -127,15 +127,38 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a 100 b m)
     (l : mem_separate' (a+100) 100 b m)  :
     mem_separate' a 200 b m := by
-  simp_mem
+  mem_omega
+  done
   trace_state
 
-/-- error: ❌️ simp_mem failed to make any progress. -/
+/--
+error: unsolved goals
+m : Nat
+a b : BitVec 64
+n : Nat
+hn : n ≠ 0
+hm : m ≠ 0
+hlegal : mem_legal' a (2 * n)
+l✝ : mem_separate' a n b m
+l : mem_separate' (a + ↑n) n b m
+⊢ mem_separate' a (2 * n) b m
+---
+info: m : Nat
+a b : BitVec 64
+n : Nat
+hn : n ≠ 0
+hm : m ≠ 0
+hlegal : mem_legal' a (2 * n)
+l✝ : mem_separate' a n b m
+l : mem_separate' (a + ↑n) n b m
+⊢ mem_separate' a (2 * n) b m
+-/
 #guard_msgs in theorem separate_8 {n : Nat} (hn : n ≠ 0) (hm : m ≠ 0)
+    (hlegal : mem_legal' a (2*n))
     (l : mem_separate' a n b m)
     (l : mem_separate' (a+n) n b m)  :
     mem_separate' a (2*n) b m := by
-  simp_mem
+  mem_omega
   trace_state
 
 /--
@@ -143,7 +166,7 @@ Check that we can close address relationship goals that require
 us to exploit memory separateness properties.
 -/
 theorem mem_separate_9  (h : mem_separate' a 100 b 100)
-  (hab : a < b) : a + 50 ≤ b := by simp_mem
+  (hab : a < b) : a + 50 ≤ b := by mem_omega
 
 end MemSeparate
 
@@ -190,8 +213,6 @@ theorem mem_automation_test_3
   simp_mem
   rfl
 
-
-
 /-- info: 'mem_automation_test_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_3
 
@@ -208,7 +229,7 @@ theorem mem_automation_test_4
   simp only [memory_rules]
   simp_mem
   congr 1
-  bv_omega' -- TODO: address normalization.
+  mem_omega
 
 /-- info: 'mem_automation_test_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_4
@@ -223,8 +244,11 @@ theorem overlapping_read_test_1 {out : BitVec (16 * 8)}
     read_mem_bytes 16 src_addr s = out := by
   simp only [memory_rules] at h ⊢
   simp_mem
+  simp [BitVec.extractLsBytes_eq_self]
 
-/-- info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext, Quot.sound] -/
+/--
+info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext, Classical.choice, Quot.sound]
+-/
 #guard_msgs in #print axioms overlapping_read_test_1
 
 /-- A read overlapping with another read. -/
@@ -236,7 +260,7 @@ theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
   simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    bv_omega'
+    mem_omega
 /--
 info: 'ReadOverlappingRead.overlapping_read_test_2' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
@@ -255,7 +279,7 @@ theorem overlapping_read_test_3
   simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    bv_omega'
+    mem_omega
 /--
 info: 'ReadOverlappingRead.overlapping_read_test_3' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
@@ -384,7 +408,7 @@ proving generic properties about our definitions of `mem_legal'`,
 -/
 
 /-! ### mem_subset is a partial order. -/
-theorem mem_subset_refl (h : mem_legal' a an) : mem_subset' a an a an := by simp_mem
+theorem mem_subset_refl (h : mem_legal' a an) : mem_subset' a an a an := by mem_omega
 /-
 TODO(@bollu): In such a scenario, we should call `omega` directly on the goal,
 and see if it can solve it.
@@ -393,20 +417,20 @@ theorem mem_subset_asymm (h : mem_subset' a an b bn) (h' : mem_subset' b bn a an
   simp_mem
 -/
 theorem mem_subset_trans (h : mem_subset' a an b bn) (h' : mem_subset' b bn c cn) :
-  mem_subset' a an c cn := by simp_mem
+  mem_subset' a an c cn := by mem_omega
 
 /-! ### mem_separate relationship to arithmetic -/
 
-theorem mem_separate_comm (h : mem_separate' a an b bn) : mem_separate' b bn a an := by simp_mem
+theorem mem_separate_comm (h : mem_separate' a an b bn) : mem_separate' b bn a an := by mem_omega
 /-- if `[a..an)⟂[b..bn)`, then `[a+δ..an-δ)⟂[b..bn)`-/
 theorem mem_separate_of_lt_of_lt_sub (h : mem_separate' a an b bn) (hab : a < b)
-  (hδ : δ < b - a): mem_separate' (a + δ) (an - δ.toNat) b bn := by simp_mem
+  (hδ : δ < b - a): mem_separate' (a + δ) (an - δ.toNat) b bn := by mem_omega
 /-- If `[a..an)⟂[b..bn)`, and `a ≤ b`, then `[a'..an+(a-a'))⟂[b..bn)`.
 This lets us increase the size of the left memory region.
 -/
 theorem mem_separate_move_of_lt_of_le  (h : mem_separate' a an b bn)
   (hab : a < b)
-  (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a').toNat) b bn := by simp_mem
+  (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a').toNat) b bn := by mem_omega
 
 end MathProperties
 
@@ -416,12 +440,12 @@ section PairwiseSeparate
   /- Check that a direct implication of the pairwise separation is proven. -/
   theorem pairwise_direct (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
     mem_separate' a 100 b 200 := by
-    simp_mem
+    mem_omega
 
   /- Check that a direct implication of the pairwise separation is proven. -/
   theorem pairwise_subset (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
     mem_separate' a 80 b 100 := by
-    simp_mem
+    mem_omega
 
 end PairwiseSeparate
 
@@ -435,14 +459,6 @@ error: unsolved goals
 ---
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
-[simp_mem.info] ⚙️ Matching on ⊢ False
-[simp_mem.info] Unknown memory expression ⊢ False. Trying reduction to omega (`config.useOmegaToClose = true`):
-  [simp_mem.info] Adding omega facts from hypotheses
-  [simp_mem.info] Executing `omega` to close False
-  [simp_mem.info] goal (Note: can be large)
-    [simp_mem.info] ⊢ False
-  [simp_mem.info] ❌️ `omega` failed with error:
-      simp_all made no progress
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
@@ -460,14 +476,6 @@ error: ❌️ simp_mem failed to make any progress.
 ---
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
-[simp_mem.info] ⚙️ Matching on ⊢ False
-[simp_mem.info] Unknown memory expression ⊢ False. Trying reduction to omega (`config.useOmegaToClose = true`):
-  [simp_mem.info] Adding omega facts from hypotheses
-  [simp_mem.info] Executing `omega` to close False
-  [simp_mem.info] goal (Note: can be large)
-    [simp_mem.info] ⊢ False
-  [simp_mem.info] ❌️ `omega` failed with error:
-      simp_all made no progress
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
