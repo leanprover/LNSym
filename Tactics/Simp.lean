@@ -52,12 +52,16 @@ def LNSymSimpContext
   (exprs : Array Expr := #[])
   -- Simprocs to add to the default set.
   (simprocs : Array Name := #[])
+  (useDefaultSimprocs : Bool := True)
   -- argument to `DiscrTree.mkPath`
   (noIndexAtArgs : Bool := true)
   : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
   let mut ext_simpTheorems := #[]
   let default_simprocs ← Simp.getSimprocs
-  let mut all_simprocs := (#[default_simprocs] : Simp.SimprocsArray)
+  let mut all_simprocs : Simp.SimprocsArray :=
+    if useDefaultSimprocs then
+      #[default_simprocs]
+    else #[]
 
   for a in simp_attrs do
     let some ext ← (getSimpExtension? a) |
@@ -67,7 +71,8 @@ def LNSymSimpContext
     if let some ext ← (Simp.getSimprocExtension? a) then
       let s ← ext.getSimprocs
       all_simprocs := all_simprocs.push s
-  let mut const_simpTheorems := ({} : SimpTheorems)
+
+  let mut const_simpTheorems : SimpTheorems := {}
   for d in decls_to_unfold do
     const_simpTheorems ← const_simpTheorems.addDeclToUnfold d
   for t in thms do
@@ -86,7 +91,7 @@ def LNSymSimpContext
     const_simpTheorems := newThms.foldl addSimpTheoremEntry const_simpTheorems
 
   let all_simpTheorems := (#[const_simpTheorems] ++ ext_simpTheorems)
-  let (ctx : Simp.Context) := { config := config,
+  let ctx : Simp.Context := { config := config,
                                 simpTheorems := all_simpTheorems,
                                 congrTheorems := (← Meta.getSimpCongrTheorems) }
   for s in simprocs do

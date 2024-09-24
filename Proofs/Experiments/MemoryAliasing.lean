@@ -10,9 +10,9 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
--- set_option trace.simp_mem true
--- set_option trace.simp_mem.info true
--- set_option trace.Tactic.addressNormalization true
+set_option trace.simp_mem true
+set_option trace.simp_mem.info true
+set_option trace.Tactic.addressNormalization true
 
 namespace MemLegal
 /-- Show reflexivity of legality. -/
@@ -127,7 +127,7 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a 100 b m)
     (l : mem_separate' (a+100) 100 b m)  :
     mem_separate' a 200 b m := by
-  simp_mem /- Need better address normalization. -/
+  simp_mem
   trace_state
 
 /-- error: ❌️ simp_mem failed to make any progress. -/
@@ -135,7 +135,7 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a n b m)
     (l : mem_separate' (a+n) n b m)  :
     mem_separate' a (2*n) b m := by
-  simp_mem /- Need better address normalization. -/
+  simp_mem
   trace_state
 
 /--

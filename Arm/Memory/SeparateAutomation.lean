@@ -406,23 +406,23 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : TacticM FVarId  := do
     let goal ← getMainGoal
     let hdefTy ← inferType hdefVal
 
-    /- Simp to gain some more juice out of the defn.. -/
-    let mut simpTheorems : Array SimpTheorems := #[]
-    for a in #[`minimal_theory, `bitvec_rules] do
-      let some ext ← (getSimpExtension? a)
-        | throwError m!"[simp_mem] Internal error: simp attribute {a} not found!"
-      simpTheorems := simpTheorems.push (← ext.getTheorems)
+    -- /- Simp to gain some more juice out of the defn.. -/
+    -- let mut simpTheorems : Array SimpTheorems := #[]
+    -- for a in #[`minimal_theory, `bitvec_rules] do
+    --   let some ext ← (getSimpExtension? a)
+    --     | throwError m!"[simp_mem] Internal error: simp attribute {a} not found!"
+    --   simpTheorems := simpTheorems.push (← ext.getTheorems)
 
-    -- unfold `state_value.
-    simpTheorems := simpTheorems.push <| ← ({} : SimpTheorems).addDeclToUnfold `state_value
-    let simpCtx : Simp.Context := {
-      simpTheorems,
-      config := { decide := true, failIfUnchanged := false },
-      congrTheorems := (← Meta.getSimpCongrTheorems)
-    }
-    let (simpResult, _stats) ← simp hdefTy simpCtx (simprocs := #[])
-    let hdefVal ← simpResult.mkCast hdefVal
-    let hdefTy ← inferType hdefVal
+    -- -- unfold `state_value.
+    -- simpTheorems := simpTheorems.push <| ← ({} : SimpTheorems).addDeclToUnfold `state_value
+    -- let simpCtx : Simp.Context := {
+    --   simpTheorems,
+    --   config := { decide := true, failIfUnchanged := false },
+    --   congrTheorems := (← Meta.getSimpCongrTheorems)
+    -- }
+    -- let (simpResult, _stats) ← simp hdefTy simpCtx (simprocs := #[])
+    -- let hdefVal ← simpResult.mkCast hdefVal
+    -- let hdefTy ← inferType hdefVal
 
     let goal ← goal.assert name hdefTy hdefVal
     let (fvar, goal) ← goal.intro1P
@@ -437,42 +437,34 @@ attribute [bv_toNat] BitVec.le_def
 -- simpTargetStar
 
 
-
 /-- SimpMemM's omega invoker -/
 def omega : TacticM Unit := do
-  -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
-  -- @bollu: TODO: understand what precisely we are recovering from.
   let g ← getMainGoal
-
-  -- TODO: use lnsymSimpContext to get minimal_theory.
   let (simpCtx, simprocs) ← LNSymSimpContext
-      (simp_attrs := #[`minimal_theory, `bitvec_rules, `bv_toNat])
-      (simprocs := #[``reduce_mod_omega])
-
-  let (g?, _stats) ← simpAll g simpCtx simprocs
-  let g ← match g? with
-    | some g' =>
-      trace[simp_mem] "omega preprocessed goal to '{g'}'."
-      pure g'
-    | none  =>
-      trace[simp_mem] "omega preprocessor *closed* goal."
-      return ()
-
-  -- preprocess: make tactic a by_contra.
-  let g ← match ← g.falseOrByContra with
-    | .none => do
-      trace[simp_mem] "by_contra *closed* goal."
-      return ()
-    | .some g' =>
-      trace[simp_mem] "by_contra changed goal to '{g'}'."
-      pure g'
-
-  -- Step 2: prove goal with omega.
-  replaceMainGoal [g]
-  g.withContext do
-    -- withoutRecover do
-      (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
-      -- evalTactic (← `(tactic| bv_omega))
+      (config := {})
+      (simp_attrs := #[`bv_toNat]) (useDefaultSimprocs := false) (simprocs := #[])
+  let (result, stats) ← simpTargetStar g simpCtx simprocs
+  trace[simp_mem] "simp stats: {stats.usedTheorems.toArray.map Origin.key}"
+  if let .closed := result then
+    trace[simp_mem] "omega preprocessor *closed* goal."
+    replaceMainGoal []
+    return ()
+  else
+    let g :=
+      match result with
+      | .modified g' => g'
+      | .noChange | .closed => g
+    -- Step 2: prove goal with omega.
+    let g ←
+      match ← g.falseOrByContra with
+      | none =>
+        trace[simp_mem] "omega converting goal to false/contra *closed* goal."
+        return ()
+      | some g' =>
+        pure g'
+    trace[simp_mem] "omega goal: {g}"
+    replaceMainGoal [g]
+    g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
 
 section Hypotheses
 
