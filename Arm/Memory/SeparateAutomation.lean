@@ -427,11 +427,20 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : TacticM FVarId  := do
     replaceMainGoal [goal]
     return fvar
 
+-- (try simp only [bv_toNat] at *) <;> omega)
+-- #check Lean.Elab.Tactic.Omega.omega
+-- #check Lean.Elab.Tactic.Omega.bvOmega
+
+
 /-- SimpMemM's omega invoker -/
 def omega : TacticM Unit := do
   -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
   -- @bollu: TODO: understand what precisely we are recovering from.
+  let g ← getMainGoal
+  -- Step 1: simplify everybody with `bv_omega
+  -- Step 2: prove goal with omega.
   withoutRecover do
+    -- g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
     evalTactic (← `(tactic| bv_omega'))
 
 section Hypotheses
