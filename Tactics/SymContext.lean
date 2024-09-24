@@ -129,6 +129,23 @@ instance : MonadStateOf AxEffects SymM where
     modifyThe SymContext ({· with effects})
     return a
 
+/-!
+## WORKAROUND for https://github.com/leanprover/lean4/issues/5457
+For some reason, `logWarning` is very slow to elaborate,
+so we add a specialized `SymM.logWarning` with a specific instance of `MonadLog`
+hidden behind a def. For some reason this is fast to elaborate.
+-/
+
+/-- This def may seem pointless, but it is in-fact load-bearing.
+
+Furthermore, making it an `instance` will cause `logWarning` below to be
+very slow to elaborate. Why? No clue. -/
+protected def instMonadLog : MonadLog SymM := inferInstance
+
+@[inherit_doc Lean.logWarning]
+def logWarning (msg : MessageData) : SymM Unit :=
+  @Lean.logWarning SymM _ SymM.instMonadLog _ _ msg
+
 end SymM
 
 namespace SymContext
@@ -225,7 +242,7 @@ def inferStatePrefixAndNumber : SymM Unit := do
       state_prefix := (state.get? 0).getD 's' |>.toString,
       currentStateNumber })
   else
-    logWarning "\
+    SymM.logWarning "\
       Expected state to be a single letter followed by a number, but found:
         {state}
 
