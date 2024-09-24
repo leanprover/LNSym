@@ -54,6 +54,14 @@ private def mkSubNat (x y : Expr) : Expr :=
   let instHSub := mkAppN (mkConst ``instHSub [lz]) #[nat, instSub]
   mkAppN (mkConst ``HSub.hSub [lz, lz, lz]) #[nat, nat, nat, instHSub, x, y]
 
+/--
+Given an expression of the form `n#w`, return the value of `n` if it is a ground constant.
+-/
+def getBitVecOfNatValue? (e : Expr) : MetaM (Option Nat) :=
+  match_expr e with
+  | BitVec.ofNat _nExpr vExpr => getNatValue? vExpr
+  | _ => return none
+
 /-- Try to build a proof for `ty` by reduction to `bv_omega`. -/
 @[inline] def proveByBvOmega (ty : Expr) : SimpM Step := do
   let proof : Expr ← mkFreshExprMVar ty
@@ -80,7 +88,7 @@ private def mkSubNat (x y : Expr) : Expr :=
 
 -- x % n = x if x < n
 @[inline] def reduceModOfLt (x : Expr) (n : Expr) : SimpM Step := do
-  trace[AddressNormalization] "trying to reduce... '{x} % {n} → {x}'"
+  trace[Tactic.addressNormalization] "trying to reduce... '{x} % {n} → {x}'"
   let ltTy := mkLTNat x n
   let Step.done { expr := _, proof? := some p} ← proveByOmega ltTy
     | return .continue
@@ -89,6 +97,7 @@ private def mkSubNat (x y : Expr) : Expr :=
 
 -- x % n = x - n if x >= n and x - n < n
 @[inline] def reduceModSub (x : Expr) (n : Expr) : SimpM Step := do
+  trace[Tactic.addressNormalization] "trying to reduce... '{x} % {n} → {x} - {n}'"
   let geTy := mkGENat x n
   let Step.done { expr := _, proof? := some geProof} ← proveByOmega geTy
     | return .continue
@@ -100,6 +109,7 @@ private def mkSubNat (x y : Expr) : Expr :=
   return .done { expr := subTy, proof? := eqProof : Result }
 
 @[inline, bv_toNat] def reduceMod (e : Expr) : SimpM Step := do
+  -- trace[Tactic.addressNormalization] "trying to reduce... '{e}'"
   match_expr e with
   | HMod.hMod xTy nTy outTy _inst x n =>
     let natTy := mkConst ``Nat
@@ -113,24 +123,88 @@ private def mkSubNat (x y : Expr) : Expr :=
   | _ => do
      return .continue
 
-simproc↑ [bitvec_rules] reduce_mod_omega (_ % _) := fun e => reduceMod e
+simproc↑ [address_normalization] reduce_mod_omega (_ % _) := fun e => reduceMod e
 
-theorem eg₁ (x : BitVec w) : x.toNat % 2 ^ w = x.toNat + 0 := by
-  simp [bitvec_rules]
+/-- In a commutative binary operation, move a bitvector constant to the left. -/
+@[inline, bv_toNat] def moveBinConstLeft (declName : Name)
+    (arity : Nat) (commProofDecl : Name) (fxy : Expr) : SimpM Step := do
+  unless fxy.isAppOfArity declName arity do return .continue
+  -- let some v₁ ← BitVec.fromExpr? e.appFn!.appArg! | return .continue
+  let fx := fxy.appFn!
+  let x := fx.appArg!
+  let f := fx.appFn!
+  let y := fxy.appArg!
+  trace[Tactic.addressNormalization] "trying to move constant to left in '({f} {x} {y})'"
+  if (← getBitVecOfNatValue? y).isSome then
+    trace[Tactic.addressNormalization] "{checkEmoji} found constant '{y}' to the right in '({f} {x} {y})'. Moving."
+    let e' := mkAppN f #[y, x]
+    return .done { expr := e', proof? := ← mkAppM commProofDecl #[x, y] : Result }
+  else
+    trace[Tactic.addressNormalization] "{crossEmoji} non-constant '{y}' to the right in '({f} {x} {y})'. Skipping."
+    return .continue
 
-/-- info: 'eg₁' depends on axioms: [propext] -/
+/- Change `100` to `100#64` so we can pattern match to `BitVec.ofNat` -/
+attribute [address_normalization] BitVec.ofNat_eq_ofNat
+
+@[address_normalization]
+theorem BitVec.add_ofNat_eq_ofNat_add (n : Nat) (x : BitVec w) : x + BitVec.ofNat w n = BitVec.ofNat w n + x := by
+  apply BitVec.add_comm
+
+@[address_normalization]
+theorem BitVec.ofNat_add_ofNat_eq_add_ofNat (n m : Nat) : BitVec.ofNat w n + BitVec.ofNat w m = BitVec.ofNat w (n + m) := by
+  apply BitVec.eq_of_toNat_eq
+  simp
+
+/- Reduce bitvector operations. -/
+-- attribute [address_normalization] BitVec.reduceAdd
+-- attribute [address_normalization] BitVec.reduceSub
+-- attribute [address_normalization] BitVec.reduceAdd
+-- attribute [address_normalization] BitVec.reduceMul
+-- attribute [address_normalization] BitVec.reduceShiftLeft
+-- attribute [address_normalization] BitVec.reduceShiftLeftShiftLeft
+-- attribute [address_normalization] BitVec.reduceShiftLeftZeroExtend
+-- attribute [address_normalization] BitVec.reduceShiftRightShiftRight
+-- attribute [address_normalization] BitVec.reduceAbs
+-- attribute [address_normalization] BitVec.reduceAnd
+-- attribute [address_normalization] BitVec.reduceAllOnes
+-- attribute [address_normalization] Nat.reduceAdd
+
+/-- Reassociate addition to left. -/
+@[address_normalization]
+theorem BitVec.reassoc_add (x y z : BitVec w) : x + (y + z) = x + y + z := by
+  rw [BitVec.add_assoc]
+
+-- simproc [address_normalization] moveAddConstLeft ((_ + _ : BitVec _)) :=
+--   moveBinConstLeft ``HAdd.hAdd 6 ``BitVec.add_comm
+
+set_option trace.Tactic.addressNormalization true in
+/-- info: [Tactic.addressNormalization] trying to reduce... 'x.toNat % 2 ^ w → x.toNat' -/
+#guard_msgs in theorem eg₁ (x : BitVec w) : x.toNat % 2 ^ w = x.toNat + 0 := by
+  simp only [address_normalization]
+  rfl
+
+/-- info: 'eg₁' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms eg₁
 
-theorem eg₂ (x y : BitVec w)  (h : x.toNat + y.toNat < 2 ^ w) :
+set_option trace.Tactic.addressNormalization true in
+/--
+info: [Tactic.addressNormalization] trying to reduce... 'x.toNat + y.toNat % 2 ^ w → x.toNat + y.toNat'
+-/
+#guard_msgs in theorem eg₂ (x y : BitVec w)  (h : x.toNat + y.toNat < 2 ^ w) :
   (x + y).toNat = x.toNat + y.toNat := by
-  simp [bitvec_rules]
+  simp [address_normalization]
 
 /-- info: 'eg₂' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms eg₂
 
-theorem eg₃ (x y : BitVec w) :
+set_option trace.Tactic.addressNormalization true in
+/--
+info: [Tactic.addressNormalization] trying to reduce... 'x.toNat + y.toNat % 2 ^ w → x.toNat + y.toNat'
+[Tactic.addressNormalization] trying to reduce... 'x.toNat + y.toNat % 2 ^ w → x.toNat + y.toNat - 2 ^ w'
+-/
+#guard_msgs in theorem eg₃ (x y : BitVec w) :
   (x + y).toNat = (x.toNat + y.toNat) % 2 ^ w := by
-  simp [bitvec_rules]
+  simp [address_normalization]
 
 /-- info: 'eg₂' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms eg₂
@@ -139,14 +213,36 @@ theorem eg₄ (x y z : BitVec w)
   (h₂ : y.toNat + z.toNat < 2 ^ w)
   (h : x.toNat * (y.toNat + z.toNat) < 2 ^ w) :
   (x * (y + z)).toNat = x.toNat * (y.toNat + z.toNat) := by
-  simp [bitvec_rules]
+  simp [address_normalization]
 
 /-- info: 'eg₄' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms eg₄
 
 theorem eg₅ (x y : BitVec w) (h : x.toNat + y.toNat ≥ 2 ^ w) (h' : (x.toNat + y.toNat) - 2 ^ w < 2 ^ w) :
   (x + y).toNat = x.toNat + y.toNat - 2 ^ w := by
-  simp [bitvec_rules]
+  simp [address_normalization]
 
 /-- info: 'eg₅' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms eg₅
+
+set_option trace.Tactic.addressNormalization true in
+#guard_msgs in theorem eg₆ (x : BitVec w) : x + 100#w = 100#w + x := by
+  simp only [address_normalization]
+
+/-- info: 'eg₆' depends on axioms: [propext] -/
+#guard_msgs in #print axioms eg₆
+
+set_option tactic.simp.trace true
+set_option diagnostics true in
+example {w : Nat} : 100#w + 200#w = 300#w := by
+  simp only [address_normalization]
+  -- simp made no progress
+
+theorem eg₇ (x : BitVec w) : 100#w + (200#w + x) = 300#w + x := by
+  simp
+
+  simp only [address_normalization]
+  rfl
+
+/-- info: 'eg₅' depends on axioms: [propext, Quot.sound] -/
+#guard_msgs in #print axioms eg₇

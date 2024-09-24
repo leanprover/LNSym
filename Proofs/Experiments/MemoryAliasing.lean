@@ -10,8 +10,9 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
-set_option trace.simp_mem true
-set_option trace.simp_mem.info true
+-- set_option trace.simp_mem true
+-- set_option trace.simp_mem.info true
+-- set_option trace.Tactic.addressNormalization true
 
 namespace MemLegal
 /-- Show reflexivity of legality. -/
@@ -113,8 +114,16 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
 /-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_6
 
-/-- error: ❌️ simp_mem failed to make any progress. -/
+/-- info: -/
 #guard_msgs in theorem separate_7 (hm : m ≠ 0)
+    /-
+    bollu: This is subtle! without the condition `hlegal`, it could be:
+    - `a = 2^64 - 100`
+    - `[a..a+100) = [2^64 - 100 .. 2^64)`
+    - `[a+100..a+200) = [0..100)`
+    - both of which are legal memory regions, which still wrap around!
+    -/
+    (hlegal : mem_legal' a 200)
     (l : mem_separate' a 100 b m)
     (l : mem_separate' (a+100) 100 b m)  :
     mem_separate' a 200 b m := by
@@ -433,8 +442,7 @@ info: [simp_mem.info] Searching for Hypotheses
   [simp_mem.info] goal (Note: can be large)
     [simp_mem.info] ⊢ False
   [simp_mem.info] ❌️ `omega` failed with error:
-      omega could not prove the goal:
-      No usable constraints found. You may need to unfold definitions so `omega` can see linear arithmetic facts about `Nat` and `Int`, which may also involve multiplication, division, and modular remainder by constants.
+      simp_all made no progress
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
@@ -459,8 +467,7 @@ info: [simp_mem.info] Searching for Hypotheses
   [simp_mem.info] goal (Note: can be large)
     [simp_mem.info] ⊢ False
   [simp_mem.info] ❌️ `omega` failed with error:
-      omega could not prove the goal:
-      No usable constraints found. You may need to unfold definitions so `omega` can see linear arithmetic facts about `Nat` and `Int`, which may also involve multiplication, division, and modular remainder by constants.
+      simp_all made no progress
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.

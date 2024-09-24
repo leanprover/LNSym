@@ -5,6 +5,8 @@ Author(s): Siddharth Bhat, Alex Keizer
 -/
 import Lean
 
+register_simp_attr address_normalization
+
 open Lean
 initialize
   -- CSE tactic's non-verbose summary logging.
@@ -12,8 +14,7 @@ initialize
   -- enable tracing for `sym_n` tactic and related components
   registerTraceClass `Tactic.sym
   -- enable tracing for the address normalization simprocs.
-  registerTraceClass `Tactic.AddressNormalization
-
+  registerTraceClass `Tactic.addressNormalization
 
   -- enable tracing for heartbeat usage of `sym_n`
   registerTraceClass `Tactic.sym.heartbeats

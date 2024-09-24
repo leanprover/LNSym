@@ -19,6 +19,7 @@ import Lean.Meta.Tactic.Rewrites
 import Lean.Elab.Tactic.Conv
 import Lean.Elab.Tactic.Conv.Basic
 import Tactics.Simp
+import Tactics.Attr
 import Arm.Memory.AddressNormalization
 
 open Lean Meta Elab Tactic
