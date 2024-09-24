@@ -57,10 +57,10 @@ private def mkSubNat (x y : Expr) : Expr :=
 /--
 Given an expression of the form `n#w`, return the value of `n` if it is a ground constant.
 -/
-def getBitVecOfNatValue? (e : Expr) : MetaM (Option Nat) :=
+def getBitVecOfNatValue? (e : Expr) : (Option (Expr × Expr)) :=
   match_expr e with
-  | BitVec.ofNat _nExpr vExpr => getNatValue? vExpr
-  | _ => return none
+  | BitVec.ofNat nExpr vExpr => some (nExpr, vExpr)
+  | _ => none
 
 /-- Try to build a proof for `ty` by reduction to `bv_omega`. -/
 @[inline] def proveByBvOmega (ty : Expr) : SimpM Step := do
@@ -126,34 +126,55 @@ def getBitVecOfNatValue? (e : Expr) : MetaM (Option Nat) :=
 simproc↑ [address_normalization] reduce_mod_omega (_ % _) := fun e => reduceMod e
 
 /-- In a commutative binary operation, move a bitvector constant to the left. -/
-@[inline, bv_toNat] def moveBinConstLeft (declName : Name)
-    (arity : Nat) (commProofDecl : Name) (fxy : Expr) : SimpM Step := do
+@[inline, bv_toNat] def moveBinConstLeft (declName : Name) -- operator to constant fold, such as `HAdd.hAdd`.
+    (arity : Nat)
+    (commProofDecl : Name) -- commProof: `∀ (x y : Bitvec w), x op y = y op x`.
+    (reduceProofDecl : Name) -- reduce proof: `∀ (w : Nat), (n m : Nat) (BitVec.ofNat w n) op (BitVec.ofNat w m) = BitVec.ofNat w (n op' m)`.
+    (fxy : Expr) : SimpM Step := do
   unless fxy.isAppOfArity declName arity do return .continue
-  -- let some v₁ ← BitVec.fromExpr? e.appFn!.appArg! | return .continue
   let fx := fxy.appFn!
   let x := fx.appArg!
   let f := fx.appFn!
   let y := fxy.appArg!
   trace[Tactic.addressNormalization] "trying to move constant to left in '({f} {x} {y})'"
-  if (← getBitVecOfNatValue? y).isSome then
-    trace[Tactic.addressNormalization] "{checkEmoji} found constant '{y}' to the right in '({f} {x} {y})'. Moving."
+  match getBitVecOfNatValue? x with
+  | some (xwExpr, xvalExpr) =>
+    -- We have a constant on the left, check if we have a constant on the right
+    -- so we can fully constant fold the expression.
+    let .some (_, yvalExpr) := getBitVecOfNatValue? y
+      | return .continue
+
+    let e' ← mkAppM reduceProofDecl #[xwExpr, xvalExpr, yvalExpr]
+    return .done { expr := e', proof? := ← mkAppM reduceProofDecl #[x, y] : Result }
+
+  | none =>
+    -- We don't have a constant on the left, check if we have a constant on the right
+    -- and try to move it to the left.
+    let .some _ := getBitVecOfNatValue? y
+      | return .continue -- no constants on either side, nothing to do.
+
+    -- Nothing more to to do, except to move the right constant to the left.
+    trace[Tactic.addressNormalization] "moving constant to left in '({f} {x} {y})'"
     let e' := mkAppN f #[y, x]
     return .done { expr := e', proof? := ← mkAppM commProofDecl #[x, y] : Result }
-  else
-    trace[Tactic.addressNormalization] "{crossEmoji} non-constant '{y}' to the right in '({f} {x} {y})'. Skipping."
-    return .continue
 
 /- Change `100` to `100#64` so we can pattern match to `BitVec.ofNat` -/
 attribute [address_normalization] BitVec.ofNat_eq_ofNat
 
-@[address_normalization]
+
 theorem BitVec.add_ofNat_eq_ofNat_add (n : Nat) (x : BitVec w) : x + BitVec.ofNat w n = BitVec.ofNat w n + x := by
   apply BitVec.add_comm
 
+simproc [address_normalization] moveAddConstLeft ((_ + _ : BitVec _)) :=
+  moveBinConstLeft ``HAdd.hAdd 6 ``BitVec.add_comm ``BitVec.add_ofNat_eq_ofNat_add
+
 @[address_normalization]
-theorem BitVec.ofNat_add_ofNat_eq_add_ofNat (n m : Nat) : BitVec.ofNat w n + BitVec.ofNat w m = BitVec.ofNat w (n + m) := by
+theorem BitVec.ofNat_add_ofNat_eq_add_ofNat (w : Nat) (n m : Nat) : BitVec.ofNat w n + BitVec.ofNat w m = BitVec.ofNat w (n + m) := by
   apply BitVec.eq_of_toNat_eq
   simp
+
+  -- simp made no progress
+
 
 /- Reduce bitvector operations. -/
 -- attribute [address_normalization] BitVec.reduceAdd
@@ -169,13 +190,15 @@ theorem BitVec.ofNat_add_ofNat_eq_add_ofNat (n m : Nat) : BitVec.ofNat w n + Bit
 -- attribute [address_normalization] BitVec.reduceAllOnes
 -- attribute [address_normalization] Nat.reduceAdd
 
+
+
 /-- Reassociate addition to left. -/
 @[address_normalization]
 theorem BitVec.reassoc_add (x y z : BitVec w) : x + (y + z) = x + y + z := by
   rw [BitVec.add_assoc]
 
--- simproc [address_normalization] moveAddConstLeft ((_ + _ : BitVec _)) :=
---   moveBinConstLeft ``HAdd.hAdd 6 ``BitVec.add_comm
+
+/-! ## Examples -/
 
 set_option trace.Tactic.addressNormalization true in
 /-- info: [Tactic.addressNormalization] trying to reduce... 'x.toNat % 2 ^ w → x.toNat' -/
@@ -188,7 +211,8 @@ set_option trace.Tactic.addressNormalization true in
 
 set_option trace.Tactic.addressNormalization true in
 /--
-info: [Tactic.addressNormalization] trying to reduce... 'x.toNat + y.toNat % 2 ^ w → x.toNat + y.toNat'
+info: [Tactic.addressNormalization] trying to move constant to left in '(HAdd.hAdd x y)'
+[Tactic.addressNormalization] trying to reduce... 'x.toNat + y.toNat % 2 ^ w → x.toNat + y.toNat'
 -/
 #guard_msgs in theorem eg₂ (x y : BitVec w)  (h : x.toNat + y.toNat < 2 ^ w) :
   (x + y).toNat = x.toNat + y.toNat := by
@@ -199,7 +223,8 @@ info: [Tactic.addressNormalization] trying to reduce... 'x.toNat + y.toNat % 2 ^
 
 set_option trace.Tactic.addressNormalization true in
 /--
-info: [Tactic.addressNormalization] trying to reduce... 'x.toNat + y.toNat % 2 ^ w → x.toNat + y.toNat'
+info: [Tactic.addressNormalization] trying to move constant to left in '(HAdd.hAdd x y)'
+[Tactic.addressNormalization] trying to reduce... 'x.toNat + y.toNat % 2 ^ w → x.toNat + y.toNat'
 [Tactic.addressNormalization] trying to reduce... 'x.toNat + y.toNat % 2 ^ w → x.toNat + y.toNat - 2 ^ w'
 -/
 #guard_msgs in theorem eg₃ (x y : BitVec w) :
@@ -226,23 +251,26 @@ theorem eg₅ (x y : BitVec w) (h : x.toNat + y.toNat ≥ 2 ^ w) (h' : (x.toNat 
 #guard_msgs in #print axioms eg₅
 
 set_option trace.Tactic.addressNormalization true in
+/--
+info: [Tactic.addressNormalization] trying to move constant to left in '(HAdd.hAdd x 100#w)'
+[Tactic.addressNormalization] moving constant to left in '(HAdd.hAdd x 100#w)'
+[Tactic.addressNormalization] trying to move constant to left in '(HAdd.hAdd 100#w x)'
+-/
 #guard_msgs in theorem eg₆ (x : BitVec w) : x + 100#w = 100#w + x := by
   simp only [address_normalization]
 
 /-- info: 'eg₆' depends on axioms: [propext] -/
 #guard_msgs in #print axioms eg₆
 
-set_option tactic.simp.trace true
-set_option diagnostics true in
-example {w : Nat} : 100#w + 200#w = 300#w := by
-  simp only [address_normalization]
-  -- simp made no progress
 
 theorem eg₇ (x : BitVec w) : 100#w + (200#w + x) = 300#w + x := by
-  simp
-
   simp only [address_normalization]
-  rfl
 
-/-- info: 'eg₅' depends on axioms: [propext, Quot.sound] -/
+/-- info: 'eg₇' depends on axioms: [propext] -/
 #guard_msgs in #print axioms eg₇
+
+theorem eg₈ : 100#w + 200#w = 300#w := by
+  simp only [address_normalization]
+
+/-- info: 'eg₈' depends on axioms: [propext] -/
+#guard_msgs in #print axioms eg₈
