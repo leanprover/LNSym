@@ -360,6 +360,14 @@ def SimpMemM.withContext (g : MVarId) (ma : SimpMemM α) : SimpMemM α := do
 
 /-- create a trace node in trace class (i.e. `set_option traceClass true`),
 with header `header`, whose default collapsed state is `collapsed`. -/
+def TacticM.withTraceNode (header : MessageData) (k : TacticM α)
+    (collapsed : Bool := true)
+    (traceClass : Name := `simp_mem.info) : TacticM α :=
+  Lean.withTraceNode traceClass (fun _ => return header) k (collapsed := collapsed)
+
+
+/-- create a trace node in trace class (i.e. `set_option traceClass true`),
+with header `header`, whose default collapsed state is `collapsed`. -/
 def SimpMemM.withTraceNode (header : MessageData) (k : SimpMemM α)
     (collapsed : Bool := true)
     (traceClass : Name := `simp_mem.info) : SimpMemM α :=
@@ -373,10 +381,8 @@ def consumeRewriteFuel : SimpMemM Unit :=
 def outofRewriteFuel? : SimpMemM Bool := do
   return (← get).rewriteFuel == 0
 
-/-- Create a trace note that folds `header` with `(NOTE: can be large)`,
-and prints `msg` under such a trace node.
--/
-def SimpMemM.traceLargeMsg (header : MessageData) (msg : MessageData) : SimpMemM Unit :=
+
+def TacticM.traceLargeMsg (header : MessageData) (msg : MessageData) : TacticM Unit :=
     withTraceNode m!"{header} (NOTE: can be large)" do
       trace[simp_mem.info] msg
 
@@ -392,9 +398,8 @@ def getConfig : SimpMemM SimpMemConfig := do
 Introduce a new definition into the local context, simplify it using `simp`,
 and return the FVarId of the new definition in the goal.
 -/
-def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
-  SimpMemM.withMainContext do
-
+def simpAndIntroDef (name : String) (hdefVal : Expr) : TacticM FVarId  := do
+  withMainContext do
     let name ← mkFreshUserName <| .mkSimple name
     let goal ← getMainGoal
     let hdefTy ← inferType hdefVal
@@ -423,7 +428,7 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     return fvar
 
 /-- SimpMemM's omega invoker -/
-def omega : SimpMemM Unit := do
+def omega : TacticM Unit := do
   -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
   -- @bollu: TODO: understand what precisely we are recovering from.
   withoutRecover do
@@ -571,8 +576,8 @@ def MemLegalProof.omega_def (h : MemLegalProof e) : Expr :=
 
 /-- Add the omega fact from `mem_legal'.def`. -/
 def MemLegalProof.addOmegaFacts (h : MemLegalProof e) (args : Array Expr) :
-    SimpMemM (Array Expr) := do
-  SimpMemM.withMainContext do
+    TacticM (Array Expr) := do
+  withMainContext do
     let fvar ← simpAndIntroDef "hmemLegal_omega" h.omega_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
     return args.push (Expr.fvar fvar)
@@ -593,8 +598,8 @@ def MemSubsetProof.omega_def (h : MemSubsetProof e) : Expr :=
 
 /-- Add the omega fact from `mem_legal'.omega_def` into the main goal. -/
 def MemSubsetProof.addOmegaFacts (h : MemSubsetProof e) (args : Array Expr) :
-    SimpMemM (Array Expr) := do
-  SimpMemM.withMainContext do
+    TacticM (Array Expr) := do
+  withMainContext do
     let fvar ← simpAndIntroDef "hmemSubset_omega" h.omega_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
     return args.push (Expr.fvar fvar)
@@ -609,8 +614,8 @@ def MemSeparateProof.omega_def (h : MemSeparateProof e) : Expr :=
 
 /-- Add the omega fact from `mem_legal'.omega_def`. -/
 def MemSeparateProof.addOmegaFacts (h : MemSeparateProof e) (args : Array Expr) :
-    SimpMemM (Array Expr) := do
-  SimpMemM.withMainContext do
+    TacticM (Array Expr) := do
+  withMainContext do
     -- simp only [bitvec_rules] (failIfUnchanged := false)
     let fvar ← simpAndIntroDef "hmemSeparate_omega" h.omega_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.omega_def})"
@@ -640,7 +645,7 @@ info: Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem {mems : List Memo
 /-- make `Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem i j (by decide) a b rfl rfl`. -/
 def MemPairwiseSeparateProof.mem_separate'_of_pairwiseSeparate_of_mem_of_mem
     (self : MemPairwiseSeparateProof mems) (i j : Nat) (a b : MemSpanExpr)  :
-    SimpMemM <| MemSeparateProof ⟨a, b⟩ := do
+    TacticM <| MemSeparateProof ⟨a, b⟩ := do
   let iexpr := mkNatLit i
   let jexpr := mkNatLit j
     -- i ≠ j
@@ -666,7 +671,7 @@ Currently, if the list is syntacticaly of the form [x1, ..., xn],
 This can be generalized to pairwise separation given hypotheses x ∈ xs, x' ∈ xs.
 -/
 def MemPairwiseSeparateProof.addOmegaFacts (h : MemPairwiseSeparateProof e) (args : Array Expr) :
-    SimpMemM (Array Expr) := do
+    TacticM (Array Expr) := do
   -- We need to loop over i, j where i < j and extract hypotheses.
   -- We need to find the length of the list, and return an `Array MemRegion`.
   let mut args := args
@@ -674,15 +679,15 @@ def MemPairwiseSeparateProof.addOmegaFacts (h : MemPairwiseSeparateProof e) (arg
     for j in [i+1:e.xs.size] do
       let a := e.xs[i]!
       let b := e.xs[j]!
-      args ← SimpMemM.withTraceNode m!"Exploiting ({i}, {j}) : {a} ⟂ {b}" do
+      args ← TacticM.withTraceNode m!"Exploiting ({i}, {j}) : {a} ⟂ {b}" do
         let proof ← h.mem_separate'_of_pairwiseSeparate_of_mem_of_mem i j a b
-        SimpMemM.traceLargeMsg m!"added {← inferType proof.h}" m!"{proof.h}"
+        TacticM.traceLargeMsg m!"added {← inferType proof.h}" m!"{proof.h}"
         proof.addOmegaFacts args
   return args
 /--
 Given a hypothesis, add declarations that would be useful for omega-blasting
 -/
-def Hypothesis.addOmegaFactsOfHyp (h : Hypothesis) (args : Array Expr) : SimpMemM (Array Expr) :=
+def Hypothesis.addOmegaFactsOfHyp (h : Hypothesis) (args : Array Expr) : TacticM (Array Expr) :=
   match h with
   | Hypothesis.legal h => h.addOmegaFacts args
   | Hypothesis.subset h => h.addOmegaFacts args
@@ -694,8 +699,8 @@ def Hypothesis.addOmegaFactsOfHyp (h : Hypothesis) (args : Array Expr) : SimpMem
 Accumulate all omega defs in `args`.
 -/
 def Hypothesis.addOmegaFactsOfHyps (hs : List Hypothesis) (args : Array Expr)
-    : SimpMemM (Array Expr) := do
-  SimpMemM.withTraceNode m!"Adding omega facts from hypotheses" do
+    : TacticM (Array Expr) := do
+  TacticM.withTraceNode m!"Adding omega facts from hypotheses" do
     let mut args := args
     for h in hs do
       args ← h.addOmegaFactsOfHyp args
@@ -1066,6 +1071,42 @@ def simpMem (cfg : SimpMemConfig := {}) : TacticM Unit := do
 /-- The `simp_mem` tactic, for simplifying away statements about memory. -/
 def simpMemTactic (cfg : SimpMemConfig) : TacticM Unit := simpMem cfg
 
+
+
+/-- The `mem_omega` tactic, to close goals by using `omega` -/
+def memOmegaTactic : TacticM Unit := do
+  let g ← getMainGoal
+  let gt ← getMainTarget
+  g.withContext do
+    let hyps := (← getLocalHyps)
+    let foundHyps ← TacticM.withTraceNode m!"Searching for Hypotheses" do
+      let mut foundHyps : Array Hypothesis := #[]
+      for h in hyps do
+        foundHyps ← hypothesisOfExpr h foundHyps
+      pure foundHyps
+
+    TacticM.withTraceNode m!"Summary: Found {foundHyps.size} hypotheses" do
+      for (i, h) in foundHyps.toList.enum do
+        trace[simp_mem.info] m!"{i+1}) {h}"
+
+    let oldGoals := (← getGoals)
+    try
+      let gproof ← mkFreshExprMVar (type? := gt)
+      setGoals (gproof.mvarId! :: (← getGoals))
+      let _ ← Hypothesis.addOmegaFactsOfHyps foundHyps.toList #[]
+      trace[simp_mem.info] m!"Executing `omega` to close {gt}"
+      TacticM.withTraceNode m!"goal (Note: can be large)" do
+        trace[simp_mem.info] "{← getMainGoal}"
+      omega
+      trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+      g.assign gproof
+    catch e =>
+      trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+      setGoals oldGoals
+
+
+
+
 end SeparateAutomation
 
 /--
@@ -1083,4 +1124,16 @@ def evalSimpMem : Tactic := fun
   | `(tactic| simp_mem $[$cfg]?) => do
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
     SeparateAutomation.simpMemTactic cfg
+  | _ => throwUnsupportedSyntax
+
+
+/--
+Implement the mem_omega tactic frontend.
+-/
+syntax (name := mem_omega) "mem_omega" : tactic
+
+@[tactic mem_omega]
+def evalMemOmega : Tactic := fun
+  | `(tactic| mem_omega ) => do
+    SeparateAutomation.memOmegaTactic
   | _ => throwUnsupportedSyntax
