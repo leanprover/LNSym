@@ -10,15 +10,15 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
--- set_option trace.simp_mem true
--- set_option trace.simp_mem.info true
+set_option trace.simp_mem true
+set_option trace.simp_mem.info true
 
 namespace MemLegal
 /-- Show reflexivity of legality. -/
 theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
   simp_mem
 
-/-- info: 'MemLegal.legal_1' depends on axioms: [propext, Quot.sound] -/
+/-- info: 'MemLegal.legal_1' depends on axioms: [propext] -/
 #guard_msgs in #print axioms legal_1
 
 end MemLegal

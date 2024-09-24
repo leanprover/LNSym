@@ -11,6 +11,9 @@ initialize
   registerTraceClass `Tactic.cse.summary
   -- enable tracing for `sym_n` tactic and related components
   registerTraceClass `Tactic.sym
+  -- enable tracing for the address normalization simprocs.
+  registerTraceClass `Tactic.AddressNormalization
+
 
   -- enable tracing for heartbeat usage of `sym_n`
   registerTraceClass `Tactic.sym.heartbeats

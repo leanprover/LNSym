@@ -19,6 +19,7 @@ import Lean.Meta.Tactic.Rewrites
 import Lean.Elab.Tactic.Conv
 import Lean.Elab.Tactic.Conv.Basic
 import Tactics.Simp
+import Arm.Memory.AddressNormalization
 
 open Lean Meta Elab Tactic
 
@@ -422,7 +423,7 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : TacticM FVarId  := do
     let hdefVal ← simpResult.mkCast hdefVal
     let hdefTy ← inferType hdefVal
 
-    let goal ← goal.define name hdefTy hdefVal
+    let goal ← goal.assert name hdefTy hdefVal
     let (fvar, goal) ← goal.intro1P
     replaceMainGoal [goal]
     return fvar
@@ -432,7 +433,7 @@ attribute [bv_toNat] BitVec.le_def
 -- bv_omega' := (try simp only [bv_toNat, BitVec.le_def] at *) <;> omega)
 -- #check Lean.Elab.Tactic.Omega.omega
 -- #check Lean.Elab.Tactic.Omega.bvOmega
--- simpTargetStar 
+-- simpTargetStar
 
 
 
@@ -441,27 +442,36 @@ def omega : TacticM Unit := do
   -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
   -- @bollu: TODO: understand what precisely we are recovering from.
   let g ← getMainGoal
-  -- Step 1: simplify everybody with `bv_omega
-  let some simpExt ← getSimpExtension? `bv_toNat
-    | throwError m!"Error: 'bv_toNat' simp attribute not found!"
 
-  let simpCtx : Simp.Context := { 
-    simpTheorems := #[← simpExt.getTheorems],
-    congrTheorems := (← Meta.getSimpCongrTheorems)
-  }
+  -- TODO: use lnsymSimpContext to get minimal_theory.
+  let (simpCtx, simprocs) ← LNSymSimpContext
+      (simp_attrs := #[`minimal_theory, `bitvec_rules, `bv_toNat])
+      (simprocs := #[``reduce_mod_omega])
 
-  let simprocs ← match ← Simp.getSimprocExtension? `bv_toNat with
-    | none => pure #[]
-    | some ext => pure #[← ext.getSimprocs]
-  let (result, _stats) ← simpTargetStar g simpCtx simprocs
-  let g := match result with 
-    | .modified g' => g'
-    | .closed | .noChange => g
+  let (g?, _stats) ← simpAll g simpCtx simprocs
+  let g ← match g? with
+    | some g' =>
+      trace[simp_mem] "omega preprocessed goal to '{g'}'."
+      pure g'
+    | none  =>
+      trace[simp_mem] "omega preprocessor *closed* goal."
+      return ()
+
+  -- preprocess: make tactic a by_contra.
+  let g ← match ← g.falseOrByContra with
+    | .none => do
+      trace[simp_mem] "by_contra *closed* goal."
+      return ()
+    | .some g' =>
+      trace[simp_mem] "by_contra changed goal to '{g'}'."
+      pure g'
 
   -- Step 2: prove goal with omega.
-  withoutRecover do
-    g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
-    -- evalTactic (← `(tactic| bv_omega'))
+  replaceMainGoal [g]
+  g.withContext do
+    -- withoutRecover do
+      (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
+      -- evalTactic (← `(tactic| bv_omega))
 
 section Hypotheses
 
@@ -1005,16 +1015,15 @@ partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
         if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
-    if let .some e := MemSubsetProp.ofExpr? gt then
+    else if let .some e := MemSubsetProp.ofExpr? gt then
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
         if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
-    if let .some e := MemSeparateProp.ofExpr? gt then
+    else if let .some e := MemSeparateProp.ofExpr? gt then
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
         if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
-
-    if (← getConfig).useOmegaToClose then
+    else if (← getConfig).useOmegaToClose then
       withTraceNode m!"Unknown memory expression ⊢ {gt}. Trying reduction to omega (`config.useOmegaToClose = true`):" do
         let oldGoals := (← getGoals)
         try

@@ -10,7 +10,7 @@ We perform the following additional changes:
 
 1. Canonicalizing bitvector expression to always have constants on the left.
   Recall that the default associativity of addition is to the left: x + y + z = (x + y) + z.
-  If we thus normalize our expressions to have constants on the left, 
+  If we thus normalize our expressions to have constants on the left,
   and if we reassociate our additions to be to the left, we will naturally perform
   constant folding:
 
@@ -29,10 +29,12 @@ We perform the following additional changes:
    and eventually, `simp_mem`.
 -/
 import Lean
+import Tactics.Attr
+import Arm.Attr
 
 open Lean Meta Elab Simp
 
-  
+
 theorem Nat.mod_eq_sub {x y : Nat} (h : x ≥ y) (h' : x - y < y) :
     x % y = x - y := by
   rw [Nat.mod_eq_sub_mod h, Nat.mod_eq_of_lt h']
@@ -78,6 +80,7 @@ private def mkSubNat (x y : Expr) : Expr :=
 
 -- x % n = x if x < n
 @[inline] def reduceModOfLt (x : Expr) (n : Expr) : SimpM Step := do
+  trace[AddressNormalization] "trying to reduce... '{x} % {n} → {x}'"
   let ltTy := mkLTNat x n
   let Step.done { expr := _, proof? := some p} ← proveByOmega ltTy
     | return .continue
@@ -96,7 +99,7 @@ private def mkSubNat (x y : Expr) : Expr :=
   let eqProof ← mkAppM ``Nat.mod_eq_sub #[geProof, ltProof]
   return .done { expr := subTy, proof? := eqProof : Result }
 
-@[inline] def reduceMod (e : Expr) : SimpM Step := do
+@[inline, bv_toNat] def reduceMod (e : Expr) : SimpM Step := do
   match_expr e with
   | HMod.hMod xTy nTy outTy _inst x n =>
     let natTy := mkConst ``Nat
@@ -110,24 +113,24 @@ private def mkSubNat (x y : Expr) : Expr :=
   | _ => do
      return .continue
 
-simproc↑ reduce_mod_omega (_ % _) := fun e => reduceMod e
+simproc↑ [bitvec_rules] reduce_mod_omega (_ % _) := fun e => reduceMod e
 
 theorem eg₁ (x : BitVec w) : x.toNat % 2 ^ w = x.toNat + 0 := by
-  simp
+  simp [bitvec_rules]
 
 /-- info: 'eg₁' depends on axioms: [propext] -/
 #guard_msgs in #print axioms eg₁
 
 theorem eg₂ (x y : BitVec w)  (h : x.toNat + y.toNat < 2 ^ w) :
   (x + y).toNat = x.toNat + y.toNat := by
-  simp
+  simp [bitvec_rules]
 
 /-- info: 'eg₂' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms eg₂
 
 theorem eg₃ (x y : BitVec w) :
   (x + y).toNat = (x.toNat + y.toNat) % 2 ^ w := by
-  simp
+  simp [bitvec_rules]
 
 /-- info: 'eg₂' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms eg₂
@@ -136,15 +139,14 @@ theorem eg₄ (x y z : BitVec w)
   (h₂ : y.toNat + z.toNat < 2 ^ w)
   (h : x.toNat * (y.toNat + z.toNat) < 2 ^ w) :
   (x * (y + z)).toNat = x.toNat * (y.toNat + z.toNat) := by
-  simp
+  simp [bitvec_rules]
 
 /-- info: 'eg₄' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms eg₄
 
 theorem eg₅ (x y : BitVec w) (h : x.toNat + y.toNat ≥ 2 ^ w) (h' : (x.toNat + y.toNat) - 2 ^ w < 2 ^ w) :
   (x + y).toNat = x.toNat + y.toNat - 2 ^ w := by
-  simp
+  simp [bitvec_rules]
 
 /-- info: 'eg₅' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms eg₅
-
