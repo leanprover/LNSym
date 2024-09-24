@@ -17,11 +17,6 @@ jobs:
 
     steps:
 
-    - uses: DeterminateSystems/nix-installer-action@main
-
-    - name: Install cadical
-      run: nix profile install nixpkgs#cadical
-
     - uses: actions/checkout@v4
 
     - uses: leanprover/lean-action@v1.0.1
