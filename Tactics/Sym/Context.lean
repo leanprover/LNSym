@@ -9,8 +9,8 @@ import Lean.Meta
 import Arm.Exec
 import Tactics.Common
 import Tactics.Attr
-import Tactics.Reflect.ProgramInfo
-import Tactics.Reflect.AxEffects
+import Tactics.Sym.ProgramInfo
+import Tactics.Sym.AxEffects
 import Tactics.Simp
 
 /-!

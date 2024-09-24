@@ -6,7 +6,7 @@ Author(s): Shilpi Goel, Alex Keizer
 import Arm.Exec
 import Arm.Memory.MemoryProofs
 import Tactics.FetchAndDecode
-import Tactics.SymContext
+import Tactics.Sym.Context
 
 import Lean
 
