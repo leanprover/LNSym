@@ -415,14 +415,15 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
 
   return ()
 
-/-- Build a `SymContext` by searching the local context for hypotheses of the
-required types (up-to defeq) . The local context is modified to unfold the types
-to be syntactically equal to the expected type.
+/-- Build a `SymContext` by searching the local context of the main goal for
+hypotheses of the required types (up-to defeq).
+The local context is modified to unfold the types to be syntactically equal to
+the expected types.
 
 If an hypothesis `h_err : r <state> .ERR = None` is not found,
-we create a new subgoal of this type
+we create a new subgoal of this type.
 -/
-def fromLocalContext (state? : Option Name) : TacticM SymContext := do
+def fromMainContext (state? : Option Name) : TacticM SymContext := do
   let msg := m!"Building a `SymContext` from the local context"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
   trace[Tactic.Sym] "state? := {state?}"
