@@ -112,9 +112,7 @@ protected def InitKey {Param : KBR} (i : Nat) (key : BitVec Param.key_len)
   (acc : KeySchedule) : KeySchedule :=
   if h₀ : Param.Nk ≤ i then acc
   else
-    have h₁ : i * 32 + 32 - 1 - i * 32 + 1 = WordSize := by
-      simp only [WordSize]; omega
-    let wd := BitVec.cast h₁ $ extractLsb (i * 32 + 32 - 1) (i * 32) key
+    let wd := extractLsb' (i * 32) 32 key
     let (x:KeySchedule) := [wd]
     have _ : Param.Nk - (i + 1) < Param.Nk - i := by omega
     AESArm.InitKey (Param := Param) (i + 1) key (acc ++ x)

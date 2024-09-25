@@ -64,18 +64,15 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
         let full_data := data2 ++ data1
         write_mem_bytes (2 * (datasize / 8)) address (BitVec.cast h3 full_data) s
       | _ => -- LOAD
-        have h4 : datasize - 1 - 0 + 1 = datasize := by
-          simp; apply Nat.sub_add_cancel H2
-        have h5 : 2 * datasize - 1 - datasize + 1 = datasize := by omega
         let full_data := read_mem_bytes (2 * (datasize / 8)) address s
-        let data1 := extractLsb (datasize - 1) 0 full_data
-        let data2 := extractLsb ((2 * datasize) - 1) datasize full_data
+        let data1 := extractLsb' 0 datasize full_data
+        let data2 := extractLsb' datasize datasize full_data
         if not inst.SIMD? ∧ signed then
           let s := write_gpr 64 inst.Rt (signExtend 64 data1) s
           write_gpr 64 inst.Rt2 (signExtend 64 data2) s
         else
-          let s:= ldst_write inst.SIMD? datasize inst.Rt (BitVec.cast h4 data1) s
-          ldst_write inst.SIMD? datasize inst.Rt2 (BitVec.cast h5 data2) s
+          let s:= ldst_write inst.SIMD? datasize inst.Rt data1 s
+          ldst_write inst.SIMD? datasize inst.Rt2 data2 s
     if inst.wback then
       let address := if inst.postindex then address + offset else address
       write_gpr 64 inst.Rn address s

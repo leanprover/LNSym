@@ -317,7 +317,7 @@ private theorem mem_subset_neq_first_addr_small_second_region
   cases h2
   · rename_i h
     simp only [BitVec.add_sub_self_left_64] at h
-    have l1 : n' = 18446744073709551615 := by      
+    have l1 : n' = 18446744073709551615 := by
       rw [BitVec.toNat_eq] at h
       simp only [toNat_ofNat, Nat.reducePow, Nat.reduceMod] at h
       omega

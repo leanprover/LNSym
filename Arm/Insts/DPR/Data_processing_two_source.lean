@@ -19,7 +19,7 @@ open BitVec
 def exec_data_processing_shift
   (inst : Data_processing_two_source_cls) (s : ArmState) : ArmState :=
   let datasize := 32 <<< inst.sf.toNat
-  let shift_type := decode_shift $ extractLsb 1 0 inst.opcode
+  let shift_type := decode_shift $ extractLsb' 0 2 inst.opcode
   let operand2 := read_gpr_zr datasize inst.Rm s
   let amount := BitVec.ofInt 6 (operand2.toInt % datasize)
   let operand := read_gpr_zr datasize inst.Rn s

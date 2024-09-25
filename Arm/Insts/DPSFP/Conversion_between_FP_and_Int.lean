@@ -32,10 +32,9 @@ def fmov_general_aux (intsize : Nat) (fltsize : Nat) (op : FPConvOp)
     s
   | FPConvOp.FPConvOp_MOV_ItoF =>
     let intval := read_gpr intsize inst.Rn s
-    let fltval := extractLsb (fltsize - 1) 0 intval
+    let fltval := extractLsb' 0 fltsize intval
     -- State Update
-    have h₀ : fltsize - 1 - 0 + 1 = fltsize := by omega
-    let s := Vpart_write inst.Rd part fltsize (BitVec.cast h₀ fltval) s
+    let s := Vpart_write inst.Rd part fltsize fltval s
     let s := write_pc ((read_pc s) + 4#64) s
     s
   | _ => write_err (StateError.Other s!"fmov_general_aux called with non-FMOV op!") s
@@ -51,7 +50,7 @@ def exec_fmov_general
     · decide
     · generalize BitVec.toNat (inst.ftype ^^^ 2#2) = x
       apply zero_lt_shift_left_pos (by decide)
-  match (extractLsb 2 1 inst.opcode) ++ inst.rmode with
+  match (extractLsb' 1 2 inst.opcode) ++ inst.rmode with
   | 1100 =>  -- FMOV
     if decode_fltsize ≠ 16 ∧ decode_fltsize ≠ intsize then
       write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
@@ -75,7 +74,7 @@ def exec_fmov_general
 @[state_simp_rules]
 def exec_conversion_between_FP_and_Int
   (inst : Conversion_between_FP_and_Int_cls) (s : ArmState) : ArmState :=
-  if inst.ftype = 0b10#2 ∧ (extractLsb 2 1 inst.opcode) ++ inst.rmode ≠ 0b1101#4 then
+  if inst.ftype = 0b10#2 ∧ (extractLsb' 1 2 inst.opcode) ++ inst.rmode ≠ 0b1101#4 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
     -- Assume IsFeatureImplemented(FEAT_FP16) is true
   else
@@ -92,7 +91,7 @@ partial def Conversion_between_FP_and_Int_cls.fmov_general.rand : Cosim.CosimM (
   let sf := ← BitVec.rand 1
   let intsize := 32 <<< sf.toNat
   let decode_fltsize := if ftype == 0b10#2 then 64 else (8 <<< (ftype ^^^ 0b10#2).toNat)
-  if ftype == 0b10#2 && ((extractLsb 2 1 opcode) ++ rmode) != 0b1101#4 ||
+  if ftype == 0b10#2 && ((extractLsb' 1 2 opcode) ++ rmode) != 0b1101#4 ||
      decode_fltsize != 16 && decode_fltsize != intsize ||
      intsize != 64 || ftype != 0b10#2 then
     Conversion_between_FP_and_Int_cls.fmov_general.rand
