@@ -82,6 +82,37 @@ structure AxEffects where
 
 namespace AxEffects
 
+/-! ## Monad getters -/
+
+section Monad
+variable {m} [Monad m] [MonadReaderOf AxEffects m]
+
+def getCurrentState       : m Expr := do return (← read).currentState
+def getInitialState       : m Expr := do return (← read).initialState
+def getNonEffectProof     : m Expr := do return (← read).nonEffectProof
+def getMemoryEffect       : m Expr := do return (← read).memoryEffect
+def getMemoryEffectProof  : m Expr := do return (← read).memoryEffectProof
+def getProgramProof       : m Expr := do return (← read).programProof
+
+def getStackAlignmentProof? : m (Option Expr) := do
+  return (← read).stackAlignmentProof?
+
+variable [MonadLiftT MetaM m] in
+/-- Retrieve the user-facing name of the current state, assuming that
+the current state is a free variable in the ambient local context -/
+def getCurrentStateName : m Name := do
+  let state ← getCurrentState
+  @id (MetaM _) <| do
+    let state ← instantiateMVars state
+    let Expr.fvar id := state.consumeMData
+      | throwError "error: expected a free variable, found:\n  {state} WHHOPS"
+    let lctx ← getLCtx
+    let some decl := lctx.find? id
+      | throwError "error: unknown fvar: {state}"
+    return decl.userName
+
+end Monad
+
 /-! ## Initial Reflected State -/
 
 /-- An initial `AxEffects` state which has no writes.
@@ -185,7 +216,7 @@ partial def mkAppNonEffect (eff : AxEffects) (field : Expr) : MetaM Expr := do
       return nonEffectProof
 
 /-- Get the value for a field, if one is stored in `eff.fields`,
-or assemble an instantiation of the non-effects proof -/
+or assemble an instantiation of the non-effects proof otherwise -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
   let msg := m!"getField {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -199,6 +230,11 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
       let value := mkApp2 (mkConst ``r) (toExpr fld) eff.initialState
       let proof  ← eff.mkAppNonEffect (toExpr fld)
       pure { value, proof }
+
+variable {m} [Monad m] [MonadReaderOf AxEffects m] [MonadLiftT MetaM m] in
+@[inherit_doc getField]
+def getFieldM (field : StateField) : m FieldEffect := do
+  (← read).getField field
 
 /-! ## Update a Reflected State -/
 
@@ -360,6 +396,24 @@ private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
     throwError "expected:\n  {expected}\nbut found:\n  {e}"
 
 /-- Given an expression `e : ArmState`,
+which is a sequence of `w`/`write_mem`s to `eff.currentState`,
+return an `AxEffects` where `e` is the new `currentState`. -/
+partial def updateWithExpr (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
+  let msg := m!"Updating effects with writes from: {e}"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
+    | write_mem_bytes n addr val e =>
+        let eff ← eff.updateWithExpr e
+        eff.update_write_mem n addr val
+
+    | w field value e =>
+        let eff ← eff.updateWithExpr e
+        eff.update_w field value
+
+    | _ =>
+        assertIsDefEq e eff.currentState
+        return eff
+
+/-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to the some state `s`,
 return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
 
@@ -466,7 +520,10 @@ def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
     trace[Tactic.sym] "current field effect: {fieldEff}"
 
     if field ∉ eff.fields then
-      let proof ← mkEqTrans fieldEff.proof eq
+      let proof ← if eff.currentState == eff.initialState then
+          pure eq
+        else
+          mkEqTrans fieldEff.proof eq
       let fields := eff.fields.insert field { value, proof }
       return { eff with fields }
     else
