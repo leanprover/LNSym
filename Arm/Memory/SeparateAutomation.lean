@@ -375,7 +375,7 @@ def SimpMemM.withTraceNode (header : MessageData) (k : SimpMemM α)
     (traceClass : Name := `simp_mem.info) : SimpMemM α :=
   Lean.withTraceNode traceClass (fun _ => return header) k (collapsed := collapsed)
 
-def processingEmoji : String := "⚙️"
+def processingEmoji : String := "🔧"
 
 def consumeRewriteFuel : SimpMemM Unit :=
   modify fun s => { s with rewriteFuel := s.rewriteFuel - 1 }
@@ -429,8 +429,6 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : TacticM FVarId  := do
     replaceMainGoal [goal]
     return fvar
 
--- TODO: add `bv_toNat` attribute on `BitVec.le_def` upstream.
-attribute [bv_toNat] BitVec.le_def
 -- bv_omega' := (try simp only [bv_toNat, BitVec.le_def] at *) <;> omega)
 -- #check Lean.Elab.Tactic.Omega.omega
 -- #check Lean.Elab.Tactic.Omega.
@@ -444,24 +442,29 @@ attribute [bv_toNat] BitVec.le_def
 
 /-- SimpMemM's omega invoker -/
 def omega : TacticM Unit := do
-  let g ← match ← (← getMainGoal).falseOrByContra with
-    | none =>
-      trace[simp_mem] "omega converting goal to false/contra *closed* goal."
-      return ()
-    | some g' =>
-      pure g'
-  replaceMainGoal [g]
-  let (simpCtx, simprocs) ← LNSymSimpContext
-      (config := { failIfUnchanged := false })
-      (simp_attrs := #[`bv_toNat])
-      (useDefaultSimprocs := false)
-      (thms := #[``mem_legal'.iff_omega, ``mem_separate'.iff_omega, ``mem_subset'.iff_omega, ``BitVec.le_def])
-      (simprocs := #[])
-  let _ ← simpLocation simpCtx simprocs (loc := Location.wildcard)
-  let g ← getMainGoal
-  TacticM.withTraceNode m!"omega goal (Note: can be large)" do
-    trace[simp_mem] "{g}"
-  g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
+  withoutRecover do
+    evalTactic (← `(tactic| bv_omega'))
+
+  -- let g ← match ← (← getMainGoal).falseOrByContra with
+  --   | none =>
+  --     trace[simp_mem] "omega converting goal to false/contra *closed* goal."
+  --     return ()
+  --   | some g' =>
+  --     pure g'
+  -- replaceMainGoal [g]
+  -- let (simpCtx, simprocs) ← LNSymSimpContext
+  --     (config := { failIfUnchanged := false })
+  --     (decls_to_unfold := #[``BitVec.le_def])
+  --     (simp_attrs := #[`bv_toNat])
+  --     (useDefaultSimprocs := false)
+  --     (thms := #[``mem_legal'.iff_omega, ``mem_separate'.iff_omega, ``mem_subset'.iff_omega,
+  --       ``BitVec.le_def, ``BitVec.toNat_sub, ``BitVec.toNat_mul, ``BitVec.toNat_add])
+  --     (simprocs := #[]) -- TODO: add our address normalization simproc.
+  -- let _ ← simpLocation simpCtx simprocs (loc := Location.wildcard)
+  -- let g ← getMainGoal
+  -- TacticM.withTraceNode m!"omega goal (Note: can be large)" do
+  --   trace[simp_mem] "{g}"
+  -- g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
 
 section Hypotheses
 
@@ -823,7 +826,8 @@ def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
     trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
     return (.some <| Proof.mk (← instantiateMVars factProof))
   catch e =>
-    trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+    SimpMemM.withTraceNode m!"{crossEmoji} `omega` failed with error:" do
+      trace[simp_mem.info]  "{e.toMessageData}"
     setGoals oldGoals
     return none
   end ReductionToOmega

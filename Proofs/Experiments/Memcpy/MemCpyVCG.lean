@@ -705,7 +705,7 @@ theorem partial_correctness :
             simp only [memory_rules] at h_si_read_sep
             rw [h_si_read_sep]
             rw [h_si_x0_eq_zero]
-            skip_proof simp_mem -- nice!
+            skip_proof mem_omega -- nice!
           · simp only [step.h_err, step.h_program, step.h_sp_aligned, and_self]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
