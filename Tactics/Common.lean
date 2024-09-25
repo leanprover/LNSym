@@ -223,9 +223,9 @@ def findLocalDeclOfType? (expectedType : Expr) : MetaM (Option LocalDecl) := do
     --    the local context, so we can safely pass it to `get!`
 
 def findLocalDeclOfTypeOrError (expectedType : Expr) : MetaM LocalDecl := do
-    let some name ← findLocalDeclOfType? expectedType
+    let some decl ← findLocalDeclOfType? expectedType
       | throwError "Failed to find a local hypothesis of type {expectedType}"
-    return name
+    return decl
 
 /-- `findProgramHyp` searches the local context for an hypothesis of type
   `state.program = ?concreteProgram`,
@@ -269,3 +269,12 @@ def traceHeartbeats (cls : Name) (header : Option String := none) :
   let percent ← heartbeatsPercent
   trace cls fun _ =>
     m!"{header}used {heartbeats} heartbeats ({percent}% of maximum)"
+
+/-! ## `withMainContext'` -/
+
+variable {m} [Monad m] [MonadLiftT TacticM m] [MonadControlT MetaM m] in
+/-- Execute `x` using the main goal local context and instances.
+
+Unlike the standard `withMainContext`, `x` may live in a generic monad `m`. -/
+def withMainContext' (x : m α) : m α := do
+  (← getMainGoal).withContext x
