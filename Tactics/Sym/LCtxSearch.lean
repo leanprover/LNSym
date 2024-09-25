@@ -58,7 +58,7 @@ structure LCtxSearchState.Pattern where
   /-- `whenNotFound` will be called if no successful occurence of the pattern
   (as determined by the return value of `whenFound`)
   could be found in the local context -/
-  whenNotFound : Unit → m Unit
+  whenNotFound : Expr → m Unit
   /-- How many times have we (successfully) found the pattern -/
   occurences : Nat := 0
   /-- Whether the pattern is active; is `isActive = false`,
@@ -91,7 +91,8 @@ variable {m}
   succesful.
 - `whenNotFound` will be called if no local variable could be found with a type
   def-eq to the pattern, or if `whenFound` returned `skip` for all variables
-  that were found.
+  that were found. For convenience, we pass in the `expectedType` here as well.
+  See `throwNotFound` for a convenient way to throw an error here.
 
 WARNING: Once a pattern is found for which `whenFound` returns `done`, that
 particular variable will not be matched for any other patterns.
@@ -101,7 +102,7 @@ tried first
 def searchLCtxFor
     (expectedType : m Expr)
     (whenFound : Expr → m LCtxSearchResult)
-    (whenNotFound : Unit → m Unit := pure)
+    (whenNotFound : Expr → m Unit := fun _ => pure ())
     : SearchLCtxForM m Unit := do
   let pattern := {
     -- Placeholder value, since we can't evaluate `m` inside of `LCtxSearchM`
@@ -117,7 +118,7 @@ one occurence of `expectedType` -/
 def searchLCtxForOnce
     (expectedType : Expr)
     (whenFound : Expr → m Unit)
-    (whenNotFound : Unit → m Unit := pure)
+    (whenNotFound : Expr → m Unit := fun _ => pure ())
     : SearchLCtxForM m Unit := do
   searchLCtxFor (pure expectedType)
     (fun e => do whenFound e; return .done)
@@ -179,7 +180,14 @@ def searchLCtx (k : SearchLCtxForM m Unit) : m Unit := do
   -- Finally, check each pattern and call `whenNotFound` if appropriate
   for pat in patterns.val do
     if pat.occurences = 0 then
-      pat.whenNotFound ()
+      pat.whenNotFound pat.cachedExpectedType
   return ()
+
+variable [MonadError m] in
+/-- Throw an error complaining that no variable of `expectedType` could
+be found -/
+def throwNotFound (expectedType : Expr) : m Unit :=
+  throwError "Expected a local variable of type:\n  {expectedType}\n\
+    but no such variable was found in the local context"
 
 end Run
