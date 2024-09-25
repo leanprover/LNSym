@@ -271,7 +271,6 @@ private def initial (state : Expr) : MetaM SymContext := do
     effects := AxEffects.initial state
   }
 
-
 /-- Infer `state_prefix` and `curr_state_number` from the `state` name
 as follows: if `state` is `s{i}` for some number `i` and a single character `s`,
 then `s` is the prefix and `i` the number,
@@ -365,6 +364,7 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
   -- Find `h_pc : r .PC <s> = <pc>`
   let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
   searchLCtxForOnce (h_pc_type initialState pc)
+    (changeType := true)
     (whenNotFound := throwNotFound)
     (whenFound := fun decl _ => do
       let pc ← instantiateMVars pc
@@ -381,6 +381,7 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
 
   -- Find `h_err : r .ERR <s> = .None`, or add a new subgoal if it isn't found
   searchLCtxForOnce (h_err_type initialState)
+    (changeType := true)
     (whenFound := fun decl _ =>
       AxEffects.setErrorProof decl.toExpr
     )
@@ -392,10 +393,11 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
 
   -- Find `h_sp : CheckSPAlignment <initialState>`.
   searchLCtxForOnce (h_sp_type initialState)
+    (changeType := true)
     (whenNotFound := traceNotFound `Tactic.sym)
     -- ^^ Note that `h_sp` is optional, so there's no need to throw an error,
     --    we merely add a message to the trace and move on
-    (whenFound := fun decl _ =>
+    (whenFound := fun decl _ => do
       modifyThe AxEffects ({ · with
         stackAlignmentProof? := some decl.toExpr
       })
@@ -422,7 +424,7 @@ we create a new subgoal of this type
 -/
 def fromLocalContext (state? : Option Name) : TacticM SymContext := do
   let msg := m!"Building a `SymContext` from the local context"
-  withTraceNode `Tactic.sym (fun _ => pure msg) do
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
   trace[Tactic.Sym] "state? := {state?}"
   let lctx ← getLCtx
 
@@ -440,55 +442,11 @@ def fromLocalContext (state? : Option Name) : TacticM SymContext := do
   c.modify <| do
     searchLCtx SymContext.searchFor
 
-    let thms ← (← readThe AxEffects).toSimpTheorems
-    modifyThe SymContext (·.addSimpTheorems thms)
+    withMainContext' <| do
+      let thms ← (← readThe AxEffects).toSimpTheorems
+      modifyThe SymContext (·.addSimpTheorems thms)
 
-    inferStatePrefixAndNumber
-where
-  findLocalDeclOfType? (expectedType : Expr) : MetaM (Option LocalDecl) := do
-    let msg := m!"Searching for hypothesis of type: {expectedType}"
-    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-      let decl? ← _root_.findLocalDeclOfType? expectedType
-      trace[Tactic.sym] "Found: {(·.toExpr) <$> decl?}"
-      return decl?
-  findLocalDeclOfTypeOrError (expectedType : Expr) : MetaM LocalDecl := do
-    let msg := m!"Searching for hypothesis of type: {expectedType}"
-    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-      let decl ← _root_.findLocalDeclOfTypeOrError expectedType
-      trace[Tactic.sym] "Found: {decl.toExpr}"
-      return decl
-
-/-! ## Massaging the local context -/
-
-/-- change the type (in the local context of the main goal)
-of the hypotheses tracked by the given `SymContext` to be *exactly* of the shape
-described in the relevant docstrings.
-
-That is, (un)fold types which were definitionally, but not syntactically,
-equal to the expected shape. -/
-def canonicalizeHypothesisTypes : SymReaderM Unit := withMainContext' do
-  let c ← readThe SymContext
-  let lctx ← getLCtx
-  let mut goal ← getMainGoal
-  let state := c.effects.currentState
-
-  let mut hyps := #[]
-  if let some runSteps := c.runSteps? then
-    hyps := hyps.push (c.h_run, h_run_type c.finalState (toExpr runSteps) state)
-  if let some h_sp := c.h_sp? then
-    hyps := hyps.push (h_sp, h_sp_type state)
-
-  let mut hypIds ← hyps.mapM fun ⟨name, type⟩ => do
-    let some decl := lctx.findFromUserName? name
-      | throwError "Unknown local hypothesis `{name}`"
-    pure (decl.fvarId, type)
-
-  let errHyp ← AxEffects.getFieldM .ERR
-  if let Expr.fvar id := errHyp.proof then
-    hypIds := hypIds.push (id, h_err_type state)
-  for ⟨fvarId, type⟩ in hypIds do
-    goal ← goal.replaceLocalDeclDefEq fvarId type
-  replaceMainGoal [goal]
+      inferStatePrefixAndNumber
 
 /-! ## Incrementing the context to the next state -/
 
