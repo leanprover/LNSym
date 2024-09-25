@@ -218,6 +218,22 @@ def traceSymContext : SymM Unit :=
     let m ← (← getThe SymContext).toMessageData
     trace[Tactic.sym] m
 
+/-! ## Adding new simp theorems for aggregation -/
+
+/-- Add a set of new simp-theorems to the simp-theorems used
+for effect aggregation -/
+def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
+  let addSimpThms := simpThms.foldl addSimpTheoremEntry
+
+  let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
+  let simpTheorems :=
+    if oldSimpTheorems.isEmpty then
+      oldSimpTheorems.push <| addSimpThms {}
+    else
+      oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
+
+  { c with aggregateSimpCtx.simpTheorems := simpTheorems }
+
 /-! ## Creating initial contexts -/
 
 /-- Modify a `SymContext` with a monadic action `k : SymM Unit` -/
@@ -431,17 +447,3 @@ def prepareForNextStep : SymM Unit := do
     runSteps?   := (· - 1) <$> c.runSteps?
     currentStateNumber := c.currentStateNumber + 1
   })
-
-/-- Add a set of new simp-theorems to the simp-theorems used
-for effect aggregation -/
-def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
-  let addSimpThms := simpThms.foldl addSimpTheoremEntry
-
-  let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
-  let simpTheorems :=
-    if oldSimpTheorems.isEmpty then
-      oldSimpTheorems.push <| addSimpThms {}
-    else
-      oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
-
-  { c with aggregateSimpCtx.simpTheorems := simpTheorems }
