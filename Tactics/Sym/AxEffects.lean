@@ -231,10 +231,35 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
       let proof  ← eff.mkAppNonEffect (toExpr fld)
       pure { value, proof }
 
-variable {m} [Monad m] [MonadReaderOf AxEffects m] [MonadLiftT MetaM m] in
+section Monad
+variable {m} [Monad m] [MonadLiftT MetaM m]
+
+variable [MonadReaderOf AxEffects m] in
 @[inherit_doc getField]
 def getFieldM (field : StateField) : m FieldEffect := do
   (← read).getField field
+
+variable [MonadStateOf AxEffects m]
+
+/-- Set the effect of a specific field in the monad state, overwriting any
+previous value for that field.
+
+NOTE: the proof in `effect` is assumed to be valid for the current state,
+this is not eagerly checked (but the kernel will of course eventually reject
+a proof if it used a malformed field-effect; a mallformed proof does not
+compromise soundness, but it will cause obscure errors) -/
+def setFieldEffect (field : StateField) (effect : FieldEffect) : m Unit :=
+  modify fun eff => { eff with
+    fields := eff.fields.insert field effect }
+
+/-- Given a proof that `r .ERR <currentState> = None`, set the effect of the
+`ERR` field accordingly.
+
+This is a specialization of `setFieldEffect`. -/
+def setErrorProof (proof : Expr) : m Unit :=
+  setFieldEffect .ERR { value := mkConst ``StateError.None, proof }
+
+end Monad
 
 /-! ## Update a Reflected State -/
 
