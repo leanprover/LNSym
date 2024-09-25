@@ -161,6 +161,10 @@ private theorem add_eq_sub_16 (x : BitVec 64) :
 
 -- (TODO) Modifying this theorem is an exercise in patience because of
 -- user-interactivity delays. Let's report this.
+/-
+Adding the ability to aggregate memory effects has caused a need to increase `maxRecDepth`
+in this proof. This will hopefully go down, once we optimize `sym_aggregate`.
+-/
 set_option maxRecDepth 8000 in
 set_option linter.all false in
 set_option linter.constructorNameAsVariable false in
