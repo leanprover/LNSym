@@ -112,7 +112,7 @@ structure SimpMemConfig where
     ⊢ a + 5 < b
     ```
   -/
-  useOmegaToClose : Bool := true
+  useOmegaToClose : Bool := false
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
 structure Context where
