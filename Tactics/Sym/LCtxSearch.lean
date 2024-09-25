@@ -126,7 +126,7 @@ def searchLCtxForOnce
 
 section Run
 open Meta (isDefEq)
-variable [MonadLCtx m] [MonadLift MetaM m]
+variable [MonadLCtx m] [MonadLiftT MetaM m]
 
 /--
 Attempt to match `e` against the given pattern:
@@ -189,5 +189,12 @@ be found -/
 def throwNotFound (expectedType : Expr) : m Unit :=
   throwError "Expected a local variable of type:\n  {expectedType}\n\
     but no such variable was found in the local context"
+
+/-- Add a message to the trace that we searched for, but couldn't find,
+a variable of `expectedType`, and continue execution. -/
+def traceNotFound (cls : Name) (expectedType : Expr) : m Unit :=
+  trace (m:=MetaM) cls fun _ =>
+    m!"Unable to find a variable of type {expectedType} in the local context"
+
 
 end Run
