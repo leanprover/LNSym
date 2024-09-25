@@ -9,8 +9,7 @@ import Benchmarks.SHA512
 
 open Benchmarks
 
-benchmark sha512_150_instructions : SHA512Bench 150 := by
-  unfold SHA512Bench
+benchmark sha512_150_instructions : SHA512Bench 150 := fun s0 => by
   intros
   sym_n 150
   done
