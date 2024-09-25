@@ -332,6 +332,7 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
 
   modifyThe SymContext ({ · with
     h_run := hRun.userName
+    finalState := ←instantiateMVars c.finalState
     runSteps?
   })
 
