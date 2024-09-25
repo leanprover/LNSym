@@ -20,7 +20,7 @@ import Arm.Syntax
 import Tactics.SkipProof
 
 -- Disable linters, they take too much time.
-set_option linter.all false
+set_option linter.unusedVariables false
 
 namespace Memcpy
 
