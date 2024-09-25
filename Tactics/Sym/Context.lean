@@ -398,6 +398,9 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
       modifyThe AxEffects ({ · with
         stackAlignmentProof? := some decl.toExpr
       })
+      modifyThe SymContext ({· with
+        h_sp? := decl.userName
+      })
     )
 
   /- TODO(@alexkeizer): search for any other hypotheses of the form
