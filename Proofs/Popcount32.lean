@@ -71,7 +71,6 @@ def popcount32_program : Program :=
 
 #genStepEqTheorems popcount32_program
 
-set_option maxHeartbeats 0 in
 theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   (h_s0_pc : read_pc s0 = 0x4005b4#64)
   (h_s0_program : s0.program = popcount32_program)
@@ -93,7 +92,7 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   · sym_aggregate
   · intro n addr h_separate
     simp only [memory_rules] at *
-    repeat (simp_mem; sym_aggregate)
+    repeat (simp_mem (config := { useOmegaToClose := false }); sym_aggregate)
   · apply Aligned_BitVecSub_64_4 -- TODO(@bollu): automation
     · assumption
     · decide
