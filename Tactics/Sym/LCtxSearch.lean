@@ -54,7 +54,7 @@ structure LCtxSearchState.Pattern where
   `whenFound` with the list returned by `pattern` (which has the metavariables
   that should now have been instantiated with subexpressions of interest).
   -/
-  whenFound : Expr → m LCtxSearchResult
+  whenFound : LocalDecl → Expr → m LCtxSearchResult
   /-- `whenNotFound` will be called if no successful occurence of the pattern
   (as determined by the return value of `whenFound`)
   could be found in the local context -/
@@ -101,7 +101,7 @@ tried first
 -/
 def searchLCtxFor
     (expectedType : m Expr)
-    (whenFound : Expr → m LCtxSearchResult)
+    (whenFound : LocalDecl → Expr → m LCtxSearchResult)
     (whenNotFound : Expr → m Unit := fun _ => pure ())
     : SearchLCtxForM m Unit := do
   let pattern := {
@@ -117,11 +117,11 @@ def searchLCtxFor
 one occurence of `expectedType` -/
 def searchLCtxForOnce
     (expectedType : Expr)
-    (whenFound : Expr → m Unit)
+    (whenFound : LocalDecl → Expr → m Unit)
     (whenNotFound : Expr → m Unit := fun _ => pure ())
     : SearchLCtxForM m Unit := do
   searchLCtxFor (pure expectedType)
-    (fun e => do whenFound e; return .done)
+    (fun d e => do whenFound d e; return .done)
     whenNotFound
 
 section Run
@@ -135,15 +135,15 @@ Attempt to match `e` against the given pattern:
     the result of `whenFound`
 - Otherwise, if `e` is not def-eq, return `none`
 -/
-def LCtxSearchState.Pattern.match? (pat : Pattern m) (e : Expr) :
+def LCtxSearchState.Pattern.match? (pat : Pattern m) (decl : LocalDecl) :
     m (Option (Pattern m × LCtxSearchResult)) := do
   if !pat.isActive then
     return none
-  else if !(← isDefEq e pat.cachedExpectedType) then
+  else if !(← isDefEq decl.type pat.cachedExpectedType) then
     return none
   else
     let cachedExpectedType ← pat.expectedType
-    let res ← pat.whenFound pat.cachedExpectedType
+    let res ← pat.whenFound decl pat.cachedExpectedType
     let occurences := match res with
       | .skip => pat.occurences
       | .done | .continu => pat.occurences + 1
@@ -169,7 +169,7 @@ def searchLCtx (k : SearchLCtxForM m Unit) : m Unit := do
       have hi : i < patterns.val.size := by
         rw [patterns.property]; get_elem_tactic
       let pat := patterns.val[i]
-      if let some (pat, res) ← pat.match? decl.type then
+      if let some (pat, res) ← pat.match? decl then
         patterns := ⟨
           patterns.val.set ⟨i, hi⟩ pat,
           by simp[patterns.property]
