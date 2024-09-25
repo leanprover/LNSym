@@ -23,6 +23,7 @@ import Tactics.Simp
 open Lean Meta Elab Tactic
 
 
+
 /-! ## Memory Separation Automation
 
 ##### A Note on Notation
@@ -241,6 +242,11 @@ instance : ToMessageData MemPairwiseSeparateProp where
 
 abbrev MemPairwiseSeparateProof := Proof MemPairwiseSeparateProp
 
+structure MemPairwiseSeparateProof' where
+  xs : Array MemSpanExpr
+  proof : Expr
+
+
 /-- info: Memory.read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) -/
 #guard_msgs in #check Memory.read_bytes
 
@@ -334,6 +340,51 @@ instance : ToMessageData Hypothesis where
   | .legal proof => toMessageData proof
   | .read_eq proof => toMessageData proof
   | .pairwiseSeparate proof => toMessageData proof
+
+/-! ## Memory Tree
+
+The memory tree is a k-ary tree, which is a reflected, optimized representation of the memory.
+It is designed to exploit the hypothesis that memory regions in LNSym are always disjoint or subsets of one another.
+- The nodes of the tree represent regions of memory.
+- A node stores in its state:
+   + A symbolic span of memory it represents
+   + In its ultimate form, a node in a tree will store the *latest write*
+      to the given region of memory. In this way, it is much like a [segment tree](https://en.wikipedia.org/wiki/Segment_tree).
+
+- A node has a list of children, where:
+    + each child is a subset of the parent (Each edge link stores an eagerly computed proof of this fact).
+    + all children are pairwise separate from each other (The parent node stores a lazy cache of disjointness proofs).
+    + The node has an option list of pairwise disjointness constraints it is aware of.
+-/
+
+
+-- An expression of type Memory.
+abbrev MemoryExpr := Expr
+
+
+/-- Represnts memory as a tree of disjoint address spaces -/
+abbrev MemoryNodeId := UInt64
+
+structure MemoryEdge where 
+  subsetExpr : MemSubsetProp -- this represents that the parent is a subset of the child.
+  subsetProof? : Option (MemSubsetProof subsetExpr)
+  childId : MemoryNodeId -- ID of the child subtree.
+
+
+structure MemoryNode where
+  span : MemSpan
+  pairwiseProof? : Option MemPairwiseSeparateProof' -- an (optional) proof of pairwise separation.
+  separateProofs : Std.HashMap (MemoryNodeId × MemoryNodeId) (Option Expr)
+  children : Array MemoryNodeId
+
+structure MemoryTreeState where
+  disjointnessProofsCache : Std.HashMap (MemoryNodeId × MemoryNodeId) (Option Expr)
+  subsetProofsCache : Std.HashMap (MemoryNodeId × MemoryNodeId) (Option Expr)
+  nodes : Array MemoryNode
+  root : MemoryNodeId
+
+namespace MemoryTreeState
+end MemoryTreeState
 
 /-- The internal state for the `SimpMemM` monad, recording previously encountered atoms. -/
 structure State where
