@@ -320,6 +320,7 @@ theorem overlapping_read_test_3
       (Memory.read_bytes 16 other_addr s.mem).extractLsBytes 6 10 := by
   simp only [memory_rules] at h ⊢
   rw [Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' h]
+  -- simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
     bv_omega
@@ -358,7 +359,7 @@ theorem test_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' src_addr 16) :
     Memory.read_bytes 16 src_addr (Memory.write_bytes 16 src_addr val mem) =
      val.extractLsBytes 0 16  := by
-  rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (by mem_decide_bv)]
+  simp_mem
   · -- ⊢ val.extractLsBytes (src_addr.toNat - src_addr.toNat) 16 = val.extractLsBytes 0 16
     congr
     simp only [Nat.sub_self]
@@ -370,7 +371,6 @@ theorem test_2 {val : BitVec _}
   simp_mem
   have : ((src_addr + 10).toNat - src_addr.toNat) = 10 := by bv_omega
   rw [this]
-
 
 end ReadOverlappingWrite
 

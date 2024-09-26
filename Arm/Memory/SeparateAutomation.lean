@@ -147,16 +147,68 @@ def WithProof.e {α : Type} {e : α} (_p : Proof α e) : α := e
 instance [ToMessageData α] : ToMessageData (Proof α e) where
   toMessageData proof := m! "{proof.h}: {e}"
 
+/--
+We use `BitVec 64` when we define sizes in `mem_legal'`, `mem_subset'`, and `mem_separate'`,
+since this helps `bv_decide` automatically decide such goals.
+
+However, for `Memory.read_bytes / Memory.write_bytes`, we use `Nat` since the number of bytes
+to read is a natural number that we perform induction on.
+We can write a wrapper that uses bitvectors as well.
+
+For now, we choose to write a wrapper that knows how to convert between `Nat` and `BitVec 64`.
+
+If this turns out to be too complex, we should write a wrapper around `Memory.read_bytes`
+and `Memory.write_bytes` that uses `BitVec 64` instead of `Nat`.
+-/
+structure ExprNatOrBv where
+  expr : Expr
+  isNat : Bool -- whether the expr is a nat.
+deriving Inhabited, BEq, Hashable
+
+instance : ToMessageData ExprNatOrBv where
+  toMessageData e := m!"{e.expr} : {if e.isNat then "Nat" else "BitVec 64"}"
+
+def ExprNatOrBv.asNat (e : ExprNatOrBv) : Expr :=
+  if e.isNat then
+    e.expr
+  else
+    mkAppN (mkConst ``BitVec.toNat) #[mkNatLit 64, e.expr]
+
+def ExprNatOrBv.asBV (e : ExprNatOrBv) : Expr :=
+  if e.isNat then
+    mkAppN (mkConst ``BitVec.ofNat) #[mkNatLit 64, e.expr]
+  else
+    e.expr
+
+/-- make a NatOrBv with a known natural number. performs no checking. -/
+def ExprNatOrBv.ofNat! (e : Expr) : ExprNatOrBv :=
+    { expr := e, isNat := true }
+
+/-- make a NatOrBv with a known bitvectr. performs no checking. -/
+def ExprNatOrBv.ofBV! (e : Expr) : ExprNatOrBv :=
+    { expr := e, isNat := false }
+
+def ExprNatOrBv.ofExpr? (e : Expr) : MetaM (Option ExprNatOrBv) := do
+  let ety ← inferType e
+  if ety == (mkConst ``Nat) then
+    return .some { expr := e, isNat := true }
+  else
+    let f := e.getAppFn
+    if f == mkConst ``BitVec then
+      return .some { expr := e, isNat := false }
+    else
+      return none
+
 structure MemSpanExpr where
   base : Expr
-  n : Expr -- here, in Memory read/write, we have `n : Nat`, but in `mem_separate'`, we have `n : BitVec 64`.
+  n : ExprNatOrBv -- here, in Memory read/write, we have `n : Nat`, but in `mem_separate'`, we have `n : BitVec 64`.
 deriving Inhabited
 
 /-- info: Memory.Region.mk (a : BitVec 64) (n : Nat) : Memory.Region -/
 #guard_msgs in #check Memory.Region.mk
 
 def MemSpanExpr.toExpr (span : MemSpanExpr) : Expr :=
-  mkAppN (Expr.const ``Memory.Region.mk []) #[span.base, span.n]
+  mkAppN (Expr.const ``Memory.Region.mk []) #[span.base, span.n.asNat]
 
 def MemSpanExpr.toTypeExpr  : Expr :=
     (Expr.const ``Memory.Region [])
@@ -173,7 +225,7 @@ structure MemLegalProp  where
 
 /-- convert this back to an Expr -/
 def MemLegalProp.toExpr (legal : MemLegalProp) : Expr :=
-  mkAppN (Expr.const ``mem_legal' []) #[legal.span.base, legal.span.n]
+  mkAppN (Expr.const ``mem_legal' []) #[legal.span.base, legal.span.n.asBV]
 
 instance : ToMessageData MemLegalProp where
   toMessageData e := m!"{e.span}.legal"
@@ -181,7 +233,6 @@ instance : ToMessageData MemLegalProp where
 /-- Coerce a span into a `span.legal` hypothesis. -/
 instance : Coe MemSpanExpr MemLegalProp where
   coe := MemLegalProp.mk
-
 
 /-- info: mem_subset' (a an b bn : BitVec 64) : Prop -/
 #guard_msgs in #check mem_subset'
@@ -268,7 +319,7 @@ structure ReadBytesExpr where
 def ReadBytesExpr.ofExpr? (e : Expr) : Option (ReadBytesExpr) :=
   match_expr e with
   | Memory.read_bytes n addr m =>
-    some { span := { base := addr, n := n }, mem := m }
+    some { span := { base := addr, n := ExprNatOrBv.ofNat! n }, mem := m }
   | _ => none
 
 -- TODO: try to use `pp.deepTerms` to make the memory expressions more readable.
@@ -291,7 +342,7 @@ instance : ToMessageData WriteBytesExpr where
 def WriteBytesExpr.ofExpr? (e : Expr) : Option WriteBytesExpr :=
   match_expr e with
   | Memory.write_bytes n addr val m =>
-    some { span := { base := addr, n := n }, val := val, mem := m }
+    some { span := { base := addr, n := ExprNatOrBv.ofNat! n }, val := val, mem := m }
   | _ => none
 
 
@@ -564,7 +615,7 @@ info: mem_separate'.ha {a an b bn : BitVec 64} (self : mem_separate' a an b bn) 
 
 def MemSeparateProof.mem_separate'_ha (self : MemSeparateProof sep) :
     MemLegalProof sep.sa :=
-  let h := mkAppN (Expr.const ``mem_separate'.ha []) #[sep.sa.base, sep.sa.n, sep.sb.base, sep.sb.n, self.h]
+  let h := mkAppN (Expr.const ``mem_separate'.ha []) #[sep.sa.base, sep.sa.n.asBV, sep.sb.base, sep.sb.n.asBV, self.h]
   MemLegalProof.mk h
 
 /--
@@ -574,7 +625,7 @@ info: mem_separate'.hb {a an b bn : BitVec 64} (self : mem_separate' a an b bn) 
 
 def MemSeparateProof.mem_separate'_hb (self : MemSeparateProof sep) :
     MemLegalProof sep.sb :=
-  let h := mkAppN (Expr.const ``mem_separate'.hb []) #[sep.sa.base, sep.sa.n, sep.sb.base, sep.sb.n, self.h]
+  let h := mkAppN (Expr.const ``mem_separate'.hb []) #[sep.sa.base, sep.sa.n.asBV, sep.sb.base, sep.sb.n.asBV, self.h]
   MemLegalProof.mk h
 
 /-- info: mem_subset'.ha {a an b bn : BitVec 64} (self : mem_subset' a an b bn) : mem_legal' a an -/
@@ -583,7 +634,7 @@ def MemSeparateProof.mem_separate'_hb (self : MemSeparateProof sep) :
 def MemSubsetProof.mem_subset'_ha (self : MemSubsetProof sub) :
     MemLegalProof sub.sa :=
   let h := mkAppN (Expr.const ``mem_subset'.ha [])
-    #[sub.sa.base, sub.sa.n, sub.sb.base, sub.sb.n, self.h]
+    #[sub.sa.base, sub.sa.n.asBV, sub.sb.base, sub.sb.n.asBV, self.h]
   MemLegalProof.mk h
 
 /-- info: mem_subset'.hb {a an b bn : BitVec 64} (self : mem_subset' a an b bn) : mem_legal' b bn -/
@@ -592,21 +643,21 @@ def MemSubsetProof.mem_subset'_ha (self : MemSubsetProof sub) :
 def MemSubsetProof.mem_subset'_hb (self : MemSubsetProof sub) :
     MemLegalProof sub.sb :=
   let h := mkAppN (Expr.const ``mem_subset'.hb [])
-      #[sub.sa.base, sub.sa.n, sub.sb.base, sub.sb.n, self.h]
+      #[sub.sa.base, sub.sa.n.asBV, sub.sb.base, sub.sb.n.asBV, self.h]
   MemLegalProof.mk h
 
 /-- match an expression `e` to a `mem_legal'`. -/
 def MemLegalProp.ofExpr? (e : Expr) : Option (MemLegalProp) :=
   match_expr e with
-  | mem_legal' a n => .some { span := { base := a, n := n } }
+  | mem_legal' a n => .some { span := { base := a, n := ExprNatOrBv.ofBV! n } }
   | _ => none
 
 /-- match an expression `e` to a `mem_subset'`. -/
 def MemSubsetProp.ofExpr? (e : Expr) : Option (MemSubsetProp) :=
   match_expr e with
   | mem_subset' a na b nb =>
-    let sa : MemSpanExpr := { base := a, n := na }
-    let sb : MemSpanExpr := { base := b, n := nb }
+    let sa : MemSpanExpr := { base := a, n := ExprNatOrBv.ofBV! na }
+    let sb : MemSpanExpr := { base := b, n := ExprNatOrBv.ofBV! nb }
     .some { sa, sb }
   | _ => none
 
@@ -614,8 +665,8 @@ def MemSubsetProp.ofExpr? (e : Expr) : Option (MemSubsetProp) :=
 def MemSeparateProp.ofExpr? (e : Expr) : Option MemSeparateProp :=
   match_expr e with
   | mem_separate' a na b nb =>
-    let sa : MemSpanExpr := ⟨a, na⟩
-    let sb : MemSpanExpr := ⟨b, nb⟩
+    let sa : MemSpanExpr := ⟨a, ExprNatOrBv.ofBV! na⟩
+    let sb : MemSpanExpr := ⟨b, ExprNatOrBv.ofBV! nb⟩
     .some { sa, sb }
   | _ => none
 
@@ -641,7 +692,7 @@ partial def MemPairwiseSeparateProof.ofExpr? (e : Expr) : Option MemPairwiseSepa
       | List.cons _α ex exs =>
         match_expr ex with
         | Prod.mk _ta _tb a n =>
-          let x : MemSpanExpr := ⟨a, n⟩
+          let x : MemSpanExpr := ⟨a, ExprNatOrBv.ofNat! n⟩
           go exs (xs.push x)
         | _ => none
       | List.nil _α => some xs
@@ -685,7 +736,7 @@ def hypothesisOfExpr (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothe
 
 /-- Build a term corresponding to `mem_legal'.bv_def`. -/
 def MemLegalProof.bv_def (h : MemLegalProof e) : Expr :=
-  mkAppN (Expr.const ``mem_legal'.bv_def []) #[e.span.base, e.span.n, h.h]
+  mkAppN (Expr.const ``mem_legal'.bv_def []) #[e.span.base, e.span.n.asBV, h.h]
 
 /-- Add the omega fact from `mem_legal'.def`. -/
 def MemLegalProof.addSolverFacts (h : MemLegalProof e) (args : Array Expr) :
@@ -707,7 +758,7 @@ in a style that is exploitable by omega.
 -/
 def MemSubsetProof.bv_def (h : MemSubsetProof e) : Expr :=
   mkAppN (Expr.const ``mem_subset'.bv_def [])
-    #[e.sa.base, e.sa.n, e.sb.base, e.sb.n, h.h]
+    #[e.sa.base, e.sa.n.asBV, e.sb.base, e.sb.n.asBV, h.h]
 
 /-- Add the omega fact from `mem_legal'.bv_def` into the main goal. -/
 def MemSubsetProof.addSolverFacts (h : MemSubsetProof e) (args : Array Expr) :
@@ -729,7 +780,7 @@ in a style that is exploitable by omega.
 -/
 def MemSeparateProof.bv_def (h : MemSeparateProof e) : Expr :=
   mkAppN (Expr.const ``mem_separate'.bv_def [])
-    #[e.sa.base, e.sa.n, e.sb.base, e.sb.n, h.h]
+    #[e.sa.base, e.sa.n.asBV, e.sb.base, e.sb.n.asBV, h.h]
 
 /-- Add the omega fact from `mem_legal'.bv_def`. -/
 def MemSeparateProof.addSolverFacts (h : MemSeparateProof e) (args : Array Expr) :
@@ -845,7 +896,7 @@ instance : SolverReducible MemLegalProp where
   reduceToSolver legal :=
     let a := legal.span.base
     let n := legal.span.n
-    mkAppN (Expr.const ``mem_legal'.of_bv []) #[a, n]
+    mkAppN (Expr.const ``mem_legal'.of_bv []) #[a, n.asBV]
 
 /--
 info: mem_subset'.of_bv (a an b bn : BitVec 64) (h : a ≤ a + an ∧ b ≤ b + bn ∧ b ≤ a ∧ a + an ≤ b + bn) :
@@ -859,7 +910,7 @@ instance : SolverReducible MemSubsetProp where
   let an := subset.sa.n
   let b := subset.sb.base
   let bn := subset.sb.n
-  mkAppN (Expr.const ``mem_subset'.of_bv []) #[a, an, b, bn]
+  mkAppN (Expr.const ``mem_subset'.of_bv []) #[a, an.asBV, b, bn.asBV]
 
 /--
 info: mem_subset'.of_bv (a an b bn : BitVec 64) (h : a ≤ a + an ∧ b ≤ b + bn ∧ b ≤ a ∧ a + an ≤ b + bn) :
@@ -873,7 +924,7 @@ instance : SolverReducible MemSeparateProp where
     let an := separate.sa.n
     let b := separate.sb.base
     let bn := separate.sb.n
-    mkAppN (Expr.const ``mem_separate'.of_bv []) #[a, an, b, bn]
+    mkAppN (Expr.const ``mem_separate'.of_bv []) #[a, an.asBV, b, bn.asBV]
 
 /--
 `SolverReducible` is a value whose type is `omegaFact → desiredFact`.
@@ -945,8 +996,8 @@ def SimpMemM.rewriteReadOfSeparatedWrite
     (separate : MemSeparateProof { sa := er.span, sb := ew.span }) : SimpMemM Unit := do
   let call :=
     mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' [])
-      #[er.span.base, er.span.n,
-        ew.span.base, ew.span.n,
+      #[er.span.base, er.span.n.asNat,
+        ew.span.base, ew.span.n.asNat,
         ew.mem,
         separate.h,
         ew.val]
@@ -971,8 +1022,8 @@ def SimpMemM.rewriteReadOfSubsetRead
   let bn := hread.read.span.n
   let val := hread.val
   let call := mkAppN (Expr.const ``Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' [])
-    #[a, an,
-      b, bn,
+    #[a, an.asNat,
+      b, bn.asNat,
       val,
       er.mem,
       hread.h,
@@ -997,8 +1048,8 @@ def SimpMemM.rewriteReadOfSubsetWrite
   let val := ew.val
   let mem := ew.mem
   let call := mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_of_mem_subset' [])
-    #[a, an,
-      b, bn,
+    #[a, an.asNat,
+      b, bn.asNat,
       mem,
       hsubset.h,
       val]
