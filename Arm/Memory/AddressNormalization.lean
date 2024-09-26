@@ -31,6 +31,7 @@ We perform the following additional changes:
 import Lean
 import Arm.Memory.Attr
 import Arm.Attr
+import Tactics.Common
 
 open Lean Meta Elab Simp
 
@@ -81,8 +82,6 @@ more `omega` facts.
   catch _ =>
     return .continue
   return .done { expr := ty, proof? := proof }
-
-def processingEmoji : String := "⚙️"
 
 -- x % n = x if x < n
 @[inline] def reduceModOfLt (x : Expr) (n : Expr) : SimpM Step := do
@@ -166,11 +165,13 @@ simproc↑ [address_normalization] reduce_mod_omega (_ % _) := fun e => reduceMo
 attribute [address_normalization] BitVec.ofNat_eq_ofNat
 
 
-theorem BitVec.add_ofNat_eq_ofNat_add (n : Nat) (x : BitVec w) : x + BitVec.ofNat w n = BitVec.ofNat w n + x := by
+theorem BitVec.add_ofNat_eq_ofNat_add {w n} (x : BitVec w) :
+    x + BitVec.ofNat w n = BitVec.ofNat w n + x := by
   apply BitVec.add_comm
 
 
-theorem BitVec.mul_ofNat_eq_ofNat_mul (n : Nat) (x : BitVec w) : x * BitVec.ofNat w n = BitVec.ofNat w n * x := by
+theorem BitVec.mul_ofNat_eq_ofNat_mul {w n} (x : BitVec w) :
+    x * BitVec.ofNat w n = BitVec.ofNat w n * x := by
   apply BitVec.mul_comm
 
 simproc [address_normalization] constFoldAdd ((_ + _ : BitVec _)) :=
@@ -194,10 +195,10 @@ theorem BitVec.ofNat_mul_ofNat_eq_mul_ofNat (w : Nat) (n m : Nat) :
 
 /-- Reassociate addition to left. -/
 @[address_normalization]
-theorem BitVec.add_assoc_symm (x y z : BitVec w) : x + (y + z) = x + y + z := by
+theorem BitVec.add_assoc_symm {w} (x y z : BitVec w) : x + (y + z) = x + y + z := by
   rw [BitVec.add_assoc]
 
 /-- Reassociate multiplication to left. -/
 @[address_normalization]
-theorem BitVec.mul_assoc_symm (x y z : BitVec w) : x * (y * z) = x * y * z := by
+theorem BitVec.mul_assoc_symm {w} (x y z : BitVec w) : x * (y * z) = x * y * z := by
   rw [BitVec.mul_assoc]

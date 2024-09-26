@@ -278,3 +278,6 @@ variable {m} [Monad m] [MonadLiftT TacticM m] [MonadControlT MetaM m] in
 Unlike the standard `withMainContext`, `x` may live in a generic monad `m`. -/
 def withMainContext' (x : m α) : m α := do
   (← getMainGoal).withContext x
+
+/-- An emoji to show that a tactic is processing at an intermediate step. -/
+def processingEmoji : String := "⚙️"
