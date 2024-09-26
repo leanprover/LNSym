@@ -102,10 +102,13 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
 /--
 info: 'SHA512MemoryAliasing.sha512_block_armv8_prelude_sym_ctx_access' depends on axioms: [propext,
  Classical.choice,
+ Lean.ofReduceBool,
+ Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset',
  Quot.sound]
 -/
 #guard_msgs in #print axioms sha512_block_armv8_prelude_sym_ctx_access
 
+set_option trace.simp_mem.info true in
 /-
 Let's automatically figure out what
 `read_mem_bytes 16 <addr> s0`
@@ -120,6 +123,10 @@ work for `16#64 + ktbl_addr`?
 --   (16#64 + ktbl_addr) + 16#64
 --   ~> 32#64 ktbl_addr
 -/
+
+#eval SHA2.k_512.length
+
+
 -- set_option trace.simp_mem true in
 -- set_option trace.simp_mem.info true in
 theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
@@ -150,15 +157,52 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
   -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.
   have hSHA2_k512_length : SHA2.k_512.length = 80 := rfl
+  -- rw [hSHA2_k512_length] at *
+  try simp_mem -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
+  sorry
+
+
+-- set_option trace.simp_mem true in
+-- set_option trace.simp_mem.info true in
+-- Inlining the length as `80` makes this succeed. This is super frustrating.
+theorem sha512_block_armv8_loop_sym_ktbl_access_explicit_len (s1 : ArmState)
+  (_h_s1_err : read_err s1 = StateError.None)
+  (_h_s1_sp_aligned : CheckSPAlignment s1)
+  (h_s1_pc : read_pc s1 = 0x126500#64)
+  (_h_s1_program : s1.program = sha512_program)
+  (h_s1_num_blocks : num_blocks s1 = 1)
+  (_h_s1_x3 : r (StateField.GPR 3#5) s1 = ktbl_addr)
+  (h_s1_ctx : read_mem_bytes 64 (ctx_addr s1) s1 = SHA2.h0_512.toBitVec)
+  (h_s1_ktbl : read_mem_bytes (80 * 8) ktbl_addr s1 = BitVec.flatten SHA2.k_512)
+  -- (FIXME) Add separateness invariants for the stack's memory region.
+  -- @bollu: can we assume that `h_s1_ctx_input_separate`
+  -- will be given as ((num_blocks s1).toNat * 128)?
+  -- This is much more harmonious since we do not need to worry about overflow.
+  (h_s1_ctx_input_separate :
+    mem_separate' (ctx_addr s1)   64
+                 (input_addr s1) ((num_blocks s1).toNat * 128))
+  (h_s1_ktbl_ctx_separate :
+    mem_separate' (ctx_addr s1)   64
+                  ktbl_addr      ((80 * 8 )))
+  (h_s1_ktbl_input_separate :
+    mem_separate' (input_addr s1) ((num_blocks s1).toNat * 128)
+                  ktbl_addr      (80 * 8)) :
+  read_mem_bytes 16 ktbl_addr s1 =
+  (BitVec.flatten SHA2.k_512).extractLsBytes 0 16 := by
+  simp_all only [memory_rules]
+  -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
+  -- 80, which is otherwise treated as an unintepreted constant.
+  have hSHA2_k512_length : 80 = 80 := rfl
   simp_mem -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
   rfl
-
 /--
-info: 'SHA512MemoryAliasing.sha512_block_armv8_loop_sym_ktbl_access' depends on axioms: [propext,
+info: 'SHA512MemoryAliasing.sha512_block_armv8_loop_sym_ktbl_access_explicit_len' depends on axioms: [propext,
  Classical.choice,
+ Lean.ofReduceBool,
+ Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset',
  Quot.sound]
 -/
-#guard_msgs in #print axioms sha512_block_armv8_loop_sym_ktbl_access
+#guard_msgs in #print axioms sha512_block_armv8_loop_sym_ktbl_access_explicit_len
 
 
 end SHA512MemoryAliasing
