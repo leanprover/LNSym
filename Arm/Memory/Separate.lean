@@ -240,13 +240,13 @@ Note that we use *half open* intervals.
 In prose, we may notate this as `[a..an) ⟂ [b..bn)`.
 See also: Why numbering should start at zero (https://www.cs.utexas.edu/~EWD/ewd08xx/EWD831.PDF)
 -/
-structure mem_separate' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Prop where
+structure mem_separate' (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) : Prop where
   ha : mem_legal' a an
   hb : mem_legal' b bn
   h : a + an ≤ b  ∨ a ≥ b + bn
 
 @[memory_defs_bv]
-theorem mem_separate'.iff (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
+theorem mem_separate'.iff (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) :
   mem_separate' a an b bn ↔ mem_legal' a an ∧ mem_legal' b bn ∧ (a + an ≤ b  ∨ a ≥ b + bn) := by
   constructor
   · intro h
@@ -266,14 +266,14 @@ theorem mem_separate'.iff (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) 
 /-- `mem_subset' a an b bn` witnesses that `[a..a+an)` is a subset of `[b..b+bn)`.
 In prose, we may notate this as `[a..an) ≤ [b..bn)`.
 -/
-structure mem_subset' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Prop where
+structure mem_subset' (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) : Prop where
   ha : mem_legal' a an
   hb : mem_legal' b bn
   hstart : b ≤ a
   hend : a + an ≤ b + bn
 
 @[memory_defs_bv]
-theorem mem_subset'.iff (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
+theorem mem_subset'.iff (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) :
   mem_subset' a an b bn ↔ mem_legal' a an ∧ mem_legal' b bn ∧ b ≤ a ∧ a + an ≤ b + bn := by
   constructor
   · intro h
@@ -292,13 +292,18 @@ theorem mem_subset'.iff (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
     · bv_decide
 
 syntax "mem_decide_bv" : tactic
+syntax "mem_unfold_bv" : tactic
 
 @[memory_defs_bv]
 abbrev Nat.bv64 (n : Nat) : BitVec 64 := BitVec.ofNat 64 n
 
 macro_rules
+| `(tactic| mem_unfold_bv) =>
+    `(tactic| simp only [memory_defs_bv, bitvec_rules, minimal_theory] at *)
+
+macro_rules
 | `(tactic| mem_decide_bv) =>
-    `(tactic| simp only [memory_defs_bv] at * <;> bv_decide)
+    `(tactic| mem_unfold_bv <;> bv_decide)
 
 theorem mem_separate'_of_mem_separate'_of_mem_subset'
     (hsep : mem_separate' b bn c cn := by mem_decide_bv)

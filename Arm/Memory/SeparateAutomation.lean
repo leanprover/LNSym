@@ -164,10 +164,8 @@ def MemSpanExpr.toTypeExpr  : Expr :=
 instance : ToMessageData MemSpanExpr where
   toMessageData span := m! "[{span.base}..{span.n})"
 
-/-
-/-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
+/-- info: mem_legal' (a n : BitVec 64) : Prop -/
 #guard_msgs in #check mem_legal'
--/
 
 /-- a term of the form `mem_legal' a` -/
 structure MemLegalProp  where
@@ -185,7 +183,7 @@ instance : Coe MemSpanExpr MemLegalProp where
   coe := MemLegalProp.mk
 
 
-/-- info: mem_subset' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Prop -/
+/-- info: mem_subset' (a an b bn : BitVec 64) : Prop -/
 #guard_msgs in #check mem_subset'
 
 /-- a proposition `mem_subset' a an b bn`. -/
@@ -201,7 +199,7 @@ abbrev MemSubsetProof := Proof MemSubsetProp
 def MemSubsetProof.mk {e : MemSubsetProp} (h : Expr) : MemSubsetProof e :=
   { h }
 
-/-- info: mem_separate' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Prop -/
+/-- info: mem_separate' (a an b bn : BitVec 64) : Prop -/
 #guard_msgs in #check mem_separate'
 
 /-- A proposition `mem_separate' a an b bn`. -/

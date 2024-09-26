@@ -57,7 +57,7 @@ info: 'MemSubset.subset_3' depends on axioms: [propext, Classical.choice, Lean.o
 
 /-- Show that we can perform address arithmetic based on subset constraints. -/
 theorem subset_4 (l : mem_subset' a 16 b 16) : a = b := by
-  mem_decide_bv (config := {useOmegaToClose := true})
+  mem_decide_bv
 
 /-- Show that we can perform address arithmetic based on subset constraints.
 Only two configurations possible:
@@ -126,14 +126,7 @@ theorem separate_5 {n : Nat} (hn : n.bv64 ≠ 0#64)
   simp [memory_defs_bv] at *
   rw [this] at *
   simp at *
-  try bv_decide
-  /-
-  The prover found a potential counterexample, consider the following assignment:
-  a = 0xffffffffffffffff#64
-  BitVec.ofNat 64 n = 0xf000000000000000#64
-  b = 0xffffffffffffffff#64
-  -/
-  -- But the above model should not be allowed, becausse of `hn : n.bv64 ≠ 0`.
+  try mem_decide_bv
   sorry
 
 /--
@@ -145,7 +138,7 @@ info: 'MemSeparate.separate_5' depends on axioms: [propext, sorryAx, Classical.c
 theorem separate_6 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
     mem_separate' a (n <<< 3 + 8) b (n <<< 4) := by
-  simp [memory_defs_bv] at *
+  try mem_decide_bv
   sorry -- same problem as above
 
 theorem counterexample
@@ -154,34 +147,29 @@ theorem counterexample
   (hm : BitVec.ofNat 64 m ≠ 0)
   (l : a + 100 ≤ a + 100 + ↑100 ∧ b ≤ b + ↑m ∧ (a + 100 + ↑100 ≤ b ∨ a + 100 ≥ b + ↑m)) :
   a ≤ a + ↑200 ∧ b ≤ b + ↑m ∧ (a + ↑200 ≤ b ∨ a ≥ b + ↑m) := by
-  bv_decide
+  try mem_decide_bv
   /-
   a = 0xffffffffffffffff#64
   b = 0xffffffffffffffff#64
   BitVec.ofNat 64 m = 0x0000000000000000#64
   -/
+  sorry
 
 
-/--
-info: 'MemSeparate.separate_6' depends on axioms: [propext, sorryAx, Classical.choice, Lean.ofReduceBool, Quot.sound]
--/
+/-- info: 'MemSeparate.separate_6' depends on axioms: [sorryAx] -/
 #guard_msgs in #print axioms separate_6
 
-/-- error: ❌️ simp_mem failed to make any progress. -/
-#guard_msgs in theorem separate_7 (hm : m.bv64 ≠ 0)
+#guard_msgs in theorem separate_7 (hm : m ≠ 0)
     (l : mem_separate' a 100 b m)
     (l : mem_separate' (a+100) 100 b m)  :
     mem_separate' a 200 b m := by
-  try mem_decide_bv -- same problem, it gives a crazy model where `m = 0`.
-  sorry
+  mem_decide_bv -- same problem, it gives a crazy model where `m = 0`.
 
-/-- error: ❌️ simp_mem failed to make any progress. -/
-#guard_msgs in theorem separate_8 {n : Nat} (hn : n.bv64 ≠ 0) (hm : m.bv64 ≠ 0)
+#guard_msgs in theorem separate_8 (hn : n ≠ 0) (hm : m ≠ 0)
     (l : mem_separate' a n b m)
     (l : mem_separate' (a+n) n b m)  :
     mem_separate' a (2*n) b m := by
-  sorry
-  -- mem_decide_bv
+  mem_decide_bv
 
 -- /--
 -- Check that we can close address relationship goals that require
@@ -200,8 +188,6 @@ theorem mem_automation_test_1
   read_mem_bytes 16 src_addr s0 := by
   simp only [memory_rules]
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
-
-
 
 /--
 info: 'mem_automation_test_1' depends on axioms: [propext,
@@ -233,15 +219,16 @@ info: 'mem_automation_test_1' depends on axioms: [propext,
 /-- reading from a region `[src_addr+1..10] ⊆ [src_addr..16]` with an
 interleaved write `[ignore_addr..ignore_addr+ignore_n)`
 -/
-theorem mem_automation_test_3
+theorem mem_automation_test_3 (h_ignore_n : ignore_n ≠ 0)
   (h_no_wrap_src_region : mem_legal' src_addr 16)
   (h_s0_src_ignore_disjoint :
     mem_separate' src_addr  16
                   ignore_addr ignore_n) :
-  read_mem_bytes 10 (src_addr + 1) (write_mem_bytes ignore_n ignore_addr blah s0) =
+  read_mem_bytes 10 (src_addr + 1) (write_mem_bytes ignore_n.toNat ignore_addr blah s0) =
    read_mem_bytes 10 (src_addr + 1) s0 := by
   simp only [memory_rules]
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
+
 
 
 
@@ -261,7 +248,7 @@ theorem mem_automation_test_4
     mem_separate' src_addr  48
                   ignore_addr ignore_n) :
   read_mem_bytes 10 (1 + src_addr)
-    (write_mem_bytes ignore_n ignore_addr blah
+    (write_mem_bytes ignore_n.toNat ignore_addr blah
       (write_mem_bytes 48 src_addr val s0)) =
    val.extractLsBytes 1 10 := by
   simp only [memory_rules]
@@ -384,16 +371,6 @@ theorem test_2 {val : BitVec _}
   have : ((src_addr + 10).toNat - src_addr.toNat) = 10 := by bv_omega
   rw [this]
 
-/--
-TODO(@bollu): the definition of overlap doesn't seem to do well with zero width!
-That's pretty interesting. I wonder if we ever need this though.
--/
-theorem test_write_zero (hlegalw : mem_legal' write_addr 0) (read_n : Nat)
-    (hlegalr : mem_legal' read_addr read_n) :
-    Memory.read_bytes read_n read_addr (Memory.write_bytes 0 write_addr write_val mem) =
-    mem.read_bytes read_n read_addr := by
-  -- rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (by mem_decide_bv)]
-  sorry -- zero width, unsupported.
 
 end ReadOverlappingWrite
 
@@ -500,8 +477,6 @@ theorem mem_separate_move_of_lt_of_le  (h : mem_separate' a an b bn)
   -- mem_decide_bv
 
 end MathProperties
-
-
 
 section PairwiseSeparate
   /- Check that a direct implication of the pairwise separation is proven. -/
