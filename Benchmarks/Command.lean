@@ -13,6 +13,13 @@ initialize
     descr := "enables/disables benchmarking in `withBenchmark` combinator"
   }
 
+variable {m} [Monad m] [MonadLiftT BaseIO m] in
+def withHeartbeatsAndMs (x : m α) : m (α × Nat × Nat) := do
+  let start ← IO.monoMsNow
+  let (a, heartbeats) ← withHeartbeats x
+  let endTime ← IO.monoMsNow
+  return ⟨a, heartbeats, endTime - start⟩
+
 elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   logInfo m!"Running {id} benchmark\n"
 
@@ -22,14 +29,13 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   )
 
   let n := 5
-  let mut runTimes := #[]
   let mut totalRunTime := 0
-  for _ in [0:n] do
-    let start ← IO.monoMsNow
-    elabCommand stx
-    let endTime ← IO.monoMsNow
-    let runTime := endTime - start
-    runTimes := runTimes.push runTime
+  for i in [0:n] do
+    logInfo m!"\n\nRun {i} (out of {n}):\n"
+    let ((), _, runTime) ← withHeartbeatsAndMs <|
+      elabCommand stx
+
+    logInfo m!"Proof took {runTime / 1000}s in total"
     totalRunTime := totalRunTime + runTime
 
   let avg := totalRunTime.toFloat / n.toFloat / 1000
@@ -40,9 +46,6 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
     {avg}s
   geomean over {n} runs:
     {geomean}s
-
-  indidividual runtimes:
-    {runTimes}
 "
 
 /-- The default `maxHeartbeats` setting.
@@ -75,9 +78,7 @@ private def withBenchmarkAux (x : m α) (f : Nat → Nat → m Unit)  : m α := 
   if (← getBoolOption `benchmark) = false then
     x
   else
-    let start ← IO.monoMsNow
-    let (a, heartbeats) ← withHeartbeats x
-    let t := ((← IO.monoMsNow) - start)
+    let (a, heartbeats, t) ← withHeartbeatsAndMs x
     f heartbeats t
     return a
 
