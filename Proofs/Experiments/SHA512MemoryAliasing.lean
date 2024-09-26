@@ -157,10 +157,14 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
   -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.
   have hSHA2_k512_length : SHA2.k_512.length = 80 := rfl
-  -- rw [hSHA2_k512_length] at *
+  -- rw [hSHA2_k512_length] at h_s1_ktbl -- motive is not type-correct:(
+  -- TODO: discuss with @shigoel
+  -- We need SMT to reason about what `length = 80` means inside the solver.
+  -- Alternatively, we write a preprocessor that uses such information
+  -- to massage the proof state.
+  -- Note that we can't just `rw[show ]
   try simp_mem -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
   sorry
-
 
 -- set_option trace.simp_mem true in
 -- set_option trace.simp_mem.info true in
