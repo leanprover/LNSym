@@ -841,7 +841,7 @@ theorem partial_correctness :
           exact h
         · assumption
         · assumption
-
+        · assumption
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
