@@ -88,9 +88,8 @@ The tactic shall be implemented as follows:
 
 section BvOmega
 
--- |TODO: Upstream BitVec.le_def unfolding to bv_omega.
-macro "bv_omega'" : tactic =>
-  `(tactic| (try simp only [bv_toNat, mem_legal'] at * <;> try rw [BitVec.le_def]) <;> bv_omega)
+attribute [bv_toNat] mem_legal'
+attribute [bv_toNat] BitVec.le_def
 
 end BvOmega
 
@@ -427,7 +426,7 @@ def omega : SimpMemM Unit := do
   -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
   -- @bollu: TODO: understand what precisely we are recovering from.
   withoutRecover do
-    evalTactic (← `(tactic| bv_omega'))
+    evalTactic (← `(tactic| bv_omega))
 
 section Hypotheses
 
