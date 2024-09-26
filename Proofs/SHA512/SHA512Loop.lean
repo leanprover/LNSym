@@ -74,7 +74,7 @@ set_option debug.skipKernelTC true in
 -- set_option profiler true in
 -- set_option profiler.threshold 1 in
 set_option maxHeartbeats 0 in
--- set_option maxRecDepth 0 in
+set_option maxRecDepth 8000 in
 theorem sha512_block_armv8_loop_1block (si sf : ArmState)
   (h_N : N = 1#64)
   (h_si_prelude : sha512_prelude 0x126500#64 N SP CtxBase InputBase si)
@@ -104,7 +104,7 @@ theorem sha512_block_armv8_loop_1block (si sf : ArmState)
          state_simp_rules,
          bitvec_rules, minimal_theory]
   sym_aggregate
-  exact ⟨h_si_ktbl, h_si_separate⟩
+  assumption
   done
 
 end SHA512
