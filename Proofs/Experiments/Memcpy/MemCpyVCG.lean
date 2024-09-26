@@ -827,9 +827,21 @@ theorem partial_correctness :
         simp only [step_8f4_8e4.h_x1]
         rw [h_si_x1]
         simp only [memory_rules] at h_assert_6 h_assert_5
-        constructor
-        · sorry
-        · sorry
+        have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5⟩ := h_pre
+        apply Memcpy.extracted_0
+        · bv_decide
+        · bv_decide
+        · bv_decide
+        · bv_decide
+        · bv_decide
+        · bv_decide
+        · intros n addr h
+          simp only [BitVec.natCast_toNat] at h
+          apply h_assert_6
+          exact h
+        · assumption
+        · assumption
+
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
