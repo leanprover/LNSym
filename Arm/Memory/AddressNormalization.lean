@@ -11,13 +11,13 @@ We perform the following additional changes:
 1. Canonicalizing bitvector expression to always have constants on the left.
   Recall that the default associativity of addition is to the left: x + y + z = (x + y) + z.
   If we thus normalize our expressions to have constants on the left,
-  and if we constant-fold our additions to be to the left, we will naturally perform
-  constant folding:
+  and if we constant-fold constants, we will naturally perform canonicalization.
+  That is, the two rewrites:
 
   (a) (x + c) -> (c + x).
   (b) x + (y + z) -> (x + y) + z.
 
-  Observe an example:
+  combine to achieve constant folding. Observe an example:
 
   ((x + 10) + 20)
   -b-> (20 + (x + 10))
@@ -65,20 +65,8 @@ def getBitVecOfNatValue? (e : Expr) : (Option (Expr × Expr)) :=
   | BitVec.ofNat nExpr vExpr => some (nExpr, vExpr)
   | _ => none
 
-/-- Try to build a proof for `ty` by reduction to `bv_omega`. -/
-@[inline] def proveByBvOmega (ty : Expr) : SimpM Step := do
-  let proof : Expr ← mkFreshExprMVar ty
-  let g := proof.mvarId!
-  let some g ← g.falseOrByContra
-    | return .continue
-  try
-    g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
-  catch _ =>
-    return .continue
-  return .done { expr := ty, proof? := proof }
-
 /-- Try to build a proof for `ty` by reduction to `omega`. -/
-@[inline] def proveByOmega (ty : Expr) : SimpM Step := do
+@[inline] def dischargeByOmega (ty : Expr) : SimpM Step := do
   let proof : Expr ← mkFreshExprMVar ty
   let g := proof.mvarId!
   let some g ← g.falseOrByContra
@@ -95,7 +83,7 @@ def processingEmoji : String := "⚙️"
 @[inline] def reduceModOfLt (x : Expr) (n : Expr) : SimpM Step := do
   trace[Tactic.address_normalization] "{processingEmoji} reduceModOfLt '{x} % {n}'"
   let ltTy := mkLTNat x n
-  let Step.done { expr := _, proof? := some p} ← proveByOmega ltTy
+  let Step.done { expr := _, proof? := some p} ← dischargeByOmega ltTy
     | return .continue
   let eqProof ← mkAppM ``Nat.mod_eq_of_lt #[p]
   trace[Tactic.address_normalization] "{checkEmoji} reduceModOfLt '{x} % {n}'"
@@ -105,11 +93,11 @@ def processingEmoji : String := "⚙️"
 @[inline] def reduceModSub (x : Expr) (n : Expr) : SimpM Step := do
   trace[Tactic.address_normalization] "{processingEmoji} reduceModSub '{x} % {n}'"
   let geTy := mkGENat x n
-  let Step.done { expr := _, proof? := some geProof} ← proveByOmega geTy
+  let Step.done { expr := _, proof? := some geProof} ← dischargeByOmega geTy
     | return .continue
   let subTy := mkSubNat x n
   let ltTy := mkLTNat subTy n
-  let Step.done { expr := _, proof? := some ltProof} ← proveByOmega ltTy
+  let Step.done { expr := _, proof? := some ltProof} ← dischargeByOmega ltTy
     | return .continue
   let eqProof ← mkAppM ``Nat.mod_eq_sub #[geProof, ltProof]
   trace[Tactic.address_normalization] "{checkEmoji} reduceModSub '{x} % {n}'"
@@ -131,8 +119,12 @@ def processingEmoji : String := "⚙️"
 
 simproc↑ [address_normalization] reduce_mod_omega (_ % _) := fun e => reduceMod e
 
-/-- In a commutative binary operation, move a bitvector constant to the left. -/
-@[inline, bv_toNat] def moveBinConstLeft (declName : Name) -- operator to constant fold, such as `HAdd.hAdd`.
+/-- Canonicalize a commutative binary operation.
+
+1. If both arguments are constants, we perform constant folding.
+2. If only one of the arguments is a constant, we move the constant to the left.
+-/
+@[inline, bv_toNat] def canonicalizeBinConst (declName : Name) -- operator to constant fold, such as `HAdd.hAdd`.
     (arity : Nat)
     (commProofDecl : Name) -- commProof: `∀ (x y : Bitvec w), x op y = y op x`.
     (reduceProofDecl : Name) -- reduce proof: `∀ (w : Nat), (n m : Nat) (BitVec.ofNat w n) op (BitVec.ofNat w m) = BitVec.ofNat w (n op' m)`.
@@ -142,7 +134,7 @@ simproc↑ [address_normalization] reduce_mod_omega (_ % _) := fun e => reduceMo
   let x := fx.appArg!
   let f := fx.appFn!
   let y := fxy.appArg!
-  trace[Tactic.address_normalization] "{processingEmoji} constFold '({f} {x} {y})'"
+  trace[Tactic.address_normalization] "{processingEmoji} canonicalizeBinConst '({f} {x} {y})'"
   match getBitVecOfNatValue? x with
   | some (xwExpr, xvalExpr) =>
     -- We have a constant on the left, check if we have a constant on the right
@@ -151,7 +143,7 @@ simproc↑ [address_normalization] reduce_mod_omega (_ % _) := fun e => reduceMo
       | return .continue
 
     let e' ← mkAppM reduceProofDecl #[xwExpr, xvalExpr, yvalExpr]
-    trace[Tactic.address_normalization] "{checkEmoji} constFold '({f} {x} {y})'"
+    trace[Tactic.address_normalization] "{checkEmoji} canonicalizeBinConst '({f} {x} {y})'"
     return .done { expr := e', proof? := ← mkAppM reduceProofDecl #[x, y] : Result }
 
   | none =>
@@ -162,7 +154,7 @@ simproc↑ [address_normalization] reduce_mod_omega (_ % _) := fun e => reduceMo
 
     -- Nothing more to to do, except to move the right constant to the left.
     let e' := mkAppN f #[y, x]
-    trace[Tactic.address_normalization] "{checkEmoji} constFold '({f} {x} {y})'"
+    trace[Tactic.address_normalization] "{checkEmoji} canonicalizeBinConst '({f} {x} {y})'"
     return .done { expr := e', proof? := ← mkAppM commProofDecl #[x, y] : Result }
 
 /- Change `100` to `100#64` so we can pattern match to `BitVec.ofNat` -/
@@ -172,21 +164,38 @@ attribute [address_normalization] BitVec.ofNat_eq_ofNat
 theorem BitVec.add_ofNat_eq_ofNat_add (n : Nat) (x : BitVec w) : x + BitVec.ofNat w n = BitVec.ofNat w n + x := by
   apply BitVec.add_comm
 
-simproc [address_normalization] moveAddConstLeft ((_ + _ : BitVec _)) :=
-  moveBinConstLeft ``HAdd.hAdd 6 ``BitVec.add_comm ``BitVec.add_ofNat_eq_ofNat_add
+
+theorem BitVec.mul_ofNat_eq_ofNat_mul (n : Nat) (x : BitVec w) : x * BitVec.ofNat w n = BitVec.ofNat w n * x := by
+  apply BitVec.mul_comm
+
+simproc [address_normalization] constFoldAdd ((_ + _ : BitVec _)) :=
+  canonicalizeBinConst ``HAdd.hAdd 6 ``BitVec.add_comm ``BitVec.add_ofNat_eq_ofNat_add
+
+simproc [address_normalization] constFoldMul ((_ * _ : BitVec _)) :=
+  canonicalizeBinConst ``HMul.hMul 6 ``BitVec.mul_comm ``BitVec.mul_ofNat_eq_ofNat_mul
 
 @[address_normalization]
-theorem BitVec.ofNat_add_ofNat_eq_add_ofNat (w : Nat) (n m : Nat) : BitVec.ofNat w n + BitVec.ofNat w m = BitVec.ofNat w (n + m) := by
+theorem BitVec.ofNat_add_ofNat_eq_add_ofNat (w : Nat) (n m : Nat) : 
+    BitVec.ofNat w n + BitVec.ofNat w m = BitVec.ofNat w (n + m) := by
   apply BitVec.eq_of_toNat_eq
   simp
 
-  -- simp made no progress
+@[address_normalization]
+theorem BitVec.ofNat_mul_ofNat_eq_mul_ofNat (w : Nat) (n m : Nat) : 
+    BitVec.ofNat w n * BitVec.ofNat w m = BitVec.ofNat w (n * m) := by
+  apply BitVec.eq_of_toNat_eq
+  -- Note that omega cannot close the goal since it's symbolic multiplication.
+  simp only [toNat_mul, toNat_ofNat, ← Nat.mul_mod]
 
 /-- Reassociate addition to left. -/
 @[address_normalization]
 theorem BitVec.add_assoc_symm (x y z : BitVec w) : x + (y + z) = x + y + z := by
   rw [BitVec.add_assoc]
 
+/-- Reassociate multiplication to left. -/
+@[address_normalization]
+theorem BitVec.mul_assoc_symm (x y z : BitVec w) : x * (y * z) = x * y * z := by
+  rw [BitVec.mul_assoc]
 
 /-! ## Examples -/
 
@@ -204,7 +213,7 @@ info: [Tactic.address_normalization] ⚙️ reduceModOfLt 'x.toNat % 2 ^ w'
 
 set_option trace.Tactic.address_normalization true in
 /--
-info: [Tactic.address_normalization] ⚙️ constFold '(HAdd.hAdd x y)'
+info: [Tactic.address_normalization] ⚙️ canonicalizeBinConst '(HAdd.hAdd x y)'
 [Tactic.address_normalization] ⚙️ reduceModOfLt 'x.toNat + y.toNat % 2 ^ w'
 [Tactic.address_normalization] ✅️ reduceModOfLt 'x.toNat + y.toNat % 2 ^ w'
 -/
@@ -217,7 +226,7 @@ info: [Tactic.address_normalization] ⚙️ constFold '(HAdd.hAdd x y)'
 
 set_option trace.Tactic.address_normalization true in
 /--
-info: [Tactic.address_normalization] ⚙️ constFold '(HAdd.hAdd x y)'
+info: [Tactic.address_normalization] ⚙️ canonicalizeBinConst '(HAdd.hAdd x y)'
 [Tactic.address_normalization] ⚙️ reduceModOfLt 'x.toNat + y.toNat % 2 ^ w'
 [Tactic.address_normalization] ⚙️ reduceModSub 'x.toNat + y.toNat % 2 ^ w'
 -/
@@ -246,9 +255,9 @@ theorem eg₅ (x y : BitVec w) (h : x.toNat + y.toNat ≥ 2 ^ w) (h' : (x.toNat 
 
 set_option trace.Tactic.address_normalization true in
 /--
-info: [Tactic.address_normalization] ⚙️ constFold '(HAdd.hAdd x 100#w)'
-[Tactic.address_normalization] ✅️ constFold '(HAdd.hAdd x 100#w)'
-[Tactic.address_normalization] ⚙️ constFold '(HAdd.hAdd 100#w x)'
+info: [Tactic.address_normalization] ⚙️ canonicalizeBinConst '(HAdd.hAdd x 100#w)'
+[Tactic.address_normalization] ✅️ canonicalizeBinConst '(HAdd.hAdd x 100#w)'
+[Tactic.address_normalization] ⚙️ canonicalizeBinConst '(HAdd.hAdd 100#w x)'
 -/
 #guard_msgs in theorem eg₆ (x : BitVec w) : x + 100#w = 100#w + x := by
   simp only [address_normalization]
