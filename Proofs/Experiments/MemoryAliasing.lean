@@ -47,7 +47,7 @@ theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
 
 /-- Show that we can perform address arithmetic based on subset constraints. -/
 theorem subset_4 (l : mem_subset' a 16 b 16) : a = b := by
-  simp_mem
+  simp_mem (config := {useOmegaToClose := true})
 
 /-- Show that we can perform address arithmetic based on subset constraints.
 Only two configurations possible:
@@ -59,7 +59,7 @@ a0 a1 a2 ..
 b0 b1 b2 b3
 -/
 theorem subset_5 (l : mem_subset' a 3 b 4) : a ≤ b + 1 := by
-  simp_mem
+  simp_mem (config := {useOmegaToClose := true})
 
 end MemSubset
 
@@ -134,7 +134,8 @@ Check that we can close address relationship goals that require
 us to exploit memory separateness properties.
 -/
 theorem mem_separate_9  (h : mem_separate' a 100 b 100)
-  (hab : a < b) : a + 50 ≤ b := by simp_mem
+  (hab : a < b) : a + 50 ≤ b := by
+  simp_mem (config := {useOmegaToClose := true})
 
 end MemSeparate
 
@@ -214,8 +215,9 @@ theorem overlapping_read_test_1 {out : BitVec (16 * 8)}
     read_mem_bytes 16 src_addr s = out := by
   simp only [memory_rules] at h ⊢
   simp_mem
+  simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
 
-/-- info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext, Quot.sound] -/
+/-- info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms overlapping_read_test_1
 
 /-- A read overlapping with another read. -/
@@ -427,14 +429,6 @@ error: unsolved goals
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
 [simp_mem.info] ⚙️ Matching on ⊢ False
-[simp_mem.info] Unknown memory expression ⊢ False. Trying reduction to omega (`config.useOmegaToClose = true`):
-  [simp_mem.info] Adding omega facts from hypotheses
-  [simp_mem.info] Executing `omega` to close False
-  [simp_mem.info] goal (Note: can be large)
-    [simp_mem.info] ⊢ False
-  [simp_mem.info] ❌️ `omega` failed with error:
-      omega could not prove the goal:
-      No usable constraints found. You may need to unfold definitions so `omega` can see linear arithmetic facts about `Nat` and `Int`, which may also involve multiplication, division, and modular remainder by constants.
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
@@ -453,14 +447,6 @@ error: ❌️ simp_mem failed to make any progress.
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
 [simp_mem.info] ⚙️ Matching on ⊢ False
-[simp_mem.info] Unknown memory expression ⊢ False. Trying reduction to omega (`config.useOmegaToClose = true`):
-  [simp_mem.info] Adding omega facts from hypotheses
-  [simp_mem.info] Executing `omega` to close False
-  [simp_mem.info] goal (Note: can be large)
-    [simp_mem.info] ⊢ False
-  [simp_mem.info] ❌️ `omega` failed with error:
-      omega could not prove the goal:
-      No usable constraints found. You may need to unfold definitions so `omega` can see linear arithmetic facts about `Nat` and `Int`, which may also involve multiplication, division, and modular remainder by constants.
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
