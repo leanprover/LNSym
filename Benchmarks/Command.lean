@@ -165,4 +165,15 @@ def reportAggregatedBenchmarks : m Unit := do
 
   set ({} : BenchmarkState)
 
+variable [MonadLog m] [AddMessageContext m] in
+/--
+Execute `x` with the default `BenchmarkState`, and report the benchmarks after
+(see `reportAggregatedBenchmarks`).
+-/
+def withBenchmarksReport (x : StateT BenchmarkState m α) : m α :=
+  (Prod.fst <$> ·) <| StateT.run (s := {}) do
+    let a ← x
+    reportAggregatedBenchmarks
+    return a
+
 end
