@@ -239,12 +239,12 @@ def inferStatePrefixAndNumber : SymM Unit := do
       state_prefix := (state.get? 0).getD 's' |>.toString,
       currentStateNumber })
   else
-    SymM.logWarning "\
-      Expected state to be a single letter followed by a number, but found:
-        {state}
+    SymM.logWarning m!"\
+Expected state to be a single letter followed by a number, but found:
+  {state}
 
-      Falling back to the default numbering schema,
-      with `s1` as the first new intermediate state"
+Falling back to the default numbering scheme, \
+with `s1` as the first new intermediate state"
     modifyThe SymContext ({ · with
       state_prefix := "s",
       currentStateNumber := 1 })
