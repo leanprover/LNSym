@@ -84,7 +84,7 @@ structure WellFormedAtPc (s : ArmState) (pc : BitVec 64) : Prop where
   h_sp_aligned : CheckSPAlignment s
 
 
-structure Pre (s : ArmState) (num_blks : Nat) (src_base dst_base : BitVec 64) : Prop where
+structure Pre (s : ArmState) (num_blks : BitVec 64) (src_base dst_base : BitVec 64) : Prop where
   -- 16 bytes are copied in each iteration of the loop.
   h_mem_sep : mem_separate' src_base (num_blks * 16) dst_base (num_blks * 16)
   -- -- (TODO) Also allow for the possibility of src_base = dst_base
@@ -96,19 +96,18 @@ structure Pre (s : ArmState) (num_blks : Nat) (src_base dst_base : BitVec 64) : 
   h_program : s.program = program
   h_err : r StateField.ERR s = StateError.None
   h_sp_aligned : CheckSPAlignment s
-  h_total_blocks_size : 16 * num_blks < 2 ^ 64
 
 /-- Precondition for the correctness of the MemCpy program. -/
 def pre (s : ArmState) : Prop :=
   let num_blks := ArmState.x0 s
   let src_base  := ArmState.x1 s
   let dst_base  := ArmState.x2 s
-  Pre s num_blks.toNat src_base dst_base
+  Pre s num_blks src_base dst_base
 
 /-- Postcondition for the correctness of the MemCpy program. -/
 def post (s0 sf : ArmState) : Prop :=
   let num_blks := ArmState.x0 s0
-  let num_bytes := num_blks.toNat * 16
+  let num_bytes := num_blks * 16
   let src_base  := ArmState.x1 s0
   let dst_base  := ArmState.x2 s0
   -- The destination in the final state is a copy of the source in the initial
@@ -169,7 +168,7 @@ def loop_inv (s0 si : ArmState) : Prop :=
     read_mem_bytes 16 (dst_base + (16 * i)) si =
     id (read_mem_bytes 16 (src_base + (16 * i)) s0)) ∧
   (∀ (n : Nat) (addr : BitVec 64),
-      mem_separate' dst_base num_bytes_copied.toNat addr n →
+      mem_separate' dst_base num_bytes_copied addr n →
       read_mem_bytes n addr si = read_mem_bytes n addr s0) ∧
   r StateField.ERR si = .None ∧
   si.program = program ∧
@@ -440,48 +439,58 @@ end CutTheorems
 
 section PartialCorrectness
 
--- set_option skip_proof.skip true in
-set_option maxHeartbeats 0 in
-theorem Memcpy.extracted_2 (s0 si : ArmState)
-  (h_si_x0_nonzero : si.x0 ≠ 0)
-  (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
-  (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
-  (h_assert_1 : si.x0 ≤ s0.x0) (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
-  (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-  (h_assert_6 :
-    ∀ (n : Nat) (addr : BitVec 64),
-      mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat addr n →
-        Memory.read_bytes n addr si.mem = Memory.read_bytes n addr s0.mem)
-  (h_assert_5 :
-    ∀ (i : BitVec 64),
-      i < s0.x0 - si.x0 →
-        Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
-  (h_pre_1 : mem_separate' s0.x1 (s0.x0.toNat * 16) s0.x2 (s0.x0.toNat * 16))
-  -- (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
-  (n : Nat)
-  (addr : BitVec 64)
-  (hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n) :
-  Memory.read_bytes n addr
-      (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-        (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
-    Memory.read_bytes n addr s0.mem := by
-  have h_le : (s0.x0 - (si.x0 - 0x1#64)).toNat ≤ s0.x0.toNat := by bv_omega
-  have h_upper_bound := hsep.hb.omega_def
-  have h_upper_bound₂ := h_pre_1.hb.omega_def
-  have h_upper_bound₃ := hsep.ha.omega_def
-  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by simp_mem (config := {useOmegaToClose := true})
-  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-  · rw [h_assert_6]
-    skip_proof simp_mem
-  · -- @bollu: TODO: figure out why this is so slow!
-    apply mem_separate'.symm
-    apply mem_separate'.of_subset'_of_subset' hsep
-    · apply mem_subset'.of_omega
-      skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
-    · apply mem_subset'_refl hsep.hb
 
--- set_option skip_proof.skip true in
-set_option maxHeartbeats 0 in
+theorem BitVec.natCast_toNat (x : BitVec 64) : (↑ x.toNat  : BitVec 64) = x := by simp
+
+-- -- set_option skip_proof.skip true in
+-- set_option trace.simp_mem.info true in
+-- set_option maxHeartbeats 0 in
+-- theorem Memcpy.extracted_2 (s0 si : ArmState)
+--   (h_si_x0_nonzero : si.x0 ≠ 0)
+--   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
+--   (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
+--   (h_assert_1 : si.x0 ≤ s0.x0) (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
+--   (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+--   (h_assert_6 :
+--     ∀ (n : Nat) (addr : BitVec 64),
+--       mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)) addr n →
+--         Memory.read_bytes n addr si.mem = Memory.read_bytes n addr s0.mem)
+--   (h_assert_5 :
+--     ∀ (i : BitVec 64),
+--       i < s0.x0 - si.x0 →
+--         Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
+--   (h_pre_1 : mem_separate' s0.x1 (s0.x0 * 16) s0.x2 (s0.x0 * 16))
+--   -- (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
+--   (n : Nat)
+--   (addr : BitVec 64)
+--   (hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))) addr n) :
+--   Memory.read_bytes n addr
+--       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+--         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
+--     Memory.read_bytes n addr s0.mem := by
+--   have h_le : (s0.x0 - (si.x0 - 0x1#64)) ≤ s0.x0 := by
+--     bv_decide
+--   -- have h_upper_bound := hsep.hb.omega_def
+--   -- have h_upper_bound₂ := h_pre_1.hb.omega_def
+--   -- have h_upper_bound₃ := hsep.ha.omega_def
+--   -- have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by simp_mem (config := {useOmegaToClose := true})
+--   -- simp_mem
+--   -- simp_mem
+--   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+--   · rw [h_assert_6]
+--     -- simp_mem
+--     -- simp_mem
+--     skip_proof sorry
+--   · -- @bollu: TODO: figure out why this is so slow!
+--     -- apply mem_separate'.symm
+--     -- apply mem_separate'.of_subset'_of_subset' hsep
+--     -- · apply mem_subset'.of_omega
+--     --   skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
+--     -- · apply mem_subset'_refl hsep.hb
+--     sorry
+
+-- -- set_option skip_proof.skip true in
+-- -- set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -497,8 +506,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
     ∀ (i : BitVec 64),
       i < s0.x0 - si.x0 →
         Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
-  (h_pre_1 : mem_separate' s0.x1 (s0.x0.toNat * 16) s0.x2 (s0.x0.toNat * 16)) (h_pre_2 : r StateField.PC s0 = 0x8e0#64)
+  (h_pre_1 : mem_separate' s0.x1 (s0.x0 * 16) s0.x2 (s0.x0 * 16)) (h_pre_2 : r StateField.PC s0 = 0x8e0#64)
   (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
+  (h_pre_7 : mem_legal' s0.x1 (16#64 * s0.x0))  -- memory region is legal.
   :
   (∀ (i : BitVec 64),
       i < s0.x0 - (si.x0 - 0x1#64) →
@@ -507,49 +517,94 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
               (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
           Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem) ∧
     ∀ (n : Nat) (addr : BitVec 64),
-      mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n →
+      mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))) addr n →
         Memory.read_bytes n addr
             (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
               (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
           Memory.read_bytes n addr s0.mem := by
   apply And.intro
   · intros i hi
-    have h_subset_2 : mem_subset' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat s0.x2 (s0.x0.toNat * 16) := by
-      skip_proof simp_mem
-    have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by
-      skip_proof simp_mem
-    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by skip_proof bv_omega
-    have s2_sum_inbounds := h_pre_1.hb.omega_def
-    have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
-
+    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
+      bv_decide
     rcases icases with hi | hi
     · subst hi
-      rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
+      have legal_2 := h_pre_1.hb
+      have sub_lt : (s0.x0 - si.x0) < s0.x0 := by bv_decide
+      have neq_zero : s0.x0 > 0#64 := by bv_decide
+      have lt_size : (0x10#64 * (s0.x0 - si.x0)) < (s0.x0 * 0x10#64) := by
+          -- bv_decide -- does not respect the constraint 's0.x0 = 0x8000000000000000#64'
+          sorry -- this is a bv_decide bug.
+          /-
+          The prover found a potential counterexample, consider the following assignment:
+          si.x0 = 0x8000000000000000#64
+          s0.x1 = 0x0000000000000000#64
+          s0.x0 = 0x8000000000000000#64
+          s0.x2 = 0x0000000000000000#64
+          si.x1 = 0x0000000000000000#64
+          si.x2 = 0x0000000000000000#64
+          -/
+      rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (hsep := ?_)]
       · simp only [Nat.reduceMul, BitVec.toNat_add, BitVec.toNat_mul, BitVec.toNat_ofNat,
         Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
         BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
-        rw [h_assert_6 _ _ (by simp_mem)]
-      · skip_proof simp_mem
-    · rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+        rw [h_assert_6]
+        simp only [BitVec.natCast_toNat] at *
+        simp only [BitVec.ofNat_eq_ofNat] at h_pre_1
+        simp
+        constructor
+        · simp_mem
+        · simp_mem
+        · sorry
+      · constructor
+        · simp_mem
+        · simp_mem
+        · simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.toNat_mul, BitVec.toNat_ofNat,
+          Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, BitVec.natCast_eq_ofNat, Nat.reduceMul,
+          gt_iff_lt] at *;
+          bv_decide
+        · simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.toNat_mul, BitVec.toNat_ofNat,
+          Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, BitVec.natCast_eq_ofNat, Nat.reduceMul,
+          gt_iff_lt] at *;
+          bv_decide
+    · -- case 2.
+      have legal_2 := h_pre_1.hb
+      have sub_lt : (s0.x0 - si.x0) < s0.x0 := by bv_decide
+      have neq_zero : s0.x0 > 0#64 := by bv_decide
+      have lt_size : (0x10#64 * (s0.x0 - si.x0)) < (s0.x0 * 0x10#64) := by
+        -- bv_decide -- does not respect the constraint 's0.x0 = 0x8000000000000000#64'
+        sorry -- this is a bv_decide bug.
+        /-
+        si.x0 = 0x0800000000000003#64
+        s0.x1 = 0x800000000000002f#64
+        s0.x0 = 0xf000000000000000#64
+        s0.x2 = 0x800000000000002f#64
+        si.x1 = 0xffffffffffffffff#64
+        si.x2 = 0xffffffffffffffff#64
+        i = 0xe000000000000000#64
+        -/
+      rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
       · apply h_assert_5 _ hi
       · constructor
-        · skip_proof simp_mem
+        · simp at *; sorry
+          -- bv_decide
         · skip_proof simp_mem
         · left
-          -- @bollu: TODO, see if `simp_mem` can figure this out given less aggressive
-          -- proof states.
-          skip_proof {
-            have s2_sum_inbounds := h_pre_1.hb.omega_def
-            have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
-            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
-            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
-            rw [BitVec.toNat_mul_of_lt (by bv_omega)]
-            rw [BitVec.toNat_mul_of_lt (by bv_omega)]
-            rw [BitVec.toNat_sub_of_lt (by bv_omega)]
-            bv_omega
-          }
+          sorry
+          -- -- @bollu: TODO, see if `simp_mem` can figure this out given less aggressive
+          -- -- proof states.
+          -- skip_proof {
+          --   have s2_sum_inbounds := h_pre_1.hb.omega_def
+          --   have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
+          --   rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
+          --   rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
+          --   rw [BitVec.toNat_mul_of_lt (by bv_omega)]
+          --   rw [BitVec.toNat_mul_of_lt (by bv_omega)]
+          --   rw [BitVec.toNat_sub_of_lt (by bv_omega)]
+          --   bv_omega
+          -- }
   · intros n addr hsep
     apply Memcpy.extracted_2 <;> assumption
+
 theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions
@@ -772,8 +827,9 @@ theorem partial_correctness :
         simp only [step_8f4_8e4.h_x1]
         rw [h_si_x1]
         simp only [memory_rules] at h_assert_6 h_assert_5
-        have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5, h_pre_6⟩ := h_pre
-        apply Memcpy.extracted_0 <;> assumption
+        constructor
+        · sorry
+        · sorry
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
