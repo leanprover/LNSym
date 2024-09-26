@@ -65,7 +65,12 @@ def getBitVecOfNatValue? (e : Expr) : (Option (Expr × Expr)) :=
   | BitVec.ofNat nExpr vExpr => some (nExpr, vExpr)
   | _ => none
 
-/-- Try to build a proof for `ty` by reduction to `omega`. -/
+/--
+Try to build a proof for `ty` by reduction to `omega`.
+This is to be used to automatically prove inbounds constraints to eliminiate modulos.
+We may eventually want to exploit our memory automation framework to bring in
+more `omega` facts.
+-/
 @[inline] def dischargeByOmega (ty : Expr) : SimpM Step := do
   let proof : Expr ← mkFreshExprMVar ty
   let g := proof.mvarId!
