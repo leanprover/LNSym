@@ -6,6 +6,7 @@ Author(s): Alex Keizer, Siddharth Bhat
 import Lean
 import Tactics.Common
 import Tactics.Simp
+import Tactics.Sym.LCtxSearch
 
 open Lean Meta Elab.Tactic
 
@@ -65,44 +66,36 @@ elab "sym_aggregate" simpConfig?:(config)? loc?:(location)? : tactic => withMain
     let simpConfig? ← simpConfig?.mapM fun cfg =>
       elabSimpConfig (mkNullNode #[cfg]) (kind := .simp)
 
-    let lctx ← getLCtx
-    -- We keep `expectedRead`/`expectedAlign` as monadic values,
-    -- so that we get new metavariables for each localdecl we check
-    let expectedRead : MetaM Expr := do
-      let fld ← mkFreshExprMVar (mkConst ``StateField)
-      let state ← mkFreshExprMVar mkArmState
-      let rhs ← mkFreshExprMVar none
-      mkEq (mkApp2 (mkConst ``r) fld state) rhs
-    let expectedReadMem : MetaM Expr := do
-      let n ← mkFreshExprMVar (mkConst ``Nat)
-      let addr ← mkFreshExprMVar (mkApp (mkConst ``BitVec) (toExpr 64))
-      let mem ← mkFreshExprMVar (mkConst ``Memory)
-      let rhs ← mkFreshExprMVar none
-      mkEq (mkApp3 (mkConst ``Memory.read_bytes) n addr mem) rhs
-    let expectedAlign : MetaM Expr := do
-      let state ← mkFreshExprMVar mkArmState
-      return mkApp (mkConst ``CheckSPAlignment) state
+    let ((), axHyps) ← StateT.run (s := #[]) <|
+      searchLCtx <| do
+        let whenFound := fun decl _ => do
+          modify (·.push decl)
+          return .continu
 
-    let axHyps ←
-      withTraceNode `Tactic.sym (fun _ => pure m!"searching for effect hypotheses") <|
-        lctx.foldlM (init := #[]) fun axHyps decl => do
-          forallTelescope decl.type <| fun _ type => do
-            trace[Tactic.sym] "checking {decl.toExpr} with type {type}"
-            let expectedRead ← expectedRead
-            let expectedAlign ← expectedAlign
-            let expectedReadMem ← expectedReadMem
-            if ← isDefEq type expectedRead then
-              trace[Tactic.sym] "{Lean.checkEmoji} match for {expectedRead}"
-              return axHyps.push decl
-            else if ← isDefEq type expectedAlign then
-              trace[Tactic.sym] "{Lean.checkEmoji} match for {expectedAlign}"
-              return axHyps.push decl
-            else if ← isDefEq type expectedReadMem then
-              trace[Tactic.sym] "{Lean.checkEmoji} match for {expectedReadMem}"
-              return axHyps.push decl
-            else
-              trace[Tactic.sym] "{Lean.crossEmoji} no match"
-              return axHyps
+        -- `r ?field ?state = ?rhs`
+        searchLCtxFor (whenFound := whenFound)
+          (matchUnderBinders := true)
+          (expectedType := do
+            let fld ← mkFreshExprMVar (mkConst ``StateField)
+            let state ← mkFreshExprMVar mkArmState
+            let rhs ← mkFreshExprMVar none
+            return mkEqReadField fld state rhs
+          )
+        -- `Memory.read_bytes ?n ?addr ?mem = ?rhs`
+        searchLCtxFor (whenFound := whenFound)
+          (matchUnderBinders := true)
+          (expectedType := do
+            let n ← mkFreshExprMVar (mkConst ``Nat)
+            let addr ← mkFreshExprMVar (mkApp (mkConst ``BitVec) (toExpr 64))
+            let mem ← mkFreshExprMVar (mkConst ``Memory)
+            let rhs ← mkFreshExprMVar none
+            mkEq (mkApp3 (mkConst ``Memory.read_bytes) n addr mem) rhs
+          )
+        -- `CheckSpAlignment ?state`
+        searchLCtxFor (whenFound := whenFound)
+          (expectedType := do
+            let state ← mkFreshExprMVar mkArmState
+            return mkApp (mkConst ``CheckSPAlignment) state)
 
     let loc := (loc?.map expandLocation).getD (.targets #[] true)
     aggregate axHyps loc simpConfig?
