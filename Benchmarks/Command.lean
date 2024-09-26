@@ -13,6 +13,9 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   let n := 5
   let mut runTimes := #[]
   let mut totalRunTime := 0
+  -- geomean = exp(log((a₁ a₂ ... aₙ)^1/n)) = 
+  -- exp(1/n * (log a₁ + log a₂ + log aₙ)).
+  let mut totalRunTimeLog := 0
   for _ in [0:n] do
     let start ← IO.monoMsNow
     elabCommand stx
@@ -20,9 +23,10 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
     let runTime := endTime - start
     runTimes := runTimes.push runTime
     totalRunTime := totalRunTime + runTime
+    totalRunTimeLog := totalRunTimeLog + Float.log runTime.toFloat
 
   let avg := totalRunTime.toFloat / n.toFloat / 1000
-  let geomean := (totalRunTime.toFloat.pow (1.0 / n.toFloat)) / 1000.0
+  let geomean := (Float.exp (totalRunTimeLog / n.toFloat)) / 1000.0
   logInfo m!"\
 {id}:
   average runtime over {n} runs:
