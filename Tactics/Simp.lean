@@ -52,12 +52,15 @@ def LNSymSimpContext
   (exprs : Array Expr := #[])
   -- Simprocs to add to the default set.
   (simprocs : Array Name := #[])
+  -- Whether the default simprocs should be used.
+  (useDefaultSimprocs : Bool := true)
   -- argument to `DiscrTree.mkPath`
   (noIndexAtArgs : Bool := true)
   : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
   let mut ext_simpTheorems := #[]
   let default_simprocs ← Simp.getSimprocs
-  let mut all_simprocs := (#[default_simprocs] : Simp.SimprocsArray)
+  let mut all_simprocs :=
+    if useDefaultSimprocs then #[default_simprocs] else #[]
 
   for a in simp_attrs do
     let some ext ← (getSimpExtension? a) |
@@ -123,7 +126,7 @@ def LNSymSimpAtStar (g : MVarId)
    g.withContext do
     let fvars : Array FVarId :=
       (← getLCtx).foldl (init := #[]) fun fvars d => fvars.push d.fvarId
-    let (result, _stats) ← simpGoal g ctx simprocs (fvarIdsToSimp := fvars)
+    let (result, stats) ← simpGoal g ctx simprocs (fvarIdsToSimp := fvars)
       (simplifyTarget := true) (discharge? := none)
     match result with
     | none => return none

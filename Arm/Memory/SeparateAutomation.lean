@@ -129,8 +129,9 @@ structure Context where
 def Context.init (cfg : SimpMemConfig) : MetaM Context := do
   let (bvToNatSimpCtx, bvToNatSimprocs) ←
     LNSymSimpContext
-      (config := {})
+      (config := {failIfUnchanged := false})
       (simp_attrs := #[`bv_toNat])
+      (useDefaultSimprocs := false)
   return {cfg, bvToNatSimpCtx, bvToNatSimprocs}
 
 /-- a Proof of `e : α`, where `α` is a type such as `MemLegalProp`. -/
@@ -441,20 +442,22 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     replaceMainGoal [goal]
     return fvar
 
-
 /-- SimpMemM's omega invoker -/
 def omega : SimpMemM Unit := do
-  -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
-  -- @bollu: TODO: understand what precisely we are recovering from.
-  let bvToNatSimpCtx ← SimpMemM.getBvToNatSimpCtx
-  let bvToNatSimprocs ← SimpMemM.getBvToNatSimprocs
-  let .some goal ← LNSymSimpAtStar (← getMainGoal) bvToNatSimpCtx bvToNatSimprocs
-    | throwError "error: simp [bv_toNat] at * managed to close goal. This is unexpected."
-  replaceMainGoal [goal]
-  -- withoutRecover do
-  --   evalTactic (← `(tactic| bv_omega))
-  withoutRecover do
-    evalTactic (← `(tactic| omega))
+  SimpMemM.withMainContext do
+    -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
+    -- @bollu: TODO: understand what precisely we are recovering from.
+    let bvToNatSimpCtx ← SimpMemM.getBvToNatSimpCtx
+    let bvToNatSimprocs ← SimpMemM.getBvToNatSimprocs
+    let .some goal ← LNSymSimpAtStar (← getMainGoal) bvToNatSimpCtx bvToNatSimprocs
+      | throwError "error: simp [bv_toNat] at * managed to close goal. This is unexpected."
+    replaceMainGoal [goal]
+    trace[simp_mem.info] m!"@@@@ goal post simp only [bv_toNat] at * @@@@"
+    trace[simp_mem.info] m!"{goal}"
+    -- withoutRecover do
+    --   evalTactic (← `(tactic| bv_omega))
+    withoutRecover do
+      evalTactic (← `(tactic| omega))
 
 section Hypotheses
 
