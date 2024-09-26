@@ -121,9 +121,17 @@ structure SimpMemConfig where
 structure Context where
   /-- User configurable options for `simp_mem`. -/
   cfg : SimpMemConfig
+  /-- Cache of bv_toNat simpCtx -/
+  bvToNatSimpCtx : Simp.Context
+  /-- Cache of bv_toNat simprocs -/
+  bvToNatSimprocs : Array Simp.Simprocs
 
-def Context.init (cfg : SimpMemConfig) : Context where
-  cfg := cfg
+def Context.init (cfg : SimpMemConfig) : MetaM Context := do
+  let (bvToNatSimpCtx, bvToNatSimprocs) ←
+    LNSymSimpContext
+      (config := {})
+      (simp_attrs := #[`bv_toNat])
+  return {cfg, bvToNatSimpCtx, bvToNatSimprocs}
 
 /-- a Proof of `e : α`, where `α` is a type such as `MemLegalProp`. -/
 structure Proof (α : Type) (e : α) where
@@ -348,8 +356,8 @@ def State.init (cfg : SimpMemConfig) : State :=
 
 abbrev SimpMemM := StateRefT State (ReaderT Context TacticM)
 
-def SimpMemM.run (m : SimpMemM α) (cfg : SimpMemConfig) : TacticM α :=
-  m.run' (State.init cfg) |>.run (Context.init cfg)
+def SimpMemM.run (m : SimpMemM α) (cfg : SimpMemConfig) : TacticM α := do
+  m.run' (State.init cfg) |>.run (← Context.init cfg)
 
 /-- Add a `Hypothesis` to our hypothesis cache. -/
 def SimpMemM.addHypothesis (h : Hypothesis) : SimpMemM Unit :=
@@ -367,6 +375,14 @@ def SimpMemM.withTraceNode (header : MessageData) (k : SimpMemM α)
     (collapsed : Bool := true)
     (traceClass : Name := `simp_mem.info) : SimpMemM α :=
   Lean.withTraceNode traceClass (fun _ => return header) k (collapsed := collapsed)
+
+/-- Get the cached simp context for bv_toNat -/
+def SimpMemM.getBvToNatSimpCtx : SimpMemM Simp.Context := do
+  return (← read).bvToNatSimpCtx
+
+/-- Get the cached simpprocs for bv_toNat -/
+def SimpMemM.getBvToNatSimprocs : SimpMemM (Array Simp.Simprocs) := do
+  return (← read).bvToNatSimprocs
 
 def processingEmoji : String := "⚙️"
 
@@ -425,12 +441,20 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     replaceMainGoal [goal]
     return fvar
 
+
 /-- SimpMemM's omega invoker -/
 def omega : SimpMemM Unit := do
   -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
   -- @bollu: TODO: understand what precisely we are recovering from.
+  let bvToNatSimpCtx ← SimpMemM.getBvToNatSimpCtx
+  let bvToNatSimprocs ← SimpMemM.getBvToNatSimprocs
+  let .some goal ← LNSymSimpAtStar (← getMainGoal) bvToNatSimpCtx bvToNatSimprocs
+    | throwError "error: simp [bv_toNat] at * managed to close goal. This is unexpected."
+  replaceMainGoal [goal]
+  -- withoutRecover do
+  --   evalTactic (← `(tactic| bv_omega))
   withoutRecover do
-    evalTactic (← `(tactic| bv_omega))
+    evalTactic (← `(tactic| omega))
 
 section Hypotheses
 
