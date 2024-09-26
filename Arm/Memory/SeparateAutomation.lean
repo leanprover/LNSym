@@ -121,9 +121,9 @@ structure SimpMemConfig where
 structure Context where
   /-- User configurable options for `simp_mem`. -/
   cfg : SimpMemConfig
-  /-- Cache of bv_toNat simpCtx -/
+  /-- Cache of `bv_toNat` simp context. -/
   bvToNatSimpCtx : Simp.Context
-  /-- Cache of bv_toNat simprocs -/
+  /-- Cache of `bv_toNat` simprocs. -/
   bvToNatSimprocs : Array Simp.Simprocs
 
 def Context.init (cfg : SimpMemConfig) : MetaM Context := do

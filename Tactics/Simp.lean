@@ -116,22 +116,21 @@ def LNSymSimp (goal : MVarId)
     | none => return none
     | some (_, goal') => return goal'
 
-/- Invoke the `simp at *` tactic during symbolic simulation in LNSym
-proofs. -/
+/--
+Invoke `simp [..] at *` at the given goal `g` with
+simp context `ctx` and simprocs `simprocs`.
+-/
 def LNSymSimpAtStar (g : MVarId)
-   (ctx : Simp.Context) (simprocs : Array Simp.Simprocs)
-  -- Provide an FVarID (i.e., a hypothesis) to simplify; when none is provided,
-  -- the goal is simplified.
-   : MetaM (Option MVarId) := do
+    (ctx : Simp.Context)
+    (simprocs : Array Simp.Simprocs)
+    : MetaM (Option MVarId) := do
    g.withContext do
     let fvars : Array FVarId :=
       (← getLCtx).foldl (init := #[]) fun fvars d => fvars.push d.fvarId
-    let (result, stats) ← simpGoal g ctx simprocs (fvarIdsToSimp := fvars)
+    let (result, _stats) ← simpGoal g ctx simprocs (fvarIdsToSimp := fvars)
       (simplifyTarget := true) (discharge? := none)
     match result with
     | none => return none
     | some (_newHyps, g') => pure g'
-
-
 
 ----------------------------------------------------------------------
