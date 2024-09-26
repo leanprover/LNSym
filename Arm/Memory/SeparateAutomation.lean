@@ -437,7 +437,7 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     let hdefVal ← simpResult.mkCast hdefVal
     let hdefTy ← inferType hdefVal
 
-    let goal ← goal.define name hdefTy hdefVal
+    let goal ← goal.assert name hdefTy hdefVal
     let (fvar, goal) ← goal.intro1P
     replaceMainGoal [goal]
     return fvar

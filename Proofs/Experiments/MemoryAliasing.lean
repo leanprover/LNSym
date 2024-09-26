@@ -10,9 +10,9 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
--- set_option trace.simp_mem true
--- set_option trace.simp_mem.info true
--- set_option trace.Meta.Tactic.simp true
+set_option trace.simp_mem true
+set_option trace.simp_mem.info true
+set_option trace.Meta.Tactic.simp true
 
 namespace MemLegal
 /-- Show reflexivity of legality. -/
