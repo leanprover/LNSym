@@ -9,7 +9,8 @@ import Benchmarks.Command
 
 open Benchmarks
 
-benchmark sha512_400_instructions : SHA512Bench 400 := fun s0 => by
+benchmark sha512_400_instructions : SHA512Bench 400 := fun s0 _ h => by
   intros
   sym_n 400
+  simp only [h, bitvec_rules]
   done
