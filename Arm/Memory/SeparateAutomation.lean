@@ -88,8 +88,12 @@ The tactic shall be implemented as follows:
 
 section BvOmega
 
+/- We tag `mem_legal'` as `bv_toNat` here, since we want to actually lazily unfold this.
+Doing it here lets us remove it from `bv_toNat` simp-set as a change to `SeparateAutomation.lean`,
+without needing us to modify the core definitions file which incurs a recompile cost,
+making experimentation annoying.
+-/
 attribute [bv_toNat] mem_legal'
-attribute [bv_toNat] BitVec.le_def
 
 end BvOmega
 
