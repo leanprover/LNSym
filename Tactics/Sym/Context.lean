@@ -315,12 +315,12 @@ is tied to the specific `SymM` state and local context, it's expected that
 neither of these change between construction and execution of the search. -/
 protected def searchFor : SearchLCtxForM SymM Unit := do
   let c ← getThe SymContext
-  let initialState ← AxEffects.getInitialState
+  let currentState ← AxEffects.getCurrentState
 
   /- We start by doing an eager search for `h_run`, outside the `SearchLCxtForM`
   monad. This is needed to instantiate the initial state -/
   let runSteps ← mkFreshExprMVar (Expr.const ``Nat [])
-  let hRunType := h_run_type c.finalState runSteps initialState
+  let hRunType := h_run_type c.finalState runSteps currentState
   let some hRun ← findLocalDeclOfType? hRunType
     | throwNotFound hRunType
 
@@ -340,7 +340,7 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
   -/
   -- Find `h_program : <s>.program = <program>`
   let program ← mkFreshExprMVar none
-  searchLCtxForOnce (h_program_type initialState program)
+  searchLCtxForOnce (h_program_type currentState program)
     (whenNotFound := throwNotFound)
     (whenFound := fun decl _ => do
       -- Register the program proof
@@ -363,7 +363,7 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
 
   -- Find `h_pc : r .PC <s> = <pc>`
   let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
-  searchLCtxForOnce (h_pc_type initialState pc)
+  searchLCtxForOnce (h_pc_type currentState pc)
     (changeType := true)
     (whenNotFound := throwNotFound)
     (whenFound := fun decl _ => do
@@ -380,19 +380,19 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
     )
 
   -- Find `h_err : r .ERR <s> = .None`, or add a new subgoal if it isn't found
-  searchLCtxForOnce (h_err_type initialState)
+  searchLCtxForOnce (h_err_type currentState)
     (changeType := true)
     (whenFound := fun decl _ =>
       AxEffects.setErrorProof decl.toExpr
     )
     (whenNotFound := fun _ => do
-      let errHyp ← mkFreshExprMVar (h_err_type initialState)
+      let errHyp ← mkFreshExprMVar (h_err_type currentState)
       replaceMainGoal [← getMainGoal, errHyp.mvarId!]
       AxEffects.setErrorProof errHyp
     )
 
-  -- Find `h_sp : CheckSPAlignment <initialState>`.
-  searchLCtxForOnce (h_sp_type initialState)
+  -- Find `h_sp : CheckSPAlignment <currentState>`.
+  searchLCtxForOnce (h_sp_type currentState)
     (changeType := true)
     (whenNotFound := traceNotFound `Tactic.sym)
     -- ^^ Note that `h_sp` is optional, so there's no need to throw an error,
@@ -407,7 +407,7 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
     )
 
   /- TODO(@alexkeizer): search for any other hypotheses of the form
-      `r ?field <initialState> = _`, and record those.
+      `r ?field <currentState> = _`, and record those.
     Keeping in mind that we have to do this search AFTER `h_pc` or `h_err`, to
     ensure those field-specific searches take priority.
     Also, maybe for memory-reads as well? Or we can hold off on that untill
