@@ -42,8 +42,3 @@ jobs:
       if : ${{ runner.os == 'macOS' }}
       run: |
           make cosim NUM_TESTS=100
-
-    - name: Run LNSym Benchmarks (Ubuntu)
-      if : ${{ runner.os != 'macOS' }}
-      run: |
-          make benchmarks

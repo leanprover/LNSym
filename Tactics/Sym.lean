@@ -439,6 +439,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
 
         let goal ← subst goal hEqId
         trace[Tactic.sym] "performed subsitutition in:\n{goal}"
+        traceHeartbeats
 
         replaceMainGoal [goal]
 
@@ -446,6 +447,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
     -- added while symbolically evaluating to `simp`
     let msg := m!"aggregating (non-)effects"
     withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
+      traceHeartbeats "pre"
       let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
       replaceMainGoal goal?.toList
 

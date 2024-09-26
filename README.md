@@ -1,5 +1,5 @@
 # LNSym: Native Code Symbolic Simulator in Lean
-[![Makefile CI](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml/badge.svg)](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml)
+[![Makefile CI](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml/badge.svg)](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml) 
 
 LNSym is a symbolic simulator for Armv8 machine-code programs.
 
@@ -40,8 +40,6 @@ native-code programs of interest.
 `cosim`: [run under `all`] perform conformance testing.
 
 `awslc_elf`: perform ELF loading tests for AWS-LC.
-
-`benchmarks`: run benchmarks for the symbolic simulator.
 
 ### Makefile variables that can be passed in at the command line
 

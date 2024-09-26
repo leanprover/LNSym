@@ -32,9 +32,6 @@ lean_lib «Tactics» where
 lean_lib «Doc» where
   -- add library configuration options here
 
-lean_lib «Benchmarks» where
-  -- add library configuration options here
-
 @[default_target]
 lean_exe «lnsym» where
   root := `Main
