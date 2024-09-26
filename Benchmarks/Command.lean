@@ -121,6 +121,7 @@ structure BenchmarkState.Stats where
   samples : Nat := 0
 
 structure BenchmarkState where
+  insertionOrder : List String := []
   stats : Std.HashMap String BenchmarkState.Stats := .empty
 
 variable {m} [Monad m] [MonadStateOf BenchmarkState m] [MonadLiftT BaseIO m]
@@ -139,7 +140,12 @@ def withAggregatedBenchmark (header : String) (x : m α) : m α := do
   withBenchmarkAux x fun heartbeats t => do
     modify fun state =>
       let s := state.stats.getD header {}
-      { stats := state.stats.insert header {
+      { insertionOrder :=
+          if s.samples = 0 then
+            header :: state.insertionOrder
+          else
+            state.insertionOrder
+        stats := state.stats.insert header {
           totalHeartbeats := s.totalHeartbeats + heartbeats
           totalTimeInMs   := s.totalTimeInMs + t
           samples         := s.samples + 1
@@ -155,7 +161,9 @@ def reportAggregatedBenchmarks : m Unit := do
   if (← getBoolOption `benchmark) = false then
     return
 
-  for ⟨header, stats⟩ in (← get).stats do
+  let { insertionOrder, stats } ← get
+  for header in insertionOrder do
+    let stats := stats.getD header {}
     let heartbeats := stats.totalHeartbeats
     let percent := percentOfDefaultMaxHeartbeats heartbeats
     let t := stats.totalTimeInMs
