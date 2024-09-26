@@ -354,6 +354,17 @@ end ReadOverlappingRead
 
 namespace ReadOverlappingWrite
 
+example
+  (src_addr : BitVec 64)
+  (mem : Memory)
+  (val : BitVec (16 * 8))
+  (hlegal : mem_legal' src_addr 16)
+  (hmemLegal_bv : src_addr ≤ src_addr + 16#64) :
+    (src_addr + 10 ≤ src_addr + 10 + 6 ∧
+      src_addr ≤ src_addr + 16 ∧ src_addr ≤ src_addr + 10 ∧ src_addr + 10 + 6 ≤ src_addr + 16) := by
+  mem_decide_bv
+
+
 theorem test_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' src_addr 16) :
     Memory.read_bytes 16 src_addr (Memory.write_bytes 16 src_addr val mem) =
@@ -367,7 +378,7 @@ theorem test_2 {val : BitVec _}
     (hlegal : mem_legal' src_addr 16) :
     Memory.read_bytes 6 (src_addr + 10) (Memory.write_bytes 16 src_addr val mem) =
     val.extractLsBytes 10 6 := by
-  -- simp_mem
+  simp_mem
   /-
   hlegal : mem_legal' src_addr 16
   hmemLegal_bv✝ : src_addr ≤ src_addr + 16#64
@@ -375,10 +386,11 @@ theorem test_2 {val : BitVec _}
     src_addr ≤ src_addr + 16 ∧ src_addr ≤ src_addr + 10 ∧ src_addr + 10 + 6 ≤ src_addr + 16
   -/
   rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (by
-    have := hlegal.bv_def
-    have this : Nat := 2
-    apply mem_subset'.of_bv
-    bv_decide
+    mem_decide_bv
+    -- have := hlegal.bv_def
+    -- have this : Nat := 2
+    -- apply mem_subset'.of_bv
+    -- bv_decide
   )]
   have : ((src_addr + 10).toNat - src_addr.toNat) = 10 := by bv_omega
   rw [this]
