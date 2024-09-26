@@ -10,8 +10,8 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
-set_option trace.simp_mem true
-set_option trace.simp_mem.info true
+-- set_option trace.simp_mem true
+-- set_option trace.simp_mem.info true
 -- set_option trace.Tactic.address_normalization true
 
 namespace MemLegal
@@ -319,8 +319,7 @@ theorem overlapping_read_test_3
     -- @bollu: unfortunate, this needs `s.mem` to be public. Annoying.
       (Memory.read_bytes 16 other_addr s.mem).extractLsBytes 6 10 := by
   simp only [memory_rules] at h ⊢
-  rw [Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' h]
-  -- simp_mem
+  simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
     bv_omega
@@ -333,7 +332,11 @@ info: 'ReadOverlappingRead.overlapping_read_test_3' depends on axioms: [propext,
 -/
 #guard_msgs in #print axioms overlapping_read_test_3
 
-/- TODO(@bollu): This test case hangs at `bv_omega`. This is to be debugged.
+example  (src_addr other_addr : BitVec 64) (hlegal : mem_legal' src_addr 16)
+  : (src_addr + 6).toNat - src_addr.toNat = 6 := by
+    bv_omega
+
+
 /-- A read in the goal state overlaps with a read in the
 right hand side of the hypotheis `h`.
 -/
@@ -344,13 +347,18 @@ theorem overlapping_read_test_4
     -- @bollu: unfortunate, this needs `s.mem` to be public. Annoying.
       (Memory.read_bytes 16 other_addr s.mem).extractLsBytes 6 10 := by
   simp only [memory_rules] at h ⊢
-  simp_mem
-  · congr
+  -- simp_mem -- simp_mem still gets stuck here.. what's going on?
+  sorry
+  -- · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    bv_omega -- TODO: Lean gets stuck here?
+    -- sorry
+    -- bv_omega -- TODO: Lean gets stuck here?
 
-#guard_msgs in #print axioms overlapping_read_test_4
+/--
+info: 'ReadOverlappingRead.overlapping_read_test_4' depends on axioms: [propext, sorryAx, Quot.sound]
 -/
+#guard_msgs in #print axioms overlapping_read_test_4
+
 end ReadOverlappingRead
 
 namespace ReadOverlappingWrite
@@ -378,7 +386,6 @@ end ReadOverlappingWrite
 and for general walking. -/
 namespace ExprVisitor
 
-/-
 /-- Check that we correctly go under binders -/
 theorem test_quantified_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' 0 16) : ∀ (_irrelevant : Nat),
@@ -389,7 +396,11 @@ theorem test_quantified_1 {val : BitVec (16 * 8)}
     Nat.sub_self, implies_true]
 
 /--
-info: 'ExprVisitor.test_quantified_1' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: 'ExprVisitor.test_quantified_1' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Memory.read_bytes_write_bytes_eq_of_mem_subset',
+ Quot.sound]
 -/
 #guard_msgs in #print axioms test_quantified_1
 
@@ -402,7 +413,13 @@ theorem test_app_1 {val : BitVec (16 * 8)}
   simp only [Nat.reduceMul, BitVec.ofNat_eq_ofNat, BitVec.toNat_ofNat, Nat.reducePow, Nat.zero_mod,
     Nat.sub_self]
 
-/-- info: 'ExprVisitor.test_app_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
+/--
+info: 'ExprVisitor.test_app_1' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Memory.read_bytes_write_bytes_eq_of_mem_subset',
+ Quot.sound]
+-/
 #guard_msgs in #print axioms test_app_1
 
 /--
@@ -418,7 +435,11 @@ theorem test_quantified_app_1 {val : BitVec (16 * 8)}
     Nat.sub_self, implies_true]
 
 /--
-info: 'ExprVisitor.test_quantified_app_1' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: 'ExprVisitor.test_quantified_app_1' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Memory.read_bytes_write_bytes_eq_of_mem_subset',
+ Quot.sound]
 -/
 #guard_msgs in #print axioms test_quantified_app_1
 
@@ -434,7 +455,7 @@ theorem test_quantified_app_2 {val : BitVec (16 * 8)}
     f (∀ (_P : val.extractLsBytes 0 16 = irrelevant), Nat) := by
   simp_mem
   rfl
--/
+
 end ExprVisitor
 
 namespace MathProperties

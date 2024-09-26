@@ -585,9 +585,9 @@ def bvDecide : SimpMemM Unit  := do
       SimpMemM.withTraceNode "solving goal with `mem_decide_bv`" do
         trace[simp_mem.info] m!"{← getMainGoal}"
         withoutRecover do
-          -- evalTactic (← `(tactic| mem_decide_bv))
+          evalTactic (← `(tactic| mem_decide_bv))
           -- evalTactic (← `(tactic| bv_decide))
-          evalTactic (← `(tactic| sorry))
+          -- evalTactic (← `(tactic| sorry))
 
 -- def omega : SimpMemM (Option Unit) := do
 --   SimpMemM.withMainContext do
