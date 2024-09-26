@@ -97,7 +97,7 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   -- @shilpi: should this also be proven automatically? feels a little unreasonable to me.
   · congr
     -- ⊢ (ctx_addr s0 + 48#64).toNat - (ctx_addr s0).toNat = 48
-    bv_omega'
+    bv_omega
 
 /--
 info: 'SHA512MemoryAliasing.sha512_block_armv8_prelude_sym_ctx_access' depends on axioms: [propext,
