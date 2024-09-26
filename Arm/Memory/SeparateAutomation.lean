@@ -13,6 +13,7 @@ import Arm
 import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.Attr
+import Arm.Memory.AddressNormalization
 import Lean
 import Lean.Meta.Tactic.Rewrite
 import Lean.Meta.Tactic.Rewrites
