@@ -84,42 +84,27 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   (∀ (n : Nat) (addr : BitVec 64),
     mem_separate' addr n (r (.GPR 31) s0 - 16#64) 16 →
     s_final[addr, n] = s0[addr, n]) := by
-  -- Prelude
-  simp_all only [state_simp_rules, -h_run]
-  -- Symbolic Simulation
-  sym_n 27
-  -- Final Steps
-  -- Split all the Ands in the conclusion.
-  repeat' apply And.intro
-  · simp only [popcount32_spec,
-               fst_AddWithCarry_eq_add,
-               fst_AddWithCarry_eq_sub_neg]
-    simp only [popcount32_spec_rec]
+  simp_all only [state_simp_rules, -h_run] -- prelude
+  sym_n 27 -- Symbolic simulation
+  repeat' apply And.intro -- split conjunction.
+  · simp only [popcount32_spec, popcount32_spec_rec]
     bv_decide
   · sym_aggregate
-  · -- (TODO @alex) Let's do away with
-    -- ∀ (n : Nat) (addr : BitVec 64), read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂
-    -- in favor of
-    -- s₁.mem = s₂.mem
-    -- as Sid said.
-    simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *
+  · intro n addr h_separate
     simp only [memory_rules] at *
-    intro n addr h_separate
-
-    -- (TODO @alex/@bollu) Can we hope to make this shorter after the marriage
-    -- of `sym_n` and `simp_mem`?
-    simp_mem
-    sym_aggregate
-    simp only [*, bitvec_rules]
-    sym_aggregate
-    simp_mem
-    rfl
-  · apply Aligned_BitVecSub_64_4
+    repeat (simp_mem (config := { useOmegaToClose := false }); sym_aggregate)
+  · apply Aligned_BitVecSub_64_4 -- TODO(@bollu): automation
     · assumption
     · decide
   · apply Aligned_BitVecAdd_64_4
     · assumption
     · decide
+
+/--
+info: 'popcount32_sym_meets_spec' depends on axioms:
+[propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms popcount32_sym_meets_spec
 
 -------------------------------------------------------------------------------
 
