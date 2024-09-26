@@ -238,8 +238,10 @@ theorem mem_legal'.bv_def (a : BitVec 64) (n : BitVec 64) (h : mem_legal' a n) :
     a ≤ a + n := by
   apply (mem_legal'.iff _ _).mp h
 
-theorem mem_legal'.of_bv (a : BitVec 64) (n : BitVec 64) (h : a ≤ a + n) :
+theorem mem_legal'.of_bv (a : BitVec 64) (n : BitVec 64) :
+    (h : a ≤ a + n) →
     mem_legal' a n := by
+  intros h
   apply (mem_legal'.iff _ _).mpr h
 
 /--
@@ -275,9 +277,10 @@ theorem mem_separate'.bv_def (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (b
     mem_legal' a an ∧ mem_legal' b bn ∧ (a + an ≤ b  ∨ a ≥ b + bn) := by
   apply (mem_separate'.iff _ _ _ _).mp h
 
-theorem mem_separate'.of_bv (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64)
-    (h : a ≤ a + an ∧ b ≤ b + bn ∧ (a + an ≤ b  ∨ a ≥ b + bn)) :
+theorem mem_separate'.of_bv (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) :
+    (h : a ≤ a + an ∧ b ≤ b + bn ∧ (a + an ≤ b  ∨ a ≥ b + bn)) →
     mem_separate' a an b bn := by
+  intros h
   apply (mem_separate'.iff _ _ _ _).mpr
   constructor
   · apply mem_legal'.of_bv
@@ -319,9 +322,10 @@ theorem mem_subset'.bv_def (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn 
     mem_legal' a an ∧ mem_legal' b bn ∧ b ≤ a ∧ a + an ≤ b + bn := by
   apply (mem_subset'.iff _ _ _ _).mp h
 
-theorem mem_subset'.of_bv (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64)
-    (h : a ≤ a + an ∧ b ≤ b + bn ∧ b ≤ a ∧ a + an ≤ b + bn) :
+theorem mem_subset'.of_bv (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) :
+    (h : a ≤ a + an ∧ b ≤ b + bn ∧ b ≤ a ∧ a + an ≤ b + bn) →
     mem_subset' a an b bn := by
+  intros h
   apply (mem_subset'.iff _ _ _ _).mpr
   constructor
   · apply mem_legal'.of_bv
@@ -360,10 +364,10 @@ theorem mem_separate'_of_mem_separate'_of_mem_subset'
 /- value of read_mem_bytes when separate from the write. -/
 @[memory_rewrites_bv]
 axiom Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
-    {yn : Nat}
-    {y : BitVec 64}
     {x : BitVec 64}
     {xn : Nat}
+    {y : BitVec 64}
+    {yn : Nat}
     {mem : Memory}
     (hsep : mem_separate' x xn y yn) -- separation
     (val : BitVec (yn * 8)) :
@@ -373,10 +377,10 @@ axiom Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
 /- value of `read_mem_bytes'` when subset of the write. -/
 @[memory_rewrites_bv]
 axiom Memory.read_bytes_write_bytes_eq_of_mem_subset'
-    {yn : Nat}
-    {y : BitVec 64}
     {x : BitVec 64}
     {xn : Nat}
+    {y : BitVec 64}
+    {yn : Nat}
     {mem : Memory}
     (hsep : mem_subset' x xn y yn := by mem_decide_bv) -- subset relation.
     (val : BitVec (yn * 8)) :
@@ -386,10 +390,10 @@ axiom Memory.read_bytes_write_bytes_eq_of_mem_subset'
 /- value of read_mem_bytes when subset of another *read*. -/
 @[memory_rewrites_bv]
 axiom Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
-    {bn : Nat}
-    {b : BitVec 64}
     {a : BitVec 64}
     {an : Nat}
+    {b : BitVec 64}
+    {bn : Nat}
     {val : BitVec (bn * 8)}
     {mem : Memory}
     (hread : mem.read_bytes bn b = val)

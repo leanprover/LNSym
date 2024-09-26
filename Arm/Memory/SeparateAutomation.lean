@@ -149,7 +149,7 @@ instance [ToMessageData α] : ToMessageData (Proof α e) where
 
 structure MemSpanExpr where
   base : Expr
-  n : Expr
+  n : Expr -- here, in Memory read/write, we have `n : Nat`, but in `mem_separate'`, we have `n : BitVec 64`.
 deriving Inhabited
 
 /-- info: Memory.Region.mk (a : BitVec 64) (n : Nat) : Memory.Region -/
@@ -534,7 +534,9 @@ def bvDecide : SimpMemM Unit  := do
       SimpMemM.withTraceNode "solving goal with `mem_decide_bv`" do
         trace[simp_mem.info] m!"{← getMainGoal}"
         withoutRecover do
-          evalTactic (← `(tactic| mem_decide_bv))
+          -- evalTactic (← `(tactic| mem_decide_bv))
+          -- evalTactic (← `(tactic| bv_decide))
+          evalTactic (← `(tactic| sorry))
 
 -- def omega : SimpMemM (Option Unit) := do
 --   SimpMemM.withMainContext do
@@ -884,8 +886,10 @@ An example is `mem_lega'.of_bv n a`, which has type:
 def proveWithSolver?  {α : Type} [ToMessageData α] [SolverReducible α] (e : α)
     (hyps : Array Hypothesis) : SimpMemM (Option (Proof α e)) := do
   let proofFromSolverVal := (SolverReducible.reduceToSolver e)
+  check proofFromSolverVal
   -- (h : a.toNat + n ≤ 2 ^ 64) → mem_legal' a n
   let proofTy ← inferType (SolverReducible.reduceToSolver e)
+  check proofTy
   trace[simp_mem.info] "partially applied: '{proofFromSolverVal} : {proofTy}'"
   let obligationTy ← do -- (h : a.toNat + n ≤ 2 ^ 64)
     match proofTy with
@@ -893,7 +897,9 @@ def proveWithSolver?  {α : Type} [ToMessageData α] [SolverReducible α] (e : �
     | _ => throwError "expected '{proofTy}' to a ∀"
   trace[simp_mem.info] "obligation type '{obligationTy}'"
   let obligationVal ← mkFreshExprMVar (type? := obligationTy)
+  check obligationVal
   let factProof := mkAppN proofFromSolverVal #[obligationVal]
+  check factProof
   let oldGoals := (← getGoals)
 
   try
@@ -926,8 +932,8 @@ def SimpMemM.rewriteWithEquality (rw : Expr) (msg : MessageData) : SimpMemM Unit
       replaceMainGoal [mvarId']
 
 /--
-info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {yn : Nat} {y x : BitVec 64} {xn : Nat} {mem : Memory}
-  (hsep : mem_separate' x (↑xn) y ↑yn) (val : BitVec (yn * 8)) :
+info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat}
+  {mem : Memory} (hsep : mem_separate' x (↑xn) y ↑yn) (val : BitVec (yn * 8)) :
   Memory.read_bytes xn x (Memory.write_bytes yn y val mem) = Memory.read_bytes xn x mem
 -/
 #guard_msgs in #check Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
@@ -947,41 +953,55 @@ def SimpMemM.rewriteReadOfSeparatedWrite
   SimpMemM.rewriteWithEquality call m!"rewriting read({er})⟂write({ew})"
 
 /--
-info: Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' {bn : Nat} {b a : BitVec 64} {an : Nat} {val : BitVec (bn * 8)}
-  {mem : Memory} (hread : Memory.read_bytes bn b mem = val) (hsubset : mem_subset' a (↑an) b ↑bn := by mem_decide_bv) :
+info: Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat}
+  {val : BitVec (bn * 8)} {mem : Memory} (hread : Memory.read_bytes bn b mem = val)
+  (hsubset : mem_subset' a (↑an) b ↑bn := by mem_decide_bv) :
   Memory.read_bytes an a mem = val.extractLsBytes (a.toNat - b.toNat) an
 -/
 #guard_msgs in #check Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
 
 def SimpMemM.rewriteReadOfSubsetRead
-    (er : ReadBytesExpr)
-    (hread : ReadBytesEqProof)
+    (er : ReadBytesExpr) -- Memory.read_bytes a an mem
+    (hread : ReadBytesEqProof) -- Memory.read_bytes bn b mem = val
     (hsubset : MemSubsetProof { sa := er.span, sb := hread.read.span })
   : SimpMemM Unit := do
+  let a := er.span.base
+  let an := er.span.n
+  let b := hread.read.span.base
+  let bn := hread.read.span.n
+  let val := hread.val
   let call := mkAppN (Expr.const ``Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' [])
-    #[hread.read.span.n, hread.read.span.base,
-      hread.val,
-      er.span.base, er.span.n,
+    #[a, an,
+      b, bn,
+      val,
       er.mem,
       hread.h,
       hsubset.h]
   SimpMemM.rewriteWithEquality call m!"rewriting read({er})⊆read({hread.read})"
 
 /--
-info: Memory.read_bytes_write_bytes_eq_of_mem_subset' {yn : Nat} {y x : BitVec 64} {xn : Nat} {mem : Memory}
+info: Memory.read_bytes_write_bytes_eq_of_mem_subset' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat} {mem : Memory}
   (hsep : mem_subset' x (↑xn) y ↑yn := by mem_decide_bv) (val : BitVec (yn * 8)) :
   Memory.read_bytes xn x (Memory.write_bytes yn y val mem) = val.extractLsBytes (x.toNat - y.toNat) xn
 -/
 #guard_msgs in #check Memory.read_bytes_write_bytes_eq_of_mem_subset'
 
 def SimpMemM.rewriteReadOfSubsetWrite
-    (er : ReadBytesExpr) (ew : WriteBytesExpr) (hsubset : MemSubsetProof { sa := er.span, sb := ew.span }) : SimpMemM Unit := do
+    (er : ReadBytesExpr) -- Memory.read_bytes a an mem
+    (ew : WriteBytesExpr) -- Memory.write_bytes b bn val mem
+    (hsubset : MemSubsetProof { sa := er.span, sb := ew.span }) : SimpMemM Unit := do
+  let a := er.span.base
+  let an := er.span.n
+  let b := ew.span.base
+  let bn := ew.span.n
+  let val := ew.val
+  let mem := ew.mem
   let call := mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_of_mem_subset' [])
-    #[er.span.base, er.span.n,
-      ew.span.base, ew.span.n,
-      ew.mem,
+    #[a, an,
+      b, bn,
+      mem,
       hsubset.h,
-      ew.val]
+      val]
   SimpMemM.rewriteWithEquality call m!"rewriting read({er})⊆write({ew})"
 
 mutual
@@ -1175,6 +1195,12 @@ def simpMem (cfg : SimpMemConfig := {}) : TacticM Unit := do
 /-- The `simp_mem` tactic, for simplifying away statements about memory. -/
 def simpMemTactic (cfg : SimpMemConfig) : TacticM Unit := simpMem cfg
 
+def simpMemDebugTactic  : TacticM Unit := do
+  SimpMemM.run (cfg := {}) do
+    SimpMemM.withMainContext do
+    -- evaluate mem_decide_bv
+      bvDecide
+
 end SeparateAutomation
 
 /--
@@ -1192,4 +1218,17 @@ def evalSimpMem : Tactic := fun
   | `(tactic| simp_mem $[$cfg]?) => do
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
     SeparateAutomation.simpMemTactic cfg
+  | _ => throwUnsupportedSyntax
+
+
+
+/--
+Implement the simp_mem tactic frontend.
+-/
+syntax (name := simp_mem_debug) "simp_mem_debug" :  tactic
+
+@[tactic simp_mem_debug]
+def evalSimpMemDebug : Tactic := fun
+  | `(tactic| simp_mem_debug) => do
+    SeparateAutomation.simpMemDebugTactic
   | _ => throwUnsupportedSyntax
