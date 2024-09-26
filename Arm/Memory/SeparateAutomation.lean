@@ -21,6 +21,7 @@ import Lean.Elab.Tactic.Conv
 import Lean.Elab.Tactic.Conv.Basic
 import Tactics.Simp
 import Lean.Elab.Tactic.Omega
+import Arm.Memory.AddressNormalization
 open Lean Meta Elab Tactic
 
 
@@ -131,6 +132,7 @@ def Context.init (cfg : SimpMemConfig) : MetaM Context := do
   let (bvToNatSimpCtx, bvToNatSimprocs) ←
     LNSymSimpContext
       (config := {failIfUnchanged := false})
+      -- (simp_attrs := #[`bv_toNat, `address_normalization])
       (simp_attrs := #[`bv_toNat])
       (useDefaultSimprocs := false)
   return {cfg, bvToNatSimpCtx, bvToNatSimprocs}
