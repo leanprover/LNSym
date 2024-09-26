@@ -354,6 +354,7 @@ end ReadOverlappingRead
 
 namespace ReadOverlappingWrite
 
+set_option trace.Meta.Tactic.bv true in
 example
   (src_addr : BitVec 64)
   (mem : Memory)
@@ -362,8 +363,14 @@ example
   (hmemLegal_bv : src_addr ≤ src_addr + 16#64) :
     (src_addr + 10 ≤ src_addr + 10 + 6 ∧
       src_addr ≤ src_addr + 16 ∧ src_addr ≤ src_addr + 10 ∧ src_addr + 10 + 6 ≤ src_addr + 16) := by
+  -- clear hmemLegal_bv
+-- (((true && !((var0 + 0x0000000000000010#64) <u var0)) &&
+--   !((var0 + 0x0000000000000010#64) <u var0)) &&
+--     !(!(((var0 + 0x000000000000000a#64) + 0x0000000000000006#64) <u
+--       (var0 + 0x000000000000000a#64)) && (!((var0 + 0x0000000000000010#64) <u var0) &&
+--   (!((var0 + 0x000000000000000a#64) <u var0) && !
+--   ((var0 + 0x0000000000000010#64) <u ((var0 + 0x000000000000000a#64) + 0x0000000000000006#64))))))
   mem_decide_bv
-
 
 theorem test_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' src_addr 16) :
@@ -373,12 +380,13 @@ theorem test_1 {val : BitVec (16 * 8)}
   · -- ⊢ val.extractLsBytes (src_addr.toNat - src_addr.toNat) 16 = val.extractLsBytes 0 16
     congr
     simp only [Nat.sub_self]
-
+set_option trace.Meta.Tactic.bv true in
 theorem test_2 {val : BitVec _}
     (hlegal : mem_legal' src_addr 16) :
     Memory.read_bytes 6 (src_addr + 10) (Memory.write_bytes 16 src_addr val mem) =
     val.extractLsBytes 10 6 := by
   simp_mem
+  -- ((true && !((var0 + 0x0000000000000010#64) <u var0)) && !((var0 + 0x0000000000000010#64) <u var0))
   /-
   hlegal : mem_legal' src_addr 16
   hmemLegal_bv✝ : src_addr ≤ src_addr + 16#64

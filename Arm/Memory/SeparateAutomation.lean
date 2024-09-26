@@ -1007,23 +1007,29 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
       trace[simp_mem.info] "read: {er}"
       trace[simp_mem.info] "write: {ew}"
       trace[simp_mem.info] "{processingEmoji} read({er.span})⟂/⊆write({ew.span})"
-
-      let separate := MemSeparateProp.mk er.span ew.span
-      trace[simp_mem.info] "[1/2] {processingEmoji} {separate}"
-      if let .some separateProof ← proveWithSolver? separate hyps then do
-        trace[simp_mem.info] "[1/2] {checkEmoji} {separate}"
-        rewriteReadOfSeparatedWrite er ew separateProof
+      let subset := MemSubsetProp.mk er.span ew.span
+      trace[simp_mem.info] "[2/2] {processingEmoji} {subset}"
+      if let .some subsetProof ← proveWithSolver? subset hyps then do
+        trace[simp_mem.info] "[2/2] {checkEmoji} {subset}"
+        rewriteReadOfSubsetWrite er ew subsetProof
         return true
       else
-        trace[simp_mem.info] "[1/2] {crossEmoji} {separate}"
-        let subset := MemSubsetProp.mk er.span ew.span
-        trace[simp_mem.info] "[2/2] {processingEmoji} {subset}"
-        if let .some subsetProof ← proveWithSolver? subset hyps then do
-          trace[simp_mem.info] "[2/2] {checkEmoji} {subset}"
-          rewriteReadOfSubsetWrite er ew subsetProof
+        trace[simp_mem.info] "[2/2] {crossEmoji} {subset}"
+        let separate := MemSeparateProp.mk er.span ew.span
+        trace[simp_mem.info] "[1/2] {processingEmoji} {separate}"
+        if let .some separateProof ← proveWithSolver? separate hyps then do
+          trace[simp_mem.info] "[1/2] {checkEmoji} {separate}"
+          rewriteReadOfSeparatedWrite er ew separateProof
           return true
         else
-          trace[simp_mem.info] "[2/2] {crossEmoji} {subset}"
+          -- trace[simp_mem.info] "[1/2] {crossEmoji} {separate}"
+          -- trace[simp_mem.info] "[2/2] {processingEmoji} {subset}"
+          -- if let .some subsetProof ← proveWithSolver? subset hyps then do
+          --   trace[simp_mem.info] "[2/2] {checkEmoji} {subset}"
+          --   rewriteReadOfSubsetWrite er ew subsetProof
+          --   return true
+          -- else
+          trace[simp_mem.info] "[2/2] {crossEmoji} {separate}"
           trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
           return false
     else
