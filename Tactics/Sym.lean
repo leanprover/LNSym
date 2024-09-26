@@ -406,7 +406,6 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
   let c ← withMainContext <| SymContext.fromLocalContext s
   SymM.run' c <| do
     -- Context preparation
-    addGoalsForMissingHypotheses
     canonicalizeHypothesisTypes
 
     -- Check pre-conditions
