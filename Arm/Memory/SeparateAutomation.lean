@@ -19,7 +19,7 @@ import Lean.Meta.Tactic.Rewrites
 import Lean.Elab.Tactic.Conv
 import Lean.Elab.Tactic.Conv.Basic
 import Tactics.Simp
-
+import Lean.Elab.Tactic.Omega
 open Lean Meta Elab Tactic
 
 
@@ -442,20 +442,90 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     replaceMainGoal [goal]
     return fvar
 
+section OmegaInterface
+open Omega
+
+mutual
+
+/--
+Split a disjunction in a `MetaProblem`, and if we find a new usable fact
+call `omegaImpl` in both branches.
+-/
+partial def splitDisjunction (m : MetaProblem) (g : MVarId) : OmegaM (Option Problem) := g.withContext do
+  match m.disjunctions with
+    | [] =>
+      return .some m.problem
+      -- throwError "omega could not prove the goal:\n{← formatErrorMessage m.problem}"
+    | h :: t =>
+      trace[omega] "Case splitting on {← inferType h}"
+      let ctx ← getMCtx
+      let (⟨g₁, h₁⟩, ⟨g₂, h₂⟩) ← cases₂ g h
+      trace[omega] "Adding facts:\n{← g₁.withContext <| inferType (.fvar h₁)}"
+      let m₁ := { m with facts := [.fvar h₁], disjunctions := t }
+      let (r, err?) ← withoutModifyingState do
+        let (m₁, n) ← g₁.withContext m₁.processFacts
+        if 0 < n then
+          let result ← SeparateAutomation.omegaImpl m₁ g₁
+          pure (true, result)
+        else
+          pure (false, .none)
+      if err?.isSome then
+        return err?
+      if r then
+        trace[omega] "Adding facts:\n{← g₂.withContext <| inferType (.fvar h₂)}"
+        let m₂ := { m with facts := [.fvar h₂], disjunctions := t }
+        SeparateAutomation.omegaImpl m₂ g₂
+      else
+        trace[omega] "No new facts found."
+        setMCtx ctx
+        splitDisjunction { m with disjunctions := t } g
+
+/-- Implementation of the `omega` algorithm, and handling disjunctions. -/
+partial def omegaImpl(m : MetaProblem) (g : MVarId) : OmegaM (Option Problem) := g.withContext do
+  let (m, _) ← m.processFacts
+  guard m.facts.isEmpty
+  let p := m.problem
+  trace[omega] "Extracted linear arithmetic problem:\nAtoms: {← atomsList}\n{p}"
+  let p' ← if p.possible then p.elimination else pure p
+  trace[omega] "After elimination:\nAtoms: {← atomsList}\n{p'}"
+  match p'.possible, p'.proveFalse?, p'.proveFalse?_spec with
+  | true, _, _ =>
+    SeparateAutomation.splitDisjunction m g
+  | false, .some prf, _ =>
+    trace[omega] "Justification:\n{p'.explanation?.get}"
+    let prf ← instantiateMVars (← prf)
+    trace[omega] "omega found a contradiction, proving {← inferType prf}"
+    g.assign prf
+    return .none
+end
+
+/--
+Given a collection of facts, try prove `False` using the omega algorithm,
+and close the goal using that.
+-/
+def omegaCore (facts : List Expr) (g : MVarId) (cfg : OmegaConfig := {}) : MetaM (Option Problem) :=
+  OmegaM.run (omegaImpl { facts } g) cfg
+
+end OmegaInterface
+
+
 /-- SimpMemM's omega invoker -/
-def omega : SimpMemM Unit := do
+def omega : SimpMemM (Option Omega.Problem) := do
   SimpMemM.withMainContext do
     -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
     -- @bollu: TODO: understand what precisely we are recovering from.
     let bvToNatSimpCtx ← SimpMemM.getBvToNatSimpCtx
     let bvToNatSimprocs ← SimpMemM.getBvToNatSimprocs
     let .some goal ← LNSymSimpAtStar (← getMainGoal) bvToNatSimpCtx bvToNatSimprocs
-      | trace[simp_mem.info] "simp [bv_toNat] at * managed to close goal."
+      | do
+        trace[simp_mem.info] "simp [bv_toNat] at * managed to close goal."
+        return .none
     replaceMainGoal [goal]
     SimpMemM.withTraceNode m!"goal post `bv_toNat` reductions (Note: can be large)" do
       trace[simp_mem.info] "{goal}"
-    withoutRecover do
-      evalTactic (← `(tactic| omega))
+    let some goal ← goal.falseOrByContra
+      | throwError "unable to convert goal to a contradictory goal for omega."
+    goal.withContext (do omegaCore (← getLocalHyps).toList goal {})
 
 section Hypotheses
 
@@ -811,7 +881,10 @@ def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
     SimpMemM.withMainContext do
     let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
     trace[simp_mem.info] m!"Executing `omega` to close {e}"
-    omega
+    match ← omega with
+    | some problem => do
+        throwError "omega could not prove the goal:\n{problem}"
+    | none => pure ()
     trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
     return (.some <| Proof.mk (← instantiateMVars factProof))
   catch e =>
@@ -1017,7 +1090,10 @@ partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM
           trace[simp_mem.info] m!"Executing `omega` to close {gt}"
           SimpMemM.withTraceNode m!"goal (Note: can be large)" do
             trace[simp_mem.info] "{← getMainGoal}"
-          omega
+          match ← omega with
+          | some problem => do
+              trace[simp_mem.info] "omega could not prove the goal:\n{problem}"
+          | none => pure ()
           trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
           g.assign gproof
         catch e =>
