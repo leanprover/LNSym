@@ -450,12 +450,10 @@ def omega : SimpMemM Unit := do
     let bvToNatSimpCtx ← SimpMemM.getBvToNatSimpCtx
     let bvToNatSimprocs ← SimpMemM.getBvToNatSimprocs
     let .some goal ← LNSymSimpAtStar (← getMainGoal) bvToNatSimpCtx bvToNatSimprocs
-      | throwError "error: simp [bv_toNat] at * managed to close goal. This is unexpected."
+      | trace[simp_mem.info] "simp [bv_toNat] at * managed to close goal."
     replaceMainGoal [goal]
-    trace[simp_mem.info] m!"@@@@ goal post simp only [bv_toNat] at * @@@@"
-    trace[simp_mem.info] m!"{goal}"
-    -- withoutRecover do
-    --   evalTactic (← `(tactic| bv_omega))
+    SimpMemM.withTraceNode m!"goal post `bv_toNat` reductions (Note: can be large)" do
+      trace[simp_mem.info] "{goal}"
     withoutRecover do
       evalTactic (← `(tactic| omega))
 
@@ -813,8 +811,6 @@ def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
     SimpMemM.withMainContext do
     let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
     trace[simp_mem.info] m!"Executing `omega` to close {e}"
-    SimpMemM.withTraceNode m!"goal (Note: can be large)" do
-      trace[simp_mem.info] "{← getMainGoal}"
     omega
     trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
     return (.some <| Proof.mk (← instantiateMVars factProof))
