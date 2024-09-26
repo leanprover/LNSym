@@ -234,6 +234,14 @@ theorem mem_legal'.iff (a : BitVec 64) (n : BitVec 64) :
   · intro h; assumption
   · intro h; assumption
 
+theorem mem_legal'.bv_def (a : BitVec 64) (n : BitVec 64) (h : mem_legal' a n) :
+    a ≤ a + n := by
+  apply (mem_legal'.iff _ _).mp h
+
+theorem mem_legal'.of_bv (a : BitVec 64) (n : BitVec 64) (h : a ≤ a + n) :
+    mem_legal' a n := by
+  apply (mem_legal'.iff _ _).mpr h
+
 /--
 `mem_separate' a an b bn` asserts that two memory regions [a..an) and [b..bn) are separate.
 Note that we use *half open* intervals.
@@ -263,6 +271,22 @@ theorem mem_separate'.iff (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn :
       bv_decide
     · bv_decide
 
+theorem mem_separate'.bv_def (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) (h : mem_separate' a an b bn) :
+    mem_legal' a an ∧ mem_legal' b bn ∧ (a + an ≤ b  ∨ a ≥ b + bn) := by
+  apply (mem_separate'.iff _ _ _ _).mp h
+
+theorem mem_separate'.of_bv (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64)
+    (h : a ≤ a + an ∧ b ≤ b + bn ∧ (a + an ≤ b  ∨ a ≥ b + bn)) :
+    mem_separate' a an b bn := by
+  apply (mem_separate'.iff _ _ _ _).mpr
+  constructor
+  · apply mem_legal'.of_bv
+    bv_decide
+  · constructor
+    · apply mem_legal'.of_bv
+      bv_decide
+    · bv_decide
+
 /-- `mem_subset' a an b bn` witnesses that `[a..a+an)` is a subset of `[b..b+bn)`.
 In prose, we may notate this as `[a..an) ≤ [b..bn)`.
 -/
@@ -289,6 +313,22 @@ theorem mem_subset'.iff (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : B
     · simp [mem_legal']
       bv_decide
     · bv_decide
+    · bv_decide
+
+theorem mem_subset'.bv_def (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) (h : mem_subset' a an b bn) :
+    mem_legal' a an ∧ mem_legal' b bn ∧ b ≤ a ∧ a + an ≤ b + bn := by
+  apply (mem_subset'.iff _ _ _ _).mp h
+
+theorem mem_subset'.of_bv (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64)
+    (h : a ≤ a + an ∧ b ≤ b + bn ∧ b ≤ a ∧ a + an ≤ b + bn) :
+    mem_subset' a an b bn := by
+  apply (mem_subset'.iff _ _ _ _).mpr
+  constructor
+  · apply mem_legal'.of_bv
+    bv_decide
+  · constructor
+    · apply mem_legal'.of_bv
+      bv_decide
     · bv_decide
 
 syntax "mem_decide_bv" : tactic

@@ -10,8 +10,8 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
--- set_option trace.simp_mem true
--- set_option trace.simp_mem.info true
+set_option trace.simp_mem true
+set_option trace.simp_mem.info true
 -- set_option trace.Tactic.address_normalization true
 
 namespace MemLegal
@@ -367,7 +367,19 @@ theorem test_2 {val : BitVec _}
     (hlegal : mem_legal' src_addr 16) :
     Memory.read_bytes 6 (src_addr + 10) (Memory.write_bytes 16 src_addr val mem) =
     val.extractLsBytes 10 6 := by
-  rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (by mem_decide_bv)]
+  -- simp_mem
+  /-
+  hlegal : mem_legal' src_addr 16
+  hmemLegal_bv✝ : src_addr ≤ src_addr + 16#64
+  ⊢ src_addr + 10 ≤ src_addr + 10 + 6 ∧
+    src_addr ≤ src_addr + 16 ∧ src_addr ≤ src_addr + 10 ∧ src_addr + 10 + 6 ≤ src_addr + 16
+  -/
+  rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (by
+    have := hlegal.bv_def
+    have this : Nat := 2
+    apply mem_subset'.of_bv
+    bv_decide
+  )]
   have : ((src_addr + 10).toNat - src_addr.toNat) = 10 := by bv_omega
   rw [this]
 
@@ -496,8 +508,7 @@ namespace MemOptions
 set_option trace.simp_mem true in
 set_option trace.simp_mem.info true in
 /--
-error: unsolved goals
-⊢ False
+error: ❌️ simp_mem failed to make any progress.
 ---
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
@@ -505,12 +516,9 @@ info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
----
-info: ⊢ False
 -/
 #guard_msgs in theorem test_no_fail_if_unchanged : False := by
-  sorry
-  -- simp_mem (config := { failIfUnchanged := false })
+  simp_mem
   trace_state
 
 set_option trace.simp_mem true in
@@ -526,8 +534,7 @@ info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
 -/
 #guard_msgs in theorem test_fail_if_unchanged : False := by
-  sorry
-  -- simp_mem
+  simp_mem
   trace_state
 
 
