@@ -12,9 +12,10 @@ import Arm.Memory.SeparateAutomation
 
 -- set_option trace.simp_mem true
 -- set_option trace.simp_mem.info true
--- set_option trace.Meta.Tactic.simp true
+-- set_option trace.Tactic.address_normalization true
 
 namespace MemLegal
+
 /-- Show reflexivity of legality. -/
 theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
   simp_mem

@@ -132,7 +132,7 @@ def Context.init (cfg : SimpMemConfig) : MetaM Context := do
   let (bvToNatSimpCtx, bvToNatSimprocs) ←
     LNSymSimpContext
       (config := {failIfUnchanged := false})
-      -- (simp_attrs := #[`bv_toNat, `address_normalization])
+      -- (simp_attrs := #[`bv_toNat, `address_normalization]) -- too slow, times out on memcpy.
       (simp_attrs := #[`bv_toNat])
       (useDefaultSimprocs := false)
   return {cfg, bvToNatSimpCtx, bvToNatSimprocs}
@@ -528,7 +528,7 @@ def omega : SimpMemM (Option Omega.Problem) := do
       trace[simp_mem.info] "{goal}"
     let some goal ← goal.falseOrByContra
       | throwError "unable to convert goal to a contradictory goal for omega."
-    goal.withContext (do omegaCore (← getLocalHyps).toList goal {})
+    goal.withContext (do omegaCore (← getLocalHyps).toList goal { splitDisjunctions := true })
 
 section Hypotheses
 
