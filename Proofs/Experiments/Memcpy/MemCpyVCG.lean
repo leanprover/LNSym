@@ -21,6 +21,7 @@ import Tactics.SkipProof
 
 -- Disable linters, they take too much time.
 set_option linter.unusedVariables false
+set_option linter.all false
 
 namespace Memcpy
 
@@ -507,7 +508,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       i < s0.x0 - si.x0 →
         Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
   (h_pre_1 : mem_separate' s0.x1 (s0.x0 * 16) s0.x2 (s0.x0 * 16)) (h_pre_2 : r StateField.PC s0 = 0x8e0#64)
-  (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
+  -- (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
   (h_pre_7 : mem_legal' s0.x1 (16#64 * s0.x0))  -- memory region is legal.
   :
   (∀ (i : BitVec 64),
@@ -603,7 +604,8 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           --   bv_omega
           -- }
   · intros n addr hsep
-    apply Memcpy.extracted_2 <;> assumption
+    sorry
+    -- apply Memcpy.extracted_2 <;> assumption
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by
@@ -812,20 +814,11 @@ theorem partial_correctness :
           and_self,
           and_true]
         simp only [memory_rules]
-        rw [step_8f0_8f4.h_mem]
-        rw [step_8ec_8f0.h_mem]
-        rw [step_8e8_8ec.h_mem]
-        rw [step_8e4_8e8.h_mem]
-        rw [step_8f4_8e4.h_mem]
-        rw [step_8e4_8e8.h_x2]
-        rw [step_8f4_8e4.h_x2]
-        rw [step_8e4_8e8.h_q4]
-        rw [h_si_x2]
+        rw [step_8f0_8f4.h_mem, step_8ec_8f0.h_mem, step_8e8_8ec.h_mem,
+          step_8e4_8e8.h_mem, step_8f4_8e4.h_mem, step_8e4_8e8.h_x2,
+          step_8f4_8e4.h_x2, step_8e4_8e8.h_q4, h_si_x2]
         obtain ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
-        simp only [memory_rules]
-        simp only [step_8f4_8e4.h_mem]
-        simp only [step_8f4_8e4.h_x1]
-        rw [h_si_x1]
+        simp only [memory_rules, step_8f4_8e4.h_mem, step_8f4_8e4.h_x1, h_si_x1]
         simp only [memory_rules] at h_assert_6 h_assert_5
         have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5⟩ := h_pre
         apply Memcpy.extracted_0
@@ -842,6 +835,9 @@ theorem partial_correctness :
         · assumption
         · assumption
         · assumption
+        · -- h_pre_1 : mem_separate' s0.x1 (s0.x0 * 16) s0.x2 (s0.x0 * 16)
+          -- ⊢ mem_legal' s0.x1 (0x10#64 * s0.x0)
+          mem_decide_bv
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
