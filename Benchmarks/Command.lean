@@ -8,15 +8,16 @@ import Lean
 open Lean Parser.Command Elab.Command
 
 initialize
-  registerTraceClass `Benchmark
-
-#check withHeartbeats
+  registerOption `benchmark {
+    defValue := false
+    descr := "enables/disables benchmarking in `withBenchmark` combinator"
+  }
 
 elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   logInfo m!"Running {id} benchmark\n"
 
   let stx ← `(command|
-    set_option trace.benchmark true in
+    set_option benchmark true in
     example $declSig:optDeclSig $val:declVal
   )
 
@@ -62,21 +63,105 @@ elab "logHeartbeats" tac:tactic : tactic => do
 
   logInfo m!"used {heartbeats / 1000} heartbeats ({percent}% of the default maximum)"
 
-variable {m} [Monad m] [MonadLiftT BaseIO m] [MonadLiftT IO m]
-  [MonadOptions m] [MonadTrace m] [MonadRef m] [AddMessageContext m] in
-/-- `withBenchmark x` is a combinator that will trace the time and heartbeats
-used by `x` to the `benchmark` trace class, in a message like:
+section withBenchmark
+variable {m} [Monad m] [MonadLiftT BaseIO m] [MonadOptions m] [MonadLog m]
+  [AddMessageContext m]
+
+/-- if the `benchmark` option is true, execute `x` and call `f` with the amount
+of heartbeats and milliseconds (in that order!) taken by `x`.
+
+Otherwise, just execute `x` without measurements. -/
+private def withBenchmarkAux (x : m α) (f : Nat → Nat → m Unit)  : m α := do
+  if (← getBoolOption `benchmark) = false then
+    x
+  else
+    let start ← IO.monoMsNow
+    let (a, heartbeats) ← withHeartbeats x
+    let t := ((← IO.monoMsNow) - start)
+    f heartbeats t
+    return a
+
+
+/-- `withBenchmark header x` is a combinator that will, if the `benchmark`
+option is set to `true`, log the time and heartbeats used by `x`,
+in a message like:
   `{header} took {x}s and {y} heartbeats ({z}% of the default maximum)`
+
+Otherwise, if `benchmark` is set to false, `x` is returned as-is.
 
 NOTE: the maximum reffered to in the message is `defaultMaxHeartbeats`,
 deliberately *not* the currently confiugred `maxHeartbeats` option, to keep the
 numbers comparable across different values of that option. It's thus entirely
 possible to see more than 100% being reported here. -/
 def withBenchmark (header : String) (x : m α) : m α := do
-  let start ← IO.monoMsNow
-  let (a, heartbeats) ← withHeartbeats x
-  let t := ((← IO.monoMsNow) - start)
-  let percent := percentOfDefaultMaxHeartbeats heartbeats
-  trace[Benchmark] m!"{header} took {t}ms and {heartbeats} heartbeats \
-    ({percent}% of the default maximum)"
-  return a
+  withBenchmarkAux x fun heartbeats t => do
+    let percent := percentOfDefaultMaxHeartbeats heartbeats
+    logInfo m!"{header} took: {t}ms and {heartbeats} heartbeats \
+      ({percent}% of the default maximum)"
+
+/-- Benchmark the time and heartbeats taken by a tactic, if the `benchmark`
+option is set to `true` -/
+elab "with_benchmark" t:tactic : tactic => do
+  withBenchmark "{t}" <| Elab.Tactic.evalTactic t
+
+end withBenchmark
+
+/-!
+## Aggregated benchmark statistics
+We define `withAggregatedBenchmark`, which functions like `withBenchmark`,
+except it will store a running average of the statistics in a `BenchmarkState`
+which will be reported in one go when `reportAggregatedBenchmarks` is called.
+-/
+section
+
+structure BenchmarkState.Stats where
+  totalHeartbeats : Nat := 0
+  totalTimeInMs : Nat := 0
+  samples : Nat := 0
+
+structure BenchmarkState where
+  stats : Std.HashMap String BenchmarkState.Stats := .empty
+
+variable {m} [Monad m] [MonadStateOf BenchmarkState m] [MonadLiftT BaseIO m]
+  [MonadOptions m]
+
+/-- `withAggregatedBenchmark header x` is a combinator that will,
+if the `benchmark` option is set to `true`,
+measure the time and heartbeats to the benchmark state in a way that aggregates
+different measurements with the same `header`.
+
+See `reportAggregatedBenchmarks` to log the collected data.
+
+Otherwise, if `benchmark` is set to false, `x` is returned as-is.
+-/
+def withAggregatedBenchmark (header : String) (x : m α) : m α := do
+  withBenchmarkAux x fun heartbeats t => do
+    modify fun state =>
+      let s := state.stats.getD header {}
+      { stats := state.stats.insert header {
+          totalHeartbeats := s.totalHeartbeats + heartbeats
+          totalTimeInMs   := s.totalTimeInMs + t
+          samples         := s.samples + 1
+      }}
+
+variable [MonadLog m] [AddMessageContext m] in
+/--
+if the `benchmark` option is set to `true`, report the data collected by
+`withAggregatedBenchmark`, and reset the state (so that the next call to
+`reportAggregatedBenchmarks` will report only new data).
+-/
+def reportAggregatedBenchmarks : m Unit := do
+  if (← getBoolOption `benchmark) = false then
+    return
+
+  for ⟨header, stats⟩ in (← get).stats do
+    let heartbeats := stats.totalHeartbeats
+    let percent := percentOfDefaultMaxHeartbeats heartbeats
+    let t := stats.totalTimeInMs
+    let n := stats.samples
+    logInfo m!"{header} took: {t}ms and {heartbeats} heartbeats \
+      ({percent}% of the default maximum) in total over {n} samples"
+
+  set ({} : BenchmarkState)
+
+end
