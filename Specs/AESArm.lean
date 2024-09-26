@@ -110,19 +110,20 @@ def SubWord (w : BitVec WordSize) : BitVec WordSize :=
 
 protected def InitKey {Param : KBR} (i : Nat) (key : BitVec Param.key_len)
   (acc : KeySchedule) : KeySchedule :=
-  if h₀ : Param.Nk ≤ i then acc
-  else
+  match i with
+  | 0 => acc
+  | i' + 1 =>
+    let i := Param.Nk - i
     let wd := extractLsb' (i * 32) 32 key
     let (x:KeySchedule) := [wd]
-    have _ : Param.Nk - (i + 1) < Param.Nk - i := by omega
-    AESArm.InitKey (Param := Param) (i + 1) key (acc ++ x)
-  termination_by (Param.Nk - i)
+    AESArm.InitKey (Param := Param) i' key (acc ++ x)
 
 protected def KeyExpansion_helper {Param : KBR} (i : Nat) (ks : KeySchedule)
   : KeySchedule :=
-  if h : 4 * Param.Nr + 4 ≤ i then
-    ks
-  else
+  match i with
+  | 0 => ks
+  | i' + 1 =>
+    let i := 4 * Param.Nr + 4 - i
     let tmp := List.get! ks (i - 1)
     let tmp :=
       if i % Param.Nk == 0 then
@@ -133,13 +134,11 @@ protected def KeyExpansion_helper {Param : KBR} (i : Nat) (ks : KeySchedule)
         tmp
     let res := (List.get! ks (i - Param.Nk)) ^^^ tmp
     let ks := List.append ks [ res ]
-    have _ : 4 * Param.Nr + 4 - (i + 1) < 4 * Param.Nr + 4 - i := by omega
-    AESArm.KeyExpansion_helper (Param := Param) (i + 1) ks
-  termination_by (4 * Param.Nr + 4 - i)
+    AESArm.KeyExpansion_helper (Param := Param) i' ks
 
 def KeyExpansion {Param : KBR} (key : BitVec Param.key_len)
   : KeySchedule :=
-  let seeded := AESArm.InitKey (Param := Param) 0 key []
+  let seeded := AESArm.InitKey (Param := Param) Param.Nk key []
   AESArm.KeyExpansion_helper (Param := Param) Param.Nk seeded
 
 def SubBytes {Param : KBR} (state : BitVec Param.block_size)
@@ -213,15 +212,15 @@ protected def getKey {Param : KBR} (n : Nat) (w : KeySchedule) : BitVec Param.bl
 protected def AES_encrypt_with_ks_loop {Param : KBR} (round : Nat)
   (state : BitVec Param.block_size) (w : KeySchedule)
   : BitVec Param.block_size :=
-  if Param.Nr ≤ round then
-    state
-  else
+  match round with
+  | 0 => state
+  | round' + 1 =>
+    let round := Param.Nr - round
     let state := SubBytes state
     let state := ShiftRows state
     let state := MixColumns state
     let state := AddRoundKey state $ AESArm.getKey round w
-    AESArm.AES_encrypt_with_ks_loop (Param := Param) (round + 1) state w
-  termination_by (Param.Nr - round)
+    AESArm.AES_encrypt_with_ks_loop (Param := Param) round' state w
 
 def AES_encrypt_with_ks {Param : KBR} (input : BitVec Param.block_size)
   (w : KeySchedule) : BitVec Param.block_size :=
