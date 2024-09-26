@@ -8,7 +8,7 @@ import Arm.Map
 import Arm.Decode
 import Tactics.Common
 import Tactics.Simp
-import Tactics.Reflect.ProgramInfo
+import Tactics.Sym.ProgramInfo
 
 open Lean Lean.Expr Lean.Meta Lean.Elab Lean.Elab.Command
 open SymContext (h_pc_type h_program_type h_err_type)

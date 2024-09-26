@@ -242,8 +242,7 @@ def findProgramHyp (state : Expr) : MetaM (LocalDecl × Name) := do
   -- Assert that `program` is a(n application of a) constant, and find its name
   let program := (← instantiateMVars program).getAppFn
   let .const program _ := program
-    |  -- withErrorContext h_run h_run_type <|
-        throwError "Expected a constant, found:\n\t{program}"
+    | throwError "Expected a constant, found:\n\t{program}"
 
   return ⟨h_program, program⟩
 

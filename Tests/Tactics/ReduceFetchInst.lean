@@ -3,7 +3,7 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Alex Keizer
 -/
-import Tactics.Reflect.FetchAndDecode
+import Tactics.Sym.FetchAndDecode
 import Tests.«AES-GCM».GCMGmultV8Program
 import Tests.SHA2.SHA512Program
 

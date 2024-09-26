@@ -5,7 +5,7 @@ Author(s): Alex Keizer
 -/
 import Arm.State
 import Tactics.Common
-import Tactics.Reflect.ProgramInfo
+import Tactics.Sym.ProgramInfo
 
 open Lean Meta
 open Elab.Tactic Elab.Term
