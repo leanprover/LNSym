@@ -5,7 +5,7 @@ Author(s): Shilpi Goel, Siddharth Bhat
 -/
 import Arm.State
 import Arm.BitVec
-
+import Arm.Memory.Attr
 section Separate
 
 open BitVec
@@ -227,6 +227,13 @@ of memory. Note that the interval is left closed, right open, and thus `n` is th
 def mem_legal' (a : BitVec 64) (n : BitVec 64) : Prop :=
   a ≤ a + n
 
+@[memory_defs_bv]
+theorem mem_legal'.iff (a : BitVec 64) (n : BitVec 64) :
+  mem_legal' a n ↔ a ≤ a + n := by
+  constructor
+  · intro h; assumption
+  · intro h; assumption
+
 /--
 `mem_separate' a an b bn` asserts that two memory regions [a..an) and [b..bn) are separate.
 Note that we use *half open* intervals.
@@ -238,6 +245,24 @@ structure mem_separate' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : 
   hb : mem_legal' b bn
   h : a + an ≤ b  ∨ a ≥ b + bn
 
+@[memory_defs_bv]
+theorem mem_separate'.iff (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
+  mem_separate' a an b bn ↔ mem_legal' a an ∧ mem_legal' b bn ∧ (a + an ≤ b  ∨ a ≥ b + bn) := by
+  constructor
+  · intro h
+    have {..} := h
+    simp only [mem_separate', mem_legal'] at *
+    bv_decide
+  · intro h;
+    simp only [mem_separate', mem_legal'] at *
+    have {..} := h
+    constructor
+    · simp [mem_legal']
+      bv_decide
+    · simp [mem_legal']
+      bv_decide
+    · bv_decide
+
 /-- `mem_subset' a an b bn` witnesses that `[a..a+an)` is a subset of `[b..b+bn)`.
 In prose, we may notate this as `[a..an) ≤ [b..bn)`.
 -/
@@ -247,10 +272,37 @@ structure mem_subset' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) : Pr
   hstart : b ≤ a
   hend : a + an ≤ b + bn
 
+@[memory_defs_bv]
+theorem mem_subset'.iff (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
+  mem_subset' a an b bn ↔ mem_legal' a an ∧ mem_legal' b bn ∧ b ≤ a ∧ a + an ≤ b + bn := by
+  constructor
+  · intro h
+    have {..} := h
+    simp only [mem_subset', mem_legal'] at *
+    bv_decide
+  · intro h;
+    simp only [mem_subset', mem_legal'] at *
+    have {..} := h
+    constructor
+    · simp [mem_legal']
+      bv_decide
+    · simp [mem_legal']
+      bv_decide
+    · bv_decide
+    · bv_decide
+
+syntax "mem_decide_bv" : tactic
+
+@[memory_defs_bv]
+abbrev Nat.bv64 (n : Nat) : BitVec 64 := BitVec.ofNat 64 n
+
+macro_rules
+| `(tactic| mem_decide_bv) =>
+    `(tactic| simp only [memory_defs_bv] at * <;> bv_decide)
 
 theorem mem_separate'_of_mem_separate'_of_mem_subset'
-    (hsep : mem_separate' b bn c cn)
-    (hsub : mem_subset' a an b bn) :
+    (hsep : mem_separate' b bn c cn := by mem_decide_bv)
+    (hsub : mem_subset' a an b bn := by mem_decide_bv) :
     mem_separate' a an c cn := by
   obtain ⟨_, hsep₂, hsep₃⟩ := hsep
   obtain ⟨hsub₁, _, hsub₃, hsub₄⟩ := hsub
@@ -261,6 +313,7 @@ theorem mem_separate'_of_mem_separate'_of_mem_subset'
     | assumption
 
 /- value of read_mem_bytes when separate from the write. -/
+@[memory_rewrites_bv]
 axiom Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
     {yn : Nat}
     {y : BitVec 64}
@@ -273,18 +326,20 @@ axiom Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
     Memory.read_bytes xn x mem
 
 /- value of `read_mem_bytes'` when subset of the write. -/
+@[memory_rewrites_bv]
 axiom Memory.read_bytes_write_bytes_eq_of_mem_subset'
     {yn : Nat}
     {y : BitVec 64}
     {x : BitVec 64}
     {xn : Nat}
     {mem : Memory}
-    (hsep : mem_subset' x xn y yn) -- subset relation.
+    (hsep : mem_subset' x xn y yn := by mem_decide_bv) -- subset relation.
     (val : BitVec (yn * 8)) :
     Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
       val.extractLsBytes (x.toNat - y.toNat) xn
 
 /- value of read_mem_bytes when subset of another *read*. -/
+@[memory_rewrites_bv]
 axiom Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
     {bn : Nat}
     {b : BitVec 64}
@@ -293,8 +348,10 @@ axiom Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
     {val : BitVec (bn * 8)}
     {mem : Memory}
     (hread : mem.read_bytes bn b = val)
-    (hsubset : mem_subset' a an b bn) :
+    (hsubset : mem_subset' a an b bn := by mem_decide_bv) :
     mem.read_bytes an a = val.extractLsBytes (a.toNat - b.toNat) an
+
+
 
 /-- A region of memory, given by (base pointer, length) -/
 abbrev Memory.Region := BitVec 64 × Nat
@@ -319,5 +376,6 @@ axiom Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem {mems: List Memor
   (a b : Memory.Region)
   (ha : mems.get? i = some a) (hb : mems.get? j = some b) :
     mem_separate' a.fst a.snd b.fst b.snd
+
 
 end NewDefinitions

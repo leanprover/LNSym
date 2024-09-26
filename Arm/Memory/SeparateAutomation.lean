@@ -164,8 +164,10 @@ def MemSpanExpr.toTypeExpr  : Expr :=
 instance : ToMessageData MemSpanExpr where
   toMessageData span := m! "[{span.base}..{span.n})"
 
+/-
 /-- info: mem_legal' (a : BitVec 64) (n : Nat) : Prop -/
 #guard_msgs in #check mem_legal'
+-/
 
 /-- a term of the form `mem_legal' a` -/
 structure MemLegalProp  where
@@ -531,33 +533,37 @@ def omega : SimpMemM (Option Omega.Problem) := do
     goal.withContext (do omegaCore (← getLocalHyps).toList goal { splitDisjunctions := true })
 
 section Hypotheses
-
+/-
 /--
 info: mem_separate'.ha {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_separate' a an b bn) :
   mem_legal' a an
 -/
 #guard_msgs in #check mem_separate'.ha
-
+-/
 def MemSeparateProof.mem_separate'_ha (self : MemSeparateProof sep) :
     MemLegalProof sep.sa :=
   let h := mkAppN (Expr.const ``mem_separate'.ha []) #[sep.sa.base, sep.sa.n, sep.sb.base, sep.sb.n, self.h]
   MemLegalProof.mk h
 
+/-
 /--
 info: mem_separate'.hb {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_separate' a an b bn) :
   mem_legal' b bn
 -/
 #guard_msgs in #check mem_separate'.hb
+-/
 
 def MemSeparateProof.mem_separate'_hb (self : MemSeparateProof sep) :
     MemLegalProof sep.sb :=
   let h := mkAppN (Expr.const ``mem_separate'.hb []) #[sep.sa.base, sep.sa.n, sep.sb.base, sep.sb.n, self.h]
   MemLegalProof.mk h
 
+/-
 /--
 info: mem_subset'.ha {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_subset' a an b bn) : mem_legal' a an
 -/
 #guard_msgs in #check mem_subset'.ha
+-/
 
 def MemSubsetProof.mem_subset'_ha (self : MemSubsetProof sub) :
     MemLegalProof sub.sa :=
@@ -565,10 +571,12 @@ def MemSubsetProof.mem_subset'_ha (self : MemSubsetProof sub) :
     #[sub.sa.base, sub.sa.n, sub.sb.base, sub.sb.n, self.h]
   MemLegalProof.mk h
 
+/-
 /--
 info: mem_subset'.hb {a : BitVec 64} {an : Nat} {b : BitVec 64} {bn : Nat} (self : mem_subset' a an b bn) : mem_legal' b bn
 -/
 #guard_msgs in #check mem_subset'.hb
+-/
 
 def MemSubsetProof.mem_subset'_hb (self : MemSubsetProof sub) :
     MemLegalProof sub.sb :=
@@ -660,6 +668,7 @@ def hypothesisOfExpr (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothe
       hyps := hyps.push proof
     return hyps
 
+/-
 /--
 info: mem_legal'.omega_def {a : BitVec 64} {n : Nat} (h : mem_legal' a n) : a.toNat + n ≤ 2 ^ 64
 -/
@@ -1189,3 +1198,5 @@ def evalSimpMem : Tactic := fun
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
     SeparateAutomation.simpMemTactic cfg
   | _ => throwUnsupportedSyntax
+
+-/

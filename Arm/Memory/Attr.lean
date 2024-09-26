@@ -21,5 +21,10 @@ initialize Lean.registerTraceClass `Tactic.address_normalization
 -- to run.
 register_simp_attr memory_omega
 
+register_simp_attr memory_defs_bv -- bv preprocessing for memory goals.
+
+register_simp_attr memory_rewrites_bv -- bv rewrites for memory goals.
+
+
 -- Simprocs for address normalization
 register_simp_attr address_normalization
