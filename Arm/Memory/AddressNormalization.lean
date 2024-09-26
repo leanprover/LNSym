@@ -11,11 +11,11 @@ We perform the following additional changes:
 1. Canonicalizing bitvector expression to always have constants on the left.
   Recall that the default associativity of addition is to the left: x + y + z = (x + y) + z.
   If we thus normalize our expressions to have constants on the left,
-  and if we constFoldiate our additions to be to the left, we will naturally perform
+  and if we constant-fold our additions to be to the left, we will naturally perform
   constant folding:
 
   (a) (x + c) -> (c + x).
-  (b) x + (y + z) -> (x + y) + c.
+  (b) x + (y + z) -> (x + y) + z.
 
   Observe an example:
 
@@ -56,6 +56,9 @@ private def mkSubNat (x y : Expr) : Expr :=
 
 /--
 Given an expression of the form `n#w`, return the value of `n` if it is a ground constant.
+
+Notice that this is different from `getBitVecValue?` in that here we allow `w` to be symbolic.
+Hence, we might not know the width, explaining why we return a `Nat` rather than a `BitVec`.
 -/
 def getBitVecOfNatValue? (e : Expr) : (Option (Expr × Expr)) :=
   match_expr e with
@@ -181,7 +184,7 @@ theorem BitVec.ofNat_add_ofNat_eq_add_ofNat (w : Nat) (n m : Nat) : BitVec.ofNat
 
 /-- Reassociate addition to left. -/
 @[address_normalization]
-theorem BitVec.constFold_add (x y z : BitVec w) : x + (y + z) = x + y + z := by
+theorem BitVec.add_assoc_symm (x y z : BitVec w) : x + (y + z) = x + y + z := by
   rw [BitVec.add_assoc]
 
 
