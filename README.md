@@ -43,6 +43,8 @@ native-code programs of interest.
 
 `benchmarks`: run benchmarks for the symbolic simulator.
 
+`profiler`: run a single round of each benchmark, with the profiler enabled
+
 ### Makefile variables that can be passed in at the command line
 
 `VERBOSE`: Verbose mode; prints disassembly of the instructions being

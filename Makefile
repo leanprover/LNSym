@@ -53,6 +53,19 @@ benchmarks:
 	$(BENCH) Benchmarks/SHA512_400.lean
 	$(BENCH) Benchmarks/SHA512_400_noKernel_noLint.lean
 
+PROF = $(LEAN) -Dprofiler=true
+.PHONY: profile
+profile:
+	$(LAKE) build Benchmarks
+	$(PROF) Benchmarks/SHA512_75.lean
+	$(PROF) Benchmarks/SHA512_75_noKernel_noLint.lean
+	$(PROF) Benchmarks/SHA512_150.lean
+	$(PROF) Benchmarks/SHA512_150_noKernel_noLint.lean
+	$(PROF) Benchmarks/SHA512_225.lean
+	$(PROF) Benchmarks/SHA512_225_noKernel_noLint.lean
+	$(PROF) Benchmarks/SHA512_400.lean
+	$(PROF) Benchmarks/SHA512_400_noKernel_noLint.lean
+
 .PHONY: clean clean_all
 clean:
 	$(LAKE) clean
