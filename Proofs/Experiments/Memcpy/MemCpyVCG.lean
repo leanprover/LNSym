@@ -491,7 +491,7 @@ theorem BitVec.natCast_toNat (x : BitVec 64) : (↑ x.toNat  : BitVec 64) = x :=
 --     sorry
 
 -- -- set_option skip_proof.skip true in
--- -- set_option maxHeartbeats 0 in
+set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -555,7 +555,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
         constructor
         · simp_mem
         · simp_mem
-        · sorry
+        · mem_decide_bv
       · constructor
         · simp_mem
         · simp_mem
@@ -590,7 +590,29 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           -- bv_decide
         · skip_proof simp_mem
         · left
+          simp
+          simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.toNat_mul, BitVec.toNat_ofNat,
+            Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, BitVec.natCast_eq_ofNat, Nat.reduceMul,
+            gt_iff_lt] at *
+          have i_mul_16_plus_16 : 0x10#64 * i + 0x10#64 = 0x10#64 * (i + 1) := by bv_decide
+          rw [BitVec.add_assoc, i_mul_16_plus_16]
+          clear h_assert_1 h_assert_3 h_assert_4 h_assert_5 h_assert_6 h_pre_1 h_pre_2 h_pre_7
+          clear sub_lt lt_size neq_zero legal_2
+          clear h_s0_x1 h_s0_x2 h_si_x0_nonzero i_mul_16_plus_16 s0 i
           sorry
+          -- bv_omega -- please, for the love of god. Nope, still times out.
+
+          -- bv_omega
+          -- bv_omega
+          -- ⊢ s0.x2 + 0x10#64 * (i + 1) ≤ s0.x2 + 0x10#64 * (s0.x0 - si.x0)
+          -- => ⊢ 0x10#64 * (i + 1) ≤ 0x10#64 * (s0.x0 - si.x0)
+          -- => ⊢ (i + 1) ≤ (s0.x0 - si.x0)
+          -- => (hi : i < s0.x0 - si.x0) ⊢ (i + 1) ≤ (s0.x0 - si.x0)
+          -- => by theory.
+          -- bv_decide
+
+          -- mem_decide_bv
+
           -- -- @bollu: TODO, see if `simp_mem` can figure this out given less aggressive
           -- -- proof states.
           -- skip_proof {
