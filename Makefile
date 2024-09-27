@@ -45,13 +45,13 @@ benchmarks:
 	echo "HEAD is on `$(GIT) rev-parse --short HEAD`"
 	$(LAKE) build Benchmarks
 	$(BENCH) Benchmarks/SHA512_75.lean
-	$(LEAN) Benchmarks/SHA512_75_noKernel_noLint.lean
-	$(LEAN) Benchmarks/SHA512_150.lean
-	$(LEAN) Benchmarks/SHA512_150_noKernel_noLint.lean
-	$(LEAN) Benchmarks/SHA512_225.lean
-	$(LEAN) Benchmarks/SHA512_225_noKernel_noLint.lean
-	$(LEAN) Benchmarks/SHA512_400.lean
-	$(LEAN) Benchmarks/SHA512_400_noKernel_noLint.lean
+	$(BENCH) Benchmarks/SHA512_75_noKernel_noLint.lean
+	$(BENCH) Benchmarks/SHA512_150.lean
+	$(BENCH) Benchmarks/SHA512_150_noKernel_noLint.lean
+	$(BENCH) Benchmarks/SHA512_225.lean
+	$(BENCH) Benchmarks/SHA512_225_noKernel_noLint.lean
+	$(BENCH) Benchmarks/SHA512_400.lean
+	$(BENCH) Benchmarks/SHA512_400_noKernel_noLint.lean
 
 .PHONY: clean clean_all
 clean:
