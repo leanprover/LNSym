@@ -132,7 +132,9 @@ structure Context where
 def Context.init (cfg : SimpMemConfig) : MetaM Context := do
   let (bvToNatSimpCtx, bvToNatSimprocs) ←
     LNSymSimpContext
-      (config := {failIfUnchanged := false})
+      -- | TODO/FIXME: bv_decide does not like it when the equation is fully ground.
+      --  So we work around it by setting `failIfUnchanged := false`.
+      (config := {failIfUnchanged := false, ground := true})
       -- (simp_attrs := #[`bv_toNat, `address_normalization]) -- too slow, times out on memcpy.
       (simp_attrs := #[`memory_defs_bv])
       (useDefaultSimprocs := false)
@@ -468,7 +470,6 @@ Introduce a new definition into the local context, simplify it using `simp`,
 and return the FVarId of the new definition in the goal.
 -/
 def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
-  SimpMemM.withMainContext do
     -- TODO(@bollu): disable this eventually
     trace[simp_mem] "DEBUG CODE: checking that '{hdefVal}' is type correct."
     check hdefVal
@@ -498,116 +499,6 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     let (fvar, goal) ← goal.intro1P
     replaceMainGoal [goal]
     return fvar
-
-section OmegaInterface
-open Omega
-
-mutual
-
-/--
-Split a disjunction in a `MetaProblem`, and if we find a new usable fact
-call `omegaImpl` in both branches.
--/
-partial def splitDisjunction (m : MetaProblem) (g : MVarId) : OmegaM (Option Problem) := g.withContext do
-  match m.disjunctions with
-    | [] =>
-      return .some m.problem
-      -- throwError "omega could not prove the goal:\n{← formatErrorMessage m.problem}"
-    | h :: t =>
-      trace[omega] "Case splitting on {← inferType h}"
-      let ctx ← getMCtx
-      let (⟨g₁, h₁⟩, ⟨g₂, h₂⟩) ← cases₂ g h
-      trace[omega] "Adding facts:\n{← g₁.withContext <| inferType (.fvar h₁)}"
-      let m₁ := { m with facts := [.fvar h₁], disjunctions := t }
-      let (r, err?) ← withoutModifyingState do
-        let (m₁, n) ← g₁.withContext m₁.processFacts
-        if 0 < n then
-          let result ← SeparateAutomation.omegaImpl m₁ g₁
-          pure (true, result)
-        else
-          pure (false, .none)
-      if err?.isSome then
-        return err?
-      if r then
-        trace[omega] "Adding facts:\n{← g₂.withContext <| inferType (.fvar h₂)}"
-        let m₂ := { m with facts := [.fvar h₂], disjunctions := t }
-        SeparateAutomation.omegaImpl m₂ g₂
-      else
-        trace[omega] "No new facts found."
-        setMCtx ctx
-        splitDisjunction { m with disjunctions := t } g
-
-/-- Implementation of the `omega` algorithm, and handling disjunctions. -/
-partial def omegaImpl(m : MetaProblem) (g : MVarId) : OmegaM (Option Problem) := g.withContext do
-  let (m, _) ← m.processFacts
-  guard m.facts.isEmpty
-  let p := m.problem
-  trace[omega] "Extracted linear arithmetic problem:\nAtoms: {← atomsList}\n{p}"
-  let p' ← if p.possible then p.elimination else pure p
-  trace[omega] "After elimination:\nAtoms: {← atomsList}\n{p'}"
-  match p'.possible, p'.proveFalse?, p'.proveFalse?_spec with
-  | true, _, _ =>
-    SeparateAutomation.splitDisjunction m g
-  | false, .some prf, _ =>
-    trace[omega] "Justification:\n{p'.explanation?.get}"
-    let prf ← instantiateMVars (← prf)
-    trace[omega] "omega found a contradiction, proving {← inferType prf}"
-    g.assign prf
-    return .none
-end
-
-/--
-Given a collection of facts, try prove `False` using the omega algorithm,
-and close the goal using that.
--/
-def omegaCore (facts : List Expr) (g : MVarId) (cfg : OmegaConfig := {}) : MetaM (Option Problem) :=
-  OmegaM.run (omegaImpl { facts } g) cfg
-
-end OmegaInterface
-
-def bvDecide : SimpMemM Unit  := do
-    -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
-    -- @bollu: TODO: understand what precisely we are recovering from.
-    -- let bvToNatSimpCtx ← SimpMemM.getBvToNatSimpCtx
-    -- let bvToNatSimprocs ← SimpMemM.getBvToNatSimprocs
-    -- let .some goal ← LNSymSimpAtStar (← getMainGoal) bvToNatSimpCtx bvToNatSimprocs
-    --   | do
-    --     trace[simp_mem.info] "simp [bv_toNat] at * managed to close goal."
-    --     return .none
-    -- replaceMainGoal [goal]
-    -- SimpMemM.withTraceNode m!"goal post `bv_toNat` reductions (Note: can be large)" do
-    --   trace[simp_mem.info] "{goal}"
-    -- -- let some goal ← goal.falseOrByContra
-    -- --   | throwError "unable to convert goal to a contradictory goal for omega."
-    -- goal.withContext (do
-    --   evalTactic (← `(tactic| mem_decide_bv))
-    -- )
-      SimpMemM.withTraceNode "solving goal with `mem_decide_bv`" do
-        withoutRecover do
-          evalTactic (← `(tactic| mem_unfold_bv))
-          trace[simp_mem.info] m!"{← getMainGoal}"
-          evalTactic (← `(tactic| mem_decide_bv))
-
-  -- if ! (← g.isAssigned) then
-  --   throwError "bvDecide failed to close goal."
-          -- evalTactic (← `(tactic| bv_decide))
-          -- evalTactic (← `(tactic| sorry))
--- def omega : SimpMemM (Option Unit) := do
---   SimpMemM.withMainContext do
---     -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
---     -- @bollu: TODO: understand what precisely we are recovering from.
---     let bvToNatSimpCtx ← SimpMemM.getBvToNatSimpCtx
---     let bvToNatSimprocs ← SimpMemM.getBvToNatSimprocs
---     let .some goal ← LNSymSimpAtStar (← getMainGoal) bvToNatSimpCtx bvToNatSimprocs
---       | do
---         trace[simp_mem.info] "simp [bv_toNat] at * managed to close goal."
---         return .none
---     replaceMainGoal [goal]
---     SimpMemM.withTraceNode m!"goal post `bv_toNat` reductions (Note: can be large)" do
---       trace[simp_mem.info] "{goal}"
---     let some goal ← goal.falseOrByContra
---       | throwError "unable to convert goal to a contradictory goal for omega."
---     goal.withContext (do omegaCore (← getLocalHyps).toList goal { splitDisjunctions := true })
 
 section Hypotheses
 
@@ -955,12 +846,10 @@ def proveWithSolver?  {α : Type} [ToMessageData α] [SolverReducible α] (e : �
   let factProof := mkAppN proofFromSolverVal #[obligationVal]
   check factProof
 
-  -- let _ ← omegaCore (← getLocalHyps).toList obligationVal.mvarId!
- -- why do I need this? I don't get it, but somehow, my local context gets populated with dumb stuff otherwise.
   let mut goal := obligationVal.mvarId!
-  SimpMemM.withContext goal do
-    -- | TODO: refactor to use MetaM instead of TacticM. TacticM creates global mutable state.
-    let _ ← Hypothesis.addSolverFactsOfHyps goal hyps.toList #[]
+  -- SimpMemM.withContext goal do
+  --   -- | TODO: refactor to use MetaM instead of TacticM. TacticM creates global mutable state.
+  --   let _ ← Hypothesis.addSolverFactsOfHyps goal hyps.toList #[]
 
   trace[simp_mem.info] "{checkEmoji} `proveWithSolver?` obligation before 'mem_unfold_bv': {goal}"
   try
@@ -978,12 +867,14 @@ def proveWithSolver?  {α : Type} [ToMessageData α] [SolverReducible α] (e : �
       trace[simp_mem.info] "{checkEmoji} `proveWithSolver?` obligation before 'bv_decide': {goal}"
         IO.FS.withTempFile fun _ lratFile => do
           let cfg ← BVDecide.Frontend.TacticContext.new lratFile
-          -- liftMetaFinishingTactic fun g => do
-          --   discard <| bvDecide g cfg
           let _ ← BVDecide.Frontend.bvDecide goal cfg
   catch e =>
     trace[simp_mem.info]  "{crossEmoji} bvDecide failed with error: \n{e.toMessageData}"
     return .none
+
+  if !(← goal.isAssigned) then
+    throwError "internal error: bvDecide failed to solve goal {goal}"
+
   return (.some <| Proof.mk (← instantiateMVars factProof))
   end ReductionToOmega
 
@@ -991,7 +882,7 @@ section Simplify
 
 def SimpMemM.rewriteWithEquality (rw : Expr) (msg : MessageData) : SimpMemM Unit := do
   withTraceNode msg do
-    withMainContext do
+     do
       withTraceNode m!"rewrite (Note: can be large)" do
         trace[simp_mem.info] "{← inferType rw}"
       let goal ← getMainGoal
@@ -1265,7 +1156,7 @@ def simpMemDebugTactic  : TacticM Unit := do
   SimpMemM.run (cfg := {}) do
     SimpMemM.withMainContext do
     -- evaluate mem_decide_bv
-      bvDecide
+    return ()
 
 end SeparateAutomation
 
