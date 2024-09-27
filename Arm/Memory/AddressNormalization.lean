@@ -90,7 +90,7 @@ more `omega` facts.
 @[inline] def reduceModOfLt (x : Expr) (n : Expr) : SimpM Step := do
   trace[Tactic.address_normalization] "{processingEmoji} reduceModOfLt '{x} % {n}'"
   let ltTy := mkLTNat x n
-  let Step.done { expr := _, proof? := some p} ← dischargeByOmega ltTy
+  let some p ← dischargeByOmega ltTy
     | return .continue
   let eqProof ← mkAppM ``Nat.mod_eq_of_lt #[p]
   trace[Tactic.address_normalization] "{checkEmoji} reduceModOfLt '{x} % {n}'"
