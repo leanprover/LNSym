@@ -71,31 +71,36 @@ def stepiTac (stepiEq : Expr) (hStep : Name) : SymReaderM Unit := fun ctx =>
 
 end stepiTac
 
-/-- Attempt to show that we have (at least) one more step available,
-by ensuring that `h_run`'s type is def-eq to:
+/--
+Return an expression `n` such that `hRun` (in the resulting state!) is of type:
   `<finalState> = run (_ + 1) <initialState>`
+Thus showing we have at least one more step available.
 
-If the number of steps is statically tracked in `runSteps?`,
+NOTE: `hRun` might be modified in the process; this property is *not*
+guaranteed for the original `hRun` expression, only for the `hRun` expression
+*after* execution.
+
+- If the number of steps is statically tracked in `runSteps?`,
 (i.e., it is a literal that we managed to reflect)
-we check that this number is non-zero, and leave the type of `h_run` unchanged.
+we check that this number is non-zero, and leave the type of `hRun` unchanged.
 This means we trust that the reflected value is accurate
 w.r.t. to the current goal state.
 
-Otherwise, if the number is steps is *not* statically known, we assert that
-`c.h_run` is of type `<finalState> = run ?runSteps <initialState>`,
+- Otherwise, if the number is steps is *not* statically known, we assert that
+`hRun` is of type `<finalState> = run ?runSteps <initialState>`,
 for some metavariable `?runSteps`, then create the proof obligation
 `?runSteps = _ + 1`, and attempt to close it using `whileTac`.
-Finally, we use this proof to change the type of `h_run` accordingly.
+Finally, we use this proof to change the type of `hRun` accordingly.
 -/
-def unfoldRun (whileTac : Unit → TacticM Unit) : SymM Unit := do
+def unfoldRun (whileTac : Unit → TacticM Unit) : SymM Expr := do
   let c ← readThe SymContext
   let msg := m!"unfoldRun (runSteps? := {c.runSteps?})"
   withTraceNode `Tactic.sym (fun _ => pure msg) <|
   match c.runSteps? with
-    | some (_ + 1) => do
+    | some (n + 1) => do
         trace[Tactic.sym] "runSteps is statically known to be non-zero, \
         no further action required"
-        return
+        return toExpr n
     | some 0 =>
         throwError "No more steps available to symbolically simulate!"
         -- NOTE: this error shouldn't occur, as we should have checked in
@@ -106,24 +111,19 @@ def unfoldRun (whileTac : Unit → TacticM Unit) : SymM Unit := do
 
         -- Assert that `h_run : <finalState> = run ?runSteps <state>`
         let runSteps ← mkFreshExprMVar (mkConst ``Nat)
-        -- TODO(@alexkeizer): if the following guard should never fail, and
-        -- doesn't assign mvars, then why do we do it?
-        -- We should hide it behind the `Tactic.sym.debug` option
         guard <|← isDefEq hRun (
           mkApp3 (.const ``Eq [1]) (mkConst ``ArmState)
             c.finalState
             (mkApp2 (mkConst ``_root_.run) runSteps (← getCurrentState)))
-        -- NOTE: ^^ Since we check for def-eq on SymContext construction,
-        --          this check should never fail
+        -- NOTE: Since we check for def-eq on SymContext construction, this
+        --       check should never fail. Still, we need it to assign `runSteps`
 
         -- Attempt to prove that `?runSteps` is non-zero
-        let runStepsPredId ← mkFreshMVarId
-        let runStepsPred ← mkFreshExprMVarWithId runStepsPredId (mkConst ``Nat)
+        let runStepsPred ← mkFreshExprMVar (mkConst ``Nat)
         let subGoalTyRhs := mkApp (mkConst ``Nat.succ) runStepsPred
-        let runStepsEqTy := -- `?runSteps = ?runStepsPred + 1`
-          mkApp3 (.const ``Eq [1]) (mkConst ``Nat) runSteps subGoalTyRhs
         let runStepsEq ← mkFreshMVarId
-        let _ ← mkFreshExprMVarWithId runStepsEq runStepsEqTy
+        runStepsEq.setType <| -- `?runSteps = ?runStepsPred + 1`
+          mkApp3 (.const ``Eq [1]) (mkConst ``Nat) runSteps subGoalTyRhs
 
         let msg := m!"runSteps is not statically known, so attempt to prove:\
           {runStepsEq}"
@@ -135,11 +135,11 @@ def unfoldRun (whileTac : Unit → TacticM Unit) : SymM Unit := do
         -- This is important because of the use of `replaceLocalDecl` below
         -- TODO(@alexkeizer): we got rid of replaceLocalDecl, so we probably
         --   can get rid of this, too, leaving the mvar unassigned
-        if !(← runStepsPredId.isAssigned) then
+        if !(← runStepsPred.mvarId!.isAssigned) then
           let default := mkApp (mkConst ``Nat.pred) runSteps
           trace[Tactic.sym] "{runStepsPred} is unassigned, \
           so we assign to the default value ({default})"
-          runStepsPredId.assign default
+          runStepsPred.mvarId!.assign default
 
         -- Change the type of `hRun`
         let goal :: originalGoals ← getGoals
@@ -158,6 +158,39 @@ def unfoldRun (whileTac : Unit → TacticM Unit) : SymM Unit := do
             so add it as a goal for the user to solve"
             pure [runStepsEq]
         setGoals (rwRes.mvarIds ++ originalGoals ++ newGoal)
+        instantiateMVars runStepsPred
+
+/--
+`initNextStep` returns expressions
+- `sn : ArmState`, and
+- `stepiEq : stepi <currentState> = sn`
+In that order, it also modifies `hRun` to be of type:
+  `<finalState> = hRun _ sn`
+-/
+def initNextStep (whileTac : TSyntax `tactic) : SymM (Expr × Expr) :=
+  withMainContext' do
+    let stepi_eq := Lean.mkIdent (.mkSimple s!"stepi_{← getCurrentStateName}")
+
+    let runStepsPred ← unfoldRun (fun _ => evalTacticAndTrace whileTac)
+    -- Add new state to local context
+    let hRunId      := mkIdent <|← getHRunName
+    let nextStateId := mkIdent <|← getNextStateName
+    withMainContext' <| evalTacticAndTrace <|← `(tactic|
+      init_next_step $hRunId:ident $stepi_eq:ident $nextStateId:ident
+    )
+    withMainContext' <| do
+      -- Update `hRun`
+      let hRun := hRunId.getId
+      let some hRun := (← getLCtx).findFromUserName? hRun
+        | throwError "internal error: couldn't find {hRun}"
+      modifyThe SymContext ({ · with
+        hRun := hRun.toExpr
+      })
+
+      let sn ← SymContext.findFromUserName nextStateId.getId
+      let stepiEq ← SymContext.findFromUserName stepi_eq.getId
+
+      return (sn.toExpr, stepiEq.toExpr)
 
 /-- Break an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)` into an
 `AxEffects` that characterizes the effects in terms of reads from `s{i+1}`,
@@ -257,28 +290,13 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
       traceSymContext
       trace[Tactic.sym] "Goal state:\n {← getMainGoal}"
 
-    let stepi_eq := Lean.mkIdent (.mkSimple s!"stepi_{← getCurrentStateName}")
+
+    let (_sn, stepiEq) ← initNextStep whileTac
+
+    -- Apply relevant pre-generated `stepi` lemma
     let h_step   := Lean.mkIdent (.mkSimple s!"h_step_{stateNumber + 1}")
-
-    unfoldRun (fun _ => evalTacticAndTrace whileTac)
-    -- Add new state to local context
-    let hRunId      := mkIdent <|← getHRunName
-    let nextStateId := mkIdent <|← getNextStateName
-    withMainContext' <| evalTacticAndTrace <|← `(tactic|
-      init_next_step $hRunId:ident $stepi_eq:ident $nextStateId:ident
-    )
-    withMainContext' <| do
-      -- Update `hRun`
-      let hRun := hRunId.getId
-      let some hRun := (← getLCtx).findFromUserName? hRun
-        | throwError "internal error: couldn't find {hRun}"
-      modifyThe SymContext ({ · with
-        hRun := hRun.toExpr
-      })
-
-      -- Apply relevant pre-generated `stepi` lemma
-      let stepiEq ← SymContext.findFromUserName stepi_eq.getId
-      stepiTac stepiEq.toExpr h_step.getId
+    withMainContext' <|
+      stepiTac stepiEq h_step.getId
 
     -- WORKAROUND: eventually we'd like to eagerly simp away `if`s in the
     -- pre-generation of instruction semantics. For now, though, we keep a
