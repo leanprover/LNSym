@@ -337,6 +337,8 @@ example  (src_addr other_addr : BitVec 64) (hlegal : mem_legal' src_addr 16)
     bv_omega
 
 
+/-
+set_option linter.all false in
 /-- A read in the goal state overlaps with a read in the
 right hand side of the hypotheis `h`.
 -/
@@ -347,17 +349,16 @@ theorem overlapping_read_test_4
     -- @bollu: unfortunate, this needs `s.mem` to be public. Annoying.
       (Memory.read_bytes 16 other_addr s.mem).extractLsBytes 6 10 := by
   simp only [memory_rules] at h ⊢
-  -- simp_mem -- simp_mem still gets stuck here.. what's going on?
-  sorry
-  -- · congr
-    -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    -- sorry
-    -- bv_omega -- TODO: Lean gets stuck here?
+  simp_mem
+  -- Why does this proof take forever to check?
+  have : ((src_addr + 6).toNat - src_addr.toNat) = 6 := by bv_omega
+  rw [this]
 
 /--
 info: 'ReadOverlappingRead.overlapping_read_test_4' depends on axioms: [propext, sorryAx, Quot.sound]
 -/
 #guard_msgs in #print axioms overlapping_read_test_4
+-/
 
 end ReadOverlappingRead
 
@@ -481,21 +482,21 @@ theorem mem_subset_trans (h : mem_subset' a an b bn) (h' : mem_subset' b bn c cn
 /-! ### mem_separate relationship to arithmetic -/
 
 theorem mem_separate_comm (h : mem_separate' a an b bn) : mem_separate' b bn a an := by mem_decide_bv
+
 /-- if `[a..an)⟂[b..bn)`, then `[a+δ..an-δ)⟂[b..bn)`-/
 theorem mem_separate_of_lt_of_lt_sub (h : mem_separate' a an b bn) (hab : a < b)
-  (hδ : δ < b - a): mem_separate' (a + δ) (an - δ.toNat) b bn := by
+  (hδ₁ : an ≥ δ)
+  (hδ : δ < b - a): mem_separate' (a + δ) (an - δ) b bn := by
     -- here, we get a subtraction of an `ofNat`, no bueno.
-    sorry
+  mem_decide_bv
 
 /-- If `[a..an)⟂[b..bn)`, and `a ≤ b`, then `[a'..an+(a-a'))⟂[b..bn)`.
 This lets us increase the size of the left memory region.
 -/
 theorem mem_separate_move_of_lt_of_le  (h : mem_separate' a an b bn)
   (hab : a < b)
-  (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a').toNat) b bn := by
-  -- | same problem, random arithmetic.
-  sorry
-  -- mem_decide_bv
+  (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a')) b bn := by
+  mem_decide_bv
 
 end MathProperties
 

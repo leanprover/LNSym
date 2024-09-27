@@ -770,7 +770,7 @@ def MemSubsetProof.addSolverFacts (h : MemSubsetProof e) (args : Array Expr) :
 
 /--
 info: mem_separate'.bv_def (a an b bn : BitVec 64) (h : mem_separate' a an b bn) :
-  mem_legal' a an ∧ mem_legal' b bn ∧ (a + an ≤ b ∨ a ≥ b + bn)
+  mem_legal' a an ∧ mem_legal' b bn ∧ (a + an ≤ b ∨ a ≥ b + bn ∨ an = 0 ∨ bn = 0)
 -/
 #guard_msgs in #check mem_separate'.bv_def
 

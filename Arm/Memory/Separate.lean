@@ -253,11 +253,11 @@ See also: Why numbering should start at zero (https://www.cs.utexas.edu/~EWD/ewd
 structure mem_separate' (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) : Prop where
   ha : mem_legal' a an
   hb : mem_legal' b bn
-  h : a + an ≤ b  ∨ a ≥ b + bn
+  h : a + an ≤ b  ∨ a ≥ b + bn ∨ an = 0 ∨ bn = 0 -- zero width regions are separate from everyone
 
 @[memory_defs_bv]
 theorem mem_separate'.iff (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) :
-  mem_separate' a an b bn ↔ mem_legal' a an ∧ mem_legal' b bn ∧ (a + an ≤ b  ∨ a ≥ b + bn) := by
+  mem_separate' a an b bn ↔ mem_legal' a an ∧ mem_legal' b bn ∧ (a + an ≤ b  ∨ a ≥ b + bn ∨ an = 0 ∨ bn = 0) := by
   constructor
   · intro h
     have {..} := h
@@ -274,7 +274,7 @@ theorem mem_separate'.iff (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn :
     · bv_decide
 
 theorem mem_separate'.bv_def (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) (h : mem_separate' a an b bn) :
-    mem_legal' a an ∧ mem_legal' b bn ∧ (a + an ≤ b  ∨ a ≥ b + bn) := by
+    mem_legal' a an ∧ mem_legal' b bn ∧ (a + an ≤ b  ∨ a ≥ b + bn ∨ an = 0 ∨ bn = 0) := by
   apply (mem_separate'.iff _ _ _ _).mp h
 
 theorem mem_separate'.of_bv (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) :
@@ -348,6 +348,16 @@ macro_rules
 macro_rules
 | `(tactic| mem_decide_bv) =>
     `(tactic| mem_unfold_bv <;> bv_decide)
+
+theorem mem_separate_width_zero (hlegal : mem_legal' b bn) : mem_separate' a 0#64 b bn := by
+  mem_decide_bv
+
+theorem mem_separate_width_zero' (hlegal : mem_legal' a an) : mem_separate' a an b 0 := by
+  mem_decide_bv
+
+theorem mem_subset_zero (a b bn : BitVec 64) (ha : b ≤ a ∧ a ≤ b + bn) (hlegal : mem_legal' b bn) :
+    mem_subset' a 0 b bn := by
+  mem_decide_bv
 
 theorem mem_separate'_of_mem_separate'_of_mem_subset'
     (hsep : mem_separate' b bn c cn := by mem_decide_bv)

@@ -23,6 +23,82 @@ import Tactics.SkipProof
 set_option linter.unusedVariables false
 set_option linter.all false
 
+namespace NoOverflow
+
+/-
+We build generic abstractions to state that a bitvector
+expression does not overflow. This allows us to write
+expression trees involving addition, subtraction, and multiplication
+and assert that they do not overflow.
+-/
+
+/--
+An expression tree that can be asserted to not overflow
+with NoOverflow.denote
+-/
+inductive NoOverflow (w : Nat)
+| mul (x y : NoOverflow w) : NoOverflow w
+| add (x y : NoOverflow w) : NoOverflow w
+| sub (x y : NoOverflow w) : NoOverflow w
+| const (x : BitVec w) : NoOverflow w
+
+instance {w} : Coe (BitVec w) (NoOverflow w) := ⟨NoOverflow.const⟩
+
+instance {w} : OfNat (NoOverflow w) n  where
+  ofNat := NoOverflow.const (BitVec.ofNat w n)
+
+instance {w} : Coe Nat (NoOverflow w) :=
+  ⟨fun n => NoOverflow.const (BitVec.ofNat w n)⟩
+
+instance {w} : HAdd (NoOverflow w) (NoOverflow w) (NoOverflow w) where
+  hAdd := NoOverflow.add
+
+instance {w} : HMul (NoOverflow w) (NoOverflow w) (NoOverflow w) where
+  hMul := NoOverflow.mul
+
+instance {w} : HSub (NoOverflow w) (NoOverflow w) (NoOverflow w) where
+  hSub := NoOverflow.sub
+
+def _root_.BitVec.toNonOverflowing {w}
+  (x : BitVec w) : NoOverflow w := NoOverflow.const x
+
+/--
+Evaluate a `NoOverflow` expression tree, giving the value and the proof that it does not overflow.
+-/
+@[memory_defs_bv]
+def NoOverflow.eval {w} : NoOverflow w → BitVec w × Prop
+| .const x => (x, True)
+| .add x y =>
+  let (vx, hx) := x.eval
+  let (vy, hy) := y.eval
+  let vout := vx + vy
+  let hout := hx ∧ hy ∧ vout ≥ vx ∧ vout ≥ vy
+  (vout, hout)
+| .sub x y =>
+  let (vx, hx) := x.eval
+  let (vy, hy) := y.eval
+  let vout := vx - vy
+  let hout := hx ∧ hy ∧ (vy ≤ vx) -- does this actually suffice?
+  (vout, hout)
+| .mul x y =>
+  let (vx, hx) := x.eval
+  let (vy, hy) := y.eval
+  let vout := vx * vy
+  -- | this doesn't work of course, I need to state that vx < max / vy.
+  -- But now I'm hosed, because this needs udiv bitblasting :P
+  let hout := hx ∧ hy ∧ vx < vy / BitVec.allOnes w
+  (vout, hout)
+
+/-- The assertion that this does not overflow. -/
+@[memory_defs_bv] -- TODO: have `mem_defs_bv` evaluate this.
+def NoOverflow.assert {w} (x : NoOverflow w) : Prop := (x.eval).2
+
+
+-- instance : Coe (NoOverflow) (BitVec 64) := ⟨NoOverflow.value⟩
+-- instance : Coe (NoOverflow) Prop := ⟨NoOverflow.assert⟩
+
+end NoOverflow
+
 namespace Memcpy
 
 /-
@@ -87,6 +163,7 @@ structure WellFormedAtPc (s : ArmState) (pc : BitVec 64) : Prop where
 
 structure Pre (s : ArmState) (num_blks : BitVec 64) (src_base dst_base : BitVec 64) : Prop where
   -- 16 bytes are copied in each iteration of the loop.
+  -- h_blks_no_overflow : num_blks.toNonOverflowing * 16 |>.assert
   h_mem_sep : mem_separate' src_base (num_blks * 16) dst_base (num_blks * 16)
   -- -- (TODO) Also allow for the possibility of src_base = dst_base
   -- -- or even more generally,
@@ -440,8 +517,43 @@ end CutTheorems
 
 section PartialCorrectness
 
+theorem separate_width_zero (hlegal : mem_legal' b bn) : mem_separate' a 0#64 b bn := by
+  mem_decide_bv
+
+theorem _root_.mem_separate'.symm
+    (h : mem_separate' a an b bn) : mem_separate' b bn a an := by
+  mem_decide_bv
+
+theorem mem_separate'.of_subset'_of_subset' (hsep : mem_separate' x xn y yn)
+  (h1 : mem_subset' a an x xn)
+  (h2 : mem_subset' b bn y yn)
+  : mem_separate' a an b bn := by
+  mem_decide_bv
+
+theorem mem_subset'.refl (h : mem_legal' a an) : mem_subset' a an a an := by
+  mem_decide_bv
+
+theorem lt_iff_le_one (a b : BitVec 64) (hab : a < b) : a ≤ b - 1 := by
+  bv_decide
+
+theorem mem_legal'.base_pointer_stride_legal
+    (a N k : BitVec 64)
+    (hlegal : mem_legal' a (N*10#64))
+    (hmul : a.toNonOverflowing + N * 10#64 |>.assert)
+    (hbase : a.toNonOverflowing + k * 10#64 |>.assert)
+    (hk : k < N) :
+    mem_legal' (a + k * 10#64) 10#64 := by
+  simp [memory_defs_bv] at *
+  bv_decide
+/-
+k = 0x3333333333333003#64
+N = 0x73fffffffffff99d#64
+a = 0x0000000000001fd9#64
+-/
 
 theorem BitVec.natCast_toNat (x : BitVec 64) : (↑ x.toNat  : BitVec 64) = x := by simp
+
+axiom NO_OVERFLOW {α : Prop} : α
 
 -- -- set_option skip_proof.skip true in
 -- set_option trace.simp_mem.info true in
@@ -467,27 +579,42 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
   Memory.read_bytes n addr
       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
-    Memory.read_bytes n addr s0.mem := by sorry
-  -- have h_le : (s0.x0 - (si.x0 - 0x1#64)) ≤ s0.x0 := by
---     bv_decide
---   -- have h_upper_bound := hsep.hb.omega_def
---   -- have h_upper_bound₂ := h_pre_1.hb.omega_def
---   -- have h_upper_bound₃ := hsep.ha.omega_def
---   -- have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by simp_mem (config := {useOmegaToClose := true})
---   -- simp_mem
---   -- simp_mem
---   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
---   · rw [h_assert_6]
---     -- simp_mem
---     -- simp_mem
---     skip_proof sorry
---   · -- @bollu: TODO: figure out why this is so slow!
---     -- apply mem_separate'.symm
---     -- apply mem_separate'.of_subset'_of_subset' hsep
---     -- · apply mem_subset'.of_omega
---     --   skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
---     -- · apply mem_subset'_refl hsep.hb
---     sorry
+    Memory.read_bytes n addr s0.mem := by
+  have h_le : (s0.x0 - (si.x0 - 0x1#64)) ≤ s0.x0 := by
+    bv_decide
+  have h_non_overflowing : (s0.x0.toNonOverflowing * 16) |>.assert := by
+    exact NO_OVERFLOW -- we need to add this assumption.
+  simp [memory_defs_bv] at h_non_overflowing
+  have h_le_non_overflowing :
+    s0.x0.toNonOverflowing - (si.x0 - 0x1#64) |>.assert := by
+      mem_decide_bv
+  simp [memory_defs_bv] at h_le_non_overflowing
+  have h_si_x0_pos : si.x0 ≥ 1#64 := by mem_decide_bv
+  have h_si_x0_nowrap : s0.x0 ≥ (si.x0 - 0x1#64) := by mem_decide_bv
+  have h_si_x0_nowrap' : s0.x0 ≥ (si.x0) := by mem_decide_bv
+  have length_no_overflow :
+    (0x10#64 * (s0.x0.toNonOverflowing - (si.x0 - 0x1#64))) |>.assert := by
+      mem_decide_bv
+  simp [memory_defs_bv] at length_no_overflow
+
+  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+  · apply h_assert_6
+    mem_decide_bv
+  · simp at hsep ⊢
+    -- hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))) addr (BitVec.ofNat 64 n)
+    -- ⊢ mem_separate' addr (BitVec.ofNat 64 n) (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 0x10#64
+    apply mem_separate'.of_subset'_of_subset' hsep.symm
+    · apply mem_subset'.refl
+      -- ⊢ mem_subset' addr (BitVec.ofNat 64 n) addr (BitVec.ofNat 64 n)
+      -- mem_decide_bv -- BUG: bv_decide bug, doesn't handle `ofNat` correctly yet!
+      exact hsep.hb
+    · have x2_legal := h_pre_1.hb
+      constructor
+      · mem_decide_bv
+      · simp at x2_legal
+        mem_decide_bv
+      · bv_decide
+      · mem_decide_bv
 
 -- -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
@@ -522,6 +649,8 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
             (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
               (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
           Memory.read_bytes n addr s0.mem := by
+  have h_non_overflowing : (s0.x0.toNonOverflowing * 16) |>.assert := by
+    exact NO_OVERFLOW -- we need to add this assumption.
   apply And.intro
   · intros i hi
     have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
@@ -532,17 +661,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       have sub_lt : (s0.x0 - si.x0) < s0.x0 := by bv_decide
       have neq_zero : s0.x0 > 0#64 := by bv_decide
       have lt_size : (0x10#64 * (s0.x0 - si.x0)) < (s0.x0 * 0x10#64) := by
-          -- bv_decide -- does not respect the constraint 's0.x0 = 0x8000000000000000#64'
-          sorry -- this is a bv_decide bug.
-          /-
-          The prover found a potential counterexample, consider the following assignment:
-          si.x0 = 0x8000000000000000#64
-          s0.x1 = 0x0000000000000000#64
-          s0.x0 = 0x8000000000000000#64
-          s0.x2 = 0x0000000000000000#64
-          si.x1 = 0x0000000000000000#64
-          si.x2 = 0x0000000000000000#64
-          -/
+          mem_decide_bv
       rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (hsep := ?_)]
       · simp only [Nat.reduceMul, BitVec.toNat_add, BitVec.toNat_mul, BitVec.toNat_ofNat,
         Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
@@ -571,22 +690,12 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       have sub_lt : (s0.x0 - si.x0) < s0.x0 := by bv_decide
       have neq_zero : s0.x0 > 0#64 := by bv_decide
       have lt_size : (0x10#64 * (s0.x0 - si.x0)) < (s0.x0 * 0x10#64) := by
-        -- bv_decide -- does not respect the constraint 's0.x0 = 0x8000000000000000#64'
-        sorry -- this is a bv_decide bug.
-        /-
-        si.x0 = 0x0800000000000003#64
-        s0.x1 = 0x800000000000002f#64
-        s0.x0 = 0xf000000000000000#64
-        s0.x2 = 0x800000000000002f#64
-        si.x1 = 0xffffffffffffffff#64
-        si.x2 = 0xffffffffffffffff#64
-        i = 0xe000000000000000#64
-        -/
+        mem_decide_bv -- this is a bv_decide bug.
       rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
       · apply h_assert_5 _ hi
       · constructor
-        · simp at *; sorry
-          -- bv_decide
+        · simp at *;
+          mem_decide_bv
         · skip_proof simp_mem
         · left
           simp
@@ -597,33 +706,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           rw [BitVec.add_assoc, i_mul_16_plus_16]
           clear h_assert_1 h_assert_3 h_assert_4 h_assert_5 h_assert_6 h_pre_1 h_pre_2 h_pre_7
           clear sub_lt lt_size neq_zero legal_2
-          -- clear h_s0_x1 h_s0_x2 h_si_x0_nonzero i_mul_16_plus_16 s0
-          sorry
-          -- bv_omega -- please, for the love of god. Nope, still times out.
-
-          -- bv_omega
-          -- bv_omega
-          -- ⊢ s0.x2 + 0x10#64 * (i + 1) ≤ s0.x2 + 0x10#64 * (s0.x0 - si.x0)
-          -- => ⊢ 0x10#64 * (i + 1) ≤ 0x10#64 * (s0.x0 - si.x0)
-          -- => ⊢ (i + 1) ≤ (s0.x0 - si.x0)
-          -- => (hi : i < s0.x0 - si.x0) ⊢ (i + 1) ≤ (s0.x0 - si.x0)
-          -- => by theory.
-          -- bv_decide
-
-          -- mem_decide_bv
-
-          -- -- @bollu: TODO, see if `simp_mem` can figure this out given less aggressive
-          -- -- proof states.
-          -- skip_proof {
-          --   have s2_sum_inbounds := h_pre_1.hb.omega_def
-          --   have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
-          --   rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
-          --   rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
-          --   rw [BitVec.toNat_mul_of_lt (by bv_omega)]
-          --   rw [BitVec.toNat_mul_of_lt (by bv_omega)]
-          --   rw [BitVec.toNat_sub_of_lt (by bv_omega)]
-          --   bv_omega
-          -- }
+          mem_decide_bv
   · intros n addr hsep
     apply Memcpy.extracted_2
     · assumption
@@ -666,6 +749,9 @@ theorem partial_correctness :
     · exact h_mem₂
   case v4 =>
     intro s0 si h_assert h_exit
+    have h_non_overflowing : (s0.x0.toNonOverflowing * 16) |>.assert := by
+      exact NO_OVERFLOW -- we need to add this assumption.
+
     simp only [Spec'.assert, assert, post, Nat.reduceMul, BitVec.ofNat_eq_ofNat, id_eq,
       BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod, Spec.exit, exit] at h_assert h_exit ⊢
     obtain ⟨h_pre, h_assert⟩ := h_assert
@@ -876,7 +962,13 @@ theorem partial_correctness :
     case h_4 pc h_si =>
       apply False.elim h_assert
 /--
-info: 'Memcpy.partial_correctness' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'Memcpy.partial_correctness' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Memcpy.NO_OVERFLOW,
+ Memory.read_bytes_write_bytes_eq_of_mem_subset',
+ Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate',
+ Quot.sound]
 -/
 #guard_msgs in #print axioms partial_correctness
 
