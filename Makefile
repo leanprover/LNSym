@@ -5,6 +5,8 @@
 SHELL := /bin/bash
 
 LAKE = lake
+LEAN = $(LAKE) env lean
+GIT = git
 
 NUM_TESTS?=3
 VERBOSE?=--verbose
@@ -37,9 +39,19 @@ awslc_elf:
 cosim:
 	time -p lake exe lnsym $(VERBOSE) --num-tests $(NUM_TESTS)
 
+BENCH = $(LEAN) -Dweak.benchmark.runs=5
 .PHONY: benchmarks
 benchmarks:
+	echo "HEAD is on $($(GIT) rev-parse --short HEAD)"
 	$(LAKE) build Benchmarks
+	$(BENCH) Benchmarks/SHA512_75.lean
+	$(LEAN) Benchmarks/SHA512_75_noKernel_noLint.lean
+	$(LEAN) Benchmarks/SHA512_150.lean
+	$(LEAN) Benchmarks/SHA512_150_noKernel_noLint.lean
+	$(LEAN) Benchmarks/SHA512_225.lean
+	$(LEAN) Benchmarks/SHA512_225_noKernel_noLint.lean
+	$(LEAN) Benchmarks/SHA512_400.lean
+	$(LEAN) Benchmarks/SHA512_400_noKernel_noLint.lean
 
 .PHONY: clean clean_all
 clean:
