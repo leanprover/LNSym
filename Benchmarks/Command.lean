@@ -53,6 +53,9 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
     opts := opts.setString `trace.profiler.output s!"{outDir}/{id.getId}"
     n := 1 -- only run once, if `profiler` is set to true
 
+  if n = 0 then
+    return ()
+
   -- Set options
   modifyScope fun scope => { scope with opts }
 
