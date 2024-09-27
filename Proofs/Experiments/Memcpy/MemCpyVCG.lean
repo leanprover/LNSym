@@ -446,30 +446,29 @@ theorem BitVec.natCast_toNat (x : BitVec 64) : (↑ x.toNat  : BitVec 64) = x :=
 -- -- set_option skip_proof.skip true in
 -- set_option trace.simp_mem.info true in
 -- set_option maxHeartbeats 0 in
--- theorem Memcpy.extracted_2 (s0 si : ArmState)
---   (h_si_x0_nonzero : si.x0 ≠ 0)
---   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
---   (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
---   (h_assert_1 : si.x0 ≤ s0.x0) (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
---   (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
---   (h_assert_6 :
---     ∀ (n : Nat) (addr : BitVec 64),
---       mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)) addr n →
---         Memory.read_bytes n addr si.mem = Memory.read_bytes n addr s0.mem)
---   (h_assert_5 :
---     ∀ (i : BitVec 64),
---       i < s0.x0 - si.x0 →
---         Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
---   (h_pre_1 : mem_separate' s0.x1 (s0.x0 * 16) s0.x2 (s0.x0 * 16))
---   -- (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
---   (n : Nat)
---   (addr : BitVec 64)
---   (hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))) addr n) :
---   Memory.read_bytes n addr
---       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
---         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
---     Memory.read_bytes n addr s0.mem := by
---   have h_le : (s0.x0 - (si.x0 - 0x1#64)) ≤ s0.x0 := by
+theorem Memcpy.extracted_2 (s0 si : ArmState)
+  (h_si_x0_nonzero : si.x0 ≠ 0)
+  (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
+  (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
+  (h_assert_1 : si.x0 ≤ s0.x0) (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
+  (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+  (h_assert_6 :
+    ∀ (n : Nat) (addr : BitVec 64),
+      mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)) addr n →
+        Memory.read_bytes n addr si.mem = Memory.read_bytes n addr s0.mem)
+  (h_assert_5 :
+    ∀ (i : BitVec 64),
+      i < s0.x0 - si.x0 →
+        Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
+  (h_pre_1 : mem_separate' s0.x1 (s0.x0 * 16) s0.x2 (s0.x0 * 16))
+  (n : Nat)
+  (addr : BitVec 64)
+  (hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))) addr n) :
+  Memory.read_bytes n addr
+      (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+        (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
+    Memory.read_bytes n addr s0.mem := by sorry
+  -- have h_le : (s0.x0 - (si.x0 - 0x1#64)) ≤ s0.x0 := by
 --     bv_decide
 --   -- have h_upper_bound := hsep.hb.omega_def
 --   -- have h_upper_bound₂ := h_pre_1.hb.omega_def
@@ -598,7 +597,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           rw [BitVec.add_assoc, i_mul_16_plus_16]
           clear h_assert_1 h_assert_3 h_assert_4 h_assert_5 h_assert_6 h_pre_1 h_pre_2 h_pre_7
           clear sub_lt lt_size neq_zero legal_2
-          clear h_s0_x1 h_s0_x2 h_si_x0_nonzero i_mul_16_plus_16 s0 i
+          -- clear h_s0_x1 h_s0_x2 h_si_x0_nonzero i_mul_16_plus_16 s0
           sorry
           -- bv_omega -- please, for the love of god. Nope, still times out.
 
@@ -626,8 +625,20 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           --   bv_omega
           -- }
   · intros n addr hsep
-    sorry
-    -- apply Memcpy.extracted_2 <;> assumption
+    apply Memcpy.extracted_2
+    · assumption
+    · assumption
+    · assumption
+    · assumption
+    · assumption
+    · assumption
+    · intros h addr h
+      apply h_assert_6
+      simp only [BitVec.natCast_toNat]
+      exact h
+    · assumption
+    · exact h_pre_1
+    · exact hsep
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by
