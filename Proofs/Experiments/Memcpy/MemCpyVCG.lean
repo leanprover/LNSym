@@ -580,41 +580,11 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
     Memory.read_bytes n addr s0.mem := by
-  have h_le : (s0.x0 - (si.x0 - 0x1#64)) ≤ s0.x0 := by
-    bv_decide
   have h_non_overflowing : (s0.x0.toNonOverflowing * 16) |>.assert := by
     exact NO_OVERFLOW -- we need to add this assumption.
   simp [memory_defs_bv] at h_non_overflowing
-  have h_le_non_overflowing :
-    s0.x0.toNonOverflowing - (si.x0 - 0x1#64) |>.assert := by
-      mem_decide_bv
-  simp [memory_defs_bv] at h_le_non_overflowing
-  have h_si_x0_pos : si.x0 ≥ 1#64 := by mem_decide_bv
-  have h_si_x0_nowrap : s0.x0 ≥ (si.x0 - 0x1#64) := by mem_decide_bv
-  have h_si_x0_nowrap' : s0.x0 ≥ (si.x0) := by mem_decide_bv
-  have length_no_overflow :
-    (0x10#64 * (s0.x0.toNonOverflowing - (si.x0 - 0x1#64))) |>.assert := by
-      mem_decide_bv
-  simp [memory_defs_bv] at length_no_overflow
-
-  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-  · apply h_assert_6
-    mem_decide_bv
-  · simp at hsep ⊢
-    -- hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))) addr (BitVec.ofNat 64 n)
-    -- ⊢ mem_separate' addr (BitVec.ofNat 64 n) (s0.x2 + 0x10#64 * (s0.x0 - si.x0)) 0x10#64
-    apply mem_separate'.of_subset'_of_subset' hsep.symm
-    · apply mem_subset'.refl
-      -- ⊢ mem_subset' addr (BitVec.ofNat 64 n) addr (BitVec.ofNat 64 n)
-      -- mem_decide_bv -- BUG: bv_decide bug, doesn't handle `ofNat` correctly yet!
-      exact hsep.hb
-    · have x2_legal := h_pre_1.hb
-      constructor
-      · mem_decide_bv
-      · simp at x2_legal
-        mem_decide_bv
-      · bv_decide
-      · mem_decide_bv
+  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by simp_mem)]
+  · apply h_assert_6 _ _ (by mem_decide_bv)
 
 -- -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
@@ -658,70 +628,20 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
     rcases icases with hi | hi
     · subst hi
       have legal_2 := h_pre_1.hb
-      have sub_lt : (s0.x0 - si.x0) < s0.x0 := by bv_decide
-      have neq_zero : s0.x0 > 0#64 := by bv_decide
-      have lt_size : (0x10#64 * (s0.x0 - si.x0)) < (s0.x0 * 0x10#64) := by
-          mem_decide_bv
-      rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (hsep := ?_)]
+      rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (hsep := by mem_decide_bv)]
       · simp only [Nat.reduceMul, BitVec.toNat_add, BitVec.toNat_mul, BitVec.toNat_ofNat,
         Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
         BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
         rw [h_assert_6]
-        simp only [BitVec.natCast_toNat] at *
-        simp only [BitVec.ofNat_eq_ofNat] at h_pre_1
-        simp
-        constructor
-        · simp_mem
-        · simp_mem
-        · mem_decide_bv
-      · constructor
-        · simp_mem
-        · simp_mem
-        · simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.toNat_mul, BitVec.toNat_ofNat,
-          Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, BitVec.natCast_eq_ofNat, Nat.reduceMul,
-          gt_iff_lt] at *;
-          bv_decide
-        · simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.toNat_mul, BitVec.toNat_ofNat,
-          Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, BitVec.natCast_eq_ofNat, Nat.reduceMul,
-          gt_iff_lt] at *;
-          bv_decide
+        mem_decide_bv
     · -- case 2.
-      have legal_2 := h_pre_1.hb
-      have sub_lt : (s0.x0 - si.x0) < s0.x0 := by bv_decide
-      have neq_zero : s0.x0 > 0#64 := by bv_decide
-      have lt_size : (0x10#64 * (s0.x0 - si.x0)) < (s0.x0 * 0x10#64) := by
-        mem_decide_bv -- this is a bv_decide bug.
-      rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+      rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
       · apply h_assert_5 _ hi
-      · constructor
-        · simp at *;
-          mem_decide_bv
-        · skip_proof simp_mem
-        · left
-          simp
-          simp only [BitVec.ofNat_eq_ofNat, ne_eq, BitVec.toNat_mul, BitVec.toNat_ofNat,
-            Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, BitVec.natCast_eq_ofNat, Nat.reduceMul,
-            gt_iff_lt] at *
-          have i_mul_16_plus_16 : 0x10#64 * i + 0x10#64 = 0x10#64 * (i + 1) := by bv_decide
-          rw [BitVec.add_assoc, i_mul_16_plus_16]
-          clear h_assert_1 h_assert_3 h_assert_4 h_assert_5 h_assert_6 h_pre_1 h_pre_2 h_pre_7
-          clear sub_lt lt_size neq_zero legal_2
-          mem_decide_bv
   · intros n addr hsep
-    apply Memcpy.extracted_2
-    · assumption
-    · assumption
-    · assumption
-    · assumption
-    · assumption
-    · assumption
+    apply Memcpy.extracted_2 <;> try assumption
     · intros h addr h
       apply h_assert_6
-      simp only [BitVec.natCast_toNat]
-      exact h
-    · assumption
-    · exact h_pre_1
-    · exact hsep
+      mem_decide_bv
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by
@@ -804,7 +724,7 @@ theorem partial_correctness :
         exfalso
         simp [BitVec.lt_def] at hi -- i < 0
       · intros n addr h_mem_sep
-        simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
+        simp only [memory_rules]
         rw [step_8f0_8f4.h_mem]
         rw [step_8e0_8f0.h_mem]
     case h_2 pc h_si =>
@@ -832,11 +752,11 @@ theorem partial_correctness :
             id_eq] at h_mem
           specialize (h_mem i hi)
           rw [← h_mem]
-          simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes, step.h_mem]
+          simp only [memory_rules, step.h_mem]
         · constructor
           · intros n addr
             intros h_sep
-            simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes, step.h_mem]
+            simp only [memory_rules, step.h_mem]
             obtain ⟨h_s0_mem₁, h_s0_pc, h_s0_program, h_s0_err, h_s0_sp_aligned⟩ := h_pre
             obtain ⟨h_si_x0, h_si_Z, h_si_x1, h_si_x2, h_si_read_overlap, h_si_read_sep, h_wellformed⟩ := h_assert
             simp only [memory_rules] at h_si_read_sep
