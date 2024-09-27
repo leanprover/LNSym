@@ -68,7 +68,10 @@ def getBitVecOfNatValue? (e : Expr) : (Option (Expr × Expr)) :=
 
 /--
 Try to build a proof for `ty` by reduction to `omega`.
-This is to be used to automatically prove inbounds constraints to eliminiate modulos.
+Return a proof of `ty` on success, or `none` if omega failed to prove the goal.
+
+This is to be used to automatically prove inbounds constraints to eliminate modulos
+in a simproc, hence the use of `SimpM`.
 We may eventually want to exploit our memory automation framework to bring in
 more `omega` facts.
 -/
