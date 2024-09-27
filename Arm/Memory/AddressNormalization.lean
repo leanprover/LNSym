@@ -104,7 +104,7 @@ more `omega` facts.
     | return .continue
   let subTy := mkSubNat x n
   let ltTy := mkLTNat subTy n
-  let Step.done { expr := _, proof? := some ltProof} ← dischargeByOmega ltTy
+  let some ltProof ← dischargeByOmega ltTy
     | return .continue
   let eqProof ← mkAppM ``Nat.mod_eq_sub #[geProof, ltProof]
   trace[Tactic.address_normalization] "{checkEmoji} reduceModSub '{x} % {n}'"
