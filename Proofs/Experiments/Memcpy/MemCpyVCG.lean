@@ -554,13 +554,12 @@ a = 0x0000000000001fd9#64
 
 theorem BitVec.natCast_toNat (x : BitVec 64) : (↑ x.toNat  : BitVec 64) = x := by simp
 
-axiom NO_OVERFLOW {α : Prop} : α
-
 -- -- set_option skip_proof.skip true in
 -- set_option trace.simp_mem.info true in
 -- set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
+  (h_non_overflowing : (s0.x0.toNonOverflowing * 16) |>.assert)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
   (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
   (h_assert_1 : si.x0 ≤ s0.x0) (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
@@ -581,8 +580,6 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
     Memory.read_bytes n addr s0.mem := by
-  have h_non_overflowing : (s0.x0.toNonOverflowing * 16) |>.assert := by
-    exact NO_OVERFLOW -- we need to add this assumption.
   simp [memory_defs_bv] at h_non_overflowing
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by simp_mem)]
   · apply h_assert_6 _ _ (by mem_decide_bv)
@@ -590,6 +587,7 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
 -- -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
+  (h_non_overflowing : (s0.x0.toNonOverflowing * 16) |>.assert)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
   (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -620,8 +618,6 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
             (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
               (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
           Memory.read_bytes n addr s0.mem := by
-  have h_non_overflowing : (s0.x0.toNonOverflowing * 16) |>.assert := by
-    exact NO_OVERFLOW -- we need to add this assumption.
   apply And.intro
   · intros i hi
     have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
@@ -874,7 +870,6 @@ theorem partial_correctness :
 info: 'Memcpy.partial_correctness' depends on axioms: [propext,
  Classical.choice,
  Lean.ofReduceBool,
- Memcpy.NO_OVERFLOW,
  Memory.read_bytes_write_bytes_eq_of_mem_subset',
  Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate',
  Quot.sound]
