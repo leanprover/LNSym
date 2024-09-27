@@ -68,26 +68,29 @@ def getBitVecOfNatValue? (e : Expr) : (Option (Expr × Expr)) :=
 
 /--
 Try to build a proof for `ty` by reduction to `omega`.
-This is to be used to automatically prove inbounds constraints to eliminiate modulos.
+Return a proof of `ty` on success, or `none` if omega failed to prove the goal.
+
+This is to be used to automatically prove inbounds constraints to eliminate modulos
+in a simproc, hence the use of `SimpM`.
 We may eventually want to exploit our memory automation framework to bring in
 more `omega` facts.
 -/
-@[inline] def dischargeByOmega (ty : Expr) : SimpM Step := do
+@[inline] def dischargeByOmega (ty : Expr) : SimpM (Option Expr) := do
   let proof : Expr ← mkFreshExprMVar ty
   let g := proof.mvarId!
   let some g ← g.falseOrByContra
-    | return .continue
+    | return none
   try
     g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
   catch _ =>
-    return .continue
-  return .done { expr := ty, proof? := proof }
+    return none
+  return some proof
 
 -- x % n = x if x < n
 @[inline] def reduceModOfLt (x : Expr) (n : Expr) : SimpM Step := do
   trace[Tactic.address_normalization] "{processingEmoji} reduceModOfLt '{x} % {n}'"
   let ltTy := mkLTNat x n
-  let Step.done { expr := _, proof? := some p} ← dischargeByOmega ltTy
+  let some p ← dischargeByOmega ltTy
     | return .continue
   let eqProof ← mkAppM ``Nat.mod_eq_of_lt #[p]
   trace[Tactic.address_normalization] "{checkEmoji} reduceModOfLt '{x} % {n}'"
@@ -97,11 +100,11 @@ more `omega` facts.
 @[inline] def reduceModSub (x : Expr) (n : Expr) : SimpM Step := do
   trace[Tactic.address_normalization] "{processingEmoji} reduceModSub '{x} % {n}'"
   let geTy := mkGENat x n
-  let Step.done { expr := _, proof? := some geProof} ← dischargeByOmega geTy
+  let some geProof ← dischargeByOmega geTy
     | return .continue
   let subTy := mkSubNat x n
   let ltTy := mkLTNat subTy n
-  let Step.done { expr := _, proof? := some ltProof} ← dischargeByOmega ltTy
+  let some ltProof ← dischargeByOmega ltTy
     | return .continue
   let eqProof ← mkAppM ``Nat.mod_eq_sub #[geProof, ltProof]
   trace[Tactic.address_normalization] "{checkEmoji} reduceModSub '{x} % {n}'"
