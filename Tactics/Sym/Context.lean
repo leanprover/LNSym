@@ -9,8 +9,8 @@ import Lean.Meta
 import Arm.Exec
 import Tactics.Common
 import Tactics.Attr
-import Tactics.Reflect.ProgramInfo
-import Tactics.Reflect.AxEffects
+import Tactics.Sym.ProgramInfo
+import Tactics.Sym.AxEffects
 import Tactics.Simp
 
 /-!
@@ -247,7 +247,7 @@ Falling back to the default numbering scheme, \
 with `s1` as the first new intermediate state"
     modifyThe SymContext ({ · with
       state_prefix := "s",
-      currentStateNumber := 1 })
+      currentStateNumber := 0 })
 
 /-- Annotate any errors thrown by `k` with a local variable (and its type) -/
 private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
