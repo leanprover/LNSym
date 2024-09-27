@@ -56,6 +56,9 @@ structure SymContext where
 
   See also `SymContext.runSteps?` -/
   hRun : Expr
+  /-- The id of the variable with which `hRun` was initialized -/
+  hRunId : FVarId
+
   /-- `programInfo` is the relevant cached `ProgramInfo` -/
   programInfo : ProgramInfo
 
@@ -169,6 +172,8 @@ variable {m} [Monad m] [MonadReaderOf SymContext m]
 
 def getCurrentStateNumber : m Nat := do return (← read).currentStateNumber
 
+def getFinalState : m Expr := do return (← read).finalState
+
 /-- Return an expression of type
   `<finalState> = run <runSteps> <initialState>` -/
 def getHRun : m Expr := do return (← read).hRun
@@ -265,6 +270,7 @@ private def initial (state : Expr) : MetaM SymContext := do
   return {
     finalState
     runSteps? := none
+    hRunId := ⟨.anonymous⟩
     hRun := ← mkFreshExprMVar none
     programInfo := {
       name := `dummyValue
@@ -334,6 +340,7 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
       (from {hRun.toExpr} : {hRun.type})"
 
   modifyThe SymContext ({ · with
+    hRunId := hRun.fvarId
     hRun := hRun.toExpr
     finalState := ←instantiateMVars c.finalState
     runSteps?
