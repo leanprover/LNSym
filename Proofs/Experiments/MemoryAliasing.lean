@@ -10,6 +10,53 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
+set_option trace.simp_mem.info true in
+theorem mem_automation_test_1
+  (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  simp_mem
+  rfl
+
+set_option trace.simp_mem.info true in
+theorem mem_automation_test_2 (n0 : BitVec 64)
+  (hNoOverflow : n0.toNonOverflowing * 16 |>.assert)
+  (h_n0 : n0 ≠ 0)
+  (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
+  (h_no_wrap_dest_region : mem_legal' dest_addr (n0 <<< 4))
+  (h_s0_src_dest_separate :
+    mem_separate' src_addr  (n0 <<< 4)
+                  dest_addr (n0 <<< 4)) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  simp_mem
+  rfl
+
+-- /-- error: unknown constant 'mem_automation_test_2' -/
+-- #guard_msgs in #print axioms mem_automation_test_2
+
+set_option trace.simp_mem.info true in
+/-- reading from a region `[src_addr+1..10] ⊆ [src_addr..16]` with an
+interleaved write `[ignore_addr..ignore_addr+ignore_n)`
+-/
+
+theorem mem_automation_test_3 (h_ignore_n : ignore_n ≠ 0)
+  (h_no_wrap_src_region : mem_legal' src_addr 16)
+  (h_s0_src_ignore_disjoint :
+    mem_separate' src_addr  16
+                  ignore_addr ignore_n) :
+  read_mem_bytes 10 (src_addr + 1) (write_mem_bytes ignore_n.toNat ignore_addr blah s0) =
+   read_mem_bytes 10 (src_addr + 1) s0 := by
+  simp only [memory_rules]
+  simp_mem
+  rfl
+
+#exit
+
+
+
 -- set_option trace.simp_mem true
 -- set_option trace.simp_mem.info true
 -- set_option trace.Tactic.address_normalization true
@@ -373,6 +420,7 @@ end ReadOverlappingWrite
 and for general walking. -/
 namespace ExprVisitor
 
+set_option trace.simp_mem.info true in
 /-- Check that we correctly go under binders -/
 theorem test_quantified_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' 0 16) : ∀ (_irrelevant : Nat),

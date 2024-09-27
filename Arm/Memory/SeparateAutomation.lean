@@ -134,7 +134,7 @@ def Context.init (cfg : SimpMemConfig) : MetaM Context := do
     LNSymSimpContext
       (config := {failIfUnchanged := false})
       -- (simp_attrs := #[`bv_toNat, `address_normalization]) -- too slow, times out on memcpy.
-      -- (simp_attrs := #[`memory_defs_bv])
+      (simp_attrs := #[`memory_defs_bv])
       (useDefaultSimprocs := false)
   return {cfg, bvToNatSimpCtx, bvToNatSimprocs}
 
@@ -565,8 +565,7 @@ def omegaCore (facts : List Expr) (g : MVarId) (cfg : OmegaConfig := {}) : MetaM
 
 end OmegaInterface
 
-def bvDecide (g : MVarId) : SimpMemM Unit  := do
-  SimpMemM.withContext g do
+def bvDecide : SimpMemM Unit  := do
     -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
     -- @bollu: TODO: understand what precisely we are recovering from.
     -- let bvToNatSimpCtx ← SimpMemM.getBvToNatSimpCtx
@@ -587,10 +586,10 @@ def bvDecide (g : MVarId) : SimpMemM Unit  := do
         withoutRecover do
           evalTactic (← `(tactic| mem_unfold_bv))
           trace[simp_mem.info] m!"{← getMainGoal}"
-          evalTactic (← `(tactic| bv_decide))
+          evalTactic (← `(tactic| mem_decide_bv))
 
-  if ! (← g.isAssigned) then
-    throwError "bvDecide failed to close goal."
+  -- if ! (← g.isAssigned) then
+  --   throwError "bvDecide failed to close goal."
           -- evalTactic (← `(tactic| bv_decide))
           -- evalTactic (← `(tactic| sorry))
 -- def omega : SimpMemM (Option Unit) := do
@@ -743,9 +742,9 @@ def MemLegalProof.bv_def (h : MemLegalProof e) : Expr :=
   mkAppN (Expr.const ``mem_legal'.bv_def []) #[e.span.base, e.span.n.asBV, h.h]
 
 /-- Add the omega fact from `mem_legal'.def`. -/
-def MemLegalProof.addSolverFacts (h : MemLegalProof e) (args : Array Expr) :
+def MemLegalProof.addSolverFacts (h : MemLegalProof e) (g : MVarId) (args : Array Expr) :
     SimpMemM (Array Expr) := do
-  SimpMemM.withMainContext do
+  SimpMemM.withContext g do
     let fvar ← simpAndIntroDef "hmemLegal_bv" h.bv_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.bv_def})"
     return args.push (Expr.fvar fvar)
@@ -765,9 +764,9 @@ def MemSubsetProof.bv_def (h : MemSubsetProof e) : Expr :=
     #[e.sa.base, e.sa.n.asBV, e.sb.base, e.sb.n.asBV, h.h]
 
 /-- Add the omega fact from `mem_legal'.bv_def` into the main goal. -/
-def MemSubsetProof.addSolverFacts (h : MemSubsetProof e) (args : Array Expr) :
+def MemSubsetProof.addSolverFacts (h : MemSubsetProof e) (g : MVarId) (args : Array Expr) :
     SimpMemM (Array Expr) := do
-  SimpMemM.withMainContext do
+  SimpMemM.withContext g do
     let fvar ← simpAndIntroDef "hmemSubset_omega" h.bv_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.bv_def})"
     return args.push (Expr.fvar fvar)
@@ -787,9 +786,9 @@ def MemSeparateProof.bv_def (h : MemSeparateProof e) : Expr :=
     #[e.sa.base, e.sa.n.asBV, e.sb.base, e.sb.n.asBV, h.h]
 
 /-- Add the omega fact from `mem_legal'.bv_def`. -/
-def MemSeparateProof.addSolverFacts (h : MemSeparateProof e) (args : Array Expr) :
+def MemSeparateProof.addSolverFacts (h : MemSeparateProof e) (g : MVarId) (args : Array Expr) :
     SimpMemM (Array Expr) := do
-  SimpMemM.withMainContext do
+  SimpMemM.withContext g do
     -- simp only [bitvec_rules] (failIfUnchanged := false)
     let fvar ← simpAndIntroDef "hmemSeparate_omega" h.bv_def
     trace[simp_mem.info]  "{h}: added omega fact ({h.bv_def})"
@@ -844,7 +843,7 @@ Currently, if the list is syntacticaly of the form [x1, ..., xn],
  we create hypotheses of the form `mem_separate' xi xj` for all i, j..
 This can be generalized to pairwise separation given hypotheses x ∈ xs, x' ∈ xs.
 -/
-def MemPairwiseSeparateProof.addSolverFacts (h : MemPairwiseSeparateProof e) (args : Array Expr) :
+def MemPairwiseSeparateProof.addSolverFacts (h : MemPairwiseSeparateProof e) (g : MVarId) (args : Array Expr) :
     SimpMemM (Array Expr) := do
   -- We need to loop over i, j where i < j and extract hypotheses.
   -- We need to find the length of the list, and return an `Array MemRegion`.
@@ -856,28 +855,28 @@ def MemPairwiseSeparateProof.addSolverFacts (h : MemPairwiseSeparateProof e) (ar
       args ← SimpMemM.withTraceNode m!"Exploiting ({i}, {j}) : {a} ⟂ {b}" do
         let proof ← h.mem_separate'_of_pairwiseSeparate_of_mem_of_mem i j a b
         SimpMemM.traceLargeMsg m!"added {← inferType proof.h}" m!"{proof.h}"
-        proof.addSolverFacts args
+        proof.addSolverFacts g args
   return args
 /--
 Given a hypothesis, add declarations that would be useful for omega-blasting
 -/
-def Hypothesis.addSolverFactsOfHyp (h : Hypothesis) (args : Array Expr) : SimpMemM (Array Expr) :=
+def Hypothesis.addSolverFactsOfHyp (g : MVarId) (h : Hypothesis) (args : Array Expr) : SimpMemM (Array Expr) :=
   match h with
-  | Hypothesis.legal h => h.addSolverFacts args
-  | Hypothesis.subset h => h.addSolverFacts args
-  | Hypothesis.separate h => h.addSolverFacts args
-  | Hypothesis.pairwiseSeparate h => h.addSolverFacts args
+  | Hypothesis.legal h => h.addSolverFacts g args
+  | Hypothesis.subset h => h.addSolverFacts g args
+  | Hypothesis.separate h => h.addSolverFacts g args
+  | Hypothesis.pairwiseSeparate h => h.addSolverFacts g args
   | Hypothesis.read_eq _h => return args -- read has no extra `omega` facts.
 
 /--
 Accumulate all omega defs in `args`.
 -/
-def Hypothesis.addSolverFactsOfHyps (hs : List Hypothesis) (args : Array Expr)
+def Hypothesis.addSolverFactsOfHyps (g : MVarId) (hs : List Hypothesis) (args : Array Expr)
     : SimpMemM (Array Expr) := do
   SimpMemM.withTraceNode m!"Adding omega facts from hypotheses" do
     let mut args := args
     for h in hs do
-      args ← h.addSolverFactsOfHyp args
+      args ← h.addSolverFactsOfHyp g args
     return args
 
 end Hypotheses
@@ -955,18 +954,37 @@ def proveWithSolver?  {α : Type} [ToMessageData α] [SolverReducible α] (e : �
   check obligationVal
   let factProof := mkAppN proofFromSolverVal #[obligationVal]
   check factProof
-  let oldGoals := (← getGoals)
 
+  -- let _ ← omegaCore (← getLocalHyps).toList obligationVal.mvarId!
+ -- why do I need this? I don't get it, but somehow, my local context gets populated with dumb stuff otherwise.
+  let mut goal := obligationVal.mvarId!
+  SimpMemM.withContext goal do
+    -- | TODO: refactor to use MetaM instead of TacticM. TacticM creates global mutable state.
+    let _ ← Hypothesis.addSolverFactsOfHyps goal hyps.toList #[]
+
+  trace[simp_mem.info] "{checkEmoji} `proveWithSolver?` obligation before 'mem_unfold_bv': {goal}"
   try
-    setGoals (obligationVal.mvarId! :: (← getGoals))
-    let _ ← Hypothesis.addSolverFactsOfHyps hyps.toList #[]
-    bvDecide obligationVal.mvarId!
-    trace[simp_mem.info] "{checkEmoji} `bv_decide` succeeded."
-    return (.some <| Proof.mk (← instantiateMVars factProof))
+    let .some goal' ← LNSymSimpAtStar goal
+      (← SimpMemM.getBvToNatSimpCtx)
+      (← SimpMemM.getBvToNatSimprocs)
+      | throwError "internal error in `simp_mem`: simp automatically closed goal."
+    goal := goal'
   catch e =>
-    trace[simp_mem.info]  "{crossEmoji} `bv_decide` failed with error:\n{e.toMessageData}"
-    setGoals oldGoals
-    return none
+    trace[simp_mem.info]  "{crossEmoji} simp failed with error: \n{e.toMessageData}"
+    return .none
+  try
+    if ! (← goal.isAssigned) then
+        -- trace[simp_mem.info] "trying to solve with omega"
+      trace[simp_mem.info] "{checkEmoji} `proveWithSolver?` obligation before 'bv_decide': {goal}"
+        IO.FS.withTempFile fun _ lratFile => do
+          let cfg ← BVDecide.Frontend.TacticContext.new lratFile
+          -- liftMetaFinishingTactic fun g => do
+          --   discard <| bvDecide g cfg
+          let _ ← BVDecide.Frontend.bvDecide goal cfg
+  catch e =>
+    trace[simp_mem.info]  "{crossEmoji} bvDecide failed with error: \n{e.toMessageData}"
+    return .none
+  return (.some <| Proof.mk (← instantiateMVars factProof))
   end ReductionToOmega
 
 section Simplify
@@ -1131,6 +1149,7 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
           -- ∀ (x : read_mem (read_mem_bytes ...) ... = out).
           -- we want to simplify the *type* of x.
           changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
+        trace[simp_mem.info] "{processingEmoji} Simplifying body of ∀ {b}"
         changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
         return changedInCurrentIter?
     else if e.isLambda then
@@ -1246,7 +1265,7 @@ def simpMemDebugTactic  : TacticM Unit := do
   SimpMemM.run (cfg := {}) do
     SimpMemM.withMainContext do
     -- evaluate mem_decide_bv
-      bvDecide (← getMainGoal)
+      bvDecide
 
 end SeparateAutomation
 
