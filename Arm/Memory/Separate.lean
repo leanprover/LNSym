@@ -330,11 +330,13 @@ abbrev Nat.bv64 (n : Nat) : BitVec 64 := BitVec.ofNat 64 n
 --
 macro_rules
 | `(tactic| mem_unfold_bv) =>
-    `(tactic| simp only [memory_defs_bv, bitvec_rules, minimal_theory] at *)
+    `(tactic| simp (config := {failIfUnchanged := false}) only [memory_defs_bv, bitvec_rules, minimal_theory] at *)
+
 
 macro_rules
 | `(tactic| mem_decide_bv) =>
-    `(tactic| mem_unfold_bv; bv_decide)
+    -- We use the <;> combinator in the sense of "zero or 1 goal" not in the sense of "≥ 2 goals."
+    `(tactic| mem_unfold_bv <;> bv_decide)
 
 theorem mem_separate_width_zero (hlegal : mem_legal' b bn) : mem_separate' a 0#64 b bn := by
   mem_decide_bv

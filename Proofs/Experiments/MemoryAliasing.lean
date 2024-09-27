@@ -16,159 +16,159 @@ import Arm.Memory.SeparateAutomation
 set_option trace.simp_mem.info true
 -- set_option trace.Tactic.address_normalization true
 
--- namespace MemLegal
+namespace MemLegal
 
--- /-- Show reflexivity of legality. -/
--- theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
---   mem_decide_bv
+/-- Show reflexivity of legality. -/
+theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
+  mem_decide_bv
 
--- /--
--- info: 'MemLegal.legal_1' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms legal_1
+/--
+info: 'MemLegal.legal_1' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms legal_1
 
--- end MemLegal
+end MemLegal
 
--- namespace MemSubset
--- /-- Reflexivity. -/
--- theorem subset_1 (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
---   mem_decide_bv
+namespace MemSubset
+/-- Reflexivity. -/
+theorem subset_1 (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
+  mem_decide_bv
 
--- /--
--- info: 'MemSubset.subset_1' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms subset_1
+/--
+info: 'MemSubset.subset_1' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms subset_1
 
--- /-- Show that smaller subsets are also subsets. -/
--- theorem subset_2 (l : mem_subset' a 16 b 16) : mem_subset' a 10 b 16 := by
---   mem_decide_bv
+/-- Show that smaller subsets are also subsets. -/
+theorem subset_2 (l : mem_subset' a 16 b 16) : mem_subset' a 10 b 16 := by
+  mem_decide_bv
 
--- /--
--- info: 'MemSubset.subset_2' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms subset_2
+/--
+info: 'MemSubset.subset_2' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms subset_2
 
--- /-- Show that smaller subsets are also subsets, even when moving base pointer. -/
--- theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
---   mem_decide_bv
+/-- Show that smaller subsets are also subsets, even when moving base pointer. -/
+theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
+  mem_decide_bv
 
--- /--
--- info: 'MemSubset.subset_3' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms subset_3
+/--
+info: 'MemSubset.subset_3' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms subset_3
 
--- /-- Show that we can perform address arithmetic based on subset constraints. -/
--- theorem subset_4 (l : mem_subset' a 16 b 16) : a = b := by
---   mem_decide_bv
+/-- Show that we can perform address arithmetic based on subset constraints. -/
+theorem subset_4 (l : mem_subset' a 16 b 16) : a = b := by
+  mem_decide_bv
 
--- /-- Show that we can perform address arithmetic based on subset constraints.
--- Only two configurations possible:
+/-- Show that we can perform address arithmetic based on subset constraints.
+Only two configurations possible:
 
--- ..  a0 a1 a2
--- b0 b1 b2 b3
+..  a0 a1 a2
+b0 b1 b2 b3
 
--- a0 a1 a2 ..
--- b0 b1 b2 b3
--- -/
--- theorem subset_5 (l : mem_subset' a 3 b 4) : a ≤ b + 1 := by
---   mem_decide_bv
+a0 a1 a2 ..
+b0 b1 b2 b3
+-/
+theorem subset_5 (l : mem_subset' a 3 b 4) : a ≤ b + 1 := by
+  mem_decide_bv
 
--- end MemSubset
+end MemSubset
 
--- namespace MemSeparate
+namespace MemSeparate
 
--- /-- Reflexivity. -/
--- theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
---   mem_decide_bv
+/-- Reflexivity. -/
+theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
+  mem_decide_bv
 
--- /--
--- info: 'MemSeparate.separate_1' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms separate_1
+/--
+info: 'MemSeparate.separate_1' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms separate_1
 
 
--- /-- Symmetry. -/
--- theorem separate_2 (l : mem_separate' a 16 b 16) : mem_separate' b 16 a 16 := by
---   mem_decide_bv
+/-- Symmetry. -/
+theorem separate_2 (l : mem_separate' a 16 b 16) : mem_separate' b 16 a 16 := by
+  mem_decide_bv
 
--- /--
--- info: 'MemSeparate.separate_2' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms separate_2
+/--
+info: 'MemSeparate.separate_2' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms separate_2
 
--- /-- Smaller subsets. -/
--- theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
---   mem_decide_bv
+/-- Smaller subsets. -/
+theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
+  mem_decide_bv
 
--- /--
--- info: 'MemSeparate.separate_3' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms separate_3
+/--
+info: 'MemSeparate.separate_3' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms separate_3
 
--- /-- sliding subset to the right. -/
--- theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
---     mem_separate' a 17 (b+1) 15 := by
---   mem_decide_bv
+/-- sliding subset to the right. -/
+theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
+    mem_separate' a 17 (b+1) 15 := by
+  mem_decide_bv
 
--- /--
--- info: 'MemSeparate.separate_4' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms separate_4
+/--
+info: 'MemSeparate.separate_4' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms separate_4
 
--- -- TODO(@bollu): add an assumption in `mem_legal'` that `n ≤ 2^64`.
--- -- This will allow us to write arithmetic expressions like `n <<< 4`,
--- -- and have these be simplified into `(BitVec.ofNat 64 n) <<< 4`, which is something
--- -- that `bv_omega` can understand?
--- /-- shifts inside the arithmetic. -/
--- theorem separate_5 {n : BitVec 64} (hn : n ≠ 0#64)
---     (hNoOverflow : n.toNonOverflowing * 16 |>.assert)
---     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
---     mem_separate' a 16 b 16 := by
---   mem_decide_bv
+-- TODO(@bollu): add an assumption in `mem_legal'` that `n ≤ 2^64`.
+-- This will allow us to write arithmetic expressions like `n <<< 4`,
+-- and have these be simplified into `(BitVec.ofNat 64 n) <<< 4`, which is something
+-- that `bv_omega` can understand?
+/-- shifts inside the arithmetic. -/
+theorem separate_5 {n : BitVec 64} (hn : n ≠ 0#64)
+    (hNoOverflow : n.toNonOverflowing * 16 |>.assert)
+    (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
+    mem_separate' a 16 b 16 := by
+  mem_decide_bv
 
--- /--
--- info: 'MemSeparate.separate_5' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms separate_5
+/--
+info: 'MemSeparate.separate_5' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms separate_5
 
--- /-- shifts inside the arithmetic. -/
--- theorem separate_6 {n : BitVec 64} (hn : n ≠ 0)
---     (hNoOverflow : n.toNonOverflowing * 16 |>.assert)
---     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
---     mem_separate' a (n <<< 3 + 8) b (n <<< 4) := by
---   mem_decide_bv
+/-- shifts inside the arithmetic. -/
+theorem separate_6 {n : BitVec 64} (hn : n ≠ 0)
+    (hNoOverflow : n.toNonOverflowing * 16 |>.assert)
+    (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
+    mem_separate' a (n <<< 3 + 8) b (n <<< 4) := by
+  mem_decide_bv
 
--- /--
--- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms separate_6
+/--
+info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms separate_6
 
--- #guard_msgs in theorem separate_7 (hm : m ≠ 0)
---     (l : mem_separate' a 100 b m)
---     (l : mem_separate' (a+100) 100 b m)  :
---     mem_separate' a 200 b m := by
---   mem_decide_bv -- same problem, it gives a crazy model where `m = 0`.
+#guard_msgs in theorem separate_7 (hm : m ≠ 0)
+    (l : mem_separate' a 100 b m)
+    (l : mem_separate' (a+100) 100 b m)  :
+    mem_separate' a 200 b m := by
+  mem_decide_bv -- same problem, it gives a crazy model where `m = 0`.
 
--- #guard_msgs in theorem separate_8 (hn : n ≠ 0) (hm : m ≠ 0)
---     (l : mem_separate' a n b m)
---     (l : mem_separate' (a+n) n b m)  :
---     mem_separate' a (2*n) b m := by
---   mem_decide_bv
+#guard_msgs in theorem separate_8 (hn : n ≠ 0) (hm : m ≠ 0)
+    (l : mem_separate' a n b m)
+    (l : mem_separate' (a+n) n b m)  :
+    mem_separate' a (2*n) b m := by
+  mem_decide_bv
 
--- /--
--- Check that we can close address relationship goals that require
--- us to exploit memory separateness properties.
--- -/
--- theorem mem_separate_9  (h : mem_separate' a 100 b 100)
---   (hab : a < b) : a + 50 ≤ b := by
---   mem_decide_bv
+/--
+Check that we can close address relationship goals that require
+us to exploit memory separateness properties.
+-/
+theorem mem_separate_9  (h : mem_separate' a 100 b 100)
+  (hab : a < b) : a + 50 ≤ b := by
+  mem_decide_bv
 
--- /--
--- info: 'MemSeparate.mem_separate_9' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
--- -/
--- #guard_msgs in #print axioms mem_separate_9
+/--
+info: 'MemSeparate.mem_separate_9' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms mem_separate_9
 
--- end MemSeparate
+end MemSeparate
 
 theorem mem_automation_test_1
   (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
@@ -394,8 +394,7 @@ theorem test_quantified_1 {val : BitVec (16 * 8)}
     Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem) =
      val.extractLsBytes 0 16  := by
   simp_mem
-  -- simp only [Nat.reduceMul, BitVec.ofNat_eq_ofNat, BitVec.toNat_ofNat, Nat.reducePow, Nat.zero_mod,
-  --   Nat.sub_self, implies_true]
+  simp
 
 /--
 info: 'ExprVisitor.test_quantified_1' depends on axioms: [propext,

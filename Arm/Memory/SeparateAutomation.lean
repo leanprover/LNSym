@@ -847,34 +847,22 @@ def proveWithSolver?  {α : Type} [ToMessageData α] [SolverReducible α] (e : �
   check factProof
 
   let mut goal := obligationVal.mvarId!
-  -- SimpMemM.withContext goal do
-  --   -- | TODO: refactor to use MetaM instead of TacticM. TacticM creates global mutable state.
-  --   let _ ← Hypothesis.addSolverFactsOfHyps goal hyps.toList #[]
 
   trace[simp_mem.info] "{checkEmoji} `proveWithSolver?` obligation before 'mem_unfold_bv': {goal}"
+  let oldGoals ← getGoals
   try
-    let .some goal' ← LNSymSimpAtStar goal
-      (← SimpMemM.getBvToNatSimpCtx)
-      (← SimpMemM.getBvToNatSimprocs)
-      | throwError "internal error in `simp_mem`: simp automatically closed goal."
-    goal := goal'
+    setGoals [goal]
+    withoutRecover do
+      evalTactic (← `(tactic| mem_decide_bv))
   catch e =>
-    trace[simp_mem.info]  "{crossEmoji} simp failed with error: \n{e.toMessageData}"
-    return .none
-  try
-    if ! (← goal.isAssigned) then
-        -- trace[simp_mem.info] "trying to solve with omega"
-      trace[simp_mem.info] "{checkEmoji} `proveWithSolver?` obligation before 'bv_decide': {goal}"
-        IO.FS.withTempFile fun _ lratFile => do
-          let cfg ← BVDecide.Frontend.TacticContext.new lratFile
-          let _ ← BVDecide.Frontend.bvDecide goal cfg
-  catch e =>
-    trace[simp_mem.info]  "{crossEmoji} bvDecide failed with error: \n{e.toMessageData}"
+    trace[simp_mem.info]  "{crossEmoji} mem_decide_bv with error: \n{e.toMessageData}"
+    setGoals oldGoals
     return .none
 
   if !(← goal.isAssigned) then
-    throwError "internal error: bvDecide failed to solve goal {goal}"
+    throwError "internal error: bvDecide failed to solve goal: {goal}"
 
+  setGoals oldGoals
   return (.some <| Proof.mk (← instantiateMVars factProof))
   end ReductionToOmega
 
