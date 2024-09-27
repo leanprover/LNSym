@@ -52,6 +52,20 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
     {geomean}s
 "
 
+/-- Set various options to disable linters -/
+macro "disable_linters" "in" cmd:command : command => `(command|
+  set_option linter.constructorNameAsVariable false in
+  set_option linter.deprecated false in
+  set_option linter.missingDocs false in
+  set_option linter.omit false in
+  set_option linter.suspiciousUnexpanderPatterns false in
+  set_option linter.unnecessarySimpa false in
+  set_option linter.unusedRCasesPattern false in
+  set_option linter.unusedSectionVars false in
+  set_option linter.unusedVariables false in
+  $cmd
+)
+
 /-- The default `maxHeartbeats` setting.
 
 NOTE: even if the actual default value changes at some point in the future,
