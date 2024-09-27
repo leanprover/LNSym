@@ -139,7 +139,7 @@ protected def KeyExpansion_helper {Param : KBR} (i : Nat) (ks : KeySchedule)
 def KeyExpansion {Param : KBR} (key : BitVec Param.key_len)
   : KeySchedule :=
   let seeded := AESArm.InitKey (Param := Param) Param.Nk key []
-  AESArm.KeyExpansion_helper (Param := Param) Param.Nk seeded
+  AESArm.KeyExpansion_helper (Param := Param) (4 * Param.Nr + 4 - Param.Nk) seeded
 
 def SubBytes {Param : KBR} (state : BitVec Param.block_size)
   : BitVec Param.block_size :=
@@ -227,7 +227,7 @@ def AES_encrypt_with_ks {Param : KBR} (input : BitVec Param.block_size)
   -- have h₀ : WordSize + WordSize + WordSize + WordSize = Param.block_size := by
   --   simp only [WordSize, BlockSize, Param.h]
   let state := AddRoundKey input $ (AESArm.getKey 0 w)
-  let state := AESArm.AES_encrypt_with_ks_loop (Param := Param) 1 state w
+  let state := AESArm.AES_encrypt_with_ks_loop (Param := Param) (Param.Nr - 1) state w
   let state := SubBytes (Param := Param) state
   let state := ShiftRows (Param := Param) state
   AddRoundKey state $ AESArm.getKey Param.Nr w
