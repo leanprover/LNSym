@@ -163,6 +163,7 @@ structure WellFormedAtPc (s : ArmState) (pc : BitVec 64) : Prop where
 
 structure Pre (s : ArmState) (num_blks : BitVec 64) (src_base dst_base : BitVec 64) : Prop where
   -- 16 bytes are copied in each iteration of the loop.
+  h_blks_no_overflow : (num_blks.toNonOverflowing * 16) |>.assert
   -- h_blks_no_overflow : num_blks.toNonOverflowing * 16 |>.assert
   h_mem_sep : mem_separate' src_base (num_blks * 16) dst_base (num_blks * 16)
   -- -- (TODO) Also allow for the possibility of src_base = dst_base
@@ -669,12 +670,13 @@ theorem partial_correctness :
     · exact h_mem₂
   case v4 =>
     intro s0 si h_assert h_exit
-    have h_non_overflowing : (s0.x0.toNonOverflowing * 16) |>.assert := by
-      exact NO_OVERFLOW -- we need to add this assumption.
 
     simp only [Spec'.assert, assert, post, Nat.reduceMul, BitVec.ofNat_eq_ofNat, id_eq,
       BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod, Spec.exit, exit] at h_assert h_exit ⊢
     obtain ⟨h_pre, h_assert⟩ := h_assert
+    have h_non_overflowing : (s0.x0.toNonOverflowing * 16) |>.assert :=
+      h_pre.h_blks_no_overflow
+
     split at h_assert
     case h_1 pc h_si =>
       subst h_assert
@@ -859,7 +861,7 @@ theorem partial_correctness :
         obtain ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
         simp only [memory_rules, step_8f4_8e4.h_mem, step_8f4_8e4.h_x1, h_si_x1]
         simp only [memory_rules] at h_assert_6 h_assert_5
-        have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5⟩ := h_pre
+        have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5, h_pre_6⟩ := h_pre
         apply Memcpy.extracted_0 <;> try solve | simp_mem | assumption
         · intros n addr h
           apply h_assert_6
