@@ -93,7 +93,6 @@ def NoOverflow.eval {w} : NoOverflow w → BitVec w × Prop
 @[memory_defs_bv] -- TODO: have `mem_defs_bv` evaluate this.
 def NoOverflow.assert {w} (x : NoOverflow w) : Prop := (x.eval).2
 
-
 -- instance : Coe (NoOverflow) (BitVec 64) := ⟨NoOverflow.value⟩
 -- instance : Coe (NoOverflow) Prop := ⟨NoOverflow.assert⟩
 
@@ -584,6 +583,7 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by simp_mem)]
   · apply h_assert_6 _ _ (by mem_decide_bv)
 
+set_option trace.Meta.Tactic.bv true in
 -- -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
@@ -630,7 +630,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
         Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
         BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
         rw [h_assert_6]
-        mem_decide_bv
+        mem_decide_bv -- TODO: look at generated LRAT proofs, and the CNF that is passed to cadical.
     · -- case 2.
       rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
       · apply h_assert_5 _ hi
@@ -866,6 +866,9 @@ theorem partial_correctness :
       contradiction
     case h_4 pc h_si =>
       apply False.elim h_assert
+
+#check Memory.read_bytes_write_bytes_eq_of_mem_subset'
+
 /--
 info: 'Memcpy.partial_correctness' depends on axioms: [propext,
  Classical.choice,

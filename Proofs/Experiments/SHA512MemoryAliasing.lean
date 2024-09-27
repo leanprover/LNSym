@@ -128,7 +128,7 @@ work for `16#64 + ktbl_addr`?
 
 
 -- set_option trace.simp_mem true in
--- set_option trace.simp_mem.info true in
+set_option trace.simp_mem.info true in
 theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (_h_s1_err : read_err s1 = StateError.None)
   (_h_s1_sp_aligned : CheckSPAlignment s1)
@@ -154,15 +154,18 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   read_mem_bytes 16 ktbl_addr s1 =
   (BitVec.flatten SHA2.k_512).extractLsBytes 0 16 := by
   simp_all only [memory_rules]
+  -- simp (config := { ground := true}) [SHA2.k_512] at h_s1_ktbl
   -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
   -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.
   have hSHA2_k512_length : SHA2.k_512.length = 80 := rfl
+  -- simp [hSHA2_k512_length] at h_s1_ktbl
+  -- subst hSHA2_k512_length
   -- rw [hSHA2_k512_length] at h_s1_ktbl -- motive is not type-correct:(
   -- TODO: discuss with @shigoel.
   -- We need SMT to reason about what `length = 80` means inside the solver.
   -- Alternatively, we write a preprocessor that uses such information
   -- to massage the proof state.
-  try simp_mem -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
+  -- simp_mem -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
   sorry
 
 -- set_option trace.simp_mem true in
@@ -195,7 +198,7 @@ theorem sha512_block_armv8_loop_sym_ktbl_access_explicit_len (s1 : ArmState)
   simp_all only [memory_rules]
   -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
   -- 80, which is otherwise treated as an unintepreted constant.
-  have hSHA2_k512_length : 80 = 80 := rfl
+  -- have hSHA2_k512_length : 80 = 80 := rfl
   simp_mem -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
   rfl
 /--

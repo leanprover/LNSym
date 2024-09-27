@@ -223,6 +223,10 @@ theorem foo : BitVec.ofNat 64 100 < BitVec.ofNat 64 200 := by
 /--
 `mem_legal' a n` witnessses that `(a + n)` does not overflow, and thus `[a..a+n)` is a valid range
 of memory. Note that the interval is left closed, right open, and thus `n` is the number of bytes in the memory range.
+-- TODO: think about how we talk about the entire memory space, since this does not
+-- let us talk about [0..2^64), without a quantifier.
+-- @bollu considered making `(n : BitVec 65)`, but this destroys the homogenity of
+-- the bitvec definitions, unfortunately, and introduces upcasts everywhere.
 -/
 def mem_legal' (a : BitVec 64) (n : BitVec 64) : Prop :=
   a ≤ a + n
