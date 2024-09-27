@@ -100,7 +100,7 @@ more `omega` facts.
 @[inline] def reduceModSub (x : Expr) (n : Expr) : SimpM Step := do
   trace[Tactic.address_normalization] "{processingEmoji} reduceModSub '{x} % {n}'"
   let geTy := mkGENat x n
-  let Step.done { expr := _, proof? := some geProof} ← dischargeByOmega geTy
+  let some geProof ← dischargeByOmega geTy
     | return .continue
   let subTy := mkSubNat x n
   let ltTy := mkLTNat subTy n
