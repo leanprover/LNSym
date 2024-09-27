@@ -35,123 +35,57 @@ abbrev num_blocks (s : ArmState) : BitVec 64 := r (StateField.GPR 2#5) s
 -- register x3 using the following couple of instructions:
 -- (0x1264d4#64 , 0xd0000463#32),      --  adrp    x3, 1b4000 <ecp_nistz256_precomputed+0x25000>
 -- (0x1264d8#64 , 0x910c0063#32),      --  add     x3, x3, #0x300
-abbrev ktbl_addr : BitVec 64 := 0x1b4300#64
+abbrev KtblAddr : BitVec 64 := 0x1b4300#64
 
 /--
 Preconditions for the simulation of SHA512.
 -/
-structure sha512_init_pre
-    (pc nblocks sp ctx_base input_base : BitVec 64)
-    (s0 : ArmState) : Prop where
-  h_program    : s0.program = program
-  h_pc         : read_pc s0 = pc
-  h_err        : read_err s0 = .None
-  h_sp_aligned : CheckSPAlignment s0
-  h_num_blocks : num_blocks s0 = nblocks
-  h_sp         : stack_ptr s0 = sp
-  h_ctx_base   : ctx_addr s0 = ctx_base
-  h_input_base : input_addr s0 = input_base
-  h_ctx        : s0[ctx_addr s0, 64] = SHA2.h0_512.toBitVec
-  h_ktbl       : s0[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512
-  h_mem_sep    : Memory.Region.pairwiseSeparate
-                  [((sp - 16#64), 16),
-                   (ctx_base,     64),
-                   (input_base,   (nblocks.toNat * 128)),
-                   (ktbl_addr,    (SHA2.k_512.length * 8))]
+def precondition
+    (PC N SP CtxBase InputBase : BitVec 64)
+    (s0 : ArmState) : Prop :=
+  s0.program = program ∧
+  read_pc s0 = PC ∧
+  read_err s0 = .None ∧
+  CheckSPAlignment s0 ∧
+  stack_ptr s0 = SP ∧
+  -- N, the initial number of blocks to be hashed, must be at least one.
+  0#64 < N ∧
+  -- The following is a roundabout-ish way of saying that `N * 128`, which gives
+  -- the number of bytes to be hashed, does not overflow.
+  extractLsb' 57 7 N = 0#7 ∧
+  num_blocks s0 = N ∧
+  ctx_addr s0 = CtxBase ∧
+  input_addr s0 = InputBase ∧
+  s0[ctx_addr s0, 64] = SHA2.h0_512.toBitVec ∧
+  s0[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+  Memory.Region.pairwiseSeparate
+   [((SP - 16#64), 16),
+    (CtxBase,      64),
+    (InputBase,    (N.toNat * 128)),
+    (KtblAddr,     (SHA2.k_512.length * 8))]
 
 /--
 Invariant that must hold after SHA512's first basic block is simulated, i.e.,
 the basic block immediately preceding the loop.
 -/
-structure sha512_prelude
-    (pc nblocks sp ctx_base input_base : BitVec 64)
-    (si : ArmState) : Prop where
-  h_program    : si.program = program
-  h_pc         : r .PC si = pc
-  h_err        : r .ERR si = .None
-  h_sp_aligned : CheckSPAlignment si
-  h_num_blocks : num_blocks si = nblocks
-  h_sp         : stack_ptr si = sp - 16#64
-  h_ctx_base   : ctx_addr si = ctx_base
-  h_input_base : input_addr si = input_base + 128#64
-  h_ctx        : si[ctx_base, 64] = SHA2.h0_512.toBitVec
-  h_ktbl       : si[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512
-  h_mem_sep    : Memory.Region.pairwiseSeparate
-                  [(sp - 16#64,   16),
-                   (ctx_base,     64),
-                   (input_base,   (nblocks.toNat * 128)),
-                   (ktbl_addr,    (SHA2.k_512.length * 8))]
-
-theorem sha512_prelude.def
-  (h : sha512_prelude pc nblocks sp ctx_base input_base si) :
+def prelude (PC N SP CtxBase InputBase : BitVec 64) (si : ArmState) : Prop :=
   si.program = program ∧
-  r .PC si = pc ∧
+  r .PC si = PC ∧
   r .ERR si = .None ∧
   CheckSPAlignment si ∧
-  num_blocks si = nblocks ∧
-  stack_ptr si = sp - 16#64 ∧
-  ctx_addr si = ctx_base ∧
-  input_addr si = input_base + 128#64 ∧
-  si[ctx_base, 64] = SHA2.h0_512.toBitVec ∧
-  si[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+  stack_ptr si = SP - 16#64 ∧
+  num_blocks si = N ∧
+  ctx_addr si = CtxBase ∧
+  input_addr si = InputBase + 128#64 ∧
+  si[CtxBase, 64] = SHA2.h0_512.toBitVec ∧
+  si[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
   Memory.Region.pairwiseSeparate
-            [(sp - 16#64, 16),
-             (ctx_base,   64),
-             (input_base, (nblocks.toNat * 128)),
-             (ktbl_addr,  (SHA2.k_512.length * 8))] := by
-  obtain ⟨⟩ := h
-  repeat' apply And.intro
-  repeat assumption
-  done
+   [(SP - 16#64,   16),
+    (CtxBase,     64),
+    (InputBase,   (N.toNat * 128)),
+    (KtblAddr,    (SHA2.k_512.length * 8))]
 
-theorem sha512_prelude.of_def
-  (h : si.program = program ∧
-       r .PC si = pc ∧
-       r .ERR si = .None ∧
-       CheckSPAlignment si ∧
-       num_blocks si = nblocks ∧
-       stack_ptr si = sp - 16#64 ∧
-       ctx_addr si = ctx_base ∧
-       input_addr si = input_base + 128#64 ∧
-       si[ctx_base, 64] = SHA2.h0_512.toBitVec ∧
-       si[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
-       Memory.Region.pairwiseSeparate
-                 [(sp - 16#64, 16),
-                  (ctx_base,   64),
-                  (input_base, (nblocks.toNat * 128)),
-                  (ktbl_addr,  (SHA2.k_512.length * 8))]) :
-         sha512_prelude pc nblocks sp ctx_base input_base si := by
-  obtain ⟨h_program, h_pc, h_err, h_sp_aligned, h_num_blocks,
-          h_sp, h_ctx_base, h_input_base, h_ctx, h_ktbl,
-          h_mem_sep⟩ := h
-  constructor
-  repeat assumption
-  done
-
-theorem sha512_prelude.iff_def :
-  (sha512_prelude pc nblocks sp ctx_base input_base si) ↔
-  (si.program = program ∧
-   r .PC si = pc ∧
-   r .ERR si = .None ∧
-   CheckSPAlignment si ∧
-   num_blocks si = nblocks ∧
-   stack_ptr si = sp - 16#64 ∧
-   ctx_addr si = ctx_base ∧
-   input_addr si = input_base + 128#64 ∧
-   si[ctx_base, 64] = SHA2.h0_512.toBitVec ∧
-   si[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
-   Memory.Region.pairwiseSeparate
-             [(sp - 16#64, 16),
-              (ctx_base,   64),
-              (input_base, (nblocks.toNat * 128)),
-              (ktbl_addr,  (SHA2.k_512.length * 8))]) := by
-  constructor
-  · apply sha512_prelude.def
-  · intro h
-    apply sha512_prelude.of_def
-    assumption
-  done
-
+--
 private theorem add_eq_sub_16 (x : BitVec 64) :
   x + 0xfffffffffffffff0#64 = x - 16#64 := by
   bv_decide
@@ -170,17 +104,17 @@ set_option linter.unusedVariables false in
 theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   -- We fix the number of blocks to hash to 1.
   (h_N : N = 1#64)
-  (h_s0_init : sha512_init_pre 0x1264c0#64
-                               N SP CtxBase InputBase s0)
+  (h_s0_init : precondition 0x1264c0#64 N SP CtxBase InputBase s0)
   (h_run : sf = run 16 s0) :
-  sha512_prelude 0x126500#64 N SP CtxBase InputBase sf ∧
+  prelude 0x126500#64 N SP CtxBase InputBase sf ∧
   -- (TODO @shilpi) State register non-effects here.
   ∀ (n : Nat) (addr : BitVec 64),
     mem_separate' addr n (SP - 16#64) 16 →
     sf[addr, n] = s0[addr, n] := by
   -- Prelude
   obtain ⟨h_s0_program, h_s0_pc, h_s0_err, h_s0_sp_aligned,
-          h_s0_num_blocks, h_s0_sp, h_s0_ctx_base,
+          h_s0_sp, h_N_min, h_N_max,
+          h_s0_num_blocks, h_s0_ctx_base,
           h_s0_input_base, h_s0_ctx, h_s0_ktbl,
           h_s0_mem_sep⟩ := h_s0_init
   -- Symbolic Simulation
@@ -205,8 +139,8 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   -- simp only [num_blocks, stack_ptr, ctx_addr, input_addr, ←add_eq_sub_16] at *
   simp only [←add_eq_sub_16] at *
   -- cse (config := { processHyps := .allHyps })
-  simp only [sha512_prelude.iff_def, bitvec_rules, minimal_theory]
-  -- Opening up `sha512_prelude`:
+  simp only [SHA512.prelude, bitvec_rules, minimal_theory]
+  -- Opening up `prelude`:
   -- (FIXME @alex) Why does `s16.program = program` remain even after aggregation?
   sym_aggregate
   simp only [h_s16_program, ←add_eq_sub_16, minimal_theory]
@@ -259,7 +193,7 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
         -- works here, but using it is painful. Also, mispelled lemma.
         have := Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
                 h_s0_mem_sep 3 0 (by decide)
-                (ktbl_addr, (SHA2.k_512.length * 8))
+                (KtblAddr, (SHA2.k_512.length * 8))
                 ((SP + 0xfffffffffffffff0#64), 16)
         simp at this
         simp only [h_s0_sp, this]
