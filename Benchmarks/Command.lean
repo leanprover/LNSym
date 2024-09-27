@@ -31,8 +31,18 @@ def withHeartbeatsAndMs (x : m α) : m (α × Nat × Nat) := do
   let endTime ← IO.monoMsNow
   return ⟨a, heartbeats, endTime - start⟩
 
-def withBenchTraceNode (msg : MessageData) : CommandElabM α → CommandElabM α :=
-  withTraceNode `benchmark (fun _ => pure msg)
+/-- Adds a trace node with the `benchmark` class, but only if the profiler
+option is *not* set.
+
+We deliberately suppress benchmarking nodes when profiling, since it generally
+only adds noise
+-/
+def withBenchTraceNode (msg : MessageData) (x : CommandElabM α )
+    : CommandElabM α := do
+  if (← getBoolOption `profiler) then
+    x
+  else
+    withTraceNode `benchmark (fun _ => pure msg) x
 
 /--
 Run a benchmark for a set number of times, and report the average runtime.
