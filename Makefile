@@ -9,8 +9,10 @@ LAKE = lake
 NUM_TESTS?=3
 VERBOSE?=--verbose
 
-.PHONY: all 
+.PHONY: all
 all: specs correctness proofs tests cosim
+# Note that we don't include benchmarks in `all`,
+# to avoid slowing down CI too much
 
 .PHONY: specs
 	time -p $(LAKE) build Specs
@@ -35,8 +37,12 @@ awslc_elf:
 cosim:
 	time -p lake exe lnsym $(VERBOSE) --num-tests $(NUM_TESTS)
 
+.PHONY: benchmarks
+benchmarks:
+	$(LAKE) build Benchmarks
+
 .PHONY: clean clean_all
-clean: 
+clean:
 	$(LAKE) clean
 
 clean_all: clean
