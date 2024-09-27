@@ -9,7 +9,6 @@ import Benchmarks.SHA512
 
 open Benchmarks
 
-set_option profiler true in
 benchmark sha512_75 : SHA512Bench 75 := fun s0 _ h => by
   intros
   sym_n 75
