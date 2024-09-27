@@ -565,22 +565,26 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
     rcases icases with hi | hi
     · subst hi
       have legal_2 := h_pre_1.hb
-      rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (hsep := by mem_decide_bv)]
-      · simp only [Nat.reduceMul, BitVec.toNat_add, BitVec.toNat_mul, BitVec.toNat_ofNat,
-        Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
-        BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
-        rw [h_assert_6]
-        mem_decide_bv
-        -- constructor
-        -- mem_decide_bv -- TODO: look at generated LRAT proofs, and the CNF that is passed to cadical.
+      rw [Memory.read_bytes_write_bytes_eq_of_mem_subset']
+      have : ((s0.x2 + 0x10#64 * (s0.x0 - si.x0)).toNat - (s0.x2 + 0x10#64 * (s0.x0 - si.x0)).toNat) = 0 := by
+        simp
+      rw [this]
+      simp [bitvec_rules]
+      apply h_assert_6
+      rw [BitVec.natCast_toNat]
+      simp
+      mem_decide_bv
+      -- bv_decide
+
     · -- case 2.
       rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
       · apply h_assert_5 _ hi
   · intros n addr hsep
     apply Memcpy.extracted_2 <;> try assumption
-    · intros h addr h
+    · intros n addr hsep
       apply h_assert_6
-      mem_decide_bv
+      · rw [BitVec.natCast_toNat] -- TODO: add into simp set
+        assumption -- TODO: fix mem_decide_bv to not unfold with the toNat lemmas.
 
 -- time: 10966ms
 /-
@@ -595,8 +599,9 @@ instantiate metavars took 4.51s
 share common exprs took 393ms
 type checking took 1.85s
 -/
+set_option maxHeartbeats 0 in
 -- set_option trace.profiler.out filepath true in
-#time theorem partial_correctness :
+theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions
   case v1 =>
@@ -718,7 +723,8 @@ type checking took 1.85s
             rw [h_si_x0_eq_zero]
             simp
             simp at h_sep
-            mem_decide_bv
+            rw [BitVec.mul_comm]
+            exact h_sep
           · simp only [step.h_err, step.h_program, step.h_sp_aligned, and_self]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
@@ -819,7 +825,9 @@ type checking took 1.85s
         apply Memcpy.extracted_0 <;> try solve | mem_decide_bv | assumption
         · intros n addr h
           apply h_assert_6
-          mem_decide_bv
+          -- mem_decide_bv
+          rw [BitVec.natCast_toNat] at h -- these should go away when we made read_mem_bytes take BitVec.
+          exact h
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
