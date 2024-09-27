@@ -677,7 +677,7 @@ def write_mem_bytes (n : Nat) (addr : BitVec 64) (val : BitVec (n * 8)) (s : Arm
   match n with
   | 0 => s
   | n' + 1 =>
-    let byte := BitVec.extractLsb 7 0 val
+    let byte := BitVec.extractLsb' 0 8 val
     let s := write_mem addr byte s
     let val_rest := BitVec.zeroExtend (n' * 8) (val >>> 8)
     write_mem_bytes n' (addr + 1#64) val_rest s

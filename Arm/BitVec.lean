@@ -289,7 +289,7 @@ abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
   --   BitVec.extractLsb' i 1 x
   -- and avoid the cast here, but unfortunately, extractLsb' isn't supported
   -- by LeanSAT.
-  (BitVec.extractLsb i i x).cast (by omega)
+  (BitVec.extractLsb' i 1 x).cast (by omega)
 
 abbrev partInstall (hi lo : Nat) (val : BitVec (hi - lo + 1)) (x : BitVec n): BitVec n :=
   let mask := allOnes (hi - lo + 1)
@@ -554,14 +554,12 @@ theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
 
 @[bitvec_rules]
 protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
-    extractLsb j 0 (zeroExtend i x) = zeroExtend (j + 1) x := by
+    extractLsb' 0 (j + 1) (zeroExtend i x) = zeroExtend (j + 1) x := by
   apply BitVec.eq_of_getLsbD_eq
   simp
   intro k
   have q : k < i := by omega
   by_cases h : decide (k ≤ j) <;> simp [q, h]
-  simp_all
-  omega
 
 @[bitvec_rules, simp]
 theorem zero_append {w} (x : BitVec 0) (y : BitVec w) :
