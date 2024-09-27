@@ -42,7 +42,7 @@ cosim:
 BENCH = $(LEAN) -Dweak.benchmark.runs=5
 .PHONY: benchmarks
 benchmarks:
-	echo "HEAD is on $($(GIT) rev-parse --short HEAD)"
+	echo "HEAD is on `$(GIT) rev-parse --short HEAD`"
 	$(LAKE) build Benchmarks
 	$(BENCH) Benchmarks/SHA512_75.lean
 	$(LEAN) Benchmarks/SHA512_75_noKernel_noLint.lean
