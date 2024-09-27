@@ -12,6 +12,11 @@ initialize
     defValue := false
     descr := "enables/disables benchmarking in `withBenchmark` combinator"
   }
+  registerOption `benchmark.runs {
+    defValue := (5 : Nat)
+    descr := "controls how many runs the `benchmark` command does. \
+    NOTE: this value is ignored when the `profiler` option is set to true"
+  }
   registerOption `benchmark.profilerDir {
     defValue := "profiles/"
     descr := "where to put profile output files"
@@ -35,21 +40,21 @@ If the `profiler` option is set true, we run the benchmark only once, with:
 elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   logInfo m!"Running {id} benchmark\n"
 
-  let mut n := 5
+  let originalOpts ← getOptions
+  let mut n := originalOpts.getNat `benchmark.runs
+  let mut opts := originalOpts.setBool `benchmark true
   let mut stx ← `(command|
-    set_option benchmark true in
     example $declSig:optDeclSig $val:declVal
   )
 
   if (← getBoolOption `profiler) then
-    let outDir := (← getOptions).getString `benchmark.profilesDir
-    let out := Syntax.mkStrLit s!"{outDir}/{id.getId}"
-    stx ← `(command|
-      set_option trace.profiler true in
-      set_option trace.profiler.out $out in
-      $stx:command
-    )
+    let outDir := (← getOptions).getString `benchmark.profilerDir
+    opts := opts.setBool `trace.profiler true
+    opts := opts.setString `trace.profiler.output s!"{outDir}/{id.getId}"
     n := 1 -- only run once, if `profiler` is set to true
+
+  -- Set options
+  modifyScope fun scope => { scope with opts }
 
   let mut totalRunTime := 0
   -- geomean = exp(log((a₁ a₂ ... aₙ)^1/n)) =
@@ -64,6 +69,9 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
     totalRunTime := totalRunTime + runTime
     totalRunTimeLog := totalRunTimeLog + Float.log runTime.toFloat
 
+  -- Restore options
+  modifyScope fun scope => { scope with opts := originalOpts }
+
   let avg := totalRunTime.toFloat / n.toFloat / 1000
   let geomean := (Float.exp (totalRunTimeLog / n.toFloat)) / 1000.0
   logInfo m!"\
@@ -76,16 +84,16 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
 
 /-- Set various options to disable linters -/
 macro "disable_linters" "in" cmd:command : command => `(command|
-  set_option linter.constructorNameAsVariable false in
-  set_option linter.deprecated false in
-  set_option linter.missingDocs false in
-  set_option linter.omit false in
-  set_option linter.suspiciousUnexpanderPatterns false in
-  set_option linter.unnecessarySimpa false in
-  set_option linter.unusedRCasesPattern false in
-  set_option linter.unusedSectionVars false in
-  set_option linter.unusedVariables false in
-  $cmd
+set_option linter.constructorNameAsVariable false in
+set_option linter.deprecated false in
+set_option linter.missingDocs false in
+set_option linter.omit false in
+set_option linter.suspiciousUnexpanderPatterns false in
+set_option linter.unnecessarySimpa false in
+set_option linter.unusedRCasesPattern false in
+set_option linter.unusedSectionVars false in
+set_option linter.unusedVariables false in
+$cmd
 )
 
 /-- The default `maxHeartbeats` setting.
