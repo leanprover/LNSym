@@ -21,6 +21,8 @@ initialize
     defValue := "profiles/"
     descr := "where to put profile output files"
   }
+  /- Shouldn't be set directly, instead, use the `benchmark` command -/
+  registerTraceClass `benchmark
 
 variable {m} [Monad m] [MonadLiftT BaseIO m] in
 def withHeartbeatsAndMs (x : m α) : m (α × Nat × Nat) := do
@@ -28,6 +30,9 @@ def withHeartbeatsAndMs (x : m α) : m (α × Nat × Nat) := do
   let (a, heartbeats) ← withHeartbeats x
   let endTime ← IO.monoMsNow
   return ⟨a, heartbeats, endTime - start⟩
+
+def withBenchTraceNode (msg : MessageData) : CommandElabM α → CommandElabM α :=
+  withTraceNode `benchmark (fun _ => pure msg)
 
 /--
 Run a benchmark for a set number of times, and report the average runtime.
@@ -38,12 +43,11 @@ If the `profiler` option is set true, we run the benchmark only once, with:
     id of the benchmark
 -/
 elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
-  logInfo m!"Running {id} benchmark\n"
-
   let originalOpts ← getOptions
-  let mut n := originalOpts.getNat `benchmark.runs
-  let mut opts := originalOpts.setBool `benchmark true
-  let mut stx ← `(command|
+  let mut n := originalOpts.getNat `benchmark.runs 5
+  let mut opts := originalOpts
+  opts := opts.setBool `benchmark true
+  let stx ← `(command|
     example $declSig:optDeclSig $val:declVal
   )
 
@@ -52,6 +56,8 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
     opts := opts.setBool `trace.profiler true
     opts := opts.setString `trace.profiler.output s!"{outDir}/{id.getId}"
     n := 1 -- only run once, if `profiler` is set to true
+  else
+    opts := opts.setBool `trace.benchmark true
 
   if n = 0 then
     return ()
@@ -59,31 +65,32 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   -- Set options
   modifyScope fun scope => { scope with opts }
 
-  let mut totalRunTime := 0
-  -- geomean = exp(log((a₁ a₂ ... aₙ)^1/n)) =
-  -- exp(1/n * (log a₁ + log a₂ + log aₙ)).
-  let mut totalRunTimeLog := 0
-  for i in [0:n] do
-    logInfo m!"\n\nRun {i} (out of {n}):\n"
-    let ((), _, runTime) ← withHeartbeatsAndMs <|
-      elabCommand stx
+  withBenchTraceNode m!"Running {id} benchmark" <| do
+    let mut totalRunTime := 0
+    -- geomean = exp(log((a₁ a₂ ... aₙ)^1/n)) =
+    -- exp(1/n * (log a₁ + log a₂ + log aₙ)).
+    let mut totalRunTimeLog : Float := 0
+    for i in [0:n] do
+      let runTime ← withBenchTraceNode m!"Run {i+1} (out of {n}):" <| do
+        let ((), _, runTime) ← withHeartbeatsAndMs <|
+          elabCommand stx
 
-    logInfo m!"Proof took {runTime / 1000}s in total"
-    totalRunTime := totalRunTime + runTime
-    totalRunTimeLog := totalRunTimeLog + Float.log runTime.toFloat
+        trace[benchmark] m!"Proof took {runTime / 1000}s in total"
+        pure runTime
+      totalRunTime := totalRunTime + runTime
+      totalRunTimeLog := totalRunTimeLog + Float.log runTime.toFloat
 
-  -- Restore options
-  modifyScope fun scope => { scope with opts := originalOpts }
-
-  let avg := totalRunTime.toFloat / n.toFloat / 1000
-  let geomean := (Float.exp (totalRunTimeLog / n.toFloat)) / 1000.0
-  logInfo m!"\
-{id}:
-  average runtime over {n} runs:
-    {avg}s
-  geomean over {n} runs:
-    {geomean}s
-"
+    let avg := totalRunTime.toFloat / n.toFloat / 1000
+    let geomean := (Float.exp (totalRunTimeLog / n.toFloat)) / 1000.0
+    trace[benchmark] m!"\
+  {id}:
+    average runtime over {n} runs:
+      {avg}s
+    geomean over {n} runs:
+      {geomean}s
+  "
+    -- Restore options
+    modifyScope fun scope => { scope with opts := originalOpts }
 
 /-- Set various options to disable linters -/
 macro "disable_linters" "in" cmd:command : command => `(command|
