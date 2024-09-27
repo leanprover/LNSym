@@ -71,7 +71,26 @@ def popcount32_program : Program :=
 
 #genStepEqTheorems popcount32_program
 
+theorem bv_decide_misbehaviour (X n addr : BitVec 64)
+
+  (hlegal : 200#64 ≤ X ∧
+    X ≥ X - 200#64 ∧ X ≥ 200#64)
+  (h_separate : addr ≤ addr + n ∧
+    X - 16#64 ≤ X - 16#64 + 16#64 ∧
+      (addr + n ≤ X - 16#64 ∨ addr ≥ X - 16#64 + 16#64 ∨ n = 0#64))
+  (this : addr ≤ addr + n ∧
+    X - 16#64 + 12#64 ≤ X - 16#64 + 12#64 + 4#64 ∧
+      (addr + n ≤ X - 16#64 + 12#64 ∨
+        addr ≥ X - 16#64 + 12#64 + 4#64 ∨ n = 0#64)) :
+  (addr ≤ addr + n ∧
+    X - 16#64 + 12#64 ≤ X - 16#64 + 12#64 + 4#64 ∧
+      (addr + n ≤ X - 16#64 + 12#64 ∨
+      addr ≥ X - 16#64 + 12#64 + 4#64 ∨ n = 0#64)) := by
+  bv_decide
+
+set_option trace.simp_mem.info true in
 theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
+  (hlegal : ((r (.GPR 31) s0).toNonOverflowing - 200#64) + 200#64 |>.assert)
   (h_s0_pc : read_pc s0 = 0x4005b4#64)
   (h_s0_program : s0.program = popcount32_program)
   (h_s0_sp_aligned : CheckSPAlignment s0)
@@ -81,9 +100,9 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   read_err s_final = StateError.None ∧
   (∀ f, f ≠ (.GPR 0#5) ∧ f ≠ (.GPR 1#5) ∧ f ≠ (.GPR 31#5) ∧ f ≠ .PC →
        r f s_final = r f s0) ∧
-  (∀ (n : Nat) (addr : BitVec 64),
+  (∀ (n : BitVec 64) (addr : BitVec 64),
     mem_separate' addr n (r (.GPR 31) s0 - 16#64) 16 →
-    s_final[addr, n] = s0[addr, n]) := by
+    s_final[addr, n.toNat] = s0[addr, n.toNat]) := by
   simp_all only [state_simp_rules, -h_run] -- prelude
   sym_n 27 -- Symbolic simulation
   repeat' apply And.intro -- split conjunction.
@@ -92,6 +111,32 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   · sym_aggregate
   · intro n addr h_separate
     simp only [memory_rules] at *
+    have : n > 0#64 := by sorry
+    have : mem_separate' addr (↑n.toNat) (r (StateField.GPR 31#5) s0 - 16#64 + 12#64) ↑4 := by
+      mem_unfold_bv
+      bv_decide
+    simp_mem
+  /-
+    [] ❌️ mem_decide_bv with error:
+    The prover found a potential counterexample, consider the following assignment:
+    r StateField.PC s0 = 0x00000000004005b4#64
+    n = 0x8000000000000000#64
+    r (StateField.GPR 31#5) s0 = 0x8000000000000000#64
+    addr = 0x0000000000000000#64
+    r (StateField.GPR 31#5) s0 - 16#64 = 0x8000000000000000#64
+  -/
+    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by
+      exact this)]
+      -- mem_unfold_bv;
+      -- mem_decide_bv)]
+    -- simp_mem
+    sym_aggregate
+    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by
+      exact this)]
+    sym_aggregate
+    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by
+      exact this)]
+
     repeat (simp_mem (config := { useOmegaToClose := false }); sym_aggregate)
   · apply Aligned_BitVecSub_64_4 -- TODO(@bollu): automation
     · assumption

@@ -245,6 +245,7 @@ attribute [bitvec_rules] Nat.reduceLTLE
 attribute [bitvec_rules] Nat.reduceLeDiff
 attribute [bitvec_rules] Nat.reduceSubDiff
 attribute [bitvec_rules] BitVec.toNat_ofNat
+attribute [bitvec_rules] BitVec.natCast_eq_ofNat
 
 -- Some Fin lemmas useful for bitvector reasoning:
 attribute [bitvec_rules] Fin.eta
