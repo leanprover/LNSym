@@ -848,19 +848,37 @@ def proveWithSolver?  {α : Type} [ToMessageData α] [SolverReducible α] (e : �
 
   let mut goal := obligationVal.mvarId!
 
-  trace[simp_mem.info] "{checkEmoji} `proveWithSolver?` obligation before 'mem_unfold_bv': {goal}"
+  SimpMemM.withTraceNode m!"{processingEmoji} `proveWithSolver?` obligation before 'mem_unfold_bv'" do
+    trace[simp_mem.info] "{goal}"
   let oldGoals ← getGoals
   try
     setGoals [goal]
-    withoutRecover do
-      evalTactic (← `(tactic| mem_decide_bv))
+    SimpMemM.withContext goal do
+      withoutRecover do
+        evalTactic (← `(tactic| mem_unfold_bv))
+    let newGoals ← getGoals
+
+    if newGoals.isEmpty then
+      trace[simp_mem.info] "{checkEmoji} `proveWithSolver?` goal closed by `mem_unfold_bv`"
+    else if newGoals.length > 1 then
+      throwError "internal error: `mem_unfold_bv` produced more than one goal: {newGoals}"
+    else
+      let newGoal := newGoals[0]!
+      SimpMemM.withTraceNode m!"`{processingEmoji} proveWithSolver?` goal before `bv_decide`" do
+        trace[simp_mem.info] "{newGoal}"
+      setGoals [newGoal]
+      SimpMemM.withContext newGoal do
+        evalTactic (← `(tactic| bv_decide))
+
+      -- withoutRecover do
+      --   evalTactic (← `(tactic| bv_decide))
   catch e =>
     trace[simp_mem.info]  "{crossEmoji} mem_decide_bv with error: \n{e.toMessageData}"
     setGoals oldGoals
     return .none
 
-  if !(← goal.isAssigned) then
-    throwError "internal error: bvDecide failed to solve goal: {goal}"
+  if !(← Tactic.getUnsolvedGoals).isEmpty then
+    throwError "internal error: bvDecide failed to solve unsolved goals: {(← Tactic.getUnsolvedGoals)}"
 
   setGoals oldGoals
   return (.some <| Proof.mk (← instantiateMVars factProof))
