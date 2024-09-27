@@ -75,16 +75,16 @@ in a simproc, hence the use of `SimpM`.
 We may eventually want to exploit our memory automation framework to bring in
 more `omega` facts.
 -/
-@[inline] def dischargeByOmega (ty : Expr) : SimpM Step := do
+@[inline] def dischargeByOmega (ty : Expr) : SimpM (Option Expr) := do
   let proof : Expr ← mkFreshExprMVar ty
   let g := proof.mvarId!
   let some g ← g.falseOrByContra
-    | return .continue
+    | return none
   try
     g.withContext (do Lean.Elab.Tactic.Omega.omega (← getLocalHyps).toList g {})
   catch _ =>
-    return .continue
-  return .done { expr := ty, proof? := proof }
+    return none
+  return some proof
 
 -- x % n = x if x < n
 @[inline] def reduceModOfLt (x : Expr) (n : Expr) : SimpM Step := do
