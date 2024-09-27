@@ -860,23 +860,10 @@ theorem partial_correctness :
         simp only [memory_rules, step_8f4_8e4.h_mem, step_8f4_8e4.h_x1, h_si_x1]
         simp only [memory_rules] at h_assert_6 h_assert_5
         have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5⟩ := h_pre
-        apply Memcpy.extracted_0
-        · bv_decide
-        · bv_decide
-        · bv_decide
-        · bv_decide
-        · bv_decide
-        · bv_decide
+        apply Memcpy.extracted_0 <;> try solve | simp_mem | assumption
         · intros n addr h
-          simp only [BitVec.natCast_toNat] at h
           apply h_assert_6
-          exact h
-        · assumption
-        · assumption
-        · assumption
-        · -- h_pre_1 : mem_separate' s0.x1 (s0.x0 * 16) s0.x2 (s0.x0 * 16)
-          -- ⊢ mem_legal' s0.x1 (0x10#64 * s0.x0)
-          mem_decide_bv
+          simp_mem
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>
