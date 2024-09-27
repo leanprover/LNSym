@@ -12,6 +12,10 @@ initialize
     defValue := false
     descr := "enables/disables benchmarking in `withBenchmark` combinator"
   }
+  registerOption `benchmark.profilerDir {
+    defValue := "profiles/"
+    descr := "where to put profile output files"
+  }
 
 variable {m} [Monad m] [MonadLiftT BaseIO m] in
 def withHeartbeatsAndMs (x : m α) : m (α × Nat × Nat) := do
@@ -20,15 +24,33 @@ def withHeartbeatsAndMs (x : m α) : m (α × Nat × Nat) := do
   let endTime ← IO.monoMsNow
   return ⟨a, heartbeats, endTime - start⟩
 
+/--
+Run a benchmark for a set number of times, and report the average runtime.
+
+If the `profiler` option is set true, we run the benchmark only once, with:
+- `trace.profiler` to true, and
+- `trace.profiler.output` set based on the `benchmark.profilerDir` and the
+    id of the benchmark
+-/
 elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   logInfo m!"Running {id} benchmark\n"
 
-  let stx ← `(command|
+  let mut n := 5
+  let mut stx ← `(command|
     set_option benchmark true in
     example $declSig:optDeclSig $val:declVal
   )
 
-  let n := 5
+  if (← getBoolOption `profiler) then
+    let outDir := (← getOptions).getString `benchmark.profilesDir
+    let out := Syntax.mkStrLit s!"{outDir}/{id.getId}"
+    stx ← `(command|
+      set_option trace.profiler true in
+      set_option trace.profiler.out $out in
+      $stx:command
+    )
+    n := 1 -- only run once, if `profiler` is set to true
+
   let mut totalRunTime := 0
   -- geomean = exp(log((a₁ a₂ ... aₙ)^1/n)) =
   -- exp(1/n * (log a₁ + log a₂ + log aₙ)).
