@@ -640,7 +640,23 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       apply h_assert_6
       mem_decide_bv
 
-theorem partial_correctness :
+-- time: 10966ms
+/-
+tactic execution of Lean.Parser.Tactic.bvDecide took 210ms
+tactic execution of Lean.Parser.Tactic.omega took 579ms
+tactic execution of Lean.Parser.Tactic.omega took 963ms
+tactic execution of Lean.Parser.Tactic.assumption took 102ms
+tactic execution of Lean.Parser.Tactic.bvDecide took 273ms
+tactic execution of Lean.Parser.Tactic.bvDecide took 262ms
+tactic execution of Lean.Parser.Tactic.bvDecide took 292ms
+instantiate metavars took 4.51s
+share common exprs took 393ms
+type checking took 1.85s
+-/
+set_option trace.profiler true in
+-- set_option trace.profiler.out filepath true in
+set_option profiler true in
+#time theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions
   case v1 =>
