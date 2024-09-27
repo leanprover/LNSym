@@ -282,17 +282,8 @@ theorem mem_separate'.bv_def (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (b
   apply (mem_separate'.iff _ _ _ _).mp h
 
 theorem mem_separate'.of_bv (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) :
-    (h : a ≤ a + an ∧ b ≤ b + bn ∧ (a + an ≤ b  ∨ a ≥ b + bn)) →
-    mem_separate' a an b bn := by
-  intros h
-  apply (mem_separate'.iff _ _ _ _).mpr
-  constructor
-  · apply mem_legal'.of_bv
-    bv_decide
-  · constructor
-    · apply mem_legal'.of_bv
-      bv_decide
-    · bv_decide
+    (h : a ≤ a + an ∧ b ≤ b + bn ∧ (a + an ≤ b  ∨ a ≥ b + bn ∨ an = 0 ∨ bn = 0)) →
+    mem_separate' a an b bn := (mem_separate'.iff _ _ _ _).mpr
 
 /-- `mem_subset' a an b bn` witnesses that `[a..a+an)` is a subset of `[b..b+bn)`.
 In prose, we may notate this as `[a..an) ≤ [b..bn)`.
@@ -328,16 +319,7 @@ theorem mem_subset'.bv_def (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn 
 
 theorem mem_subset'.of_bv (a : BitVec 64) (an : BitVec 64) (b : BitVec 64) (bn : BitVec 64) :
     (h : a ≤ a + an ∧ b ≤ b + bn ∧ b ≤ a ∧ a + an ≤ b + bn) →
-    mem_subset' a an b bn := by
-  intros h
-  apply (mem_subset'.iff _ _ _ _).mpr
-  constructor
-  · apply mem_legal'.of_bv
-    bv_decide
-  · constructor
-    · apply mem_legal'.of_bv
-      bv_decide
-    · bv_decide
+    mem_subset' a an b bn := (mem_subset'.iff _ _ _ _).mpr
 
 syntax "mem_decide_bv" : tactic
 syntax "mem_unfold_bv" : tactic
@@ -351,7 +333,7 @@ macro_rules
 
 macro_rules
 | `(tactic| mem_decide_bv) =>
-    `(tactic| mem_unfold_bv <;> bv_decide)
+    `(tactic| mem_unfold_bv; bv_decide)
 
 theorem mem_separate_width_zero (hlegal : mem_legal' b bn) : mem_separate' a 0#64 b bn := by
   mem_decide_bv

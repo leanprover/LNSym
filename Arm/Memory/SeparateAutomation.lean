@@ -22,6 +22,7 @@ import Lean.Elab.Tactic.Conv.Basic
 import Tactics.Simp
 import Lean.Elab.Tactic.Omega
 import Arm.Memory.AddressNormalization
+import Arm.Memory.NoOverflow
 open Lean Meta Elab Tactic
 
 
@@ -133,7 +134,7 @@ def Context.init (cfg : SimpMemConfig) : MetaM Context := do
     LNSymSimpContext
       (config := {failIfUnchanged := false})
       -- (simp_attrs := #[`bv_toNat, `address_normalization]) -- too slow, times out on memcpy.
-      (simp_attrs := #[`memory_defs_bv])
+      -- (simp_attrs := #[`memory_defs_bv])
       (useDefaultSimprocs := false)
   return {cfg, bvToNatSimpCtx, bvToNatSimprocs}
 
@@ -564,8 +565,8 @@ def omegaCore (facts : List Expr) (g : MVarId) (cfg : OmegaConfig := {}) : MetaM
 
 end OmegaInterface
 
-def bvDecide : SimpMemM Unit  := do
-  SimpMemM.withMainContext do
+def bvDecide (g : MVarId) : SimpMemM Unit  := do
+  SimpMemM.withContext g do
     -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
     -- @bollu: TODO: understand what precisely we are recovering from.
     -- let bvToNatSimpCtx ← SimpMemM.getBvToNatSimpCtx
@@ -583,12 +584,15 @@ def bvDecide : SimpMemM Unit  := do
     --   evalTactic (← `(tactic| mem_decide_bv))
     -- )
       SimpMemM.withTraceNode "solving goal with `mem_decide_bv`" do
-        trace[simp_mem.info] m!"{← getMainGoal}"
         withoutRecover do
-          evalTactic (← `(tactic| mem_decide_bv))
+          evalTactic (← `(tactic| mem_unfold_bv))
+          trace[simp_mem.info] m!"{← getMainGoal}"
+          evalTactic (← `(tactic| bv_decide))
+
+  if ! (← g.isAssigned) then
+    throwError "bvDecide failed to close goal."
           -- evalTactic (← `(tactic| bv_decide))
           -- evalTactic (← `(tactic| sorry))
-
 -- def omega : SimpMemM (Option Unit) := do
 --   SimpMemM.withMainContext do
 --     -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
@@ -913,10 +917,10 @@ instance : SolverReducible MemSubsetProp where
   mkAppN (Expr.const ``mem_subset'.of_bv []) #[a, an.asBV, b, bn.asBV]
 
 /--
-info: mem_subset'.of_bv (a an b bn : BitVec 64) (h : a ≤ a + an ∧ b ≤ b + bn ∧ b ≤ a ∧ a + an ≤ b + bn) :
-  mem_subset' a an b bn
+info: mem_separate'.of_bv (a an b bn : BitVec 64)
+  (h : a ≤ a + an ∧ b ≤ b + bn ∧ (a + an ≤ b ∨ a ≥ b + bn ∨ an = 0 ∨ bn = 0)) : mem_separate' a an b bn
 -/
-#guard_msgs in #check mem_subset'.of_bv
+#guard_msgs in #check mem_separate'.of_bv
 
 instance : SolverReducible MemSeparateProp where
   reduceToSolver separate :=
@@ -941,12 +945,12 @@ def proveWithSolver?  {α : Type} [ToMessageData α] [SolverReducible α] (e : �
   -- (h : a.toNat + n ≤ 2 ^ 64) → mem_legal' a n
   let proofTy ← inferType (SolverReducible.reduceToSolver e)
   check proofTy
-  trace[simp_mem.info] "partially applied: '{proofFromSolverVal} : {proofTy}'"
+  -- trace[simp_mem.info] "partially applied: '{proofFromSolverVal} : {proofTy}'"
   let obligationTy ← do -- (h : a.toNat + n ≤ 2 ^ 64)
     match proofTy with
     | Expr.forallE _argName argTy _body _binderInfo => pure argTy
     | _ => throwError "expected '{proofTy}' to a ∀"
-  trace[simp_mem.info] "obligation type '{obligationTy}'"
+  -- trace[simp_mem.info] "obligation type '{obligationTy}'"
   let obligationVal ← mkFreshExprMVar (type? := obligationTy)
   check obligationVal
   let factProof := mkAppN proofFromSolverVal #[obligationVal]
@@ -955,10 +959,8 @@ def proveWithSolver?  {α : Type} [ToMessageData α] [SolverReducible α] (e : �
 
   try
     setGoals (obligationVal.mvarId! :: (← getGoals))
-    -- SimpMemM.withMainContext do
     let _ ← Hypothesis.addSolverFactsOfHyps hyps.toList #[]
-      -- trace[simp_mem.info] m!"Executing `bv_decide` to close {e}"
-    bvDecide
+    bvDecide obligationVal.mvarId!
     trace[simp_mem.info] "{checkEmoji} `bv_decide` succeeded."
     return (.some <| Proof.mk (← instantiateMVars factProof))
   catch e =>
@@ -1079,27 +1081,20 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
       trace[simp_mem.info] "write: {ew}"
       trace[simp_mem.info] "{processingEmoji} read({er.span})⟂/⊆write({ew.span})"
       let subset := MemSubsetProp.mk er.span ew.span
-      trace[simp_mem.info] "[2/2] {processingEmoji} {subset}"
+      trace[simp_mem.info] "[1/2] {processingEmoji} {subset}"
       if let .some subsetProof ← proveWithSolver? subset hyps then do
-        trace[simp_mem.info] "[2/2] {checkEmoji} {subset}"
+        trace[simp_mem.info] "[1/2] {checkEmoji} {subset}"
         rewriteReadOfSubsetWrite er ew subsetProof
         return true
       else
-        trace[simp_mem.info] "[2/2] {crossEmoji} {subset}"
+        trace[simp_mem.info] "[1/2] {crossEmoji} {subset}"
         let separate := MemSeparateProp.mk er.span ew.span
-        trace[simp_mem.info] "[1/2] {processingEmoji} {separate}"
+        trace[simp_mem.info] "[2/2] {processingEmoji} {separate}"
         if let .some separateProof ← proveWithSolver? separate hyps then do
-          trace[simp_mem.info] "[1/2] {checkEmoji} {separate}"
+          trace[simp_mem.info] "[2/2] {checkEmoji} {separate}"
           rewriteReadOfSeparatedWrite er ew separateProof
           return true
         else
-          -- trace[simp_mem.info] "[1/2] {crossEmoji} {separate}"
-          -- trace[simp_mem.info] "[2/2] {processingEmoji} {subset}"
-          -- if let .some subsetProof ← proveWithSolver? subset hyps then do
-          --   trace[simp_mem.info] "[2/2] {checkEmoji} {subset}"
-          --   rewriteReadOfSubsetWrite er ew subsetProof
-          --   return true
-          -- else
           trace[simp_mem.info] "[2/2] {crossEmoji} {separate}"
           trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
           return false
@@ -1113,16 +1108,16 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
         let mut changedInCurrentIter? := false
         for hyp in hyps do
           if let Hypothesis.read_eq hReadEq := hyp then do
+            -- the read we are analyzing should be a subset of the hypothesis
+            let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
             changedInCurrentIter? := changedInCurrentIter? ||
-              (← withTraceNode m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? " do
-                -- the read we are analyzing should be a subset of the hypothesis
-                let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
+              (← withTraceNode m!"{processingEmoji} {subset} ? " do
                 if let some hSubsetProof ← proveWithSolver? subset hyps then
-                  trace[simp_mem.info] "{checkEmoji}  ... ⊆ {hReadEq.read.span}"
+                  trace[simp_mem.info] "{checkEmoji}  {subset}"
                   rewriteReadOfSubsetRead er hReadEq hSubsetProof
                   pure true
                 else
-                  trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
+                  trace[simp_mem.info] "{crossEmoji}  {subset}"
                   pure false)
         pure changedInCurrentIter?
       return changedInCurrentIter?
@@ -1154,7 +1149,8 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
         changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr f hyps)
         changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
         return changedInCurrentIter?
-      | _ => return false
+      | _ =>
+        return false
 
 
 /--
@@ -1250,7 +1246,7 @@ def simpMemDebugTactic  : TacticM Unit := do
   SimpMemM.run (cfg := {}) do
     SimpMemM.withMainContext do
     -- evaluate mem_decide_bv
-      bvDecide
+      bvDecide (← getMainGoal)
 
 end SeparateAutomation
 

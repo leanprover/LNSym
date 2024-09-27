@@ -23,81 +23,6 @@ import Tactics.SkipProof
 set_option linter.unusedVariables false
 set_option linter.all false
 
-namespace NoOverflow
-
-/-
-We build generic abstractions to state that a bitvector
-expression does not overflow. This allows us to write
-expression trees involving addition, subtraction, and multiplication
-and assert that they do not overflow.
--/
-
-/--
-An expression tree that can be asserted to not overflow
-with NoOverflow.denote
--/
-inductive NoOverflow (w : Nat)
-| mul (x y : NoOverflow w) : NoOverflow w
-| add (x y : NoOverflow w) : NoOverflow w
-| sub (x y : NoOverflow w) : NoOverflow w
-| const (x : BitVec w) : NoOverflow w
-
-instance {w} : Coe (BitVec w) (NoOverflow w) := ⟨NoOverflow.const⟩
-
-instance {w} : OfNat (NoOverflow w) n  where
-  ofNat := NoOverflow.const (BitVec.ofNat w n)
-
-instance {w} : Coe Nat (NoOverflow w) :=
-  ⟨fun n => NoOverflow.const (BitVec.ofNat w n)⟩
-
-instance {w} : HAdd (NoOverflow w) (NoOverflow w) (NoOverflow w) where
-  hAdd := NoOverflow.add
-
-instance {w} : HMul (NoOverflow w) (NoOverflow w) (NoOverflow w) where
-  hMul := NoOverflow.mul
-
-instance {w} : HSub (NoOverflow w) (NoOverflow w) (NoOverflow w) where
-  hSub := NoOverflow.sub
-
-def _root_.BitVec.toNonOverflowing {w}
-  (x : BitVec w) : NoOverflow w := NoOverflow.const x
-
-/--
-Evaluate a `NoOverflow` expression tree, giving the value and the proof that it does not overflow.
--/
-@[memory_defs_bv]
-def NoOverflow.eval {w} : NoOverflow w → BitVec w × Prop
-| .const x => (x, True)
-| .add x y =>
-  let (vx, hx) := x.eval
-  let (vy, hy) := y.eval
-  let vout := vx + vy
-  let hout := hx ∧ hy ∧ vout ≥ vx ∧ vout ≥ vy
-  (vout, hout)
-| .sub x y =>
-  let (vx, hx) := x.eval
-  let (vy, hy) := y.eval
-  let vout := vx - vy
-  let hout := hx ∧ hy ∧ (vy ≤ vx) -- does this actually suffice?
-  (vout, hout)
-| .mul x y =>
-  let (vx, hx) := x.eval
-  let (vy, hy) := y.eval
-  let vout := vx * vy
-  -- | this doesn't work of course, I need to state that vx < max / vy.
-  -- But now I'm hosed, because this needs udiv bitblasting :P
-  let hout := hx ∧ hy ∧ vx < vy / BitVec.allOnes w
-  (vout, hout)
-
-/-- The assertion that this does not overflow. -/
-@[memory_defs_bv] -- TODO: have `mem_defs_bv` evaluate this.
-def NoOverflow.assert {w} (x : NoOverflow w) : Prop := (x.eval).2
-
--- instance : Coe (NoOverflow) (BitVec 64) := ⟨NoOverflow.value⟩
--- instance : Coe (NoOverflow) Prop := ⟨NoOverflow.assert⟩
-
-end NoOverflow
-
 namespace Memcpy
 
 /-
@@ -580,10 +505,14 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
     Memory.read_bytes n addr s0.mem := by
   simp [memory_defs_bv] at h_non_overflowing
-  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by simp_mem)]
-  · apply h_assert_6 _ _ (by mem_decide_bv)
+  -- mem_decide_bv
+  -- simp_mem_debug
+  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by sorry)]
+  · apply h_assert_6 _ _ (by sorry)
 
-set_option trace.Meta.Tactic.bv true in
+#print axioms Memcpy.extracted_2
+
+-- set_option trace.Meta.Tactic.bv true in
 -- -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
@@ -620,8 +549,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           Memory.read_bytes n addr s0.mem := by
   apply And.intro
   · intros i hi
-    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by
-      bv_decide
+    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by mem_decide_bv
     rcases icases with hi | hi
     · subst hi
       have legal_2 := h_pre_1.hb
@@ -630,6 +558,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
         Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
         BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
         rw [h_assert_6]
+        constructor
         mem_decide_bv -- TODO: look at generated LRAT proofs, and the CNF that is passed to cadical.
     · -- case 2.
       rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
@@ -653,9 +582,7 @@ instantiate metavars took 4.51s
 share common exprs took 393ms
 type checking took 1.85s
 -/
-set_option trace.profiler true in
 -- set_option trace.profiler.out filepath true in
-set_option profiler true in
 #time theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions
@@ -776,7 +703,9 @@ set_option profiler true in
             simp only [memory_rules] at h_si_read_sep
             rw [h_si_read_sep]
             rw [h_si_x0_eq_zero]
-            skip_proof simp_mem -- nice!
+            simp
+            simp at h_sep
+            mem_decide_bv
           · simp only [step.h_err, step.h_program, step.h_sp_aligned, and_self]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
@@ -874,10 +803,10 @@ set_option profiler true in
         simp only [memory_rules, step_8f4_8e4.h_mem, step_8f4_8e4.h_x1, h_si_x1]
         simp only [memory_rules] at h_assert_6 h_assert_5
         have ⟨h_pre_1, h_pre_2, h_pre_3, h_pre_4, h_pre_5, h_pre_6⟩ := h_pre
-        apply Memcpy.extracted_0 <;> try solve | simp_mem | assumption
+        apply Memcpy.extracted_0 <;> try solve | mem_decide_bv | assumption
         · intros n addr h
           apply h_assert_6
-          simp_mem
+          mem_decide_bv
     case h_3 pc h_si =>
       contradiction
     case h_4 pc h_si =>

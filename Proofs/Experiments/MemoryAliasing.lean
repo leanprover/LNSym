@@ -118,45 +118,27 @@ info: 'MemSeparate.separate_4' depends on axioms: [propext, Classical.choice, Le
 -- and have these be simplified into `(BitVec.ofNat 64 n) <<< 4`, which is something
 -- that `bv_omega` can understand?
 /-- shifts inside the arithmetic. -/
-theorem separate_5 {n : Nat} (hn : n.bv64 ≠ 0#64)
+theorem separate_5 {n : BitVec 64} (hn : n ≠ 0#64)
+    (hNoOverflow : n.toNonOverflowing * 16 |>.assert)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
     mem_separate' a 16 b 16 := by
-  have : BitVec.ofNat 64 (n <<< 4) = BitVec.ofNat 64 n <<< 4 := by
-    bv_omega
-  simp [memory_defs_bv] at *
-  rw [this] at *
-  simp at *
-  try mem_decide_bv
-  sorry
+  mem_decide_bv
 
 /--
-info: 'MemSeparate.separate_5' depends on axioms: [propext, sorryAx, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MemSeparate.separate_5' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
 -/
 #guard_msgs in #print axioms separate_5
 
 /-- shifts inside the arithmetic. -/
-theorem separate_6 {n : Nat} (hn : n ≠ 0)
+theorem separate_6 {n : BitVec 64} (hn : n ≠ 0)
+    (hNoOverflow : n.toNonOverflowing * 16 |>.assert)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
     mem_separate' a (n <<< 3 + 8) b (n <<< 4) := by
-  try mem_decide_bv
-  sorry -- same problem as above
+  mem_decide_bv
 
-theorem counterexample
-  (a b : BitVec 64)
-  (m : Nat)
-  (hm : BitVec.ofNat 64 m ≠ 0)
-  (l : a + 100 ≤ a + 100 + ↑100 ∧ b ≤ b + ↑m ∧ (a + 100 + ↑100 ≤ b ∨ a + 100 ≥ b + ↑m)) :
-  a ≤ a + ↑200 ∧ b ≤ b + ↑m ∧ (a + ↑200 ≤ b ∨ a ≥ b + ↑m) := by
-  try mem_decide_bv
-  /-
-  a = 0xffffffffffffffff#64
-  b = 0xffffffffffffffff#64
-  BitVec.ofNat 64 m = 0x0000000000000000#64
-  -/
-  sorry
-
-
-/-- info: 'MemSeparate.separate_6' depends on axioms: [sorryAx] -/
+/--
+info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
 #guard_msgs in #print axioms separate_6
 
 #guard_msgs in theorem separate_7 (hm : m ≠ 0)
@@ -171,23 +153,28 @@ theorem counterexample
     mem_separate' a (2*n) b m := by
   mem_decide_bv
 
--- /--
--- Check that we can close address relationship goals that require
--- us to exploit memory separateness properties.
--- -/
--- theorem mem_separate_9  (h : mem_separate' a 100 b 100)
---   (hab : a < b) : a + 50 ≤ b := by
---   simp_mem (config := {useOmegaToClose := true})
+/--
+Check that we can close address relationship goals that require
+us to exploit memory separateness properties.
+-/
+theorem mem_separate_9  (h : mem_separate' a 100 b 100)
+  (hab : a < b) : a + 50 ≤ b := by
+  mem_decide_bv
+
+/--
+info: 'MemSeparate.mem_separate_9' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms mem_separate_9
 
 end MemSeparate
-
 
 theorem mem_automation_test_1
   (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
   read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
   read_mem_bytes 16 src_addr s0 := by
   simp only [memory_rules]
-  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
+  simp_mem
+  rfl
 
 /--
 info: 'mem_automation_test_1' depends on axioms: [propext,
@@ -198,20 +185,20 @@ info: 'mem_automation_test_1' depends on axioms: [propext,
 -/
 #guard_msgs in #print axioms mem_automation_test_1
 
--- Same problem: needs symbolic reasoning about `Nat`s.
--- theorem mem_automation_test_2
---   (h_n0 : n0 ≠ 0)
---   (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
---   (h_no_wrap_dest_region : mem_legal' dest_addr (n0 <<< 4))
---   (h_s0_src_dest_separate :
---     mem_separate' src_addr  (n0 <<< 4)
---                   dest_addr (n0 <<< 4)) :
---   read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
---   read_mem_bytes 16 src_addr s0 := by
---   simp only [memory_rules]
---   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
---   rfl
-
+set_option trace.simp_mem.info true in
+theorem mem_automation_test_2 (n0 : BitVec 64)
+  (hNoOverflow : n0.toNonOverflowing * 16 |>.assert)
+  (h_n0 : n0 ≠ 0)
+  (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
+  (h_no_wrap_dest_region : mem_legal' dest_addr (n0 <<< 4))
+  (h_s0_src_dest_separate :
+    mem_separate' src_addr  (n0 <<< 4)
+                  dest_addr (n0 <<< 4)) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  simp_mem
+  rfl
 
 -- /-- error: unknown constant 'mem_automation_test_2' -/
 -- #guard_msgs in #print axioms mem_automation_test_2
@@ -227,9 +214,8 @@ theorem mem_automation_test_3 (h_ignore_n : ignore_n ≠ 0)
   read_mem_bytes 10 (src_addr + 1) (write_mem_bytes ignore_n.toNat ignore_addr blah s0) =
    read_mem_bytes 10 (src_addr + 1) s0 := by
   simp only [memory_rules]
-  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
-
-
+  simp_mem
+  rfl
 
 
 /--
@@ -241,21 +227,22 @@ info: 'mem_automation_test_3' depends on axioms: [propext,
 -/
 #guard_msgs in #print axioms mem_automation_test_3
 
-/-- TODO: make simp_mem repeat on change. -/
-theorem mem_automation_test_4
+set_option trace.simp_mem.info true in
+theorem mem_automation_test_4 (ignore_addr ignore_n : BitVec 64)
+  (blah : BitVec (ignore_n.toNat * 8))
   (h_no_wrap_src_region : mem_legal' src_addr 48)
   (h_s0_src_ignore_disjoint :
     mem_separate' src_addr  48
                   ignore_addr ignore_n) :
   read_mem_bytes 10 (1 + src_addr)
-    (write_mem_bytes ignore_n.toNat ignore_addr blah
+    -- | this is complicated, because we need to match on
+    (write_mem_bytes (ignore_n.toNat) ignore_addr blah
       (write_mem_bytes 48 src_addr val s0)) =
    val.extractLsBytes 1 10 := by
   simp only [memory_rules]
-  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
-  rw [Memory.read_bytes_write_bytes_eq_of_mem_subset' (by mem_decide_bv)]
-  congr 1
-  bv_omega -- funny, we still need omega for the length simplification.
+  simp_mem
+  congr
+  bv_omega
 
 /--
 info: 'mem_automation_test_4' depends on axioms: [propext,
@@ -276,9 +263,8 @@ theorem overlapping_read_test_1 {out : BitVec (16 * 8)}
     (h : read_mem_bytes 16 src_addr s = out) :
     read_mem_bytes 16 src_addr s = out := by
   simp only [memory_rules] at h ⊢
-  rw [Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' h]
+  simp_mem
   simp [bitvec_rules, minimal_theory]
-
 
 /--
 info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext,
@@ -295,7 +281,7 @@ theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
     (h : read_mem_bytes 16 src_addr s = out) :
     read_mem_bytes 10 (src_addr + 6) s = out.extractLsBytes 6 10 := by
   simp only [memory_rules] at h ⊢
-  rw [Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' h]
+  simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
     bv_omega
@@ -393,8 +379,8 @@ theorem test_quantified_1 {val : BitVec (16 * 8)}
     Memory.read_bytes 16 0 (Memory.write_bytes 16 0 val mem) =
      val.extractLsBytes 0 16  := by
   simp_mem
-  simp only [Nat.reduceMul, BitVec.ofNat_eq_ofNat, BitVec.toNat_ofNat, Nat.reducePow, Nat.zero_mod,
-    Nat.sub_self, implies_true]
+  -- simp only [Nat.reduceMul, BitVec.ofNat_eq_ofNat, BitVec.toNat_ofNat, Nat.reducePow, Nat.zero_mod,
+  --   Nat.sub_self, implies_true]
 
 /--
 info: 'ExprVisitor.test_quantified_1' depends on axioms: [propext,
