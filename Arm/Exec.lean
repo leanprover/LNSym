@@ -163,6 +163,13 @@ theorem run_onestep {s s': ArmState} {n : Nat} :
   simp only [run, exists_eq_left', imp_self]
 
 /-- helper lemma for automation -/
+theorem run_of_run_succ_of_stepi_eq {s0 s1 sf : ArmState} {n : Nat}
+    (h_run : sf = run (n + 1) s0)
+    (h_stepi : stepi s0 = s1) :
+    sf = run n s1 := by
+  simp_all only [run]
+
+/-- helper lemma for automation -/
 theorem stepi_eq_of_fetch_inst_of_decode_raw_inst
     (s : ArmState) (addr : BitVec 64) (rawInst : BitVec 32) (inst : ArmInst)
     (h_err    : r .ERR s = .None)

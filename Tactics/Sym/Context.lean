@@ -52,6 +52,9 @@ structure SymContext where
 
   See also `SymContext.runSteps?` -/
   hRun : Expr
+  /-- The id of the variable with which `hRun` was initialized -/
+  hRunId : FVarId
+
   /-- `programInfo` is the relevant cached `ProgramInfo` -/
   programInfo : ProgramInfo
 
@@ -166,6 +169,8 @@ section Monad
 variable {m} [Monad m] [MonadReaderOf SymContext m]
 
 def getCurrentStateNumber : m Nat := do return (← read).currentStateNumber
+
+def getFinalState : m Expr := do return (← read).finalState
 
 /-- Return an expression of type
   `<finalState> = run <runSteps> <initialState>` -/
@@ -367,6 +372,7 @@ def fromLocalContext (state? : Option Name) : TacticM SymContext := do
   let c : SymContext := {
     finalState, runSteps?, pc,
     hRun := h_run.toExpr,
+    hRunId := h_run.fvarId,
     h_sp? := (·.userName) <$> h_sp?,
     programInfo,
     effects,

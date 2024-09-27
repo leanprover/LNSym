@@ -160,37 +160,47 @@ def unfoldRun (whileTac : Unit → TacticM Unit) : SymM Expr := do
         setGoals (rwRes.mvarIds ++ originalGoals ++ newGoal)
         instantiateMVars runStepsPred
 
-/--
+/-- TODO: better docstring
 `initNextStep` returns expressions
-- `sn : ArmState`, and
-- `stepiEq : stepi <currentState> = sn`
+- `nextState : ArmState`, and
+- `stepiEq : stepi <currentState> = nextState`
 In that order, it also modifies `hRun` to be of type:
   `<finalState> = hRun _ sn`
 -/
 def initNextStep (whileTac : TSyntax `tactic) : SymM (Expr × Expr) :=
   withMainContext' do
-    let stepi_eq := Lean.mkIdent (.mkSimple s!"stepi_{← getCurrentStateName}")
+    let goal ← getMainGoal
 
+    -- Add next state to local context
+    let currentState ← getCurrentState
+    let nextStateVal := -- `stepi <currentState>`
+        mkApp (mkConst ``stepi) currentState
+    let (nextStateId, goal) ← do
+      let name ← getNextStateName
+      goal.note name nextStateVal mkArmState
+    let nextState := Expr.fvar nextStateId
+
+    let stepiEq : Expr := -- `stepiEq : stepi <currentState> = nextState`
+      let ty := mkEqArmState nextStateVal nextState
+      mkApp2 (.const ``id [0]) ty <| mkEqReflArmState nextState
+    let (_, goal) ← do
+      let name := Name.mkSimple s!"stepi_{← getCurrentStateName}"
+      goal.note name stepiEq
+    replaceMainGoal [goal]
+
+    -- Ensure we have one more step to simulate
     let runStepsPred ← unfoldRun (fun _ => evalTacticAndTrace whileTac)
-    -- Add new state to local context
-    let hRunId      := mkIdent <|← getHRunName
-    let nextStateId := mkIdent <|← getNextStateName
-    withMainContext' <| evalTacticAndTrace <|← `(tactic|
-      init_next_step $hRunId:ident $stepi_eq:ident $nextStateId:ident
-    )
-    withMainContext' <| do
-      -- Update `hRun`
-      let hRun := hRunId.getId
-      let some hRun := (← getLCtx).findFromUserName? hRun
-        | throwError "internal error: couldn't find {hRun}"
-      modifyThe SymContext ({ · with
-        hRun := hRun.toExpr
-      })
 
-      let sn ← SymContext.findFromUserName nextStateId.getId
-      let stepiEq ← SymContext.findFromUserName stepi_eq.getId
+    -- Change `hRun`
+    let hRun ← getHRun
+    let hRun := -- `run_of_run_succ_of_stepi_eq <hRun> <stepiEq>`
+      mkAppN (mkConst ``run_of_run_succ_of_stepi_eq) #[
+        currentState, nextState, ← getFinalState, runStepsPred,
+        hRun, stepiEq
+      ]
+    modifyThe SymContext ({ · with hRun })
 
-      return (sn.toExpr, stepiEq.toExpr)
+    return (nextState, stepiEq)
 
 /-- Break an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)` into an
 `AxEffects` that characterizes the effects in terms of reads from `s{i+1}`,
@@ -461,6 +471,11 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
         trace[Tactic.sym] "performed subsitutition in:\n{goal}"
 
         replaceMainGoal [goal]
+    else -- Replace `h_run` in the local context
+      let goal ← getMainGoal
+      let res ← goal.replace c.hRunId c.hRun
+      replaceMainGoal [res.mvarId]
+
 
     -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
     -- added while symbolically evaluating to `simp`
