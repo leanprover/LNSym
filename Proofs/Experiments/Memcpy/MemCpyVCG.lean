@@ -478,6 +478,17 @@ a = 0x0000000000001fd9#64
 
 theorem BitVec.natCast_toNat (x : BitVec 64) : (↑ x.toNat  : BitVec 64) = x := by simp
 
+/-- info: false -/
+#guard_msgs in #eval (Nat.pow 2 64 - 1) == 1152921504606846975
+/-- info: false -/
+#guard_msgs in #eval (Nat.pow 2 64 - 1) == ((Nat.pow 2 64 - 1) / 16)
+/-- info: 0xffffffffffffffff#64 -/
+#guard_msgs in #eval BitVec.ofNat 64 (Nat.pow 2 64 - 1)
+/-- info: 0x0fffffffffffffff#64 -/
+#guard_msgs in #eval BitVec.ofNat 64 1152921504606846975
+/-- info: 0x0fffffffffffffff#64 -/
+#guard_msgs in #eval BitVec.ofNat 64 ((Nat.pow 2 64 - 1) / 16)
+
 -- -- set_option skip_proof.skip true in
 -- set_option trace.simp_mem.info true in
 -- set_option maxHeartbeats 0 in
@@ -548,6 +559,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
               (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
           Memory.read_bytes n addr s0.mem := by
   apply And.intro
+  simp [memory_defs_bv] at h_non_overflowing
   · intros i hi
     have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by mem_decide_bv
     rcases icases with hi | hi
@@ -558,8 +570,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
         Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
         BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
         rw [h_assert_6]
-        constructor
-        mem_decide_bv -- TODO: look at generated LRAT proofs, and the CNF that is passed to cadical.
+        mem_decide_bv
+        -- constructor
+        -- mem_decide_bv -- TODO: look at generated LRAT proofs, and the CNF that is passed to cadical.
     · -- case 2.
       rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by mem_decide_bv)]
       · apply h_assert_5 _ hi

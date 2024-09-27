@@ -64,7 +64,7 @@ def NoOverflow.eval {w} : NoOverflow w → BitVec w × Prop
   let (vx, hx) := x.eval
   let (vy, hy) := y.eval
   let vout := vx * vy
-  let hout := hx ∧ hy ∧ vx < BitVec.allOnes w / vy
+  let hout := hx ∧ hy ∧ (vx < (BitVec.allOnes w).udiv vy)
   (vout, hout)
 
 /-- The assertion that the expression tree does not overflow. -/
