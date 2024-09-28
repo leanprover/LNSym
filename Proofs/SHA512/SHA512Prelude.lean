@@ -254,6 +254,7 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
     · -- (TODO @bollu) Think about whether `simp_mem` should be powerful enough to solve this goal.
       -- Also, `mem_omega` name suggestion from Alex for the already souped up `simp_mem`.
       have : ((r (StateField.GPR 0x1f#5) s0).toNonOverflowing + 18446744073709551600) |>.assert := sorry
+      simp_mem_lint
       simp_mem
       -- simp_mem (config := { useOmegaToClose := false } )
       simp only [h_s0_ctx_base, Nat.sub_self, minimal_theory, bitvec_rules]

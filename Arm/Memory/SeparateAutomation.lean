@@ -1217,46 +1217,61 @@ def getBitVecExpr? (e : Expr) : MetaM (Option (Expr × Expr)) := do
     let n := type.appArg!
     return .some ⟨n, v⟩
 
+/-- Warning string guarding users.-/
+def warningStr : String := "Here be dragons 💀."
+
 -- IF we have a function application, of a function whose arguments aren't `Nat`,
 -- then it's likely that it's the user extracting data from a field or something.
 -- On the other hand, if the function is applied to a `Nat`, then it's likely that
 -- the user is manipulating natural numbers, and we want to prevent this.
 def lintBitVecComplexValue (parent : Expr) (e : Expr) : TacticM Unit := do
   if !e.isApp then
-    logError m!"{parent} is a non-simple-function-application to a bitvector value. This is not understood.."
+    logWarning m!"{parent} has a non-simple-function-application to a bitvector value. {warningStr}"
   else
     let (name, xs) := e.getAppFnArgs
     if name.isAnonymous then
-      logError m!"{parent} is a call of a non-constant function. The function will not be understood."
+      logWarning m!"{parent} has a call of a non-constant function. {warningStr}"
     else do
       let decl ← getFunInfo e.getAppFn
       for (x, param) in xs.zip decl.paramInfo do
         if param.isImplicit then continue
         if (← inferType x) == mkConst ``Nat then
-          logError m!"{parent} is a call of '{name}' with a `Nat` argument. The internal structure will not be understood."
+          logWarning m!"{parent} has a call of '{name}' with a `Nat` argument. {warningStr}"
           return ()
 partial def lintCore (e : Expr) : TacticM Unit := do
-  let .some (w, v) ← liftMetaM <| getBitVecExpr? e
-    | pure ()
+  if let .some (w, v) ← liftMetaM <| getBitVecExpr? e then
+    match ← getNatExpr? w with
+    | .some _ => pure ()
+    | .none => logWarning m!"bitvector with symbolic width: {e}. Please make widths constant for bitblasting."
 
-  match ← getNatExpr? w with
-  | .some _ => pure ()
-  | .none => logError m!"bitvector with symbolic width: {e}. Please make widths constant for bitblasting."
+    if v.isAppOf ``BitVec.toNat then
+      logWarning m!"'{e}' has a bitvector value being converted to a Nat. {warningStr}"
 
-  -- | TODO: what we should actually do is to check if this contains arithmetic expressions.
-  -- For example, something like `SHA512.length` is fine, but `SHA512.length + 1` is probably
-  -- not what the user intended.
-  if v.isFVar || (← getNatValue? v).isSome then
-    pure ()
+    -- | TODO: what we should actually do is to check if this contains arithmetic expressions.
+    -- For example, something like `SHA512.length` is fine, but `SHA512.length + 1` is probably
+    -- not what the user intended.
+    if v.isFVar || (← getNatValue? v).isSome then
+      pure ()
+    else
+      lintBitVecComplexValue e v
   else
-    lintBitVecComplexValue e v
-    logError m!"bitvector '{e}' with value '{v}' that is neither a constant (like '42') or a free variable (like 'x')."
+    let t ← inferType e
+    -- `e` is not a bitvector expression.
+    if !t.isAppOf ``BitVec then return ()
+    -- `e` is a `Nat.cast`, so they are converting a `Nat` to a `BitVec`.
+    -- they better know what they're doing.
+    if e.isAppOf ``Nat.cast then
+      logWarning m!"'{e}' casting a bitvector to a Nat. {warningStr}"
+
 
 def lintTactlc : TacticM Unit := do
-  let g ← getMainGoal
-  let hyps := (← getLocalHyps)
-  for hyp in hyps do
-    let t ← inferType hyp
+  withMainContext do
+    let hyps := (← getLocalHyps)
+    for hyp in hyps do
+      let t ← inferType hyp
+      Meta.forEachExpr t lintCore
+    -- lint the goal.
+    let t ← getMainTarget
     Meta.forEachExpr t lintCore
 
 end SeparateAutomation.Lint
