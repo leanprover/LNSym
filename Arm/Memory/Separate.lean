@@ -403,9 +403,9 @@ axiom Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
 
 
 /-- A region of memory, given by (base pointer, length) -/
-abbrev Memory.Region := BitVec 64 × Nat
+abbrev Memory.Region := BitVec 64 × BitVec 64
 
-def Memory.Region.mk (a : BitVec 64) (n : Nat) : Memory.Region := (a, n)
+def Memory.Region.mk (a : BitVec 64) (n : BitVec 64) : Memory.Region := (a, n)
 
 /-- A hypothesis that memory regions `a` and `b` are separate. -/
 def Memory.Region.separate (a b : Memory.Region) : Prop :=

@@ -207,11 +207,11 @@ structure MemSpanExpr where
   n : ExprNatOrBv -- here, in Memory read/write, we have `n : Nat`, but in `mem_separate'`, we have `n : BitVec 64`.
 deriving Inhabited
 
-/-- info: Memory.Region.mk (a : BitVec 64) (n : Nat) : Memory.Region -/
+/-- info: Memory.Region.mk (a n : BitVec 64) : Memory.Region -/
 #guard_msgs in #check Memory.Region.mk
 
 def MemSpanExpr.toExpr (span : MemSpanExpr) : Expr :=
-  mkAppN (Expr.const ``Memory.Region.mk []) #[span.base, span.n.asNat]
+  mkAppN (Expr.const ``Memory.Region.mk []) #[span.base, span.n.asBV]
 
 def MemSpanExpr.toTypeExpr  : Expr :=
     (Expr.const ``Memory.Region [])
@@ -586,7 +586,7 @@ partial def MemPairwiseSeparateProof.ofExpr? (e : Expr) : Option MemPairwiseSepa
       | List.cons _α ex exs =>
         match_expr ex with
         | Prod.mk _ta _tb a n =>
-          let x : MemSpanExpr := ⟨a, ExprNatOrBv.ofNat! n⟩
+          let x : MemSpanExpr := ⟨a, ExprNatOrBv.ofBV! n⟩
           go exs (xs.push x)
         | _ => none
       | List.nil _α => some xs
@@ -702,7 +702,7 @@ def mkListGetEqSomeTy (mems : MemPairwiseSeparateProp) (i : Nat) (a : MemSpanExp
 /--
 info: Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem {mems : List Memory.Region}
   (h : Memory.Region.pairwiseSeparate mems) (i j : Nat) (hij : i ≠ j) (a b : Memory.Region) (ha : mems.get? i = some a)
-  (hb : mems.get? j = some b) : mem_separate' a.fst (↑a.snd) b.fst ↑b.snd
+  (hb : mems.get? j = some b) : mem_separate' a.fst a.snd b.fst b.snd
 -/
 #guard_msgs in #check Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
 
@@ -753,12 +753,12 @@ Given a hypothesis, add declarations that would be useful for omega-blasting
 -/
 def Hypothesis.addSolverFactsOfHyp (g : MVarId) (h : Hypothesis) (args : Array Expr) : SimpMemM (Array Expr) :=
   match h with
-  | Hypothesis.legal h => h.addSolverFacts g args
-  | Hypothesis.subset h => h.addSolverFacts g args
-  | Hypothesis.separate h => h.addSolverFacts g args
+  -- | Hypothesis.legal h => h.addSolverFacts g args
+  -- | Hypothesis.subset h => h.addSolverFacts g args
+  -- | Hypothesis.separate h => h.addSolverFacts g args
   | Hypothesis.pairwiseSeparate h => h.addSolverFacts g args
-  | Hypothesis.read_eq _h => return args -- read has no extra `omega` facts.
-
+  -- | Hypothesis.read_eq _h => return args -- read has no extra `omega` facts.
+  | _ => return args
 /--
 Accumulate all omega defs in `args`.
 -/
@@ -853,6 +853,7 @@ def proveWithSolver?  {α : Type} [ToMessageData α] [SolverReducible α] (e : �
   let oldGoals ← getGoals
   try
     setGoals [goal]
+    let _ ← Hypothesis.addSolverFactsOfHyps goal hyps.toList #[]
     SimpMemM.withContext goal do
       withoutRecover do
         evalTactic (← `(tactic| mem_unfold_bv))
@@ -1185,13 +1186,119 @@ def evalSimpMem : Tactic := fun
 
 
 
+namespace SeparateAutomation.Lint
+
+/-- Return `some (n, type)` if `e` is an `OfNat.ofNat`-application encoding `n` for a type with name `typeDeclName`. -/
+def getOfNatExpr? (e : Expr) (typeDeclName : Name) : MetaM (Option (Expr × Expr)) := OptionT.run do
+  let_expr OfNat.ofNat type n _ ← e | failure
+  let type ← whnfD type
+  guard <| type.getAppFn.isConstOf typeDeclName
+  return (n, type)
+
+/-- Return `some n` if `e` is a raw natural number or an `OfNat.ofNat`-application encoding `n`. -/
+def getNatExpr? (e : Expr) : MetaM (Option Expr) := do
+  let e := e.consumeMData
+  if let some n := getRawNatValue? e then
+    return some e
+  let some (n, _) ← getOfNatExpr? e ``Nat | return none
+  return some n
+
+/-
+return the (width, value) if the expression is some kind of bitvec literal,
+loosely understood.
+-/
+def getBitVecExpr? (e : Expr) : MetaM (Option (Expr × Expr)) := do
+  match_expr e with
+  | BitVec.ofNat nExpr vExpr => return .some (nExpr, vExpr)
+  | BitVec.ofNatLt nExpr vExpr _ =>return (nExpr, vExpr)
+  | _ =>
+    let .some (v, type) ← getOfNatExpr? e ``BitVec
+      | return none
+    let n := type.appArg!
+    return .some ⟨n, v⟩
+
+-- IF we have a function application, of a function whose arguments aren't `Nat`,
+-- then it's likely that it's the user extracting data from a field or something.
+-- On the other hand, if the function is applied to a `Nat`, then it's likely that
+-- the user is manipulating natural numbers, and we want to prevent this.
+def lintBitVecComplexValue (parent : Expr) (e : Expr) : TacticM Unit := do
+  if !e.isApp then
+    logError m!"{parent} is a non-simple-function-application to a bitvector value. This is not understood.."
+  else
+    let (name, xs) := e.getAppFnArgs
+    if name.isAnonymous then
+      logError m!"{parent} is a call of a non-constant function. The function will not be understood."
+    else do
+      let decl ← getFunInfo e.getAppFn
+      for (x, param) in xs.zip decl.paramInfo do
+        if param.isImplicit then continue
+        if (← inferType x) == mkConst ``Nat then
+          logError m!"{parent} is a call of '{name}' with a `Nat` argument. The internal structure will not be understood."
+          return ()
+partial def lintCore (e : Expr) : TacticM Unit := do
+  let .some (w, v) ← liftMetaM <| getBitVecExpr? e
+    | pure ()
+
+  match ← getNatExpr? w with
+  | .some _ => pure ()
+  | .none => logError m!"bitvector with symbolic width: {e}. Please make widths constant for bitblasting."
+
+  -- | TODO: what we should actually do is to check if this contains arithmetic expressions.
+  -- For example, something like `SHA512.length` is fine, but `SHA512.length + 1` is probably
+  -- not what the user intended.
+  if v.isFVar || (← getNatValue? v).isSome then
+    pure ()
+  else
+    lintBitVecComplexValue e v
+    logError m!"bitvector '{e}' with value '{v}' that is neither a constant (like '42') or a free variable (like 'x')."
+
+def lintTactlc : TacticM Unit := do
+  let g ← getMainGoal
+  let hyps := (← getLocalHyps)
+  for hyp in hyps do
+    let t ← inferType hyp
+    Meta.forEachExpr t lintCore
+
+end SeparateAutomation.Lint
+
+/--
+Lint the current hypotheses and goal state, to make sure we don't have
+dodgy occurrences of `(BitVec.ofNat w)` where `w` is symbolic, and we also
+don't have `(BitVec.ofNat 64 <expression>)` where `<expression>` is not a constant,
+nor is a variable. So expressions such as:
+- `BitVec.ofNat 64 100`
+- `BitVec.ofNat 64 num_blocks.`
+
+are permissible, but expressions such as:
+- `BitVec.ofNat 64 (SHA_table_length / 16)`
+- `BitVec.ofNat 64 (num_blocks * 8)`
+
+are not.
+-/
+syntax (name := simp_mem_lint) "simp_mem_lint" : tactic
+
+@[tactic simp_mem_lint]
+def evalSimpMemLint : Tactic := fun
+  | `(tactic| simp_mem_lint) => do
+    SeparateAutomation.Lint.lintTactlc
+  | _ => throwUnsupportedSyntax
+
+/--
+Prove that the read from a write is a separated read.
+-/
+syntax (name := simp_mem_separate) "simp_mem_separate" : tactic
+
+/--
+-- Prove that the read from a write is a subset read.
+-/
+syntax (name := simp_mem_subset) "simp_mem_subset" : tactic
+
+/--
+Prove that the read from a write is a read from known memory location.
+-/
+syntax (name := simp_mem_read) "simp_mem_read" : tactic
+
 /--
 Implement the simp_mem tactic frontend.
 -/
 syntax (name := simp_mem_debug) "simp_mem_debug" :  tactic
-
-@[tactic simp_mem_debug]
-def evalSimpMemDebug : Tactic := fun
-  | `(tactic| simp_mem_debug) => do
-    SeparateAutomation.simpMemDebugTactic
-  | _ => throwUnsupportedSyntax

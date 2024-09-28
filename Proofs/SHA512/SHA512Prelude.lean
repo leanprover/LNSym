@@ -53,11 +53,11 @@ structure sha512_init_pre
   h_input_base : input_addr s0 = input_base
   h_ctx        : s0[ctx_addr s0, 64] = SHA2.h0_512.toBitVec
   h_ktbl       : s0[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512
-  h_mem_sep    : Memory.Region.pairwiseSeparate
-                  [((sp - 16#64), 16),
-                   (ctx_base,     64),
-                   (input_base,   (nblocks.toNat * 128)),
-                   (ktbl_addr,    (SHA2.k_512.length * 8))]
+  h_mem_sep    : Memory.Region.pairwiseSeparate -- TODO: add mem_legal' into pairwiseSeparate.
+                  [((sp - 16#64), 16#64),
+                   (ctx_base,     16#64),
+                   (input_base,   (nblocks * 128)),
+                   (ktbl_addr,    ((BitVec.ofNat 64 SHA2.k_512.length) * 8))]
 
 /--
 Invariant that must hold after SHA512's first basic block is simulated, i.e.,
@@ -165,8 +165,13 @@ private theorem add_eq_sub_16 (x : BitVec 64) :
 Adding the ability to aggregate memory effects has caused a need to increase `maxRecDepth`
 in this proof. This will hopefully go down, once we optimize `sym_aggregate`.
 -/
+
+-- TODO: write a linter that will see things like (BitVec.ofNat 64 (SHA_512 * 8))
+-- and complain. In general, we should only have (BitVec.ofNat 64 n) for n a symbolic value.
+-- Let's write the linter now, to show the problem!
 set_option maxRecDepth 8000 in
 set_option linter.unusedVariables false in
+set_option trace.simp_mem.info true in
 theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   -- We fix the number of blocks to hash to 1.
   (h_N : N = 1#64)
@@ -248,15 +253,19 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   · constructor
     · -- (TODO @bollu) Think about whether `simp_mem` should be powerful enough to solve this goal.
       -- Also, `mem_omega` name suggestion from Alex for the already souped up `simp_mem`.
-      simp_mem (config := { useOmegaToClose := false } )
+      have : ((r (StateField.GPR 0x1f#5) s0).toNonOverflowing + 18446744073709551600) |>.assert := sorry
+      simp_mem
+      -- simp_mem (config := { useOmegaToClose := false } )
       simp only [h_s0_ctx_base, Nat.sub_self, minimal_theory, bitvec_rules]
     · constructor
       · -- (FIXME @bollu) simp_mem doesn't make progress here. :-(
         -- simp only [←h_s0_sp] at h_s0_mem_sep
+        -- simp_mem
         rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
         simp only [h_s0_ktbl]
         -- (FIXME @bollu) Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
         -- works here, but using it is painful. Also, mispelled lemma.
+        -- simp_mem
         have := Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
                 h_s0_mem_sep 3 0 (by decide)
                 (ktbl_addr, (SHA2.k_512.length * 8))

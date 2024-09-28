@@ -115,6 +115,8 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
     have : mem_separate' addr (↑n.toNat) (r (StateField.GPR 31#5) s0 - 16#64 + 12#64) ↑4 := by
       mem_unfold_bv
       bv_decide
+    generalize hx : (r (StateField.GPR 31#5) s0) = x
+    simp only [hx] at *
     simp_mem
   /-
     [] ❌️ mem_decide_bv with error:

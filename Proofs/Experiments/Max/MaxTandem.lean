@@ -201,7 +201,11 @@ theorem program.stepi_0x898_cut (s sn : ArmState)
   rfl
 
 /--
-info: 'MaxTandem.program.stepi_0x898_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x898_cut' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate',
+ Quot.sound]
 -/
 #guard_msgs in #print axioms program.stepi_0x898_cut
 

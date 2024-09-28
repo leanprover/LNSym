@@ -504,12 +504,12 @@ section PairwiseSeparate
   /- Check that a direct implication of the pairwise separation is proven. -/
   theorem pairwise_direct (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
     mem_separate' a 100 b 200 := by
-    sorry
+    simp_mem
 
   /- Check that a direct implication of the pairwise separation is proven. -/
   theorem pairwise_subset (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
     mem_separate' a 80 b 100 := by
-    sorry
+    simp_mem
 
 end PairwiseSeparate
 
