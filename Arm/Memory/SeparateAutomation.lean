@@ -1238,6 +1238,7 @@ def lintBitVecComplexValue (parent : Expr) (e : Expr) : TacticM Unit := do
         if (← inferType x) == mkConst ``Nat then
           logWarning m!"{parent} has a call of '{name}' with a `Nat` argument. {warningStr}"
           return ()
+
 partial def lintCore (e : Expr) : TacticM Unit := do
   if let .some (w, v) ← liftMetaM <| getBitVecExpr? e then
     match ← getNatExpr? w with
@@ -1255,7 +1256,7 @@ partial def lintCore (e : Expr) : TacticM Unit := do
     else
       lintBitVecComplexValue e v
   else
-    let t ← inferType e
+    let t ← whnf (← inferType e)
     -- `e` is not a bitvector expression.
     if !t.isAppOf ``BitVec then return ()
     -- `e` is a `Nat.cast`, so they are converting a `Nat` to a `BitVec`.

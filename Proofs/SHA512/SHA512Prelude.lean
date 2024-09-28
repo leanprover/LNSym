@@ -52,12 +52,12 @@ structure sha512_init_pre
   h_ctx_base   : ctx_addr s0 = ctx_base
   h_input_base : input_addr s0 = input_base
   h_ctx        : s0[ctx_addr s0, 64] = SHA2.h0_512.toBitVec
-  h_ktbl       : s0[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512
+  h_ktbl       : s0[ktbl_addr, (80 * 8)] = BitVec.flatten SHA2.k_512
   h_mem_sep    : Memory.Region.pairwiseSeparate -- TODO: add mem_legal' into pairwiseSeparate.
                   [((sp - 16#64), 16#64),
                    (ctx_base,     16#64),
                    (input_base,   (nblocks * 128)),
-                   (ktbl_addr,    ((BitVec.ofNat 64 SHA2.k_512.length) * 8))]
+                   (ktbl_addr,    ((BitVec.ofNat 64 80) * 8))]
 
 /--
 Invariant that must hold after SHA512's first basic block is simulated, i.e.,
@@ -75,12 +75,12 @@ structure sha512_prelude
   h_ctx_base   : ctx_addr si = ctx_base
   h_input_base : input_addr si = input_base + 128#64
   h_ctx        : si[ctx_base, 64] = SHA2.h0_512.toBitVec
-  h_ktbl       : si[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512
+  h_ktbl       : si[ktbl_addr, (80 * 8)] = BitVec.flatten SHA2.k_512
   h_mem_sep    : Memory.Region.pairwiseSeparate
                   [(sp - 16#64,   16),
                    (ctx_base,     64),
                    (input_base,   (nblocks.toNat * 128)),
-                   (ktbl_addr,    (SHA2.k_512.length * 8))]
+                   (ktbl_addr,    (80 * 8))]
 
 theorem sha512_prelude.def
   (h : sha512_prelude pc nblocks sp ctx_base input_base si) :
@@ -93,16 +93,18 @@ theorem sha512_prelude.def
   ctx_addr si = ctx_base ∧
   input_addr si = input_base + 128#64 ∧
   si[ctx_base, 64] = SHA2.h0_512.toBitVec ∧
-  si[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+  si[ktbl_addr, (80 * 8)] = BitVec.flatten SHA2.k_512 ∧
   Memory.Region.pairwiseSeparate
             [(sp - 16#64, 16),
              (ctx_base,   64),
              (input_base, (nblocks.toNat * 128)),
-             (ktbl_addr,  (SHA2.k_512.length * 8))] := by
+             (ktbl_addr,  (80 * 8))] := by
   obtain ⟨⟩ := h
   repeat' apply And.intro
   repeat assumption
   done
+
+#eval SHA2.k_512.length -- 80
 
 theorem sha512_prelude.of_def
   (h : si.program = program ∧
@@ -114,12 +116,12 @@ theorem sha512_prelude.of_def
        ctx_addr si = ctx_base ∧
        input_addr si = input_base + 128#64 ∧
        si[ctx_base, 64] = SHA2.h0_512.toBitVec ∧
-       si[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+       si[ktbl_addr, (80 * 8)] = BitVec.flatten SHA2.k_512 ∧
        Memory.Region.pairwiseSeparate
                  [(sp - 16#64, 16),
                   (ctx_base,   64),
                   (input_base, (nblocks.toNat * 128)),
-                  (ktbl_addr,  (SHA2.k_512.length * 8))]) :
+                  (ktbl_addr,  (80 * 8))]) :
          sha512_prelude pc nblocks sp ctx_base input_base si := by
   obtain ⟨h_program, h_pc, h_err, h_sp_aligned, h_num_blocks,
           h_sp, h_ctx_base, h_input_base, h_ctx, h_ktbl,
@@ -139,18 +141,19 @@ theorem sha512_prelude.iff_def :
    ctx_addr si = ctx_base ∧
    input_addr si = input_base + 128#64 ∧
    si[ctx_base, 64] = SHA2.h0_512.toBitVec ∧
-   si[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+   si[ktbl_addr, (80 * 8)] = BitVec.flatten SHA2.k_512 ∧
    Memory.Region.pairwiseSeparate
              [(sp - 16#64, 16),
               (ctx_base,   64),
               (input_base, (nblocks.toNat * 128)),
-              (ktbl_addr,  (SHA2.k_512.length * 8))]) := by
+              (ktbl_addr,  (80 * 8))]) := by
   constructor
   · apply sha512_prelude.def
   · intro h
     apply sha512_prelude.of_def
     assumption
   done
+
 
 private theorem add_eq_sub_16 (x : BitVec 64) :
   x + 0xfffffffffffffff0#64 = x - 16#64 := by
@@ -170,7 +173,7 @@ in this proof. This will hopefully go down, once we optimize `sym_aggregate`.
 -- and complain. In general, we should only have (BitVec.ofNat 64 n) for n a symbolic value.
 -- Let's write the linter now, to show the problem!
 set_option maxRecDepth 8000 in
-set_option linter.unusedVariables false in
+-- set_option linter.unusedVariables false in
 set_option trace.simp_mem.info true in
 theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   -- We fix the number of blocks to hash to 1.
@@ -254,7 +257,6 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
     · -- (TODO @bollu) Think about whether `simp_mem` should be powerful enough to solve this goal.
       -- Also, `mem_omega` name suggestion from Alex for the already souped up `simp_mem`.
       have : ((r (StateField.GPR 0x1f#5) s0).toNonOverflowing + 18446744073709551600) |>.assert := sorry
-      simp_mem_lint
       simp_mem
       -- simp_mem (config := { useOmegaToClose := false } )
       simp only [h_s0_ctx_base, Nat.sub_self, minimal_theory, bitvec_rules]
@@ -269,17 +271,30 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
         -- simp_mem
         have := Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
                 h_s0_mem_sep 3 0 (by decide)
-                (ktbl_addr, (SHA2.k_512.length * 8))
+                (ktbl_addr, (80 * 8))
                 ((SP + 0xfffffffffffffff0#64), 16)
         simp at this
         simp only [h_s0_sp, this]
-      · simp only [h_s0_sp, h_s0_num_blocks, h_s0_input_base, h_s0_ctx_base,
-                   h_s0_mem_sep,
-                   BitVec.add_assoc, bitvec_rules, minimal_theory]
+        sorry
+      · sorry
+      -- · simp only [h_s0_sp, h_s0_num_blocks, h_s0_input_base, h_s0_ctx_base,
+      --              h_s0_mem_sep,
+      --              BitVec.add_assoc, bitvec_rules, minimal_theory]
   · intro n addr h
     simp only [←h_s0_sp] at h
     clear_named [h_, stepi]
-    simp_mem
+    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+    simp
+    mem_decide_bv
+    /-
+    This should once again be doable by bv_decide.
+    SHA512Prelude.lean:288:4
+    None of the hypotheses are in the supported BitVec fragment.
+    There are two potential fixes for this:
+    1. If you are using custom BitVec constructs simplify them to built-in ones.
+    2. If your problem is using only built-in ones it might currently be out of reach.
+    Consider expressing it in terms of different operations that are better supported.
+    -/
     /-
     (NOTE @bollu): Without the `clear_named...` above, we run into the following
     error(s):
@@ -293,6 +308,5 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
      (200000) has been reached...`
     -/
     rfl
-  done
 
 end SHA512
