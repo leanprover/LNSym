@@ -51,11 +51,11 @@ structure sha512_init_pre
   h_sp         : stack_ptr s0 = sp
   h_ctx_base   : ctx_addr s0 = ctx_base
   h_input_base : input_addr s0 = input_base
-  h_ctx        : s0[ctx_addr s0, 64] = SHA2.h0_512.toBitVec
-  h_ktbl       : s0[ktbl_addr, (80 * 8)] = BitVec.flatten SHA2.k_512
+  h_ctx        : s0[ctx_addr s0, (64#64).toNat] = SHA2.h0_512.toBitVec
+  h_ktbl       : s0[ktbl_addr, ((80#64) * 8).toNat] = BitVec.flatten SHA2.k_512
   h_mem_sep    : Memory.Region.pairwiseSeparate -- TODO: add mem_legal' into pairwiseSeparate.
                   [((sp - 16#64), 16#64),
-                   (ctx_base,     16#64),
+                   (ctx_base,     64#64),
                    (input_base,   (nblocks * 128)),
                    (ktbl_addr,    ((BitVec.ofNat 64 80) * 8))]
 
@@ -74,13 +74,13 @@ structure sha512_prelude
   h_sp         : stack_ptr si = sp - 16#64
   h_ctx_base   : ctx_addr si = ctx_base
   h_input_base : input_addr si = input_base + 128#64
-  h_ctx        : si[ctx_base, 64] = SHA2.h0_512.toBitVec
-  h_ktbl       : si[ktbl_addr, (80 * 8)] = BitVec.flatten SHA2.k_512
+  h_ctx        : si[ctx_base, (64#64).toNat] = SHA2.h0_512.toBitVec
+  h_ktbl       : si[ktbl_addr, ((80#64) * 8).toNat] = BitVec.flatten SHA2.k_512
   h_mem_sep    : Memory.Region.pairwiseSeparate
-                  [(sp - 16#64,   16),
-                   (ctx_base,     64),
-                   (input_base,   (nblocks.toNat * 128)),
-                   (ktbl_addr,    (80 * 8))]
+                  [(sp - 16#64,   16#64),
+                   (ctx_base,     64#64),
+                   (input_base,   (nblocks * 128)),
+                   (ktbl_addr,    ((BitVec.ofNat 64 80) * 8))]
 
 theorem sha512_prelude.def
   (h : sha512_prelude pc nblocks sp ctx_base input_base si) :
@@ -92,13 +92,13 @@ theorem sha512_prelude.def
   stack_ptr si = sp - 16#64 ∧
   ctx_addr si = ctx_base ∧
   input_addr si = input_base + 128#64 ∧
-  si[ctx_base, 64] = SHA2.h0_512.toBitVec ∧
-  si[ktbl_addr, (80 * 8)] = BitVec.flatten SHA2.k_512 ∧
+  si[ctx_base, (64#64).toNat] = SHA2.h0_512.toBitVec ∧
+  si[ktbl_addr, ((80#64) * 8).toNat] = BitVec.flatten SHA2.k_512 ∧
   Memory.Region.pairwiseSeparate
-            [(sp - 16#64, 16),
-             (ctx_base,   64),
-             (input_base, (nblocks.toNat * 128)),
-             (ktbl_addr,  (80 * 8))] := by
+            [(sp - 16#64, 16#64),
+             (ctx_base,   64#64),
+             (input_base, (nblocks * 128)),
+             (ktbl_addr,  ((BitVec.ofNat 64 80) * 8))] := by
   obtain ⟨⟩ := h
   repeat' apply And.intro
   repeat assumption
@@ -115,13 +115,13 @@ theorem sha512_prelude.of_def
        stack_ptr si = sp - 16#64 ∧
        ctx_addr si = ctx_base ∧
        input_addr si = input_base + 128#64 ∧
-       si[ctx_base, 64] = SHA2.h0_512.toBitVec ∧
-       si[ktbl_addr, (80 * 8)] = BitVec.flatten SHA2.k_512 ∧
+       si[ctx_base, (64#64).toNat] = SHA2.h0_512.toBitVec ∧
+       si[ktbl_addr, ((80#64) * 8).toNat] = BitVec.flatten SHA2.k_512 ∧
        Memory.Region.pairwiseSeparate
-                 [(sp - 16#64, 16),
-                  (ctx_base,   64),
-                  (input_base, (nblocks.toNat * 128)),
-                  (ktbl_addr,  (80 * 8))]) :
+                 [(sp - 16#64, 16#64),
+                  (ctx_base,   64#64),
+                  (input_base, (nblocks * 128)),
+                  (ktbl_addr,  ((BitVec.ofNat 64 80) * 8))]) :
          sha512_prelude pc nblocks sp ctx_base input_base si := by
   obtain ⟨h_program, h_pc, h_err, h_sp_aligned, h_num_blocks,
           h_sp, h_ctx_base, h_input_base, h_ctx, h_ktbl,
@@ -140,13 +140,13 @@ theorem sha512_prelude.iff_def :
    stack_ptr si = sp - 16#64 ∧
    ctx_addr si = ctx_base ∧
    input_addr si = input_base + 128#64 ∧
-   si[ctx_base, 64] = SHA2.h0_512.toBitVec ∧
-   si[ktbl_addr, (80 * 8)] = BitVec.flatten SHA2.k_512 ∧
+   si[ctx_base, (64#64).toNat] = SHA2.h0_512.toBitVec ∧
+   si[ktbl_addr, ((80#64) * 8).toNat] = BitVec.flatten SHA2.k_512 ∧
    Memory.Region.pairwiseSeparate
-             [(sp - 16#64, 16),
-              (ctx_base,   64),
-              (input_base, (nblocks.toNat * 128)),
-              (ktbl_addr,  (80 * 8))]) := by
+             [(sp - 16#64, 16#64),
+              (ctx_base,   64#64),
+              (input_base, (nblocks * 128)),
+              (ktbl_addr,  ((BitVec.ofNat 64 80) * 8))]) := by
   constructor
   · apply sha512_prelude.def
   · intro h
@@ -257,37 +257,44 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
     · -- (TODO @bollu) Think about whether `simp_mem` should be powerful enough to solve this goal.
       -- Also, `mem_omega` name suggestion from Alex for the already souped up `simp_mem`.
       have : ((r (StateField.GPR 0x1f#5) s0).toNonOverflowing + 18446744073709551600) |>.assert := sorry
-      simp_mem
-      -- simp_mem (config := { useOmegaToClose := false } )
-      simp only [h_s0_ctx_base, Nat.sub_self, minimal_theory, bitvec_rules]
+      rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+      · simp [← h_s0_ctx_base]
+        simp at h_s0_ctx
+        exact h_s0_ctx
+      · simp_mem
     · constructor
       · -- (FIXME @bollu) simp_mem doesn't make progress here. :-(
         -- simp only [←h_s0_sp] at h_s0_mem_sep
         -- simp_mem
         rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-        simp only [h_s0_ktbl]
         -- (FIXME @bollu) Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
         -- works here, but using it is painful. Also, mispelled lemma.
         -- simp_mem
         have := Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
                 h_s0_mem_sep 3 0 (by decide)
-                (ktbl_addr, (80 * 8))
+                (ktbl_addr, ((80#64) * 8).toNat)
                 ((SP + 0xfffffffffffffff0#64), 16)
-        simp at this
-        simp only [h_s0_sp, this]
-        sorry
-      · sorry
+        simp only [ofNat_eq_ofNat, reduceMul, List.get?_eq_getElem?, List.length_cons,
+          List.length_singleton, Nat.reduceAdd, Nat.lt_add_one, List.getElem?_eq_getElem,
+          List.getElem_cons_succ, List.getElem_cons_zero, toNat_ofNat, Nat.reducePow, Nat.reduceMod,
+          natCast_eq_ofNat, Nat.zero_lt_succ, true_implies] at this
+        assumption
+        simp_mem
+      · simp at h_s0_mem_sep ⊢
+        exact h_s0_mem_sep
       -- · simp only [h_s0_sp, h_s0_num_blocks, h_s0_input_base, h_s0_ctx_base,
       --              h_s0_mem_sep,
       --              BitVec.add_assoc, bitvec_rules, minimal_theory]
+      --   -- (FIXME @bollu) This is a bit of a pain to do manually. Can we automate this?
   · intro n addr h
     simp only [←h_s0_sp] at h
     clear_named [h_, stepi]
     rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
     simp
-    mem_decide_bv
+    try mem_decide_bv
+    exact h
     /-
-    This should once again be doable by bv_decide.
+    FIXME @hargoniX: This should once again be doable by bv_decide.
     SHA512Prelude.lean:288:4
     None of the hypotheses are in the supported BitVec fragment.
     There are two potential fixes for this:
@@ -307,6 +314,6 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
     `(deterministic) timeout at elaborator, maximum number of heartbeats
      (200000) has been reached...`
     -/
-    rfl
+
 
 end SHA512
