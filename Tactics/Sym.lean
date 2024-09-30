@@ -244,7 +244,7 @@ elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
   let .fvar stateFVar := state
     | throwError "Expected fvar, found {state}"
   let stateDecl := (← getLCtx).get! stateFVar
-  let c ← SymContext.fromLocalContext (some stateDecl.userName)
+  let c ← SymContext.fromMainContext (some stateDecl.userName)
   let _ ← SymM.run c <| explodeStep hStep
 
 /--
@@ -403,11 +403,8 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
         omega;
         ))
 
-  let c ← withMainContext <| SymContext.fromLocalContext s
-  SymM.run' c <| do
-    -- Context preparation
-    canonicalizeHypothesisTypes
-
+  let c ← SymContext.fromMainContext s
+  SymM.run' c <| withMainContext' <|  do
     -- Check pre-conditions
     assertStepTheoremsGenerated
     let n ← ensureAtMostRunSteps n.getNat
