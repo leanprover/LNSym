@@ -706,7 +706,7 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_helper2
   (BitVec.toNat val >>> ((BitVec.toNat (addr2 - addr1) + 1) % 2 ^ 64 * 8) % 2 ^ (n * 8)) <<< 8 |||
       BitVec.toNat val >>> (BitVec.toNat (addr2 - addr1) * 8) % 2 ^ 8 =
     BitVec.toNat val >>> (BitVec.toNat (addr2 - addr1) * 8) %
-      2 ^ ((BitVec.toNat (addr2 - addr1) + (n + 1)) * 8 - 1 - BitVec.toNat (addr2 - addr1) * 8 + 1) := by
+      2 ^ ((n + 1) * 8) := by
   have h_a_size := (addr2 - addr1).isLt
   have h_v_size := val.isLt
   -- (FIXME) whnf timeout?
@@ -714,7 +714,7 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_helper2
   -- generalize ha :  BitVec.toNat (addr2 - addr1) = a
   apply Nat.eq_of_testBit_eq; intro i
   simp only [Nat.testBit_mod_two_pow, Nat.testBit_shiftRight]
-  by_cases h₀ : (i < (BitVec.toNat (addr2 - addr1) + (n + 1)) * 8 - 1 - BitVec.toNat (addr2 - addr1) * 8 + 1)
+  by_cases h₀ : (i < ((n + 1) * 8))
   case pos =>
     simp only [h₀, decide_True, Bool.true_and, BitVec.toNat_ofNat,
                BitVec.toNat_append, Nat.testBit_or]
@@ -826,7 +826,7 @@ private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_lt
                    toNat_ofNat, Nat.add_mod_mod, cast_ofNat, toNat_append]
         have := @addr_diff_upper_bound_lemma n1 n addr1 addr2 h0 h1
                  (by omega) (by omega) h6 h5 h4
-        rw [read_mem_bytes_of_write_mem_bytes_subset_helper2] <;> sorry
+        rw [read_mem_bytes_of_write_mem_bytes_subset_helper2] <;> assumption
       · omega
       · assumption
   done
