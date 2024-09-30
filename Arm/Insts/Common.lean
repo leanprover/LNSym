@@ -129,7 +129,7 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
 theorem sgt_iff_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
   (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.slt y x := by
-  simp [AddWithCarry, make_pstate]
+  simp [AddWithCarry, make_pstate, lsb]
   split
   · bv_decide
   · bv_decide
@@ -138,7 +138,7 @@ theorem sgt_iff_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
 theorem sgt_iff_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
   (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.slt y x := by
-  simp [AddWithCarry, make_pstate]
+  simp [AddWithCarry, make_pstate, lsb]
   split
   · bv_decide
   · bv_decide
@@ -147,7 +147,7 @@ theorem sgt_iff_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
 theorem sle_iff_not_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
   (¬(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
-  simp [AddWithCarry, make_pstate]
+  simp [AddWithCarry, make_pstate, lsb]
   split
   · bv_decide
   · bv_decide
@@ -156,7 +156,7 @@ theorem sle_iff_not_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
 theorem sle_iff_not_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
   (¬(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
-  simp [AddWithCarry, make_pstate]
+  simp [AddWithCarry, make_pstate, lsb]
   split
   · bv_decide
   · bv_decide

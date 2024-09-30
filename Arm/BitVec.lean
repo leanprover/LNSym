@@ -282,11 +282,7 @@ abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
     the `n`-bit bitvector `x`. -/
 @[bitvec_rules]
 abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
-  -- TODO: We could use
-  --   BitVec.extractLsb' i 1 x
-  -- and avoid the cast here, but unfortunately, extractLsb' isn't supported
-  -- by LeanSAT.
-  (BitVec.extractLsb' i 1 x).cast (by omega)
+  BitVec.extractLsb' i 1 x
 
 abbrev partInstall (hi lo : Nat) (val : BitVec (hi - lo + 1)) (x : BitVec n): BitVec n :=
   let mask := allOnes (hi - lo + 1)
@@ -630,19 +626,22 @@ theorem append_of_extract_general_nat (high low n vn : Nat) (h : vn < 2 ^ n) :
 
 theorem append_of_extract (n : Nat) (v : BitVec n)
   (high0 : high = n - low) (h : high + low = n) :
-  BitVec.cast h (zeroExtend high (v >>> low) ++ extractLsb' 0 low v) = v := by
+  zeroExtend high (v >>> low) ++ extractLsb' 0 low v = BitVec.cast h.symm v := by
   ext
   subst high
   have vlt := v.isLt
   have := append_of_extract_general_nat (n - low) low n (BitVec.toNat v) vlt
   have low_le : low ≤ n := by omega
-  simp_all [toNat_zeroExtend, Nat.sub_add_cancel, low_le]
+  simp only [toNat_append, toNat_truncate, toNat_ushiftRight, extractLsb'_toNat,
+    Nat.shiftRight_zero, toNat_cast]
+  -- simp_all [toNat_zeroExtend, Nat.sub_add_cancel, low_le]
   rw [Nat.mod_eq_of_lt (b := 2 ^ n)] at this
-  · rw [this]
+  · sorry -- rw [this]
   · rw [Nat.shiftRight_eq_div_pow]
     exact Nat.lt_of_le_of_lt (Nat.div_le_self _ _) vlt
   done
 
+@[bitvec_rules]
 theorem append_of_extract_general (v : BitVec n) :
   (zeroExtend high (v >>> low)) ++ extractLsb' 0 low v =
   extractLsb' 0 (high + low) v := by

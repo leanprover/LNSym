@@ -65,9 +65,10 @@ theorem append_byte_of_extract_rest_same_cast (n : Nat) (v : BitVec ((n + 1) * 8
   (hn0 : Nat.succ 0 ≤ n)
   (h : (n * 8 + 8) = (n + 1) * 8) :
   BitVec.cast h (zeroExtend (n * 8) (v >>> 8) ++ extractLsb' 0 8 v) = v := by
-  apply BitVec.append_of_extract
+  rw [BitVec.append_of_extract]
+  · simp only [BitVec.cast_cast, BitVec.cast_eq]
   · omega
-  done
+  · omega
 
 @[state_simp_rules]
 theorem read_mem_bytes_of_write_mem_bytes_same (hn1 : n <= 2^64) :
