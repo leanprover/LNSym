@@ -539,6 +539,12 @@ theorem zeroExtend_if_false [Decidable p] (x : BitVec n)
   (zeroExtend (if p then a else b) x) = BitVec.cast h_eq (zeroExtend b x) := by
   simp only [toNat_eq, toNat_truncate, ← h_eq, toNat_cast]
 
+theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
+  BitVec.extractLsb (n - 1) 0 x = BitVec.cast h x := by
+  unfold extractLsb extractLsb'
+  ext1
+  simp [←h]
+
 theorem extractLsb'_eq (x : BitVec n) :
   BitVec.extractLsb' 0 n x = x := by
   unfold extractLsb'
@@ -626,17 +632,15 @@ theorem append_of_extract_general_nat (high low n vn : Nat) (h : vn < 2 ^ n) :
 
 theorem append_of_extract (n : Nat) (v : BitVec n)
   (high0 : high = n - low) (h : high + low = n) :
-  zeroExtend high (v >>> low) ++ extractLsb' 0 low v = BitVec.cast h.symm v := by
+  BitVec.cast h (zeroExtend high (v >>> low) ++ extractLsb' 0 low v) = v := by
   ext
   subst high
   have vlt := v.isLt
   have := append_of_extract_general_nat (n - low) low n (BitVec.toNat v) vlt
   have low_le : low ≤ n := by omega
-  simp only [toNat_append, toNat_truncate, toNat_ushiftRight, extractLsb'_toNat,
-    Nat.shiftRight_zero, toNat_cast]
-  -- simp_all [toNat_zeroExtend, Nat.sub_add_cancel, low_le]
+  simp_all [toNat_zeroExtend, Nat.sub_add_cancel, low_le]
   rw [Nat.mod_eq_of_lt (b := 2 ^ n)] at this
-  · sorry -- rw [this]
+  · rw [this]
   · rw [Nat.shiftRight_eq_div_pow]
     exact Nat.lt_of_le_of_lt (Nat.div_le_self _ _) vlt
   done
