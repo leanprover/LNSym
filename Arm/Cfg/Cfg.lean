@@ -216,8 +216,8 @@ protected def addToCfg (address : BitVec 64) (program : Program) (cfg : Cfg)
 -- is in terms of Fin so that we can take advantage of Fin lemmas. We
 -- will map this theorem to BitVecs (using lemmas like
 -- BitVec.fin_bitvec_lt) in create'.
-private theorem termination_lemma (i j max : Fin n) (h : n > 0)
-  (h0 : i < max) (h1 : j <= max - i) (h2 : ((Fin.ofNat' 0 h) : Fin n) < j) :
+private theorem termination_lemma (i j max : Fin n) (h : NeZero n)
+  (h0 : i < max) (h1 : j <= max - i) (h2 : ((Fin.ofNat' n 0)) < j) :
   (max - (i + j)) < (max - i) := by
   -- Our strategy is to convert this proof obligation in terms of Nat,
   -- which is made possible by h0 and h1 hypotheses above.
@@ -270,7 +270,7 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
     else if h₂ : 4#64 <= max_address - address then
          have ?term_lemma : (max_address - (address + 4#64)).toNat < (max_address - address).toNat := by
            have := termination_lemma address.toFin (4#64).toFin max_address.toFin
-                   (by decide)
+                   (by exact inferInstance)
                    (by simp_all! only [BitVec.not_lt, BitVec.fin_bitvec_lt, not_false_eq_true, BitVec.lt_of_le_ne, h₁])
                    (by rw [← BitVec.toFin_sub]; exact h₂)
                    (by simp_arith)
