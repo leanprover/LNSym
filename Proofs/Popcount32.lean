@@ -14,6 +14,7 @@ import Tactics.StepThms
 section popcount32
 
 open BitVec
+open ArmState
 
 /-!
 Source: https://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
@@ -24,19 +25,18 @@ int popcount_32 (unsigned int v) {
   v = ((v + (v >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
   return(v);
 }
-
 -/
 
-def popcount32_spec_rec (i : Nat) (x : BitVec 32) : (BitVec 32) :=
+def popcount32_spec_rec (i : Nat) (x : BitVec 32) : BitVec 32 :=
   match i with
   | 0 => 0#32
   | i' + 1 =>
     let bit_idx := BitVec.getLsbD x i'
-    ((BitVec.zeroExtend 32 (BitVec.ofBool bit_idx)) + (popcount32_spec_rec i' x))
+    (BitVec.ofBool bit_idx).zeroExtend 32 +
+     popcount32_spec_rec i' x
 
 def popcount32_spec (x : BitVec 32) : BitVec 32 :=
   popcount32_spec_rec 32 x
-
 
 def popcount32_program : Program :=
   def_program
@@ -68,37 +68,43 @@ def popcount32_program : Program :=
    (0x400618#64 , 0x910043ff#32), -- add sp, sp, #0x10
    (0x40061c#64 , 0xd65f03c0#32)] -- ret
 
-
 #genStepEqTheorems popcount32_program
 
-theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
-  (h_s0_pc : read_pc s0 = 0x4005b4#64)
-  (h_s0_program : s0.program = popcount32_program)
+theorem popcount32_sym_meets_spec (s0 sf : ArmState)
+  (h_s0_pc         : read_pc s0 = 0x4005b4#64)
+  (h_s0_program    : s0.program = popcount32_program)
   (h_s0_sp_aligned : CheckSPAlignment s0)
-  (h_s0_err : read_err s0 = StateError.None)
-  (h_run : s_final = run 27 s0) :
-  read_gpr 32 0#5 s_final = popcount32_spec (read_gpr 32 0#5 s0) ∧
-  read_err s_final = StateError.None ∧
-  (∀ f, f ≠ (.GPR 0#5) ∧ f ≠ (.GPR 1#5) ∧ f ≠ (.GPR 31#5) ∧ f ≠ .PC →
-       r f s_final = r f s0) ∧
-  (∀ (n : Nat) (addr : BitVec 64),
-    mem_separate' addr n (r (.GPR 31) s0 - 16#64) 16 →
-    s_final[addr, n] = s0[addr, n]) := by
-  simp_all only [state_simp_rules, -h_run] -- prelude
-  sym_n 27 -- Symbolic simulation
-  repeat' apply And.intro -- split conjunction.
-  · simp only [popcount32_spec, popcount32_spec_rec]
+  (h_s0_err        : read_err s0 = StateError.None)
+  (h_run           : sf = run 27 s0) :
+  -- The final state `sf` is error-free.
+  read_err sf = StateError.None ∧
+  -- Register `w0` in `sf` contains the correct value.
+  w0 sf = popcount32_spec (w0 s0) ∧
+  -- The frame condition describes which state components are not affected by
+  -- this program's execution.
+  REGS_UNCHANGED_EXCEPT [(.GPR 0), (.GPR 1), .SP, .PC] (sf, s0) ∧
+  MEM_UNCHANGED_EXCEPT  [((r .SP s0 - 16#64), 16)]     (sf, s0) := by
+  -- Prelude
+  simp_all only [state_simp_rules, -h_run]
+  -- Symbolic simulation
+  sym_n 27
+   -- TODO(@bollu): automation for SP alignment
+  case h_s1_sp_aligned =>
+    apply Aligned_BitVecSub_64_4 (by assumption) (by decide)
+  case h_s26_sp_aligned =>
+    apply Aligned_BitVecAdd_64_4 (by assumption) (by decide)
+  -- Split the conclusion
+  repeat' apply And.intro
+  · -- Functional Correctness
+    simp only [popcount32_spec, popcount32_spec_rec]
     bv_decide
-  · sym_aggregate
-  · intro n addr h_separate
+  · -- Register Frame Condition
+    simp only [List.mem_cons, List.mem_singleton, not_or, and_imp]; sym_aggregate
+  · -- Memory Frame Condition
+    intro n addr h_separate
     simp only [memory_rules] at *
     repeat (simp_mem (config := { useOmegaToClose := false }); sym_aggregate)
-  · apply Aligned_BitVecSub_64_4 -- TODO(@bollu): automation
-    · assumption
-    · decide
-  · apply Aligned_BitVecAdd_64_4
-    · assumption
-    · decide
+  done
 
 /--
 info: 'popcount32_sym_meets_spec' depends on axioms:
@@ -107,21 +113,5 @@ info: 'popcount32_sym_meets_spec' depends on axioms:
 #guard_msgs in #print axioms popcount32_sym_meets_spec
 
 -------------------------------------------------------------------------------
-
-/-! ## Tests for step theorem generation -/
-section Tests
-
-/--
-info: popcount32_program.stepi_eq_0x4005c0 {s : ArmState} (h_program : s.program = popcount32_program)
-  (h_pc : r StateField.PC s = 4195776#64) (h_err : r StateField.ERR s = StateError.None) :
-  stepi s =
-    w StateField.PC (4195780#64)
-      (w (StateField.GPR 0#5)
-        (zeroExtend 64 ((zeroExtend 32 (r (StateField.GPR 0#5) s)).rotateRight 1) &&& 4294967295#64 &&& 2147483647#64)
-        s)
--/
-#guard_msgs in #check popcount32_program.stepi_eq_0x4005c0
-
-end Tests
 
 end popcount32

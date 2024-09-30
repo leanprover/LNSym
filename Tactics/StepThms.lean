@@ -204,6 +204,7 @@ def genStepEqTheorems : StepThmsM Unit := do
       name, type, value,
       levelParams := []
     }
+    trace[gen_step.print_names] "[genStepEqTheorems] Theorem added: {name}"
     trace[gen_step.debug.timing] "[genStepEqTheorems] added to environment in: {(← IO.monoMsNow) - startTime}ms"
 
 /-- `#genProgramInfo program` ensures the `ProgramInfo` for `program`
