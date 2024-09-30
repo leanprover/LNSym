@@ -933,6 +933,16 @@ theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
     val.extractLsByte n = val.extractLsb' (n * 8) 8 := rfl
 
 -- TODO: upstream
+theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
+    (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
+  apply BitVec.eq_of_getLsbD_eq
+  simp only [getLsbD_extract, getLsbD_or]
+  intros i
+  by_cases h : (i : Nat) ≤ n - lo
+  · simp only [h, decide_True, Bool.true_and]
+  · simp only [h, decide_False, Bool.false_and, Bool.or_self]
+
+-- TODO: upstream
 theorem extractLsb'_or (x y : BitVec w₁) (n : Nat) :
     (x ||| y).extractLsb' lo n = (x.extractLsb' lo n ||| y.extractLsb' lo n) := by
   apply BitVec.eq_of_getLsbD_eq
