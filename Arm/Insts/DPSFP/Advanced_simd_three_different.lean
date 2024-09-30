@@ -39,8 +39,8 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
   if elements <= e then
     result
   else
-    let element1 := elem_get x e esize H
-    let element2 := elem_get y e esize H
+    let element1 := elem_get x e esize
+    let element2 := elem_get y e esize
     let elem_result := polynomial_mult element1 element2
     have h₁ : esize + esize = 2 * esize := by omega
     let result := elem_set result e (2 * esize) (BitVec.cast h₁ elem_result)
