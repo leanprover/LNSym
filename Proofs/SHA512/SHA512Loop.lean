@@ -45,11 +45,12 @@ def loop_post (PC N SP CtxBase InputBase : BitVec 64)
   ctx_addr si = CtxBase ∧
   stack_ptr si = SP - 16#64 ∧
   si[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
-  Memory.Region.pairwiseSeparate
-                  [(SP - 16#64,   16),
-                   (CtxBase,     64),
-                   (InputBase,    (N.toNat * 128)),
-                   (KtblAddr,    (SHA2.k_512.length * 8))] ∧
+  -- (TODO @alex @bollu Uncomment, please, for stress-testing)
+--  Memory.Region.pairwiseSeparate 
+--                  [(SP - 16#64,   16),
+--                   (CtxBase,     64),
+--                   (InputBase,    (N.toNat * 128)),
+--                   (KtblAddr,    (SHA2.k_512.length * 8))] ∧
   r (.GPR 3#5) si = KtblAddr ∧
   input_addr si = InputBase + (N * 128#64) ∧
   -- Registers contain the last processed input block.
@@ -75,13 +76,13 @@ set_option debug.skipKernelTC true in
 -- set_option profiler true in
 -- set_option profiler.threshold 1 in
 set_option maxHeartbeats 0 in
-set_option maxRecDepth 8000 in
+-- set_option maxRecDepth 8000 in
 theorem sha512_block_armv8_loop_1block (si sf : ArmState)
   (h_N : N = 1#64)
   (h_si_prelude : SHA512.prelude 0x126500#64 N SP CtxBase InputBase si)
   -- TODO: Ideally, nsteps ought to be 485 to be able to simulate the loop to
   -- completion.
-  (h_steps : nsteps = 200)
+  (h_steps : nsteps = 400)
   (h_run : sf = run nsteps si) :
   -- (FIXME) PC should be 0x126c94#64 i.e., we are poised to execute the first
   -- instruction following the loop. For now, we stop early on to remain in sync.
@@ -94,12 +95,19 @@ theorem sha512_block_armv8_loop_1block (si sf : ArmState)
           h_si_input_base, h_si_ctx, h_si_ktbl, h_si_separate⟩ := h_si_prelude
   simp only [num_blocks, ctx_addr, stack_ptr, input_addr] at *
   simp only [loop_post]
+  simp at h_si_separate
   -- Symbolic Simulation
   /-
   TODO @alex: The following aggregation fails with
   "simp failed, maximum number of steps exceeded"
   -/
-  -- sym_n 200
+  sym_n 100
+  sym_n 100
+  sym_n 100
+  sym_n 100
+  -- sym_aggregate
+
+
   -- Epilogue
   -- cse (config := { processHyps := .allHyps })
   -- simp (config := {ground := true}) only
