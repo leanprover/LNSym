@@ -82,8 +82,8 @@ theorem popcount32_sym_meets_spec (s0 sf : ArmState)
   w0 sf = popcount32_spec (w0 s0) ∧
   -- The frame condition describes which state components are not affected by
   -- this program's execution.
-  REGS_UNCHANGED_EXCEPT [[(.GPR 0), (.GPR 1), .SP, .PC]] (sf, s0) ∧
-  MEM_UNCHANGED_EXCEPT  [[((r .SP s0 - 16#64), 16)]]     (sf, s0) := by
+  REGS_UNCHANGED_EXCEPT [(.GPR 0), (.GPR 1), .SP, .PC] (sf, s0) ∧
+  MEM_UNCHANGED_EXCEPT  [((r .SP s0 - 16#64), 16)]     (sf, s0) := by
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   -- Symbolic simulation
@@ -99,7 +99,7 @@ theorem popcount32_sym_meets_spec (s0 sf : ArmState)
     simp only [popcount32_spec, popcount32_spec_rec]
     bv_decide
   · -- Register Frame Condition
-    simp; sym_aggregate
+    simp only [List.mem_cons, List.mem_singleton, not_or, and_imp]; sym_aggregate
   · -- Memory Frame Condition
     intro n addr h_separate
     simp only [memory_rules] at *
