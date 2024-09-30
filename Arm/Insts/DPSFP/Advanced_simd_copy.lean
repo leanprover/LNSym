@@ -117,7 +117,6 @@ def exec_smov_umov (inst : Advanced_simd_copy_cls) (s : ArmState) (signed : Bool
     let idxdsize := 64 <<< (lsb inst.imm5 4).toNat
     -- if index == 0 then CheckFPEnabled64 else CheckFPAdvSIMDEnabled64
     let operand := read_sfp idxdsize inst.Rn s
-    have h₀ : esize > 0 := by apply zero_lt_shift_left_pos (by decide)
     let element := elem_get operand index esize
     let result := if signed then signExtend datasize element else zeroExtend datasize element
     -- State Updates

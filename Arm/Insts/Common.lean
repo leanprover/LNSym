@@ -496,7 +496,7 @@ instance : ToString SIMDThreeSameLogicalType where toString a := toString (repr 
 ----------------------------------------------------------------------
 
 @[state_simp_rules]
-def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState) (H : width > 0)
+def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState)
   : BitVec width :=
   -- assert n >= 0 && n <= 31;
   -- assert part IN {0, 1};
@@ -656,7 +656,7 @@ deriving DecidableEq, Repr
 export ShiftInfo (esize elements shift unsigned round accumulate)
 
 @[state_simp_rules]
-def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool) (h : n > 0)
+def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool)
   : BitVec n :=
   -- assert shift > 0
   let fn := if unsigned then ushiftRight else sshiftRight
@@ -679,7 +679,7 @@ def shift_right_common_aux
     result
   else
     let elem := Int_with_unsigned info.unsigned $ elem_get operand e info.esize
-    let shift_elem := RShr info.unsigned elem info.shift info.round info.h
+    let shift_elem := RShr info.unsigned elem info.shift info.round
     let acc_elem := elem_get operand2 e info.esize + shift_elem
     let result := elem_set result e info.esize acc_elem info.h
     have _ : info.elements - (e + 1) < info.elements - e := by omega

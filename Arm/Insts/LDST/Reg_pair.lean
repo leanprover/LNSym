@@ -40,7 +40,7 @@ def reg_pair_constrain_unpredictable (wback : Bool) (inst : Reg_pair_cls) : Bool
 @[state_simp_rules]
 def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
   (datasize : Nat) (offset : BitVec 64) (s : ArmState)
-  (H1 : 8 ∣ datasize) (H2 : 0 < datasize) : ArmState :=
+  (H1 : 8 ∣ datasize): ArmState :=
   -- Note: we do not need to model the ASL function
   -- "CreateAccDescGPR" here, given the simplicity of our memory
   -- model
@@ -99,11 +99,8 @@ def exec_reg_pair_common (inst : Reg_pair_cls) (inst_str : String) (s : ArmState
     let offset := (signExtend 64 inst.imm7) <<< scale
     have H1 : 8 ∣ datasize := by
       simp_all! only [gt_iff_lt, Nat.shiftLeft_eq, Nat.dvd_mul_right, datasize]
-    have H2 : 0 < datasize := by
-      simp_all! only [datasize]
-      apply zero_lt_shift_left_pos (by decide)
     -- State Updates
-    let s' := reg_pair_operation inst inst_str signed datasize offset s H1 H2
+    let s' := reg_pair_operation inst inst_str signed datasize offset s H1
     let s' := write_pc ((read_pc s) + 4#64) s'
     s'
 

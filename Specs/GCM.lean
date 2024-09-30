@@ -22,7 +22,7 @@ def R : (BitVec 128) := 0b11100001#8 ++ 0b0#120
 abbrev Cipher {n : Nat} {m : Nat} :=  BitVec n → BitVec m → BitVec n
 
 /-- The s-bit incrementing function -/
-def inc_s (s : Nat) (X : BitVec l) (H₀ : 0 < s) (H₁ : s < l) : BitVec l :=
+def inc_s (s : Nat) (X : BitVec l) (H₀ : s < l) : BitVec l :=
   let upper := extractLsb' s (l - s) X
   let lower := (extractLsb' 0 s X) + 0b1#s
   have h : l - s + s = l := by omega
@@ -72,7 +72,7 @@ def GCTR_aux (CIPH : Cipher (n := 128) (m := m))
     let Xi := extractLsb' lo 128 X
     let Yi := Xi ^^^ CIPH ICB K
     let Y := BitVec.partInstall hi lo (BitVec.cast h Yi) Y
-    let ICB := inc_s 32 ICB (by omega) (by omega)
+    let ICB := inc_s 32 ICB (by omega)
     GCTR_aux CIPH (i + 1) n K ICB X Y
   termination_by (n - i)
 
@@ -130,7 +130,7 @@ def GCM_AE (CIPH : Cipher (n := 128) (m := m))
   : (BitVec p) × (BitVec t) :=
   let H := CIPH (BitVec.zero 128) K
   let J0 : BitVec 128 := GCM.initialize_J0 H IV
-  let ICB := inc_s 32 J0 (by decide) (by decide)
+  let ICB := inc_s 32 J0 (by decide)
   let C := GCTR (m := m) CIPH K ICB P
   let u := GCM.ceiling_in_bits p - p
   let v := GCM.ceiling_in_bits a - a
@@ -165,7 +165,7 @@ def GCM_AD (CIPH : Cipher (n := 128) (m := m))
   else
     let H := CIPH (BitVec.zero 128) K
     let J0 := GCM.initialize_J0 H IV
-    let ICB := inc_s 32 J0 (by decide) (by decide)
+    let ICB := inc_s 32 J0 (by decide)
     let P := GCTR (m := m) CIPH K ICB C
     let u := GCM.ceiling_in_bits c - c
     let v := GCM.ceiling_in_bits a - a

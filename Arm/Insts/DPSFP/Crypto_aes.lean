@@ -52,7 +52,6 @@ def FFmul02 (b : BitVec 8) : BitVec 8 :=
       0x1E1C1A18161412100E0C0A0806040200#128  -- 0
     ]
   let lo := b.toNat * 8
-  let hi := lo + 7
   extractLsb' lo 8 $ BitVec.flatten FFmul_02
 
 def FFmul03 (b : BitVec 8) : BitVec 8 :=
