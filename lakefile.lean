@@ -1,3 +1,8 @@
+/-
+Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author(s): Shilpi Goel
+-/
 import Lake
 open Lake DSL
 
@@ -25,6 +30,9 @@ lean_lib «Tactics» where
   -- add library configuration options here
 
 lean_lib «Doc» where
+  -- add library configuration options here
+
+lean_lib «Benchmarks» where
   -- add library configuration options here
 
 @[default_target]

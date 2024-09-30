@@ -7,6 +7,8 @@ Author(s): Alex Keizer
 import Arm.State
 import Tactics.Common
 import Tactics.Attr
+import Tactics.Simp
+
 import Std.Data.HashMap
 
 open Lean Meta
@@ -79,6 +81,37 @@ structure AxEffects where
   deriving Repr
 
 namespace AxEffects
+
+/-! ## Monad getters -/
+
+section Monad
+variable {m} [Monad m] [MonadReaderOf AxEffects m]
+
+def getCurrentState       : m Expr := do return (← read).currentState
+def getInitialState       : m Expr := do return (← read).initialState
+def getNonEffectProof     : m Expr := do return (← read).nonEffectProof
+def getMemoryEffect       : m Expr := do return (← read).memoryEffect
+def getMemoryEffectProof  : m Expr := do return (← read).memoryEffectProof
+def getProgramProof       : m Expr := do return (← read).programProof
+
+def getStackAlignmentProof? : m (Option Expr) := do
+  return (← read).stackAlignmentProof?
+
+variable [MonadLiftT MetaM m] in
+/-- Retrieve the user-facing name of the current state, assuming that
+the current state is a free variable in the ambient local context -/
+def getCurrentStateName : m Name := do
+  let state ← getCurrentState
+  @id (MetaM _) <| do
+    let state ← instantiateMVars state
+    let Expr.fvar id := state.consumeMData
+      | throwError "error: expected a free variable, found:\n  {state} WHHOPS"
+    let lctx ← getLCtx
+    let some decl := lctx.find? id
+      | throwError "error: unknown fvar: {state}"
+    return decl.userName
+
+end Monad
 
 /-! ## Initial Reflected State -/
 
@@ -183,7 +216,7 @@ partial def mkAppNonEffect (eff : AxEffects) (field : Expr) : MetaM Expr := do
       return nonEffectProof
 
 /-- Get the value for a field, if one is stored in `eff.fields`,
-or assemble an instantiation of the non-effects proof -/
+or assemble an instantiation of the non-effects proof otherwise -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
   let msg := m!"getField {fld}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -197,6 +230,11 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
       let value := mkApp2 (mkConst ``r) (toExpr fld) eff.initialState
       let proof  ← eff.mkAppNonEffect (toExpr fld)
       pure { value, proof }
+
+variable {m} [Monad m] [MonadReaderOf AxEffects m] [MonadLiftT MetaM m] in
+@[inherit_doc getField]
+def getFieldM (field : StateField) : m FieldEffect := do
+  (← read).getField field
 
 /-! ## Update a Reflected State -/
 
@@ -358,25 +396,36 @@ private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
     throwError "expected:\n  {expected}\nbut found:\n  {e}"
 
 /-- Given an expression `e : ArmState`,
+which is a sequence of `w`/`write_mem`s to `eff.currentState`,
+return an `AxEffects` where `e` is the new `currentState`. -/
+partial def updateWithExpr (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
+  let msg := m!"Updating effects with writes from: {e}"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
+    | write_mem_bytes n addr val e =>
+        let eff ← eff.updateWithExpr e
+        eff.update_write_mem n addr val
+
+    | w field value e =>
+        let eff ← eff.updateWithExpr e
+        eff.update_w field value
+
+    | _ =>
+        assertIsDefEq e eff.currentState
+        return eff
+
+/-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to the some state `s`,
 return an `AxEffects` where `s` is the intial state, and `e` is `currentState`.
 
 Note that as soon as an unsupported expression (e.g., an `if`) is encountered,
 the whole expression is taken to be the initial state,
 even if there might be more `w`/`write_mem`s in sub-expressions. -/
-partial def fromExpr (e : Expr) : MetaM AxEffects := do
-  let msg := m!"Building effects with writes from: {e}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
-    | write_mem_bytes n addr val e =>
-        let eff ← fromExpr e
-        eff.update_write_mem n addr val
+def fromExpr (e : Expr) : MetaM AxEffects := do
+  let s0 ← mkFreshExprMVar mkArmState
+  let eff := initial s0
+  let eff ← eff.updateWithExpr e
+  return { eff with initialState := ← instantiateMVars eff.initialState}
 
-    | w field value e =>
-        let eff ← fromExpr e
-        eff.update_w field value
-
-    | _ =>
-        return initial e
 
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
@@ -408,24 +457,33 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
       currentState, fields, nonEffectProof, memoryEffectProof, programProof
     }
 
-/-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
+/-- Given a proof `eq : ?s = <sequence of w/write_mem to eff.currentState>`,
 where `?s` and `?s0` are arbitrary `ArmState`s,
-return an `AxEffect` with `?s0` as the initial state,
-the rhs of the equality as the current state, and
-`eq` stored as `currentStateEq`,
-so that `?s` is the public-facing current state -/
-def fromEq (eq : Expr) : MetaM AxEffects :=
+return an `AxEffect` with the rhs of the equality as the current state,
+and the (non-)effects updated accordingly -/
+def updateWithEq (eff : AxEffects) (eq : Expr) : MetaM AxEffects :=
   let msg := m!"Building effects with equality: {eq}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     let s ← mkFreshExprMVar mkArmState
     let rhs ← mkFreshExprMVar mkArmState
     assertHasType eq <| mkEqArmState s rhs
 
-    let eff ← fromExpr (← instantiateMVars rhs)
+    let eff ← eff.updateWithExpr (← instantiateMVars rhs)
     let eff ← eff.adjustCurrentStateWithEq s eq
     withTraceNode `Tactic.sym (fun _ => pure "new state") do
       trace[Tactic.sym] "{eff}"
     return eff
+
+/-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
+where `?s` and `?s0` are arbitrary `ArmState`s,
+return an `AxEffect` with `?s0` as the initial state,
+the rhs of the equality as the current state,
+and the (non-)effects updated accordingly -/
+def fromEq (eq : Expr) : MetaM AxEffects := do
+  let s0 ← mkFreshExprMVar mkArmState
+  let eff := initial s0
+  let eff ← eff.updateWithEq eq
+  return { eff with initialState := ← instantiateMVars eff.initialState}
 
 /-- Given an equality `eq : ?currentProgram = ?newProgram`,
 where `currentProgram` is the rhs of `eff.programProof`,
@@ -464,7 +522,10 @@ def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
     trace[Tactic.sym] "current field effect: {fieldEff}"
 
     if field ∉ eff.fields then
-      let proof ← mkEqTrans fieldEff.proof eq
+      let proof ← if eff.currentState == eff.initialState then
+          pure eq
+        else
+          mkEqTrans fieldEff.proof eq
       let fields := eff.fields.insert field { value, proof }
       return { eff with fields }
     else
@@ -645,12 +706,9 @@ where
         let ⟨fvar, goal⟩ ← goal.note h v t?
         return ⟨fvar, goal⟩
 
-open Meta.DiscrTree in
-/-- Return a `SimpTheorems` with the proofs contained in the given `AxEffects`
-
-Note this adds *only* the (non-)effect proofs, to get a simp configuration with
-more default simp-lemmas, see `AxEffects.toSimp` -/
-def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
+/-- Return an array of `SimpTheorem`s of the proofs contained in
+the given `AxEffects` -/
+def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
   let msg := m!"computing SimpTheorems for (non-)effect hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     let lctx ← getLCtx
@@ -662,7 +720,7 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
         none
     let baseName := baseName?.getD (Name.mkSimple "AxEffects")
 
-    let add (thms : SimpTheorems) (e : Expr) (name : String)
+    let add (thms : Array SimpTheorem) (e : Expr) (name : String)
         (prio : Nat := 1000) :=
       let msg := m!"adding {e} with name {name}"
       withTraceNode `Tactic.sym (fun _ => pure msg) <| do
@@ -672,34 +730,10 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
           else
             .other <| Name.str baseName name
         let newThms ← mkSimpTheorems origin #[] e (prio := prio)
-        let newThms ← newThms.mapM (fun thm => do
-          /- `mkSimpTheorems` sets `noIndexAtArgs := true`, meaning that all
-          our (non-effects) theorems will have `[r, *, *]` as key.
-          causing many unneeded attempts at unification.
-          The following code fixes up the keys, so that for example
-            `h_x0_s10 : r (.GPR 0#5) s10`
-          will get a key that includes the state and statefield constant
+        let newThms ← newThms.mapM fixSimpTheoremKey
+        pure <| thms ++ newThms
 
-          FIXME: we should suggest a PR upstream that adds `noIndexAtArgs` as
-          an optional argument to `mkSimpTheorems`, so that we can control
-          this properly -/
-          let type ← inferType thm.proof
-          let ⟨_, _, type⟩ ← forallMetaTelescope type
-          match type.eq? with
-            | none =>
-                trace[Tactic.sym] "{Lean.crossEmoji} {type} is not an equality\
-                  , giving up on fixing the discrtree keys.
-
-                  Currently, the keys are:\n{thm.keys}"
-                pure thm
-            | some (_eqType, lhs, _rhs) =>
-                let keys ← mkPath lhs simpDtConfig (noIndexAtArgs := false)
-                pure { thm with keys }
-        )
-
-        pure <| newThms.foldl addSimpTheoremEntry thms
-
-    let mut thms : SimpTheorems := {}
+    let mut thms := #[]
 
     for ⟨field, {proof, ..}⟩ in eff.fields do
       /- We give the field-specific lemmas a high priority, since their
@@ -708,7 +742,6 @@ def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
       (expensive!) attempts to discharge the `field ≠ otherField`
       side-conditions of the non-effect proof -/
       thms ← add thms proof s!"field_{field}" (prio := 1500)
-
 
     thms ← add thms eff.nonEffectProof "nonEffectProof"
     thms ← add thms eff.memoryEffectProof "memoryEffectProof"

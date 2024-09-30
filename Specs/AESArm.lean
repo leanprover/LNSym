@@ -156,7 +156,7 @@ def ShiftRows {Param : KBR} (state : BitVec Param.block_size)
 
 def XTimes (bv : BitVec 8) : BitVec 8 :=
   let res := truncate 7 bv ++ 0b0#1
-  if getLsb bv 7 then res ^^^ 0b00011011#8 else res
+  if getLsbD bv 7 then res ^^^ 0b00011011#8 else res
 
 def MixColumns {Param : KBR} (state : BitVec Param.block_size)
   : BitVec Param.block_size :=

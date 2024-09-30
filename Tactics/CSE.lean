@@ -7,6 +7,7 @@ This file contains an experimental implementation of a common subexpression elim
 used to simplify goal states.
 -/
 import Lean
+import Std
 import Tactics.Attr
 import Lean.Meta.Tactic.Generalize
 open Lean Elab Tactic Expr Meta
@@ -132,7 +133,7 @@ structure State where
   /--
   A mapping from expression to its canonical index.
   -/
-  canon2data : HashMap Expr ExprData := {}
+  canon2data : Std.HashMap Expr ExprData := {}
   /--
   a counter to generate new names.
   -/
@@ -238,7 +239,7 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
     -- the current argument itself was irrelevant, so don't bother adding it.
     if !relevant? then return .none
     let s ← getState
-    match s.canon2data.find? e with
+    match s.canon2data[e]? with
     | .some data => do
       let data := data.incrRef
       traceLargeMsg m!"updated expr (...) with info ({repr data})" m!"{e}"
@@ -293,7 +294,7 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
     try
       if ! (← isDryRun) then
         -- Implementation modeled after `Lean.MVarId.generalizeHyp`.
-        let e ← instantiateMVars e
+        let _e ← instantiateMVars e
         let hyps := ((← getLCtx).getFVarIds)
         let transparency := TransparencyMode.reducible
         let hyps ← hyps.filterM fun h => do
@@ -324,7 +325,7 @@ def CSEM.cseImpl : CSEM Unit := do
         for hyp in (← getLocalHyps) do
           let _ ← tryAddExpr (← inferType hyp)
 
-    let newCanon2Data : HashMap Expr ExprData ←
+    let newCanon2Data : Std.HashMap Expr ExprData ←
       withTraceNode m!"⏭️ CSE eliminiating unprofitable expressions (#expressions:{(← getState).canon2data.size}):" do
         let mut newCanon2Data := {}
         for (e, data) in (← getState).canon2data.toArray.qsort (fun kv kv' => kv.2.occs > kv'.2.occs) do

@@ -172,156 +172,135 @@ def decode_raw_inst (i : BitVec 32) : Option ArmInst :=
 example : decode_raw_inst 0x91000421#32 =
           (ArmInst.DPI (DataProcImmInst.Add_sub_imm
           {sf := 1#1, op := 0#1, S := 0#1, sh := 0#1,
-            imm12 := 1#12, Rn := 1#5, Rd := 1#5})) := by
-        rfl
+            imm12 := 1#12, Rn := 1#5, Rd := 1#5})) := rfl
 
 -- adc x1, x1, x0
 example : decode_raw_inst 0b00011010000000000000000000100001#32 =
           (ArmInst.DPR (DataProcRegInst.Add_sub_carry
                { sf := 0#1, op := 0#1, S := 0#1, Rm := 0#5,
-                 Rn := 1#5, Rd := 1#5 })) := by
-        rfl
+                 Rn := 1#5, Rd := 1#5 })) := rfl
 
 -- sha512h q3, q5, v6.2d
 example : decode_raw_inst 0xce6680a3#32 =
           (ArmInst.DPSFP (DataProcSFPInst.Crypto_three_reg_sha512
                { Rm := 6#5, O := 0#1, opcode := 0#2,
-                 Rn := 5#5, Rd := 3#5 })) := by
-        rfl
+                 Rn := 5#5, Rd := 3#5 })) := rfl
 
 -- sha512h2 q3, q1, v0.2d
 example : decode_raw_inst 0xce608423#32 =
           (ArmInst.DPSFP (DataProcSFPInst.Crypto_three_reg_sha512
                { Rm := 0#5, O := 0#1, opcode := 1#2,
-                 Rn := 1#5, Rd := 3#5 })) := by
-        rfl
+                 Rn := 1#5, Rd := 3#5 })) := rfl
 
 -- sha512su1 v16.2d, v23.2d, v7.2d
 example : decode_raw_inst 0xce678af0#32 =
           (ArmInst.DPSFP (DataProcSFPInst.Crypto_three_reg_sha512
           { Rm := 7#5, O := 0#1, opcode := 2#2,
-            Rn := 23#5, Rd := 16#5 })) := by
-        rfl
+            Rn := 23#5, Rd := 16#5 })) := rfl
 
 -- sha512su0 v16.2d, v17.2d
 example : decode_raw_inst 0xcec08230#32 =
           (ArmInst.DPSFP (DataProcSFPInst.Crypto_two_reg_sha512
-               { opcode := 0#2, Rn := 17#5, Rd := 16#5 })) := by
-        rfl
+               { opcode := 0#2, Rn := 17#5, Rd := 16#5 })) := rfl
 
 -- ldr	q16, [x0], #16
 example : decode_raw_inst 0x3cc10410#32 =
           (ArmInst.LDST (LDSTInst.Reg_imm_post_indexed
                { size := 0x0#2, V := 0x1#1, opc := 0x3#2, imm9 := 0x010#9,
-                 Rn := 0x00#5, Rt := 0x10#5 })) := by
-        rfl
+                 Rn := 0x00#5, Rt := 0x10#5 })) := rfl
 
 -- stp	x29, x30, [sp, #-16]!
 example : decode_raw_inst 0xa9bf7bfd#32 =
           (ArmInst.LDST (LDSTInst.Reg_pair_pre_indexed
                { opc := 0x2#2, V := 0x0#1, L := 0x0#1, imm7 := 0x7e#7,
-                 Rt2 := 0x1e#5, Rn := 0x1f#5, Rt := 0x1d#5 })) := by
-        rfl
+                 Rt2 := 0x1e#5, Rn := 0x1f#5, Rt := 0x1d#5 })) := rfl
 
 -- ld1	{v16.16b-v19.16b}, [x1], #64
 example : decode_raw_inst 0x4cdf2030#32 =
           (ArmInst.LDST
                (LDSTInst.Advanced_simd_multiple_struct_post_indexed
                  { Q := 0x1#1, L := 0x1#1, Rm := 0x1f#5, opcode := 0x2#4,
-                   size := 0x0#2, Rn := 0x01#5, Rt := 0x10#5 })) := by
-        rfl
+                   size := 0x0#2, Rn := 0x01#5, Rt := 0x10#5 })) := rfl
 
 -- ld1	{v24.2d}, [x3], #16
 example : decode_raw_inst 0x4cdf7c78#32 =
           (ArmInst.LDST
                (LDSTInst.Advanced_simd_multiple_struct_post_indexed
                  { Q := 0x1#1, L := 0x1#1, Rm := 0x1f#5, opcode := 0x7#4,
-                   size := 0x3#2, Rn := 0x03#5, Rt := 0x18#5 })) := by
-        rfl
+                   size := 0x3#2, Rn := 0x03#5, Rt := 0x18#5 })) := rfl
 
 -- ld1	{v0.2d-v3.2d}, [x0]
 example : decode_raw_inst 0x4c402c00#32 =
           (ArmInst.LDST
           (LDSTInst.Advanced_simd_multiple_struct
             { Q := 0x1#1, L := 0x1#1, opcode := 0x2#4,
-              size := 0x3#2, Rn := 0x00#5, Rt := 0x00#5 })) := by
-        rfl
+              size := 0x3#2, Rn := 0x00#5, Rt := 0x00#5 })) := rfl
 
 -- st1	{v0.2d-v3.2d}, [x0]
 example :  decode_raw_inst 0x4c002c00#32 =
            (ArmInst.LDST
                 (LDSTInst.Advanced_simd_multiple_struct
                   { Q := 0x1#1, L := 0x0#1, opcode := 0x2#4, size := 0x3#2,
-                    Rn := 0x00#5, Rt := 0x00#5 })) := by rfl
+                    Rn := 0x00#5, Rt := 0x00#5 })) := rfl
 
 -- add	v24.2d, v24.2d, v16.2d
 example : decode_raw_inst 0x4ef08718#32 =
   (ArmInst.DPSFP (DataProcSFPInst.Advanced_simd_three_same
        { Q := 0x1#1, U := 0x0#1, size := 0x3#2, Rm := 0x10#5,
-         opcode := 0x10#5, Rn := 0x18#5, Rd := 0x18#5 })) := by
-  rfl
+         opcode := 0x10#5, Rn := 0x18#5, Rd := 0x18#5 })) := rfl
 
 -- adrp x3, ...
 example : decode_raw_inst 0xd0000463#32 =
           (ArmInst.DPI (DataProcImmInst.PC_rel_addressing
                { op := 0x1#1, immlo := 0x2#2, immhi := 0x00023#19,
-                 Rd := 0x03#5 })) := by
-        rfl
+                 Rd := 0x03#5 })) := rfl
 
 -- csel	x1, x1, x4, ne
 example : decode_raw_inst 0x9a841021#32 =
           (ArmInst.DPR (DataProcRegInst.Conditional_select
                { sf := 0x1#1, op := 0x0#1, S := 0x0#1, Rm := 0x04#5,
                  cond := 0x1#4, op2 := 0x0#2, Rn := 0x01#5,
-                 Rd := 0x01#5 })) := by
-        rfl
+                 Rd := 0x01#5 })) := rfl
 
 -- b ...
 example : decode_raw_inst 0x14000001#32 =
           (ArmInst.BR (BranchInst.Uncond_branch_imm
-               { op := 0x0#1, imm26 := 0x0000001#26 })) := by
-        rfl
+               { op := 0x0#1, imm26 := 0x0000001#26 })) := rfl
 
 -- b.le ...
 example : decode_raw_inst 0x5400000d#32 =
           (ArmInst.BR (BranchInst.Cond_branch_imm
-               { imm19 := 0x00000#19, o0 := 0, cond := 0xd#4})) := by
-        rfl
+               { imm19 := 0x00000#19, o0 := 0, cond := 0xd#4})) := rfl
 
 -- ret
 example : decode_raw_inst 0xd65f03c0#32 =
           (ArmInst.BR (BranchInst.Uncond_branch_reg
                { opc := 0x2#4, op2 := 0x1f#5, op3 := 0x00#6,
-                 Rn := 0x1e#5, op4 := 0x00#5 })) := by
-        rfl
+                 Rn := 0x1e#5, op4 := 0x00#5 })) := rfl
 
 -- cbnz	x2, ...
 example : decode_raw_inst 0xb5ffc382#32 =
           (ArmInst.BR (BranchInst.Compare_branch
                { sf := 0x1#1, op := 0x1#1, imm19 := 0x7fe1c#19,
-                 Rt := 0x02#5 })) := by
-        rfl
+                 Rt := 0x02#5 })) := rfl
 
 -- ext	v24.16b, v24.16b, v24.16b, #8
 example : decode_raw_inst 0x6e184318#32 =
           (ArmInst.DPSFP (DataProcSFPInst.Advanced_simd_extract
                { Q := 0x1#1, op2 := 0x0#2, Rm := 0x18#5, imm4 := 0x8#4,
-                 Rn := 0x18#5, Rd := 0x18#5 })) := by
-        rfl
+                 Rn := 0x18#5, Rd := 0x18#5 })) := rfl
 
 -- mov	x29, sp
 example : decode_raw_inst 0x910003fd#32 =
           (ArmInst.DPI (DataProcImmInst.Add_sub_imm
                { sf := 0x1#1, op := 0x0#1, S := 0x0#1, sh := 0x0#1,
-                 imm12 := 0x000#12, Rn := 0x1f#5, Rd := 0x1d#5 })) := by
-        rfl
+                 imm12 := 0x000#12, Rn := 0x1f#5, Rd := 0x1d#5 })) := rfl
 
 -- ldr	q0, [x4]
 example : decode_raw_inst 0x3dc00080#32 =
           (ArmInst.LDST (LDSTInst.Reg_unsigned_imm
                { size := 0x0#2, V := 0x1#1, opc := 0x3#2,
-                 imm12 := 0x000#12, Rn := 0x04#5, Rt := 0x00#5 })) := by
-        rfl
+                 imm12 := 0x000#12, Rn := 0x04#5, Rt := 0x00#5 })) := rfl
 
 -- str	q4, [x2], #16
 example : decode_raw_inst 0x3c810444#32 =
@@ -335,29 +314,25 @@ example : decode_raw_inst 0x4e200800#32 =
           (ArmInst.DPSFP
                (DataProcSFPInst.Advanced_simd_two_reg_misc
                  { Q := 0x1#1, U := 0x0#1, size := 0x0#2, opcode := 0x00#5,
-                   Rn := 0x00#5, Rd := 0x00#5 })) := by
-        rfl
+                   Rn := 0x00#5, Rd := 0x00#5 })) := rfl
 
 -- aese	v0.16b, v16.16b
 example : decode_raw_inst 0x4e284a00#32 =
           (ArmInst.DPSFP (DataProcSFPInst.Crypto_aes
                { size := 0x0#2, opcode := 0x04#5,
-                 Rn := 0x10#5, Rd := 0x00#5 })) := by
-        rfl
+                 Rn := 0x10#5, Rd := 0x00#5 })) := rfl
 
 -- aesmc v0.16b, v0.16b
 example : decode_raw_inst 0x4e286800#32 =
           (ArmInst.DPSFP (DataProcSFPInst.Crypto_aes
                { size := 0x0#2, opcode := 0x06#5,
-                 Rn := 0x00#5, Rd := 0x00#5 })) := by
-        rfl
+                 Rn := 0x00#5, Rd := 0x00#5 })) := rfl
 
 -- mov	x28, v0.d[0]
 example : decode_raw_inst 0x4e083c1c#32 =
           ArmInst.DPSFP (DataProcSFPInst.Advanced_simd_copy
               { Q := 0x1#1, op := 0x0#1, imm5 := 0x08#5,
-                imm4 := 0x7#4, Rn := 0x00#5, Rd := 0x1c#5 }) := by
-        rfl
+                imm4 := 0x7#4, Rn := 0x00#5, Rd := 0x1c#5 }) := rfl
 
 -- ext v16.8B, v10.8B, v24.8B, #2
 example : decode_raw_inst 0x2e181150#32 =
@@ -368,8 +343,7 @@ example : decode_raw_inst 0x2e181150#32 =
               Rm := 0x18#5,
               imm4 := 0x2#4,
               Rn := 0x0a#5,
-              Rd := 0x10#5 })) := by
-        rfl
+              Rd := 0x10#5 })) := rfl
 
 -- lsr w0, w0, #1
 example : decode_raw_inst 0x53017c00#32 =
@@ -382,8 +356,7 @@ example : decode_raw_inst 0x53017c00#32 =
                 immr := 0x01#6,
                 imms := 0x1f#6,
                 Rn := 0x00#5,
-                Rd := 0x00#5 })) := by
-        rfl
+                Rd := 0x00#5 })) := rfl
 
 -- ands x30, x3, x17, asr #35
 example : decode_raw_inst 0xea918c7e#32 =
@@ -396,8 +369,7 @@ example : decode_raw_inst 0xea918c7e#32 =
             Rm := 0x11#5,
             imm6 := 0x23#6,
             Rn := 0x03#5,
-            Rd := 0x1e#5})) := by
-        rfl
+            Rd := 0x1e#5})) := rfl
 
 -- eor x15, x28, #0xffffc00000000001
 example : decode_raw_inst 0xd2524b8f#32 =
@@ -409,8 +381,7 @@ example : decode_raw_inst 0xd2524b8f#32 =
             immr := 0x12#6,
             imms := 0x12#6,
             Rn := 0x1c#5,
-            Rd := 0x0f#5 })) := by
-        rfl
+            Rd := 0x0f#5 })) := rfl
 
 -- sub x9, x27, x15, lsl #55
 example : decode_raw_inst 0xcb0fdf69 =
@@ -424,8 +395,7 @@ example : decode_raw_inst 0xcb0fdf69 =
             Rm := 0x0f#5,
             imm6 := 0x37#6,
             Rn := 0x1b#5,
-            Rd := 0x09#5 })) := by
-        rfl
+            Rd := 0x09#5 })) := rfl
 
 -- orr v5.8h, #0x77, lsl #8
 example : decode_raw_inst 0x4f03b6e5 =
@@ -446,8 +416,7 @@ example : decode_raw_inst 0x4f03b6e5 =
             f := 0x1#1,
             g := 0x1#1,
             h := 0x1#1,
-            Rd := 0x05#5 })) := by
-        rfl
+            Rd := 0x05#5 })) := rfl
 
 -- mov v10.h[0] v17.h[6]
 example : decode_raw_inst 0x6e026e2a =
@@ -462,8 +431,7 @@ example : decode_raw_inst 0x6e026e2a =
             imm4 := 0xd#4,
             _fixed4 := 0x1#1,
             Rn := 0x11#5,
-            Rd := 0x0a#5 })) := by
-          rfl
+            Rd := 0x0a#5 })) := rfl
 
 -- fmov v25.d[1], x5
 example : decode_raw_inst 0x9eaf00b9 =
@@ -479,8 +447,7 @@ example : decode_raw_inst 0x9eaf00b9 =
               opcode := 0x7#3,
               _fixed4 := 0x00#6,
               Rn := 0x05#5,
-              Rd := 0x19#5 })) := by
-            rfl
+              Rd := 0x19#5 })) := rfl
 
 -- rev x0, x25
 example : decode_raw_inst 0xdac00f20 =
@@ -493,10 +460,9 @@ example : decode_raw_inst 0xdac00f20 =
               opcode2 := 0x00#5,
               opcode := 0x03#6,
               Rn := 0x19#5,
-              Rd := 0x00#5 })) := by
-          rfl
+              Rd := 0x00#5 })) := rfl
 
 -- Unimplemented
-example : decode_raw_inst 0x00000000#32 = none := by rfl
+example : decode_raw_inst 0x00000000#32 = none := rfl
 
 end Decode

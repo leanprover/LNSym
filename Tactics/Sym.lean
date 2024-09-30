@@ -6,15 +6,15 @@ Author(s): Shilpi Goel, Alex Keizer
 import Arm.Exec
 import Arm.Memory.MemoryProofs
 import Tactics.FetchAndDecode
-import Tactics.ExecInst
-import Tactics.ChangeHyps
-import Tactics.SymContext
+import Tactics.Sym.Context
 
 import Lean
 
 open BitVec
 open Lean Meta
 open Lean.Elab.Tactic
+
+open AxEffects SymContext
 
 /-- A wrapper around `evalTactic` that traces the passed tactic script,
 executes those tactics, and then traces the new goal state -/
@@ -44,25 +44,30 @@ macro "init_next_step" h_run:ident stepi_eq:ident sn:ident : tactic =>
 
 section stepiTac
 
-/-- Apply the relevant pre-generated stepi lemma to a local hypothesis
+/-- Apply the relevant pre-generated stepi lemma to an expression
   `stepi_eq : stepi ?s = ?s'`
-to obtain a new local hypothesis in terms of `w` and `write_mem`
+to add a new local hypothesis in terms of `w` and `write_mem`
   `h_step : ?s' = w _ _ (w _ _ (... ?s))`
 -/
-def stepiTac (stepi_eq h_step : Ident) (ctx : SymContext)
-  : TacticM Unit := withMainContext do
-  let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
-  --  ^^ The PC in hex
-  let step_lemma := mkIdent <| Name.str ctx.program s!"stepi_eq_0x{pc}"
+def stepiTac (stepiEq : Expr) (hStep : Name) : SymReaderM Unit := fun ctx =>
+  withMainContext' do
+    let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
+    --  ^^ The PC in hex
+    let stepLemma := Name.str ctx.program s!"stepi_eq_0x{pc}"
+    -- let stepLemma := Expr.const stepLemma []
 
-  evalTacticAndTrace <|← `(tactic| (
-    have $h_step :=
-      _root_.Eq.trans (Eq.symm $stepi_eq)
-        ($step_lemma:ident
-          $ctx.h_program_ident:ident
-          $ctx.h_pc_ident:ident
-          $ctx.h_err_ident:ident)
-  ))
+    let eff := ctx.effects
+    let hStepExpr ← mkEqTrans
+      (← mkEqSymm stepiEq)
+      (← mkAppM stepLemma #[
+        eff.programProof,
+        (← eff.getField .PC).proof,
+        (← eff.getField .ERR).proof
+      ])
+
+    let goal ← getMainGoal
+    let ⟨_, goal⟩ ← goal.note hStep hStepExpr
+    replaceMainGoal [goal]
 
 end stepiTac
 
@@ -82,8 +87,8 @@ for some metavariable `?runSteps`, then create the proof obligation
 `?runSteps = _ + 1`, and attempt to close it using `whileTac`.
 Finally, we use this proof to change the type of `h_run` accordingly.
 -/
-def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
-    TacticM Unit :=
+def unfoldRun (whileTac : Unit → TacticM Unit) : SymReaderM Unit := do
+  let c ← readThe SymContext
   let msg := m!"unfoldRun (runSteps? := {c.runSteps?})"
   withTraceNode `Tactic.sym (fun _ => pure msg) <|
   match c.runSteps? with
@@ -96,7 +101,7 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
         -- NOTE: this error shouldn't occur, as we should have checked in
         -- `sym_n` that, if the number of runSteps is statically known,
         -- that we never simulate more than that many steps
-    | none => withMainContext do
+    | none => withMainContext' do
         let mut goal :: originalGoals ← getGoals
           | throwNoGoalsToBeSolved
         let hRunDecl ← c.hRunDecl
@@ -106,7 +111,7 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
         guard <|← isDefEq hRunDecl.type (
           mkApp3 (.const ``Eq [1]) (mkConst ``ArmState)
             c.finalState
-            (mkApp2 (mkConst ``_root_.run) runSteps (←c.stateExpr)))
+            (mkApp2 (mkConst ``_root_.run) runSteps (← getCurrentState)))
         -- NOTE: ^^ Since we check for def-eq on SymContext construction,
         --          this check should never fail
 
@@ -134,8 +139,9 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
           runStepsPredId.assign default
 
         -- Change the type of `h_run`
+        let state ← getCurrentState
         let typeNew ← do
-          let rhs := mkApp2 (mkConst ``_root_.run) subGoalTyRhs (←c.stateExpr)
+          let rhs := mkApp2 (mkConst ``_root_.run) subGoalTyRhs state
           mkEq c.finalState rhs
         let eqProof ← do
           let f := -- `fun s => <finalState> = s`
@@ -143,9 +149,8 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
                         c.finalState (.bvar 0)
             .lam `s (mkConst ``ArmState) eq .default
           let g := mkConst ``_root_.run
-          let s ← c.stateExpr
           let h ← instantiateMVars (.mvar subGoal)
-          mkCongrArg f (←mkCongrFun (←mkCongrArg g h) s)
+          mkCongrArg f (←mkCongrFun (←mkCongrArg g h) state)
         let res ← goal.replaceLocalDecl hRunDecl.fvarId typeNew eqProof
 
         -- Restore goal state
@@ -155,46 +160,17 @@ def unfoldRun (c : SymContext) (whileTac : Unit → TacticM Unit) :
           originalGoals := originalGoals.concat subGoal
         setGoals (res.mvarId :: originalGoals)
 
-/-- `withoutHyp h` will remove `h` from the main goals context,
-run the continuation `k`,
-and finally, attempt to re-add the hypothesis `h` to the new main goal.
-
-This is a work-around for `intro_fetch_decode` behaving badly when we have
-`stepi s0 = s1` in the local context.
-
-Returns the fvarid of `h` in the new context.
-If `h` could not be found, execute `k` anyway (with an unmodified context),
-and return none -/
-def withoutHyp (hyp : Name) (k : TacticM Unit) : TacticM (Option FVarId) :=
-  withMainContext do
-    let goal ← getMainGoal
-    let lctx ← getLCtx
-    match lctx.findFromUserName? hyp with
-      | none =>
-          k
-          return none
-      | some hypDecl =>
-          replaceMainGoal [← goal.clear hypDecl.fvarId]
-          k -- run the continuation
-          -- Attempt to re-add `hyp`
-          let newGoal ← getMainGoal -- `k` might have changed the goal
-          let ⟨newHyp, newGoal⟩ ←
-            newGoal.note hypDecl.userName hypDecl.toExpr hypDecl.type
-          replaceMainGoal [newGoal]
-          return newHyp
-
-/-- Given an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)`,
-add hypotheses that axiomatically describe the effects in terms of
-reads from `s{i+1}`.
-
-Return the context for the next step (see `SymContext.next`), where
-we attempt to determine the new PC by reflecting the obtained effects,
-falling back to incrementing the PC if reflection failed. -/
-def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
-  withMainContext do
+/-- Break an equality `h_step : s{i+1} = w ... (... (w ... s{i})...)` into an
+`AxEffects` that characterizes the effects in terms of reads from `s{i+1}`,
+add the relevant hypotheses to the local context, and
+store an `AxEffects` object with the newly added variables in the monad state
+-/
+def explodeStep (hStep : Expr) : SymM Unit :=
+  withMainContext' do
+    let c ← getThe SymContext
     let mut eff ← AxEffects.fromEq hStep
 
-    let stateExpr ← c.stateExpr
+    let stateExpr ← getCurrentState
     /- Assert that the initial state of the obtained `AxEffects` is equal to
     the state tracked by `c`.
     This will catch and throw an error if the semantics of the current
@@ -203,11 +179,8 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
       throwError "[explodeStep] expected initial state {stateExpr}, but found:\n  \
         {eff.initialState}\nin\n\n{eff}"
 
-    let hProgram ← SymContext.findFromUserName c.h_program
-    eff ← eff.withProgramEq hProgram.toExpr
-
-    let hErr ← SymContext.findFromUserName c.h_err
-    eff ← eff.withField hErr.toExpr
+    eff ← eff.withProgramEq c.effects.programProof
+    eff ← eff.withField (← c.effects.getField .ERR).proof
 
     if let some h_sp := c.h_sp? then
       let hSp ← SymContext.findFromUserName h_sp
@@ -228,12 +201,11 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
             let subGoal ← mkFreshMVarId
             -- subGoal.setTag <|
             let hAligned ← do
-              let name := Name.mkSimple s!"h_{c.next_state}_sp_aligned"
+              let name := Name.mkSimple s!"h_{← getNextStateName}_sp_aligned"
               mkFreshExprMVarWithId subGoal (userName := name) <|
                 mkAppN (mkConst ``Aligned) #[toExpr 64, spEff.value, toExpr 4]
 
             trace[Tactic.sym] "created subgoal to show alignment:\n{subGoal}"
-
             let subGoal? ← do
               let (ctx, simprocs) ←
                 LNSymSimpContext
@@ -252,33 +224,16 @@ def explodeStep (c : SymContext) (hStep : Expr) : TacticM SymContext :=
                 #[eff.currentState, spEff.value, spEff.proof, hAligned]
             pure { eff with stackAlignmentProof? }
 
-    -- Add new (non-)effect hyps to the context
-    let simpThms ← withMainContext <| do
+    -- Add new (non-)effect hyps to the context, and to the aggregation simpset
+    withMainContext' <| do
       if ←(getBoolOption `Tactic.sym.debug) then
         eff.validate
 
-      let eff ← eff.addHypothesesToLContext s!"h_{c.next_state}_"
-      withMainContext <| eff.toSimpTheorems
-
-    -- Add the new (non-)effect hyps to the aggregation simp context
-    let aggregateSimpCtx := { c.aggregateSimpCtx with
-      simpTheorems := c.aggregateSimpCtx.simpTheorems.push simpThms
-    }
-    let c := { c with aggregateSimpCtx}
-
-    -- Attempt to reflect the new PC
-    let nextPc ← eff.getField .PC
-    let nextPc? ← try
-      let nextPc ← reflectBitVecLiteral 64 nextPc.value
-      -- NOTE: `reflectBitVecLiteral` is fast when the value is a literal,
-      -- but might involve an expensive reduction when it is not
-      pure <| some nextPc
-    catch err =>
-      trace[Tactic.sym] "failed to reflect {nextPc.value}\n\n\
-        {err.toMessageData}"
-      pure none
-
-    return c.next nextPc?
+      let eff ← eff.addHypothesesToLContext s!"h_{← getNextStateName}_"
+      withMainContext' <| do
+        let simpThms ← eff.toSimpTheorems
+        modifyThe SymContext (·.addSimpTheorems simpThms)
+      set eff
 
 /-- A tactic wrapper around `explodeStep`.
 Note the use of `SymContext.fromLocalContext`,
@@ -290,39 +245,43 @@ elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
     | throwError "Expected fvar, found {state}"
   let stateDecl := (← getLCtx).get! stateFVar
   let c ← SymContext.fromLocalContext (some stateDecl.userName)
-
-  let _ ← explodeStep c hStep
-
+  let _ ← SymM.run c <| explodeStep hStep
 
 /--
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
-def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
-  let msg := m!"(sym1): simulating step {c.curr_state_number}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
+def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
+  let stateNumber ← getCurrentStateNumber
+  let msg := m!"(sym1): simulating step {stateNumber}"
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
     withTraceNode `Tactic.sym (fun _ => pure "verbose context") <| do
-      trace[Tactic.sym] "SymContext:\n{← c.toMessageData}"
+      traceSymContext
       trace[Tactic.sym] "Goal state:\n {← getMainGoal}"
 
-    let stepi_eq := Lean.mkIdent (.mkSimple s!"stepi_{c.state}")
-    let h_step   := Lean.mkIdent (.mkSimple s!"h_step_{c.curr_state_number + 1}")
+    let stepi_eq := Lean.mkIdent (.mkSimple s!"stepi_{← getCurrentStateName}")
+    let h_step   := Lean.mkIdent (.mkSimple s!"h_step_{stateNumber + 1}")
 
-    unfoldRun c (fun _ => evalTacticAndTrace whileTac)
+    unfoldRun (fun _ => evalTacticAndTrace whileTac)
     -- Add new state to local context
+    let hRunId      := mkIdent <|← getHRunName
+    let nextStateId := mkIdent <|← getNextStateName
     evalTacticAndTrace <|← `(tactic|
-      init_next_step $c.h_run_ident:ident $stepi_eq:ident $c.next_state_ident:ident
+      init_next_step $hRunId:ident $stepi_eq:ident $nextStateId:ident
     )
 
     -- Apply relevant pre-generated `stepi` lemma
-    stepiTac stepi_eq h_step c
+    withMainContext' <| do
+      let stepiEq ← SymContext.findFromUserName stepi_eq.getId
+      stepiTac stepiEq.toExpr h_step.getId
 
     -- WORKAROUND: eventually we'd like to eagerly simp away `if`s in the
     -- pre-generation of instruction semantics. For now, though, we keep a
     -- `simp` here
-    withMainContext <| do
+    withMainContext' <| do
       let hStep ← SymContext.findFromUserName h_step.getId
       let lctx ← getLCtx
-      let decls := (c.h_sp?.bind lctx.findFromUserName?).toArray
+      let decls := (← getThe SymContext).h_sp?.bind lctx.findFromUserName?
+      let decls := decls.toArray
       -- If we know SP is aligned, `simp` with that fact
 
       if !decls.isEmpty then
@@ -342,18 +301,61 @@ def sym1 (c : SymContext) (whileTac : TSyntax `tactic) : TacticM SymContext :=
           skipping simplification step"
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
-    withMainContext <| do
+    withMainContext' <| do
       let hStep ← SymContext.findFromUserName h_step.getId
       -- ^^ we can't reuse `hStep` from before, since its fvarId might've been
       --    changed by `simp`
-      let c ← explodeStep c hStep.toExpr
+      explodeStep hStep.toExpr
+      prepareForNextStep
 
       let goal ← getMainGoal
       let goal ← goal.clear hStep.fvarId
       replaceMainGoal [goal]
 
       traceHeartbeats
-      return c
+
+/-- `ensureLessThanRunSteps n` will
+- log a warning and return `m`, if `runSteps? = some m` and `m < n`, or
+- return `n` unchanged, otherwise  -/
+def ensureAtMostRunSteps (n : Nat) : SymM Nat := do
+  let ctx ← getThe SymContext
+  match ctx.runSteps? with
+  | none => pure n
+  | some runSteps =>
+      if n ≤ runSteps then
+        pure n
+      else
+        withMainContext <| do
+          let hRun ← ctx.hRunDecl
+          logWarning m!"Symbolic simulation is limited to at most {runSteps} \
+            steps, because {hRun.toExpr} is of type:\n  {hRun.type}"
+          pure runSteps
+  return n
+
+/-- Check that the step-thoerem corresponding to the current PC value exists,
+and throw a user-friendly error, pointing to `#genStepEqTheorems`,
+if it does not. -/
+def assertStepTheoremsGenerated : SymM Unit := do
+  let c ← getThe SymContext
+  let pc := c.pc.toHexWithoutLeadingZeroes
+  if !c.programInfo.instructions.contains c.pc then
+    let pcEff ← AxEffects.getFieldM .PC
+    throwError "\
+      Program {c.program} has no instruction at address {c.pc}.
+
+      We inferred this address as the program-counter from {pcEff.proof}, \
+      which has type:
+        {← inferType pcEff.proof}"
+
+  let step_thm := Name.str c.program ("stepi_eq_0x" ++ pc)
+  try
+    let _ ← getConstInfo step_thm
+  catch err =>
+    throwErrorAt err.getRef "{err.toMessageData}\n
+Did you remember to generate step theorems with:
+  #genStepEqTheorems {c.program}"
+-- TODO: can we make this error ^^ into a `Try this:` suggestion that
+--       automatically adds the right command just before the theorem?
 
 /- used in `sym_n` tactic to specify an initial state -/
 syntax sym_at := "at" ident
@@ -401,61 +403,29 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
         omega;
         ))
 
-  Lean.Elab.Tactic.withMainContext <| do
-    let mut c ← SymContext.fromLocalContext s
-    c ← c.addGoalsForMissingHypotheses
-    c.canonicalizeHypothesisTypes
+  let c ← withMainContext <| SymContext.fromLocalContext s
+  SymM.run' c <| do
+    -- Context preparation
+    canonicalizeHypothesisTypes
 
-    -- Check that we are not asked to simulate more steps than available
-    let n ← do
-      let n := n.getNat
-      match c.runSteps? with
-        | none => pure n
-        | some runSteps =>
-            if n ≤ runSteps then
-              pure n
-            else
-              let h_run ← userNameToMessageData c.h_run
-              logWarning m!"Symbolic simulation using {h_run} is limited to at most {runSteps} steps"
-              pure runSteps
+    -- Check pre-conditions
+    assertStepTheoremsGenerated
+    let n ← ensureAtMostRunSteps n.getNat
 
-    -- Check that step theorems have been pre-generated
-    try
-      let pc := c.pc.toHexWithoutLeadingZeroes
-      let step_thm := Name.str c.program ("stepi_eq_0x" ++ pc)
-      let _ ← getConstInfo step_thm
-    catch err =>
-      throwErrorAt err.getRef "{err.toMessageData}\n
-Did you remember to generate step theorems with:
-  #generateStepEqTheorems {c.program}"
--- TODO: can we make this error ^^ into a `Try this:` suggestion that
---       automatically adds the right command just before the theorem?
-
-    -- Check that step theorems have been pre-generated
-    try
-      let pc := c.pc.toHexWithoutLeadingZeroes
-      let step_thm := Name.str c.program ("stepi_eq_0x" ++ pc)
-      let _ ← getConstInfo step_thm
-    catch err =>
-      throwErrorAt err.getRef "{err.toMessageData}\n
-Did you remember to generate step theorems with:
-  #generateStepEqTheorems {c.program}"
--- TODO: can we make this error ^^ into a `Try this:` suggestion that
---       automatically adds the right command just before the theorem?
-
-    -- The main loop
-    for _ in List.range n do
-      c ← sym1 c whileTac
+    withMainContext' <| do
+      -- The main loop
+      for _ in List.range n do
+        sym1 whileTac
 
     traceHeartbeats "symbolic simulation total"
+    let c ← getThe SymContext
     -- Check if we can substitute the final state
     if c.runSteps? = some 0 then
       let msg := do
         let hRun ← userNameToMessageData c.h_run
         pure m!"runSteps := 0, substituting along {hRun}"
-      withTraceNode `Tactic.sym (fun _ => msg) <| withMainContext do
-        let s ← SymContext.findFromUserName c.state
-        let sfEq ← mkEq s.toExpr c.finalState
+      withTraceNode `Tactic.sym (fun _ => msg) <| withMainContext' do
+        let sfEq ← mkEq (← getCurrentState) c.finalState
 
         let goal ← getMainGoal
         trace[Tactic.sym] "original goal:\n{goal}"
@@ -468,15 +438,13 @@ Did you remember to generate step theorems with:
 
         let goal ← subst goal hEqId
         trace[Tactic.sym] "performed subsitutition in:\n{goal}"
-        traceHeartbeats
 
         replaceMainGoal [goal]
 
     -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
     -- added while symbolically evaluating to `simp`
     let msg := m!"aggregating (non-)effects"
-    withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext do
-      traceHeartbeats "pre"
+    withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
       let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
       replaceMainGoal goal?.toList
 

@@ -22,27 +22,27 @@ attribute [bitvec_rules] BitVec.ofFin.injEq
 attribute [bitvec_rules] BitVec.cast_eq
 attribute [bitvec_rules] BitVec.zeroExtend_eq
 attribute [bitvec_rules] BitVec.truncate_eq
-attribute [bitvec_rules] BitVec.getLsb_ofFin
-attribute [bitvec_rules] BitVec.getLsb_ge
-attribute [bitvec_rules] BitVec.getMsb_ge
+attribute [bitvec_rules] BitVec.getLsbD_ofFin
+attribute [bitvec_rules] BitVec.getLsbD_ge
+attribute [bitvec_rules] BitVec.getMsbD_ge
 attribute [bitvec_rules] BitVec.toNat_zero_length
-attribute [bitvec_rules] BitVec.getLsb_zero_length
-attribute [bitvec_rules] BitVec.getMsb_zero_length
+attribute [bitvec_rules] BitVec.getLsbD_zero_length
+attribute [bitvec_rules] BitVec.getMsbD_zero_length
 attribute [bitvec_rules] BitVec.msb_zero_length
 attribute [bitvec_rules] BitVec.toNat_ofBool
 attribute [bitvec_rules] BitVec.msb_ofBool
 attribute [bitvec_rules] BitVec.not_ofBool
 attribute [bitvec_rules] BitVec.toNat_ofFin
 attribute [bitvec_rules] BitVec.toNat_ofNatLt
-attribute [bitvec_rules] BitVec.getLsb_ofNatLt
+attribute [bitvec_rules] BitVec.getLsbD_ofNatLt
 attribute [bitvec_rules] BitVec.toFin_ofNat
-attribute [bitvec_rules] BitVec.getLsb_zero
-attribute [bitvec_rules] BitVec.getMsb_zero
+attribute [bitvec_rules] BitVec.getLsbD_zero
+attribute [bitvec_rules] BitVec.getMsbD_zero
 attribute [bitvec_rules] BitVec.toNat_mod_cancel
 attribute [bitvec_rules] BitVec.msb_zero
 attribute [bitvec_rules] BitVec.toNat_cast
-attribute [bitvec_rules] BitVec.getLsb_cast
-attribute [bitvec_rules] BitVec.getMsb_cast
+attribute [bitvec_rules] BitVec.getLsbD_cast
+attribute [bitvec_rules] BitVec.getMsbD_cast
 attribute [bitvec_rules] BitVec.toNat_ofInt
 attribute [bitvec_rules] BitVec.toInt_ofInt
 attribute [bitvec_rules] BitVec.ofInt_natCast
@@ -51,11 +51,11 @@ attribute [bitvec_rules] BitVec.toNat_zeroExtend
 attribute [bitvec_rules] BitVec.toNat_truncate
 attribute [bitvec_rules] BitVec.zeroExtend_zero
 attribute [bitvec_rules] BitVec.ofNat_toNat
-attribute [bitvec_rules] BitVec.getLsb_zeroExtend'
-attribute [bitvec_rules] BitVec.getMsb_zeroExtend'
-attribute [bitvec_rules] BitVec.getLsb_zeroExtend
-attribute [bitvec_rules] BitVec.getMsb_zeroExtend_add
-attribute [bitvec_rules] BitVec.getLsb_truncate
+attribute [bitvec_rules] BitVec.getLsbD_zeroExtend'
+attribute [bitvec_rules] BitVec.getMsbD_zeroExtend'
+attribute [bitvec_rules] BitVec.getLsbD_zeroExtend
+attribute [bitvec_rules] BitVec.getMsbD_zeroExtend_add
+attribute [bitvec_rules] BitVec.getLsbD_truncate
 attribute [bitvec_rules] BitVec.zeroExtend_zeroExtend_of_le
 attribute [bitvec_rules] BitVec.truncate_truncate_of_le
 attribute [bitvec_rules] BitVec.truncate_cast
@@ -63,28 +63,28 @@ attribute [bitvec_rules] BitVec.extractLsb_ofFin
 attribute [bitvec_rules] BitVec.extractLsb_ofNat
 attribute [bitvec_rules] BitVec.extractLsb'_toNat
 attribute [bitvec_rules] BitVec.extractLsb_toNat
-attribute [bitvec_rules] BitVec.getLsb_extract
+attribute [bitvec_rules] BitVec.getLsbD_extract
 attribute [bitvec_rules] BitVec.toNat_allOnes
-attribute [bitvec_rules] BitVec.getLsb_allOnes
+attribute [bitvec_rules] BitVec.getLsbD_allOnes
 attribute [bitvec_rules] BitVec.toNat_or
 attribute [bitvec_rules] BitVec.toFin_or
-attribute [bitvec_rules] BitVec.getLsb_or
-attribute [bitvec_rules] BitVec.getMsb_or
+attribute [bitvec_rules] BitVec.getLsbD_or
+attribute [bitvec_rules] BitVec.getMsbD_or
 attribute [bitvec_rules] BitVec.msb_or
 attribute [bitvec_rules] BitVec.truncate_or
 attribute [bitvec_rules] BitVec.toNat_and
 attribute [bitvec_rules] BitVec.toFin_and
-attribute [bitvec_rules] BitVec.getLsb_and
-attribute [bitvec_rules] BitVec.getMsb_and
+attribute [bitvec_rules] BitVec.getLsbD_and
+attribute [bitvec_rules] BitVec.getMsbD_and
 attribute [bitvec_rules] BitVec.msb_and
 attribute [bitvec_rules] BitVec.truncate_and
 attribute [bitvec_rules] BitVec.toNat_xor
 attribute [bitvec_rules] BitVec.toFin_xor
-attribute [bitvec_rules] BitVec.getLsb_xor
+attribute [bitvec_rules] BitVec.getLsbD_xor
 attribute [bitvec_rules] BitVec.truncate_xor
 attribute [bitvec_rules] BitVec.toNat_not
 attribute [bitvec_rules] BitVec.toFin_not
-attribute [bitvec_rules] BitVec.getLsb_not
+attribute [bitvec_rules] BitVec.getLsbD_not
 attribute [bitvec_rules] BitVec.truncate_not
 attribute [bitvec_rules] BitVec.not_cast
 attribute [bitvec_rules] BitVec.and_cast
@@ -92,16 +92,16 @@ attribute [bitvec_rules] BitVec.or_cast
 attribute [bitvec_rules] BitVec.xor_cast
 attribute [bitvec_rules] BitVec.toNat_shiftLeft
 attribute [bitvec_rules] BitVec.toFin_shiftLeft
-attribute [bitvec_rules] BitVec.getLsb_shiftLeft
-attribute [bitvec_rules] BitVec.getMsb_shiftLeft
-attribute [bitvec_rules] BitVec.getLsb_shiftLeftZeroExtend
-attribute [bitvec_rules] BitVec.getMsb_shiftLeftZeroExtend
+attribute [bitvec_rules] BitVec.getLsbD_shiftLeft
+attribute [bitvec_rules] BitVec.getMsbD_shiftLeft
+attribute [bitvec_rules] BitVec.getLsbD_shiftLeftZeroExtend
+attribute [bitvec_rules] BitVec.getMsbD_shiftLeftZeroExtend
 attribute [bitvec_rules] BitVec.msb_shiftLeftZeroExtend
 attribute [bitvec_rules] BitVec.toNat_ushiftRight
-attribute [bitvec_rules] BitVec.getLsb_ushiftRight
+attribute [bitvec_rules] BitVec.getLsbD_ushiftRight
 attribute [bitvec_rules] BitVec.toNat_append
-attribute [bitvec_rules] BitVec.getLsb_append
-attribute [bitvec_rules] BitVec.getMsb_append
+attribute [bitvec_rules] BitVec.getLsbD_append
+attribute [bitvec_rules] BitVec.getMsbD_append
 attribute [bitvec_rules] BitVec.truncate_append
 attribute [bitvec_rules] BitVec.truncate_cons
 attribute [bitvec_rules] BitVec.not_append
@@ -109,17 +109,17 @@ attribute [bitvec_rules] BitVec.and_append
 attribute [bitvec_rules] BitVec.or_append
 attribute [bitvec_rules] BitVec.xor_append
 attribute [bitvec_rules] BitVec.toNat_cons
-attribute [bitvec_rules] BitVec.getLsb_cons
+attribute [bitvec_rules] BitVec.getLsbD_cons
 attribute [bitvec_rules] BitVec.msb_cons
-attribute [bitvec_rules] BitVec.getMsb_cons_zero
-attribute [bitvec_rules] BitVec.getMsb_cons_succ
+attribute [bitvec_rules] BitVec.getMsbD_cons_zero
+attribute [bitvec_rules] BitVec.getMsbD_cons_succ
 attribute [bitvec_rules] BitVec.not_cons
 attribute [bitvec_rules] BitVec.cons_or_cons
 attribute [bitvec_rules] BitVec.cons_and_cons
 attribute [bitvec_rules] BitVec.cons_xor_cons
 attribute [bitvec_rules] BitVec.toNat_concat
-attribute [bitvec_rules] BitVec.getLsb_concat_zero
-attribute [bitvec_rules] BitVec.getLsb_concat_succ
+attribute [bitvec_rules] BitVec.getLsbD_concat_zero
+attribute [bitvec_rules] BitVec.getLsbD_concat_succ
 attribute [bitvec_rules] BitVec.not_concat
 attribute [bitvec_rules] BitVec.concat_or_concat
 attribute [bitvec_rules] BitVec.concat_and_concat
@@ -142,6 +142,7 @@ attribute [bitvec_rules] BitVec.toFin_neg
 attribute [bitvec_rules] BitVec.neg_zero
 attribute [bitvec_rules] BitVec.toNat_mul
 attribute [bitvec_rules] BitVec.toFin_mul
+attribute [bitvec_rules] BitVec.mul_zero
 attribute [bitvec_rules] BitVec.mul_one
 attribute [bitvec_rules] BitVec.one_mul
 attribute [bitvec_rules] BitVec.toInt_mul
@@ -152,14 +153,17 @@ attribute [bitvec_rules] BitVec.lt_ofFin
 attribute [bitvec_rules] BitVec.ofFin_lt
 attribute [bitvec_rules] BitVec.ofNat_lt_ofNat
 attribute [bitvec_rules] BitVec.rotateLeft_mod_eq_rotateLeft
-attribute [bitvec_rules] BitVec.getLsb_rotateLeft
+attribute [bitvec_rules] BitVec.getLsbD_rotateLeft
 attribute [bitvec_rules] BitVec.rotateRight_mod_eq_rotateRight
-attribute [bitvec_rules] BitVec.getLsb_rotateRight
+attribute [bitvec_rules] BitVec.getLsbD_rotateRight
 attribute [bitvec_rules] BitVec.ofBool_true
 attribute [bitvec_rules] BitVec.ofBool_false
 attribute [bitvec_rules] BitVec.ofNat_eq_ofNat
 attribute [bitvec_rules] BitVec.zero_eq
 attribute [bitvec_rules] BitVec.truncate_eq_zeroExtend
+
+attribute [bitvec_rules] BitVec.add_sub_cancel
+attribute [bitvec_rules] BitVec.sub_add_cancel
 
 -- BitVec Simproc rules:
 -- See Lean/Meta/Tactic/Simp/BuiltinSimprocs for the built-in
@@ -294,7 +298,7 @@ abbrev partInstall (hi lo : Nat) (val : BitVec (hi - lo + 1)) (x : BitVec n): Bi
   let x_with_hole := x &&& mask_with_hole
   x_with_hole ||| val_aligned
 
-example : (partInstall 3 0 0xC#4 0xAB0D#16 = 0xAB0C#16) := by native_decide
+example : (partInstall 3 0 0xC#4 0xAB0D#16 = 0xAB0C#16) := rfl
 
 def flattenTR {n : Nat} (xs : List (BitVec n)) (i : Nat)
   (acc : BitVec len) (H : n > 0) : BitVec len :=
@@ -308,32 +312,30 @@ def flattenTR {n : Nat} (xs : List (BitVec n)) (i : Nat)
 /-- Reverse bits of a bit-vector. -/
 def reverse (x : BitVec n) : BitVec n :=
   let rec reverseTR (x : BitVec n) (i : Nat) (acc : BitVec n) :=
-    if i < n then
-      let xi := extractLsb i i x
-      have h : i - i + 1 = (n - i - 1) - (n - i - 1) + 1 := by omega
-      let acc := BitVec.partInstall (n - i - 1) (n - i - 1) (BitVec.cast h xi) acc
-      reverseTR x (i + 1) acc
-    else acc
-  reverseTR x 0 $ BitVec.zero n
+    match i with
+    | 0 => acc
+    | j + 1 =>
+      let xi : BitVec 1 := extractLsb' (i - 1) 1 x
+      let acc := BitVec.partInstall (n - i) (n - i) (xi.cast (by omega)) acc
+      reverseTR x j acc
+  reverseTR x n $ BitVec.zero n
 
-example : reverse 0b11101#5 = 0b10111#5 := by rfl
+example : reverse 0b11101#5 = 0b10111#5 := rfl
 
 /-- Split a bit-vector into sub vectors of size e. -/
 def split (x : BitVec n) (e : Nat) (h : 0 < e): List (BitVec e) :=
   let rec splitTR (x : BitVec n) (e : Nat) (h : 0 < e)
     (i : Nat) (acc : List (BitVec e)) : List (BitVec e) :=
-    if i < n/e then
-      let lo := i * e
-      let hi := lo + e - 1
-      have h₀ : hi - lo + 1 = e := by simp only [hi, lo]; omega
-      let part : BitVec e := BitVec.cast h₀ (extractLsb hi lo x)
+    match i with
+    | 0 => acc
+    | j + 1 =>
+      let lo := (n / e - i) * e
+      let part : BitVec e := extractLsb' lo e x
       let newacc := part :: acc
-      splitTR x e h (i + 1) newacc
-    else acc
-  splitTR x e h 0 []
+      splitTR x e h j newacc
+  splitTR x e h (n / e) []
 
-example : split 0xabcd1234#32 8 (by omega) = [0xab#8, 0xcd#8, 0x12#8, 0x34#8] :=
-  by rfl
+example : split 0xabcd1234#32 8 (by omega) = [0xab#8, 0xcd#8, 0x12#8, 0x34#8] := rfl
 
 /-- Reverse a list of bit vectors and flatten the list. -/
 def revflat (x : List (BitVec n)) : BitVec (n * x.length) :=
@@ -393,10 +395,10 @@ theorem bitvec_zero_is_unique (x : BitVec 0) :
   simp only [Nat.pow_zero, Fin.fin_one_eq_zero, Nat.le_refl]
 
 theorem fin_bitvec_add (x y : BitVec n) :
-  (x.toFin + y.toFin) = (x + y).toFin := by rfl
+  (x.toFin + y.toFin) = (x + y).toFin := rfl
 
 theorem fin_bitvec_sub (x y : BitVec n) :
-  (x.toFin - y.toFin) = (x - y).toFin := by rfl
+  (x.toFin - y.toFin) = (x - y).toFin := rfl
 
 theorem fin_bitvec_or (x y : BitVec n) :
   (x ||| y).toFin = (x.toFin ||| y.toFin) := by
@@ -553,7 +555,7 @@ theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
 @[bitvec_rules]
 protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
     extractLsb j 0 (zeroExtend i x) = zeroExtend (j + 1) x := by
-  apply BitVec.eq_of_getLsb_eq
+  apply BitVec.eq_of_getLsbD_eq
   simp
   intro k
   have q : k < i := by omega
@@ -564,13 +566,14 @@ protected theorem extract_lsb_of_zeroExtend (x : BitVec n) (h : j < i) :
 @[bitvec_rules, simp]
 theorem zero_append {w} (x : BitVec 0) (y : BitVec w) :
     x ++ y = y.cast (by simp) := by
-  apply eq_of_getLsb_eq; simp; omega
+  apply eq_of_getLsbD_eq
+  simp only [zero_width_append, getLsbD_cast, implies_true]
 
 @[bitvec_rules]
 theorem empty_bitvector_append_left
   (x : BitVec n) (h : 0 + n = n) :
   BitVec.cast h (0#0 ++ x) = x := by
-  simp [BitVec.cast]
+  simp only [cast, zero_width_append, toNat_ofNatLt]
   rfl
 
 -- In case we need ▸ instead of BitVec.cast (and we should really
@@ -941,8 +944,8 @@ theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
 -- TODO: upstream
 theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
     (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
-  apply BitVec.eq_of_getLsb_eq
-  simp only [getLsb_extract, getLsb_or]
+  apply BitVec.eq_of_getLsbD_eq
+  simp only [getLsbD_extract, getLsbD_or]
   intros i
   by_cases h : (i : Nat) ≤ n - lo
   · simp only [h, decide_True, Bool.true_and]
@@ -953,19 +956,19 @@ theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
 
 theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
   x.extractLsByte a = 0#8 := by
-  apply BitVec.eq_of_getLsb_eq
+  apply BitVec.eq_of_getLsbD_eq
   intros i
-  simp only [getLsb_zero, extractLsByte_def,
-    getLsb_cast, getLsb_extract, Bool.and_eq_false_imp, decide_eq_true_eq]
+  simp only [getLsbD_zero, extractLsByte_def,
+    getLsbD_cast, getLsbD_extract, Bool.and_eq_false_imp, decide_eq_true_eq]
   intros _
-  apply BitVec.getLsb_ge
+  apply BitVec.getLsbD_ge
   omega
 
 @[bitvec_rules]
-theorem getLsb_extractLsByte (val : BitVec w₁) :
-    ((BitVec.extractLsByte val n).getLsb i) =
-    (decide (i ≤ 7) && val.getLsb (n * 8 + i)) := by
-  simp only [extractLsByte, getLsb_cast, getLsb_extract]
+theorem getLsbD_extractLsByte (val : BitVec w₁) :
+    ((BitVec.extractLsByte val n).getLsbD i) =
+    (decide (i ≤ 7) && val.getLsbD (n * 8 + i)) := by
+  simp only [extractLsByte, getLsbD_cast, getLsbD_extract]
   rw [Nat.succ_mul]
   simp only [Nat.add_one_sub_one,
     Nat.add_sub_cancel_left]
@@ -977,12 +980,12 @@ This theorem can be strengthened to take `(i : Fin n)`.
 -/
 theorem eq_of_extractLsByte_eq (x y : BitVec (n * 8))
     (h : ∀ (i : Nat), x.extractLsByte i = y.extractLsByte i) : x = y := by
-  apply eq_of_getLsb_eq
+  apply eq_of_getLsbD_eq
   intros j
   obtain ⟨j, hj⟩ := j
   specialize h (j / 8)
-  have hx := x.getLsb_extractLsByte (n := j / 8) (i := j % 8)
-  have hy := y.getLsb_extractLsByte (n := j / 8) (i := j % 8)
+  have hx := x.getLsbD_extractLsByte (n := j / 8) (i := j % 8)
+  have hy := y.getLsbD_extractLsByte (n := j / 8) (i := j % 8)
   simp only [show j % 8 ≤ 7 by omega, decide_True, Bool.true_and] at hx hy
   simp only [show j / 8 * 8 + j % 8 = j by omega] at hx hy
   simp only [← hx, ← hy, h]
@@ -998,15 +1001,15 @@ def extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
   | x + 1 => val.extractLsb (base * 8 + n * 8 - 1) (base * 8) |>.cast (by omega)
 
 @[bitvec_rules]
-theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
-    (BitVec.extractLsBytes val base n).getLsb i =
+theorem getLsbD_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
+    (BitVec.extractLsBytes val base n).getLsbD i =
       ((decide (i < n * 8) &&
-      val.getLsb (base * 8 + i))) := by
+      val.getLsbD (base * 8 + i))) := by
   rcases n with rfl | n
-  · simp only [Nat.reduceMul, Nat.zero_le, getLsb_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
+  · simp only [Nat.reduceMul, Nat.zero_le, getLsbD_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
     Nat.add_zero, Bool.false_and]
     simp only [show ¬i < 0 by omega, decide_False, Bool.false_and]
-  · simp only [extractLsBytes, getLsb_cast, getLsb_extract, Nat.zero_lt_succ, decide_True,
+  · simp only [extractLsBytes, getLsbD_cast, getLsbD_extract, Nat.zero_lt_succ, decide_True,
     Bool.true_and]
     simp only [show base * 8 + (n + 1) * 8 - 1 - base * 8 = (n + 1) * 8 - 1 by omega]
     by_cases h : i < (n + 1) * 8
@@ -1016,46 +1019,54 @@ theorem getLsb_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) 
 theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
     (BitVec.extractLsBytes val base n).extractLsByte i =
     if (i < n) then val.extractLsByte (base + i) else (0#8) := by
-  apply BitVec.eq_of_getLsb_eq
-  simp only [getLsb_extractLsByte, getLsb_extractLsBytes]
+  apply BitVec.eq_of_getLsbD_eq
+  simp only [getLsbD_extractLsByte, getLsbD_extractLsBytes]
   intros j
   simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
   by_cases hn : i < n
-  · simp only [hn, ↓reduceIte, getLsb_extractLsByte,
+  · simp only [hn, ↓reduceIte, getLsbD_extractLsByte,
       show (j : Nat) ≤ 7 by omega]
     by_cases h : (i * 8 + (j : Nat) < n * 8)
     · simp only [h, decide_True, Bool.true_and]
       congr 1
       omega
     · simp only [h, decide_False, Bool.false_and, decide_True, Bool.true_and, Bool.false_eq]
-      apply BitVec.getLsb_ge
+      apply BitVec.getLsbD_ge
       omega
-  · simp only [hn, ↓reduceIte, getLsb_zero, Bool.and_eq_false_imp, decide_eq_true_eq]
+  · simp only [hn, ↓reduceIte, getLsbD_zero, Bool.and_eq_false_imp, decide_eq_true_eq]
     omega
 
 /-- Extracting out bytes from the zero bitvector is equal to the zero bitvector. -/
 @[bitvec_rules]
 theorem extractLsBytes_zero {w : Nat} (base : Nat) :
     (0#w).extractLsBytes base n = 0#(n*8) := by
-  apply BitVec.eq_of_getLsb_eq
-  simp only [getLsb_extractLsBytes, Fin.is_lt, decide_True, getLsb_zero, Bool.and_false,
+  apply BitVec.eq_of_getLsbD_eq
+  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, getLsbD_zero, Bool.and_false,
     implies_true]
 
-/-- Extracting out all the bytes is equal to the bitvector. -/
+/-- Extracting out all the bytes is equal to the bitvector.
+The constraint on the width being `n * 8` is written as
+an arbitrary `m` with a hypothesis `hm : m = n * 8`.
+This is known in some circles as `fording`. See [1]
+
+[1] https://personal.cis.strath.ac.uk/conor.mcbride/levitation.pdf
+-/
 @[bitvec_rules]
-theorem extractLsBytes_eq_self {n : Nat} (x : BitVec (n * 8)) :
-    x.extractLsBytes 0 n = x := by
-  apply BitVec.eq_of_getLsb_eq
+theorem extractLsBytes_eq_self {n : Nat} {m : Nat}
+    (hm : m = n * 8 := by omega)
+    (x : BitVec (no_index m)) :
+    x.extractLsBytes 0 n = x.cast hm := by
+  apply BitVec.eq_of_getLsbD_eq
   intros i
-  simp only [getLsb_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero]
+  simp only [getLsbD_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero]
   simp [show (i : Nat) ≤ n * 8 - 1 by omega]
 
 theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   x.extractLsBytes a n = 0#(n*8) := by
-  apply BitVec.eq_of_getLsb_eq
+  apply BitVec.eq_of_getLsbD_eq
   intros i
-  simp only [getLsb_extractLsBytes, Fin.is_lt, decide_True, Bool.true_and, getLsb_zero]
-  apply BitVec.getLsb_ge
+  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, Bool.true_and, getLsbD_zero]
+  apply BitVec.getLsbD_ge
   omega
 
 /-- TODO: upstream -/
@@ -1067,6 +1078,46 @@ theorem not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
   · simp [h]
     exact Int.not_lt.mp h
 
+-- TODO: delete once https://github.com/leanprover/lean4/pull/5375/files
+--       is merged
+@[bv_normalize]
+theorem BitVec.ofBool_getLsbD (a : BitVec w) (i : Nat) :
+    BitVec.ofBool (a.getLsbD i) = a.extractLsb' i 1 := by
+  apply BitVec.eq_of_getLsbD_eq
+  intro ⟨0, _⟩
+  simp
+
+/-- If multiplication does not overflow,
+then `(x * y).toNat` equals `x.toNat * y.toNat` -/
+theorem toNat_mul_of_lt {w} {x y : BitVec w} (h : x.toNat * y.toNat < 2^w) :
+    (x * y).toNat = x.toNat * y.toNat := by
+  rw [BitVec.toNat_mul, Nat.mod_eq_of_lt h]
+
+/-- If subtraction does not overflow,
+then `(x - y).toNat` equals `x.toNat - y.toNat` -/
+theorem toNat_sub_of_lt {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
+    (y - x).toNat = y.toNat - x.toNat := by
+  rw [BitVec.toNat_sub,
+    show (2^w - x.toNat + y.toNat) = 2^w + (y.toNat - x.toNat) by omega,
+    Nat.add_mod, Nat.mod_self, Nat.zero_add, Nat.mod_mod,
+    Nat.mod_eq_of_lt (by omega)]
+
+/-- `x.toNat * z.toNat ≤ k` if `z ≤ y` and `x.toNat * y.toNat ≤ k` -/
+theorem toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
+    (hxy : x.toNat * y.toNat ≤ k)
+    (hyz : z ≤ y) :
+    x.toNat * z.toNat ≤ k := by
+  apply Nat.le_trans (m := x.toNat * y.toNat)
+  · apply Nat.mul_le_mul_left
+    bv_omega
+  · exact hxy
+
+
+/-! ## Length one bitvector lemmas -/
+
+theorem eq_one_iff_neq_zero {a : BitVec 1} : a ≠ 0#1 ↔ a = 1#1 := by bv_omega
+
+theorem eq_zero_iff_neq_one {a : BitVec 1} : a ≠ 1#1 ↔ a = 0#1 := by bv_omega
 
 /-! ## `Quote` instance -/
 

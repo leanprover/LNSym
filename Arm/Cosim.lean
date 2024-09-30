@@ -124,8 +124,6 @@ def bitvec_to_hex (x : BitVec n) : String :=
 def bitvec_to_hex_list (xs : List (BitVec n)) : List String :=
   List.map bitvec_to_hex xs
 
-example : String.toNat! "0x123" = 0 := by rfl
-
 /-- Populate regState with the parsed output from the `armsimulate`
 script. -/
 def machine_to_regState (inst : BitVec 32) (str : String) : regState :=

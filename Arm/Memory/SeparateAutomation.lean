@@ -88,9 +88,12 @@ The tactic shall be implemented as follows:
 
 section BvOmega
 
--- |TODO: Upstream BitVec.le_def unfolding to bv_omega.
-macro "bv_omega'" : tactic =>
-  `(tactic| (try simp only [bv_toNat, mem_legal'] at * <;> try rw [BitVec.le_def]) <;> bv_omega)
+/- We tag `mem_legal'` as `bv_toNat` here, since we want to actually lazily unfold this.
+Doing it here lets us remove it from `bv_toNat` simp-set as a change to `SeparateAutomation.lean`,
+without needing us to modify the core definitions file which incurs a recompile cost,
+making experimentation annoying.
+-/
+attribute [bv_toNat] mem_legal'
 
 end BvOmega
 
@@ -101,6 +104,18 @@ structure SimpMemConfig where
   rewriteFuel : Nat := 1000
   /-- whether an error should be thrown if the tactic makes no progress. -/
   failIfUnchanged : Bool := true
+  /-- whether `simp_mem` should always try to use `omega` to close the goal,
+    even if goal state is not recognized as one of the blessed states.
+    This is useful when one is trying to establish some numerical invariant
+    about addresses based on knowledge of memory.
+    e.g.
+    ```
+    h : mem_separate' a 10 b 10
+    hab : a < b
+    ⊢ a + 5 < b
+    ```
+  -/
+  useOmegaToClose : Bool := false
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
 structure Context where
@@ -115,7 +130,7 @@ structure Proof (α : Type) (e : α) where
   /-- `h` is an expression of type `e`. -/
   h : Expr
 
-def WithProof.e {α : Type} {e : α} (p : Proof α e) : α := e
+def WithProof.e {α : Type} {e : α} (_p : Proof α e) : α := e
 
 instance [ToMessageData α] : ToMessageData (Proof α e) where
   toMessageData proof := m! "{proof.h}: {e}"
@@ -396,7 +411,7 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
 
     -- unfold `state_value.
     simpTheorems := simpTheorems.push <| ← ({} : SimpTheorems).addDeclToUnfold `state_value
-    let simpCtx : Simp.Context := { 
+    let simpCtx : Simp.Context := {
       simpTheorems,
       config := { decide := true, failIfUnchanged := false },
       congrTheorems := (← Meta.getSimpCongrTheorems)
@@ -415,7 +430,7 @@ def omega : SimpMemM Unit := do
   -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
   -- @bollu: TODO: understand what precisely we are recovering from.
   withoutRecover do
-    evalTactic (← `(tactic| bv_omega'))
+    evalTactic (← `(tactic| bv_omega))
 
 section Hypotheses
 
@@ -702,7 +717,6 @@ For example, `mem_legal.of_omega` is a function of type:
 class OmegaReducible (α : Type) where
   reduceToOmega : α → Expr
 
-
 /--
 info: mem_legal'.of_omega {n : Nat} {a : BitVec 64} (h : a.toNat + n ≤ 2 ^ 64) : mem_legal' a n
 -/
@@ -962,12 +976,30 @@ partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM
           g.assign proof.h
     if let .some e := MemSubsetProp.ofExpr? gt then
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-        if let .some proof ←  proveWithOmega? e hyps then
+        if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
     if let .some e := MemSeparateProp.ofExpr? gt then
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-        if let .some proof ←  proveWithOmega? e hyps then
+        if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
+
+    if (← getConfig).useOmegaToClose then
+      withTraceNode m!"Unknown memory expression ⊢ {gt}. Trying reduction to omega (`config.useOmegaToClose = true`):" do
+        let oldGoals := (← getGoals)
+        try
+          let gproof ← mkFreshExprMVar (type? := gt)
+          setGoals (gproof.mvarId! :: (← getGoals))
+          SimpMemM.withMainContext do
+          let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
+          trace[simp_mem.info] m!"Executing `omega` to close {gt}"
+          SimpMemM.withTraceNode m!"goal (Note: can be large)" do
+            trace[simp_mem.info] "{← getMainGoal}"
+          omega
+          trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+          g.assign gproof
+        catch e =>
+          trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+          setGoals oldGoals
   return ← g.isAssigned
 
 

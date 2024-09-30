@@ -1,5 +1,5 @@
 # LNSym: Native Code Symbolic Simulator in Lean
-[![Makefile CI](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml/badge.svg)](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml) 
+[![Makefile CI](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml/badge.svg)](https://github.com/leanprover/LNSym/actions/workflows/makefile.yml)
 
 LNSym is a symbolic simulator for Armv8 machine-code programs.
 
@@ -9,13 +9,9 @@ guidelines.
 
 ## Prerequisites
 
-1. Install the [Cadical SAT
-   Solver](https://github.com/arminbiere/cadical), and make sure that
-   it is in your path.
-
-2. Install Lean4 and your preferred editor's plug-in on your machine
-   by following [these
-   instructions](https://leanprover-community.github.io/get_started.html).
+Install Lean4 and your preferred editor's plug-in on your machine by
+following [these
+instructions](https://leanprover-community.github.io/get_started.html).
 
 ## Build Instructions
 
@@ -44,6 +40,8 @@ native-code programs of interest.
 `cosim`: [run under `all`] perform conformance testing.
 
 `awslc_elf`: perform ELF loading tests for AWS-LC.
+
+`benchmarks`: run benchmarks for the symbolic simulator.
 
 ### Makefile variables that can be passed in at the command line
 

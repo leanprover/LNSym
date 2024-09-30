@@ -41,6 +41,12 @@ partial def GPRIndex.rand (lo := 0) (hi := 31) :
 
 ----------------------------------------------------------------------
 
+/--
+Integer addition with carry input, returning result and NZCV flags.
+
+Ref.:
+https://developer.arm.com/documentation/ddi0602/2024-06/Shared-Pseudocode/shared-functions-integer?lang=en#impl-shared.AddWithCarry.3
+-/
 def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   (BitVec n × PState) :=
   let carry_in_ext := zeroExtend (n + 1) carry_in
@@ -56,6 +62,7 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   (result, (make_pstate N Z C V))
 
 /-- When the carry bit is `0`, `AddWithCarry x y 0 = x + y` -/
+@[bitvec_rules, state_simp_rules]
 theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 0#1).fst = x + y := by
   simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
@@ -67,6 +74,7 @@ theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   rw [Nat.mod_eq_of_lt this]
 
 /-- When the carry bit is `1`, `AddWithCarry x y 1 = x - ~~~y` -/
+@[bitvec_rules, state_simp_rules]
 theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 1#1).fst = x - ~~~y := by
   simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
@@ -88,6 +96,12 @@ theorem zeroExtend_eq_of_AddWithCarry :
   (AddWithCarry x y carry_in).fst := by
   simp only [zeroExtend_eq]
 
+/--
+Return `true` iff `cond` currently holds
+
+Ref.:
+https://developer.arm.com/documentation/ddi0602/2024-06/Shared-Pseudocode/shared-functions-system?lang=en#impl-shared.ConditionHolds.1
+-/
 def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   open PFlag in
   let N := read_flag N s
@@ -96,14 +110,16 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   let V := read_flag V s
   let result :=
     match (extractLsb 3 1 cond) with
-      | 0b000#3 => Z = 1#1
-      | 0b001#3 => C = 1#1
-      | 0b010#3 => N = 1#1
-      | 0b011#3 => V = 1#1
-      | 0b100#3 => C = 1#1 ∧ Z = 0#1
-      | 0b101#3 => N = V
-      | 0b110#3 => N = V ∧ Z = 0#1
-      | 0b111#3 => true
+      | 0b000#3 => Z = 1#1           -- EQ or NE
+      | 0b001#3 => C = 1#1           -- CS or CC
+      | 0b010#3 => N = 1#1           -- MI or PL
+      | 0b011#3 => V = 1#1           -- VS or VC
+      | 0b100#3 => C = 1#1 ∧ Z = 0#1 -- HI or LS
+      | 0b101#3 => N = V             -- GE or LT
+      | 0b110#3 => N = V ∧ Z = 0#1   -- GT or LE
+      | 0b111#3 => true              -- AL
+  -- Condition flag values in the set 111x indicate always true
+  -- Otherwise, invert condition if necessary.
   if (lsb cond 0) = 1#1 ∧ cond ≠ 0b1111#4 then
     not result
   else
@@ -145,16 +161,29 @@ theorem sle_iff_not_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
   · bv_decide
   · bv_decide
 
+/--
+`x = 0` iff `Z = 0`.
+This is implemented by testing whether `x + (-1) + 1 = 0`
+-/
+theorem zero_iff_z_eq_one (x : BitVec 64) :
+  ((AddWithCarry x 0xffffffffffffffff#64 0x1#1).snd.z = 1#1) ↔
+  (x = 0#64) := by
+  simp only [AddWithCarry, bitvec_rules, state_simp_rules]
+  repeat split
+  · bv_decide
+  · bv_decide
+  done
 
 /-- `Aligned x a` witnesses that the bitvector `x` is `a`-bit aligned. -/
 def Aligned (x : BitVec n) (a : Nat) : Prop :=
+  -- (TODO @alex) Switch to using extractLsb' to unify the two cases.
   match a with
   | 0 => True
   | a' + 1 => extractLsb a' 0 x = BitVec.zero _
 
 /-- We need to prove why the Aligned predicate is Decidable. -/
 instance : Decidable (Aligned x a) := by
-  cases a <;> simp [Aligned] <;> infer_instance
+  cases a <;> simp only [Aligned] <;> infer_instance
 
 theorem Aligned_BitVecSub_64_4 {x : BitVec 64} {y : BitVec 64}
   (x_aligned : Aligned x 4)
@@ -167,7 +196,7 @@ theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
   (x_aligned : Aligned x 4)
   (y_aligned : Aligned y 4)
   : Aligned (x + y) 4 := by
-  simp_all [Aligned]
+  simp_all only [Aligned, Nat.sub_zero, zero_eq]
   bv_decide
 
 theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : BitVec 1)
@@ -175,7 +204,7 @@ theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : Bi
   (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
   : Aligned (AddWithCarry x y carry_in).fst 4 := by
   unfold AddWithCarry Aligned at *
-  simp_all
+  simp_all only [Nat.sub_zero, zero_eq, add_eq]
   bv_decide
 
 /-- Check correct stack pointer (SP) alignment for AArch64 state; returns
@@ -551,14 +580,15 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
     BitVec.cast h3 (element ++ rest_ans)
    termination_by n
 
-example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by rfl
-example : rev_elems 8 4 0xAB#8 (by decide) (by decide) = 0xBA#8 := by rfl
+example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by
+  native_decide
+example : rev_elems 8 4 0xAB#8 (by decide) (by decide) = 0xBA#8 := by native_decide
 example : rev_elems 8 4 (rev_elems 8 4 0xAB#8 (by decide) (by decide))
           (by decide) (by decide) = 0xAB#8 := by native_decide
 
 theorem rev_elems_base :
   rev_elems esize esize x h₀ h₁ = x := by
-  unfold rev_elems; simp; done
+  unfold rev_elems; simp only [Nat.le_refl, ↓reduceDIte]; done
 
 /-- Divide a bv of width `datasize` into containers, each of size
 `container_size`, and within a container, reverse the order of `esize`-bit

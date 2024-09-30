@@ -336,7 +336,7 @@ def r (fld : StateField) (s : ArmState) : (state_value fld) :=
 /-!
 
 We define helpers for reading and writing registers on the `ArmState` with the colloquial
-names. For example, the stack pointer (`sp`) refers to register 31. 
+names. For example, the stack pointer (`sp`) refers to register 31.
 These mnemonics make it much easier to read and write theorems about assembly programs.
 
 -/
@@ -346,6 +346,16 @@ These mnemonics make it much easier to read and write theorems about assembly pr
 @[state_simp_rules] abbrev ArmState.x1 (s : ArmState) : BitVec 64 := r (StateField.GPR 1) s
 
 @[state_simp_rules] abbrev ArmState.x2 (s : ArmState) : BitVec 64 := r (StateField.GPR 2) s
+
+@[state_simp_rules] abbrev ArmState.q0 (s : ArmState) : BitVec 128 := r (StateField.SFP 0) s
+
+@[state_simp_rules] abbrev ArmState.q1 (s : ArmState) : BitVec 128 := r (StateField.SFP 1) s
+
+@[state_simp_rules] abbrev ArmState.q2 (s : ArmState) : BitVec 128 := r (StateField.SFP 2) s
+
+@[state_simp_rules] abbrev ArmState.q3 (s : ArmState) : BitVec 128 := r (StateField.SFP 3) s
+
+@[state_simp_rules] abbrev ArmState.q4 (s : ArmState) : BitVec 128 := r (StateField.SFP 4) s
 
 @[state_simp_rules] abbrev ArmState.sp (s : ArmState) : BitVec 64 := r (StateField.GPR 31) s
 
@@ -357,19 +367,19 @@ These mnemonics make it much easier to read and write theorems about assembly pr
 
 @[state_simp_rules] abbrev ArmState.N (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.N) s
 
-def ArmState.r_GPR_0_eq_x0 (s : ArmState) : r (StateField.GPR 0) s = s.x0 := by rfl
+def ArmState.r_GPR_0_eq_x0 (s : ArmState) : r (StateField.GPR 0) s = s.x0 := rfl
 
-def ArmState.r_GPR_1_eq_x1 (s : ArmState) : r (StateField.GPR 1) s = s.x1 := by rfl
+def ArmState.r_GPR_1_eq_x1 (s : ArmState) : r (StateField.GPR 1) s = s.x1 := rfl
 
-def ArmState.r_GPR_31_eq_sp (s : ArmState) : r (StateField.GPR 31) s = s.sp := by rfl
+def ArmState.r_GPR_31_eq_sp (s : ArmState) : r (StateField.GPR 31) s = s.sp := rfl
 
-def ArmState.r_FLAG_V_eq_V (s : ArmState) : r (StateField.FLAG PFlag.V) s = s.V := by rfl
+def ArmState.r_FLAG_V_eq_V (s : ArmState) : r (StateField.FLAG PFlag.V) s = s.V := rfl
 
-def ArmState.r_FLAG_C_eq_C (s : ArmState) : r (StateField.FLAG PFlag.C) s = s.C := by rfl
+def ArmState.r_FLAG_C_eq_C (s : ArmState) : r (StateField.FLAG PFlag.C) s = s.C := rfl
 
-def ArmState.r_FLAG_Z_eq_Z (s : ArmState) : r (StateField.FLAG PFlag.Z) s = s.Z := by rfl
+def ArmState.r_FLAG_Z_eq_Z (s : ArmState) : r (StateField.FLAG PFlag.Z) s = s.Z := rfl
 
-def ArmState.r_FLAG_N_eq_N (s : ArmState) : r (StateField.FLAG PFlag.N) s = s.N := by rfl
+def ArmState.r_FLAG_N_eq_N (s : ArmState) : r (StateField.FLAG PFlag.N) s = s.N := rfl
 
 
 @[irreducible]
@@ -780,7 +790,7 @@ We prove their equivalence to the existing definitions
 
 Furthermore, we define equivalences to `BitVec.extractLsByte`
 to ease reasoning about byte-level manipulation.
-As an easy corollary, we get `getLsb` theorems on these to allow
+As an easy corollary, we get `getLsbD` theorems on these to allow
 `omega` based reasoning about bit-level values of memory.
 -/
 
@@ -810,11 +820,12 @@ A variant of `write_mem` that directly talks about writes to memory, instead of 
 def Memory.write (addr : BitVec 64) (val : BitVec 8) (m : Memory) : Memory :=
   write_store addr val m
 
+@[state_simp_rules]
 theorem ArmState.write_mem_eq_mem_write :  (write_mem addr val s).mem = s.mem.write addr val := rfl
 
 namespace Memory
 
-theorem getLsb_read (mem : Memory) : (mem.read addr).getLsb i = (mem addr).getLsb i := rfl
+theorem getLsbD_read (mem : Memory) : (mem.read addr).getLsbD i = (mem addr).getLsbD i := rfl
 
 def read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) :=
   match n with
@@ -840,25 +851,25 @@ theorem read_bytes_zero_eq (m : Memory) : m.read_bytes 0 addr = 0#0 :=
 @[memory_rules]
 theorem read_bytes_one_eq (m : Memory) : m.read_bytes 1 addr = m.read addr := by
   simp [read_bytes, read, bitvec_rules]
-  apply BitVec.eq_of_getLsb_eq
+  apply BitVec.eq_of_getLsbD_eq
   intros i
-  rw [BitVec.getLsb_append]
-  simp only [show (i : Nat) < 8 by omega, decide_True, Nat.zero_le, BitVec.getLsb_ge, cond_true]
+  rw [BitVec.getLsbD_append]
+  simp only [show (i : Nat) < 8 by omega, decide_True, Nat.zero_le, BitVec.getLsbD_ge, cond_true]
 
 theorem read_bytes_succ_eq (m : Memory) :
   m.read_bytes (n' + 1) addr = (m.read_bytes n' (addr + 1) ++ m.read addr).cast (by omega) := rfl
 
-theorem getLsb_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n ≤ 2^64) :
-    (m.read_bytes n addr).getLsb i =
-    (decide (i < n * 8) && (m (addr + BitVec.ofNat 64 (i / 8))).getLsb (i % 8)) := by
+theorem getLsbD_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n ≤ 2^64) :
+    (m.read_bytes n addr).getLsbD i =
+    (decide (i < n * 8) && (m (addr + BitVec.ofNat 64 (i / 8))).getLsbD (i % 8)) := by
   induction n generalizing i addr m
   case zero =>
-    simp only [Nat.reduceMul, Nat.zero_le, BitVec.getLsb_ge, Nat.zero_mul, Nat.not_lt_zero,
+    simp only [Nat.reduceMul, Nat.zero_le, BitVec.getLsbD_ge, Nat.zero_mul, Nat.not_lt_zero,
       decide_False, Bool.false_and]
   case succ n' ih =>
     simp only [read_bytes_succ_eq, BitVec.ofNat_eq_ofNat,
-      BitVec.getLsb_cast, BitVec.getLsb_append, memory_rules,
-      getLsb_read]
+      BitVec.getLsbD_cast, BitVec.getLsbD_append, memory_rules,
+      getLsbD_read]
     rw [Nat.succ_mul]
     by_cases h₁ : (i < 8)
     · simp only [h₁, decide_True, cond_true, show i < n' * 8 + 8 by omega, Bool.true_and]
@@ -894,11 +905,11 @@ Describe the behaviour of `m.read_bytes` at a byte level granularity.
 theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h : addr.toNat + n ≤ 2^64) :
     (m.read_bytes n addr).extractLsByte i =
       if i < n then m.read (addr + (BitVec.ofNat 64 i)) else 0#8 := by
-  apply BitVec.eq_of_getLsb_eq
-  simp only [BitVec.getLsb_extractLsByte]
+  apply BitVec.eq_of_getLsbD_eq
+  simp only [BitVec.getLsbD_extractLsByte]
   intros j
   simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
-  rw [getLsb_read_bytes]
+  rw [getLsbD_read_bytes]
   by_cases h₁ : i * 8 + ↑j < n * 8
   · simp only [h₁, decide_True, Bool.true_and]
     simp only [show (i < n) by omega, ↓reduceIte]
@@ -906,7 +917,7 @@ theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h 
     simp only [show (i * 8 + ↑j) % 8 = j by omega]
     rfl
   · simp only [h₁, decide_False, Bool.false_and, Bool.false_eq]
-    simp only [show ¬(i < n) by omega, ↓reduceIte, BitVec.getLsb_zero]
+    simp only [show ¬(i < n) by omega, ↓reduceIte, BitVec.getLsbD_zero]
   · omega
 
 /--
@@ -1024,10 +1035,10 @@ theorem extractLsByte_zeroExtend_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i
     (BitVec.zeroExtend (n * 8) (data >>> 8)).extractLsByte (i - 1) = data.extractLsByte i := by
   rcases i with rfl | i
   · simp at hi
-  · apply BitVec.eq_of_getLsb_eq
+  · apply BitVec.eq_of_getLsbD_eq
     intros j
-    simp only [Nat.add_one_sub_one, BitVec.getLsb_extractLsByte, BitVec.getLsb_zeroExtend,
-      BitVec.getLsb_ushiftRight]
+    simp only [Nat.add_one_sub_one, BitVec.getLsbD_extractLsByte, BitVec.getLsbD_zeroExtend,
+      BitVec.getLsbD_ushiftRight]
     by_cases hj : (j : Nat) ≤ 7
     · simp only [hj, decide_True, Bool.true_and]
       by_cases hi' : i * 8 + ↑j < n * 8
@@ -1041,7 +1052,7 @@ theorem extractLsByte_zeroExtend_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i
           rw [Nat.add_mul]
           omega
         · simp only [hi', decide_False, Bool.false_and, Bool.false_eq]
-          apply BitVec.getLsb_ge
+          apply BitVec.getLsbD_ge
           rw [Nat.add_mul, Nat.add_mul]
           omega
     · simp only [hj, decide_False, Bool.false_and]
@@ -1109,19 +1120,19 @@ This is a low level theorem.
 Prefer using theorems from `Arm.Separate` that provide higher level theorems
 in terms of memory (non)-interference.
 -/
-theorem getLsb_write_bytes (hoverflow : base.toNat + n ≤ 2 ^ 64) :
-  ((write_bytes n base data mem) ix).getLsb i =
+theorem getLsbD_write_bytes (hoverflow : base.toNat + n ≤ 2 ^ 64) :
+  ((write_bytes n base data mem) ix).getLsbD i =
   if ix < base
-  then (mem ix).getLsb i
-  else if ix.toNat ≥ base.toNat + n then (mem ix).getLsb i
-  else (data.extractLsByte (ix - base).toNat).getLsb i := by
+  then (mem ix).getLsbD i
+  else if ix.toNat ≥ base.toNat + n then (mem ix).getLsbD i
+  else (data.extractLsByte (ix - base).toNat).getLsbD i := by
 rw [write_bytes_eq hoverflow]
 by_cases h : ix < base
 · simp only [h, ↓reduceIte]
-· simp only [h, ↓reduceIte, ge_iff_le, BitVec.toNat_sub, Nat.reducePow, BitVec.getLsb_extractLsByte]
+· simp only [h, ↓reduceIte, ge_iff_le, BitVec.toNat_sub, Nat.reducePow, BitVec.getLsbD_extractLsByte]
   by_cases h₂ : base.toNat + n ≤ ix.toNat
   · simp only [h₂, ↓reduceIte]
-  · simp only [h₂, ↓reduceIte, BitVec.getLsb_extractLsByte]
+  · simp only [h₂, ↓reduceIte, BitVec.getLsbD_extractLsByte]
 
 end Memory
 
@@ -1142,7 +1153,7 @@ theorem Memory.eq_of_read_mem_bytes_eq {m₁ m₂ : Memory}
   rw [BitVec.zero_append, BitVec.zero_append] at h
   simpa only [Nat.reduceAdd, BitVec.cast_eq] using h
 
-theorem mem_eq_iff_read_mem_bytes_eq {s₁ s₂ : ArmState} :
+theorem Memory.mem_eq_iff_read_mem_bytes_eq {s₁ s₂ : ArmState} :
     s₁.mem = s₂.mem
     ↔ ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂ := by
   simp only [memory_rules]
@@ -1156,7 +1167,7 @@ theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq
     read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₁)
     = read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₂) := by
   revert n₁ addr₁
-  simp only [← mem_eq_iff_read_mem_bytes_eq] at h ⊢
+  simp only [← Memory.mem_eq_iff_read_mem_bytes_eq] at h ⊢
   simp only [memory_rules, h]
 
 /- Helper lemma for `state_eq_iff_components_eq` -/

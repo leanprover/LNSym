@@ -17,7 +17,7 @@ open BitVec
 def exec_move_wide_imm (inst : Move_wide_imm_cls) (s : ArmState) : ArmState :=
   if inst.opc = 0b01#2 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
-  else if inst.sf = 0#1 ∧ getLsb inst.hw 1 then
+  else if inst.sf = 0#1 ∧ getLsbD inst.hw 1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let datasize := 32 <<< inst.sf.toNat
@@ -40,7 +40,7 @@ partial def Move_wide_imm_cls.inst.rand : Cosim.CosimM (Option (BitVec 32)) := d
   let opc := ← BitVec.rand 2
   let sf := ← BitVec.rand 1
   let hw := ← BitVec.rand 2
-  if opc == 0b01#2 || sf == 0#1 && getLsb hw 1 then
+  if opc == 0b01#2 || sf == 0#1 && getLsbD hw 1 then
     Move_wide_imm_cls.inst.rand
   else
     let (inst : Move_wide_imm_cls) :=

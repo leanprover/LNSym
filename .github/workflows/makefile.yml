@@ -20,11 +20,6 @@ jobs:
 
     steps:
 
-    - uses: DeterminateSystems/nix-installer-action@main
-
-    - name: Install cadical
-      run: nix profile install nixpkgs#cadical
-
     - uses: actions/checkout@v4
 
     - uses: leanprover/lean-action@v1
@@ -32,13 +27,6 @@ jobs:
         auto-config: false
         use-mathlib-cache: false
         use-github-cache: true
-
-    - name: Cache `.lake` folder
-      id: cache-lake
-      uses: actions/cache@v4
-      with:
-        path: .lake
-        key: ${{ runner.os }}-lake
 
     - name: Build AWS-LC and run ELFSage tests (Ubuntu)
       if : ${{ runner.os != 'macOS' }}
@@ -54,3 +42,8 @@ jobs:
       if : ${{ runner.os == 'macOS' }}
       run: |
           make cosim NUM_TESTS=100
+
+    - name: Run LNSym Benchmarks (Ubuntu)
+      if : ${{ runner.os != 'macOS' }}
+      run: |
+          make benchmarks

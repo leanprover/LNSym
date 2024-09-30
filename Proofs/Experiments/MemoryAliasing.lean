@@ -45,6 +45,22 @@ theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
 /-- info: 'MemSubset.subset_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms subset_3
 
+/-- Show that we can perform address arithmetic based on subset constraints. -/
+theorem subset_4 (l : mem_subset' a 16 b 16) : a = b := by
+  simp_mem (config := {useOmegaToClose := true})
+
+/-- Show that we can perform address arithmetic based on subset constraints.
+Only two configurations possible:
+
+..  a0 a1 a2
+b0 b1 b2 b3
+
+a0 a1 a2 ..
+b0 b1 b2 b3
+-/
+theorem subset_5 (l : mem_subset' a 3 b 4) : a ≤ b + 1 := by
+  simp_mem (config := {useOmegaToClose := true})
+
 end MemSubset
 
 namespace MemSeparate
@@ -70,7 +86,6 @@ theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
 
 /-- info: 'MemSeparate.separate_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_3
-
 
 /-- sliding subset to the right. -/
 theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
@@ -113,6 +128,14 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
     mem_separate' a (2*n) b m := by
   simp_mem /- Need better address normalization. -/
   trace_state
+
+/--
+Check that we can close address relationship goals that require
+us to exploit memory separateness properties.
+-/
+theorem mem_separate_9  (h : mem_separate' a 100 b 100)
+  (hab : a < b) : a + 50 ≤ b := by
+  simp_mem (config := {useOmegaToClose := true})
 
 end MemSeparate
 
@@ -177,7 +200,7 @@ theorem mem_automation_test_4
   simp only [memory_rules]
   simp_mem
   congr 1
-  bv_omega' -- TODO: address normalization.
+  bv_omega -- TODO: address normalization.
 
 /-- info: 'mem_automation_test_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_4
@@ -192,11 +215,9 @@ theorem overlapping_read_test_1 {out : BitVec (16 * 8)}
     read_mem_bytes 16 src_addr s = out := by
   simp only [memory_rules] at h ⊢
   simp_mem
-  simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self]
+  simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
 
-/--
-info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext, Classical.choice, Quot.sound]
--/
+/-- info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms overlapping_read_test_1
 
 /-- A read overlapping with another read. -/
@@ -208,7 +229,7 @@ theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
   simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    bv_omega'
+    bv_omega
 /--
 info: 'ReadOverlappingRead.overlapping_read_test_2' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
@@ -227,13 +248,13 @@ theorem overlapping_read_test_3
   simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    bv_omega'
+    bv_omega
 /--
 info: 'ReadOverlappingRead.overlapping_read_test_3' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms overlapping_read_test_3
 
-/- TODO(@bollu): This test case hangs at `bv_omega'`. This is to be debugged.
+/- TODO(@bollu): This test case hangs at `bv_omega`. This is to be debugged.
 /-- A read in the goal state overlaps with a read in the
 right hand side of the hypotheis `h`.
 -/
@@ -247,7 +268,7 @@ theorem overlapping_read_test_4
   simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    bv_omega' -- TODO: Lean gets stuck here?
+    bv_omega -- TODO: Lean gets stuck here?
 
 #guard_msgs in #print axioms overlapping_read_test_4
 -/
@@ -269,7 +290,7 @@ theorem test_2 {val : BitVec _}
     Memory.read_bytes 6 (src_addr + 10) (Memory.write_bytes 16 src_addr val mem) =
     val.extractLsBytes 10 6 := by
   simp_mem
-  have : ((src_addr + 10).toNat - src_addr.toNat) = 10 := by bv_omega'
+  have : ((src_addr + 10).toNat - src_addr.toNat) = 10 := by bv_omega
   rw [this]
 
 /--

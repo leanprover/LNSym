@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Alex Keizer
+Author(s): Alex Keizer, Siddharth Bhat
 -/
 import Lean
 import Tactics.Common
@@ -11,15 +11,25 @@ open Lean Meta Elab.Tactic
 
 namespace Sym
 
+/-- The default `simp` configuration for `aggregate` -/
+def aggregate.defaultSimpConfig : Simp.Config := {
+  decide := true,     -- to discharge side-conditions for non-effect hypotheses
+  contextual := true, -- to automatically prove non-effect goals
+  failIfUnchanged := false,
+}
+
 /-- Given an array of (non-)effects hypotheses, aggregate these effects by
 `simp`ing at the specified location -/
-def aggregate (axHyps : Array LocalDecl) (location : Location) : TacticM Unit :=
+def aggregate (axHyps : Array LocalDecl) (location : Location)
+    (simpConfig? : Option Simp.Config := none) :
+    TacticM Unit :=
   let msg := m!"aggregating (non-)effects"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     trace[Tactic.sym] "using hypotheses: {axHyps.map (·.toExpr)}"
 
+    let config := simpConfig?.getD aggregate.defaultSimpConfig
     let (ctx, simprocs) ← LNSymSimpContext
-        (config := {decide := true, failIfUnchanged := false})
+        (config := config)
         (decls := axHyps)
 
     withLocation location
@@ -35,7 +45,7 @@ def aggregate (axHyps : Array LocalDecl) (location : Location) : TacticM Unit :=
       )
       (fun _ => pure ())
 
-open Parser.Tactic (location) in
+open Parser.Tactic (location config) in
 /--
 `sym_aggregate` will search for all local hypotheses of the form
   `r ?fld ?state = _` or `∀ f ..., r ?fld ?state = _`,
@@ -43,19 +53,33 @@ and use those hypotheses to simplify the goal
 
 `sym_aggregate at ...` will use those same hypotheses to simplify at the
 specified locations, using the same syntax as `simp at ...`
+
+`sym_aggregate (config := ...)` will pass the specified configuration through
+to the `simp` call, for fine-grained control. Note that if you do this,
+you'll likely want to set `decide := true` yourself, or you might find that
+non-effect theorems no longer apply automatically
 -/
-elab "sym_aggregate" loc:(location)? : tactic => withMainContext do
+elab "sym_aggregate" simpConfig?:(config)? loc?:(location)? : tactic => withMainContext do
   let msg := m!"aggregating local (non-)effect hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    let simpConfig? ← simpConfig?.mapM fun cfg =>
+      elabSimpConfig (mkNullNode #[cfg]) (kind := .simp)
+
     let lctx ← getLCtx
     -- We keep `expectedRead`/`expectedAlign` as monadic values,
     -- so that we get new metavariables for each localdecl we check
-    let expectedRead := do
+    let expectedRead : MetaM Expr := do
       let fld ← mkFreshExprMVar (mkConst ``StateField)
       let state ← mkFreshExprMVar mkArmState
       let rhs ← mkFreshExprMVar none
       mkEq (mkApp2 (mkConst ``r) fld state) rhs
-    let expectedAlign := do
+    let expectedReadMem : MetaM Expr := do
+      let n ← mkFreshExprMVar (mkConst ``Nat)
+      let addr ← mkFreshExprMVar (mkApp (mkConst ``BitVec) (toExpr 64))
+      let mem ← mkFreshExprMVar (mkConst ``Memory)
+      let rhs ← mkFreshExprMVar none
+      mkEq (mkApp3 (mkConst ``Memory.read_bytes) n addr mem) rhs
+    let expectedAlign : MetaM Expr := do
       let state ← mkFreshExprMVar mkArmState
       return mkApp (mkConst ``CheckSPAlignment) state
 
@@ -66,15 +90,19 @@ elab "sym_aggregate" loc:(location)? : tactic => withMainContext do
             trace[Tactic.sym] "checking {decl.toExpr} with type {type}"
             let expectedRead ← expectedRead
             let expectedAlign ← expectedAlign
+            let expectedReadMem ← expectedReadMem
             if ← isDefEq type expectedRead then
               trace[Tactic.sym] "{Lean.checkEmoji} match for {expectedRead}"
               return axHyps.push decl
             else if ← isDefEq type expectedAlign then
               trace[Tactic.sym] "{Lean.checkEmoji} match for {expectedAlign}"
               return axHyps.push decl
+            else if ← isDefEq type expectedReadMem then
+              trace[Tactic.sym] "{Lean.checkEmoji} match for {expectedReadMem}"
+              return axHyps.push decl
             else
               trace[Tactic.sym] "{Lean.crossEmoji} no match"
               return axHyps
 
-    let loc := (loc.map expandLocation).getD (.targets #[] true)
-    aggregate axHyps loc
+    let loc := (loc?.map expandLocation).getD (.targets #[] true)
+    aggregate axHyps loc simpConfig?
