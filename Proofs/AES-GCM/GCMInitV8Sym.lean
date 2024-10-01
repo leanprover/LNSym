@@ -100,4 +100,11 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi,
       GCMV8.gcm_init_H, GCMV8.refpoly, GCMV8.pmod, GCMV8.pmod.pmodTR,
       GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR]
+    simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtracLsb',
+      BitVec.reduceHShiftLeft, BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.ofNat_eq_ofNat,
+      BitVec.reduceEq, ↓reduceIte, BitVec.zero_eq, Nat.sub_self, BitVec.ushiftRight_zero_eq,
+      BitVec.reduceAnd, BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero,
+      Nat.zero_mod, Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul,
+      Nat.reduceSub, BitVec.reduceMul, BitVec.reduceXOr, BitVec.mul_one, Nat.add_one_sub_one,
+      BitVec.one_mul]
     bv_decide

@@ -74,9 +74,15 @@ def degree (x : BitVec n) : Nat :=
 example: GCMV8.degree 0b0101#4 = 2 := rfl
 example: GCMV8.degree 0b1101#4 = 3 := rfl
 
-/-- Subtract x from y if y's x-degree-th bit is 1. -/
+-- /-- Subtract x from y if y's x-degree-th bit is 1. -/
+-- def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
+--   if getLsbD y (GCMV8.degree x) then y ^^^ x else y
+
+/-- Subtract x from y if y's x-degree-th bit is 1.
+    Defined using non-ite statements. -/
 def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
-  if getLsbD y (GCMV8.degree x) then y ^^^ x else y
+  let is_one := (y >>> (GCMV8.degree x)) &&& 1
+  y ^^^ (is_one * x)
 
 /-- Performs division of polynomials over GF(2). -/
 def pdiv (x: BitVec n) (y : BitVec m): BitVec n :=
@@ -97,16 +103,30 @@ example : pdiv 0b1101#4 0b10#2 = 0b110#4 := rfl
 example : pdiv 0x1a#5 0b10#2 = 0b1101#5 := rfl
 example : pdiv 0b1#1 0b10#2 = 0b0#1 := rfl
 
-/-- Performs modulus of polynomials over GF(2). -/
+-- /-- Performs modulus of polynomials over GF(2). -/
+-- def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : 0 < m) : BitVec m :=
+--   let rec pmodTR (x : BitVec n) (y : BitVec (m + 1)) (p : BitVec (m + 1))
+--     (i : Nat) (r : BitVec m) (H : 0 < m) : BitVec m :=
+--     match i with
+--     | 0 => r
+--     | j + 1 =>
+--       let xi := getLsbD x (n - i)
+--       let tmp :=
+--         if xi then extractLsb' 0 m p else BitVec.zero m
+--       let r := r ^^^ tmp
+--       pmodTR x y (GCMV8.reduce y (p <<< 1)) j r H
+--   if y = 0 then 0 else pmodTR x y (GCMV8.reduce y 1) n (BitVec.zero m) H
+
+/-- Performs modulus of polynomials over GF(2).
+    Defined using non-ite statements.-/
 def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : 0 < m) : BitVec m :=
   let rec pmodTR (x : BitVec n) (y : BitVec (m + 1)) (p : BitVec (m + 1))
     (i : Nat) (r : BitVec m) (H : 0 < m) : BitVec m :=
     match i with
     | 0 => r
     | j + 1 =>
-      let xi := getLsbD x (n - i)
-      let tmp :=
-        if xi then extractLsb' 0 m p else BitVec.zero m
+      let is_one := extractLsb' 0 m ((x >>> (n - i)) &&& 1)
+      let tmp := is_one * extractLsb' 0 m p
       let r := r ^^^ tmp
       pmodTR x y (GCMV8.reduce y (p <<< 1)) j r H
   if y = 0 then 0 else pmodTR x y (GCMV8.reduce y 1) n (BitVec.zero m) H
