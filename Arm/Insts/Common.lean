@@ -41,6 +41,12 @@ partial def GPRIndex.rand (lo := 0) (hi := 31) :
 
 ----------------------------------------------------------------------
 
+/--
+Integer addition with carry input, returning result and NZCV flags.
+
+Ref.:
+https://developer.arm.com/documentation/ddi0602/2024-06/Shared-Pseudocode/shared-functions-integer?lang=en#impl-shared.AddWithCarry.3
+-/
 def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
   (BitVec n × PState) :=
   let carry_in_ext := zeroExtend (n + 1) carry_in
@@ -90,6 +96,12 @@ theorem zeroExtend_eq_of_AddWithCarry :
   (AddWithCarry x y carry_in).fst := by
   simp only [zeroExtend_eq]
 
+/--
+Return `true` iff `cond` currently holds
+
+Ref.:
+https://developer.arm.com/documentation/ddi0602/2024-06/Shared-Pseudocode/shared-functions-system?lang=en#impl-shared.ConditionHolds.1
+-/
 def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   open PFlag in
   let N := read_flag N s
@@ -171,7 +183,7 @@ def Aligned (x : BitVec n) (a : Nat) : Prop :=
 
 /-- We need to prove why the Aligned predicate is Decidable. -/
 instance : Decidable (Aligned x a) := by
-  cases a <;> simp [Aligned] <;> infer_instance
+  cases a <;> simp only [Aligned] <;> infer_instance
 
 theorem Aligned_BitVecSub_64_4 {x : BitVec 64} {y : BitVec 64}
   (x_aligned : Aligned x 4)
@@ -184,7 +196,7 @@ theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
   (x_aligned : Aligned x 4)
   (y_aligned : Aligned y 4)
   : Aligned (x + y) 4 := by
-  simp_all [Aligned]
+  simp_all only [Aligned, Nat.sub_zero, zero_eq]
   bv_decide
 
 theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : BitVec 1)
@@ -192,7 +204,7 @@ theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : Bi
   (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
   : Aligned (AddWithCarry x y carry_in).fst 4 := by
   unfold AddWithCarry Aligned at *
-  simp_all
+  simp_all only [Nat.sub_zero, zero_eq, add_eq]
   bv_decide
 
 /-- Check correct stack pointer (SP) alignment for AArch64 state; returns
@@ -389,9 +401,6 @@ dsimproc [state_simp_rules] reduceInvalidBitMasks (invalid_bit_masks _ _ _ _) :=
                       imm.expr.isTrue
                       M)
 
-theorem Nat.lt_one_iff {n : Nat} : n < 1 ↔ n = 0 := by
-  omega
-
 theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec 6)
   (immediate : Bool) (M : Nat):
   ¬ invalid_bit_masks immN imms immediate M →
@@ -576,7 +585,7 @@ example : rev_elems 8 4 (rev_elems 8 4 0xAB#8 (by decide) (by decide))
 
 theorem rev_elems_base :
   rev_elems esize esize x h₀ h₁ = x := by
-  unfold rev_elems; simp; done
+  unfold rev_elems; simp only [Nat.le_refl, ↓reduceDIte]; done
 
 /-- Divide a bv of width `datasize` into containers, each of size
 `container_size`, and within a container, reverse the order of `esize`-bit

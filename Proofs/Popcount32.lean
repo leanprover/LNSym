@@ -89,6 +89,7 @@ theorem bv_decide_misbehaviour (X n addr : BitVec 64)
   bv_decide
 
 set_option trace.simp_mem.info true in
+set_option maxHeartbeats 100000000 in
 theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   (hlegal : ((r (.GPR 31) s0).toNonOverflowing - 200#64) + 200#64 |>.assert)
   (h_s0_pc : read_pc s0 = 0x4005b4#64)
@@ -111,7 +112,6 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
   · sym_aggregate
   · intro n addr h_separate
     simp only [memory_rules] at *
-    have : n > 0#64 := by sorry
     have : mem_separate' addr (↑n.toNat) (r (StateField.GPR 31#5) s0 - 16#64 + 12#64) ↑4 := by
       mem_unfold_bv
       bv_decide
@@ -127,8 +127,11 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
     · decide
 
 /--
-info: 'popcount32_sym_meets_spec' depends on axioms:
-[propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'popcount32_sym_meets_spec' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate',
+ Quot.sound]
 -/
 #guard_msgs in #print axioms popcount32_sym_meets_spec
 
@@ -143,8 +146,7 @@ info: popcount32_program.stepi_eq_0x4005c0 {s : ArmState} (h_program : s.program
   stepi s =
     w StateField.PC (4195780#64)
       (w (StateField.GPR 0#5)
-        (zeroExtend 64 ((zeroExtend 32 (r (StateField.GPR 0#5) s)).rotateRight 1) &&& 4294967295#64 &&& 2147483647#64)
-        s)
+        (setWidth 64 ((setWidth 32 (r (StateField.GPR 0#5) s)).rotateRight 1) &&& 4294967295#64 &&& 2147483647#64) s)
 -/
 #guard_msgs in #check popcount32_program.stepi_eq_0x4005c0
 

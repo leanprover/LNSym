@@ -111,6 +111,7 @@ attribute [minimal_theory high] decide_eq_true_eq
 attribute [minimal_theory high] decide_not
 attribute [minimal_theory high] not_decide_eq_true
 
+
 -- NOTE: `heq_eq_eq` might look linear, but if we consider implicit variables,
 -- the pattern is `@HEq ?α ?a ?α ?b`; `?α` is used non-linearly
 attribute [minimal_theory] heq_eq_eq

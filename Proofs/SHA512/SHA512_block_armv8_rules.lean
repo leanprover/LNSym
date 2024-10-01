@@ -28,7 +28,7 @@ theorem sha512_message_schedule_rule (a b c d : BitVec 128) :
   message_schedule_word_aux a1 b1 c0 d1 ++
   message_schedule_word_aux a0 b0 d1 d0 := by
   simp [sha512su1, sha512su0,  message_schedule_word_aux]
-  bv_check "lrat_files/Sha512_block_armv8_rules.lean-sha512_message_schedule_rule-31-2.lrat"
+  bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512_message_schedule_rule-31-2.lrat"
 
 theorem sha512h2_rule (a b c : BitVec 128) :
   sha512h2 a b c =
@@ -40,7 +40,7 @@ theorem sha512h2_rule (a b c : BitVec 128) :
   ((compression_update_t2 b0 a0 b1) + c1) ++
   ((compression_update_t2 ((compression_update_t2 b0 a0 b1) + c1) b0 b1) + c0) := by
   simp [maj, compression_update_t2, sha512h2, sigma_big_0, ror]
-  bv_check "lrat_files/Sha512_block_armv8_rules.lean-sha512h2_rule-43-2.lrat"
+  bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512h2_rule-43-2.lrat"
 
 -- sha512h2 q3, q1, v0.2d: 0xce608423#32
 -- theorem sha512h2_instruction_rewrite
@@ -122,47 +122,12 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   ac_rfl
 
 -- (FIXME) Generalize to arbitrary-length bitvecs.
-theorem rev_elems_of_rev_elems_64_8 (x : BitVec 64) :
-  rev_elems 64 8 (rev_elems 64 8 x h₀ h₁) h₀ h₁ = x := by
-  repeat (unfold rev_elems; (simp (config := {ground := true, decide := true})))
-  simp_arith at h₀
-  simp_arith at h₁
-  bv_check "lrat_files/Sha512_block_armv8_rules.lean-rev_elems_of_rev_elems_64_8-96-2.lrat"
-
--- (FIXME) Generalize to arbitrary-length bitvecs.
-theorem concat_of_rsh_is_msb_128 (x y : BitVec 64) :
-  (x ++ y) >>> 64 = BitVec.zeroExtend 128 x := by
-  bv_check "lrat_files/Sha512_block_armv8_rules.lean-concat_of_rsh_is_msb_128-101-2.lrat"
-
--- (FIXME) Generalize to arbitrary-length bitvecs.
-theorem truncate_of_concat_is_lsb_64 (x y : BitVec 64) :
-  BitVec.zeroExtend 64 (x ++ y) = y := by
-  bv_check "lrat_files/Sha512_block_armv8_rules.lean-truncate_of_concat_is_lsb_64-106-2.lrat"
-
--- (FIXME) Generalize to arbitrary-length bitvecs.
-theorem zeroextend_bigger_smaller_64 (x : BitVec 64) :
-  BitVec.zeroExtend 64 (BitVec.zeroExtend 128 x) =
-  BitVec.zeroExtend 64 x := by
-  bv_omega
-
--- (FIXME) Generalize to arbitrary-length bitvecs.
-theorem rsh_concat_identity_128 (x : BitVec 128) :
-  zeroExtend 64 (x >>> 64) ++ zeroExtend 64 x = x := by
-  bv_check "lrat_files/Sha512_block_armv8_rules.lean-rsh_concat_identity_128-117-2.lrat"
-
--- (FIXME) Generalize to arbitrary-length bitvecs.
 theorem rev_vector_of_rev_vector_128_64_8 (x : BitVec 128) :
   rev_vector 128 64 8
     (rev_vector 128 64 8 x h₀ h₁ h₂ h₃ h₄) h₀ h₁ h₂ h₃ h₄ = x := by
   repeat (unfold rev_vector; simp)
-  rw [concat_of_rsh_is_msb_128,
-      truncate_of_concat_is_lsb_64,
-      rev_elems_of_rev_elems_64_8,
-      zeroextend_bigger_smaller_64,
-      @zeroExtend_eq 64,
-      rev_elems_of_rev_elems_64_8,
-      rsh_concat_identity_128]
-  done
+  simp [rev_elems]
+  bv_decide
 
 private theorem sha512h_rule_2_helper_1 (x y : BitVec 64) :
   extractLsb 63 0

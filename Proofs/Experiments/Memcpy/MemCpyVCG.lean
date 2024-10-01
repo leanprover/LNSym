@@ -848,6 +848,7 @@ theorem partial_correctness :
 
 /--
 info: 'Memcpy.partial_correctness' depends on axioms: [propext,
+ sorryAx,
  Classical.choice,
  Lean.ofReduceBool,
  Memory.read_bytes_write_bytes_eq_of_mem_subset',
