@@ -35,7 +35,7 @@ theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
 
 set_option maxRecDepth 1000000 in
 set_option maxHeartbeats 2000000 in
--- set_option linter.unusedVariables false
+-- set_option linter.unusedVariables false in
 -- set_option profiler true in
 theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_init_v8_program)
@@ -85,8 +85,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   -- ^^ Still needed, because `gcm_init_v8_program.min` is somehow
   --    unable to be reflected
   sym_n 152
-  simp only [Htable_addr]
-  -- simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
+  simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
   apply And.intro
   · bv_decide
   · simp only
@@ -96,4 +95,18 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     , DPSFP.AdvSIMDExpandImm
     , DPSFP.dup_aux_0_4_32]
     generalize read_mem_bytes 16 (r (StateField.GPR 1#5) s0) s0 = Hinit
+    -- change the type of Hinit to be BitVec 128, assuming that's def-eq
+    change BitVec 128 at Hinit
+    simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi,
+      GCMV8.gcm_init_H, GCMV8.refpoly, GCMV8.pmod, GCMV8.pmod.pmodTR,
+      GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR]
+    simp only [Nat.reduceAdd, BitVec.ushiftRight_eq,
+      BitVec.reduceExtracLsb', BitVec.reduceHShiftLeft,
+      BitVec.reduceAppend, BitVec.reduceHShiftRight,
+      BitVec.ofNat_eq_ofNat, BitVec.reduceEq, ↓reduceIte,
+      BitVec.zero_eq,
+      Nat.sub_self, Nat.add_one_sub_one, BitVec.reduceGetLsb,
+      BitVec.getLsbD_one, Nat.zero_lt_succ, decide_True,
+      reduceCtorEq, decide_False, Bool.and_false,
+      Bool.false_eq_true, Nat.reduceSub, BitVec.reduceXOr]
     bv_decide
