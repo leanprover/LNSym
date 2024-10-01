@@ -117,28 +117,7 @@ theorem popcount32_sym_meets_spec (s0 s_final : ArmState)
       bv_decide
     generalize hx : (r (StateField.GPR 31#5) s0) = x
     simp only [hx] at *
-    simp_mem
-  /-
-    [] ❌️ mem_decide_bv with error:
-    The prover found a potential counterexample, consider the following assignment:
-    r StateField.PC s0 = 0x00000000004005b4#64
-    n = 0x8000000000000000#64
-    r (StateField.GPR 31#5) s0 = 0x8000000000000000#64
-    addr = 0x0000000000000000#64
-    r (StateField.GPR 31#5) s0 - 16#64 = 0x8000000000000000#64
-  -/
-    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by
-      exact this)]
-      -- mem_unfold_bv;
-      -- mem_decide_bv)]
-    -- simp_mem
-    sym_aggregate
-    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by
-      exact this)]
-    sym_aggregate
-    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by
-      exact this)]
-
+    repeat (simp_mem; sym_aggregate)
     repeat (simp_mem (config := { useOmegaToClose := false }); sym_aggregate)
   · apply Aligned_BitVecSub_64_4 -- TODO(@bollu): automation
     · assumption

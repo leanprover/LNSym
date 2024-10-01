@@ -313,7 +313,7 @@ attribute [state_simp_rules] StateField.GPR.injEq
 attribute [state_simp_rules] StateField.SFP.injEq
 attribute [state_simp_rules] StateField.FLAG.injEq
 
-@[reducible]
+@[reducible, state_simp_rules]
 def state_value (fld : StateField) : Type :=
   open StateField in
   match fld with

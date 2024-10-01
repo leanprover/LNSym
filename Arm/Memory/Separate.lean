@@ -331,8 +331,7 @@ abbrev Nat.bv64 (n : Nat) : BitVec 64 := BitVec.ofNat 64 n
 macro_rules
 | `(tactic| mem_unfold_bv) =>
     `(tactic| simp (config := {failIfUnchanged := false}) only
-      [memory_defs_bv, bitvec_rules, minimal_theory, BitVec.ofNat_toNat] at *)
-
+      [memory_defs_bv, state_value, bitvec_rules, minimal_theory, BitVec.ofNat_toNat] at *)
 
 macro_rules
 | `(tactic| mem_decide_bv) =>

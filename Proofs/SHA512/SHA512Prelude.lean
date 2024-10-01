@@ -266,6 +266,7 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
       · -- (FIXME @bollu) simp_mem doesn't make progress here. :-(
         -- simp only [←h_s0_sp] at h_s0_mem_sep
         -- simp_mem
+
         rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
         -- (FIXME @bollu) Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
         -- works here, but using it is painful. Also, mispelled lemma.

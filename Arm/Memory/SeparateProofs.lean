@@ -72,7 +72,6 @@ theorem addr_add_one_add_m_sub_one  (n : Nat) (addr : BitVec 64)
 
 ----------------------------------------------------------------------
 ---- mem_subset ----
-
 theorem mem_subset_refl : mem_subset a1 a2 a1 a2 := by
   simp [mem_subset]
   bv_check "lrat_files/SeparateProofs.lean-mem_subset_refl-77-2.lrat"

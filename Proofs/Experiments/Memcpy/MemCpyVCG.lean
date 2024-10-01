@@ -515,13 +515,24 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
     Memory.read_bytes n addr s0.mem := by
-  simp [memory_defs_bv] at h_non_overflowing
+  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+  · sorry
+    -- rw [h_assert_6]
+    -- skip_proof simp_mem
+  · -- @bollu: TODO: figure out why this is so slow!
+    sorry
+    -- apply mem_separate'.symm
+    -- apply mem_separate'.of_subset'_of_subset' hsep
+    -- · apply mem_subset'.of_omega
+    --   skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
+    -- · apply mem_subset'_refl hsep.hb
+
+  -- simp [memory_defs_bv] at h_non_overflowing
   -- mem_decide_bv
   -- simp_mem_debug
-  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by sorry)]
-  · apply h_assert_6 _ _ (by sorry)
+  -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' (by sorry)]
+  -- · apply h_assert_6 _ _ (by sorry)
 
-#print axioms Memcpy.extracted_2
 
 -- set_option trace.Meta.Tactic.bv true in
 -- -- set_option skip_proof.skip true in
