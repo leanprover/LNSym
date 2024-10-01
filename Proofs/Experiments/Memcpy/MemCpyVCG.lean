@@ -549,7 +549,6 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
             rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
             rw [BitVec.toNat_mul_of_lt (by bv_omega)]
             rw [BitVec.toNat_mul_of_lt (by bv_omega)]
-            rw [BitVec.toNat_sub_of_lt (by bv_omega)]
             bv_omega
           }
   · intros n addr hsep
