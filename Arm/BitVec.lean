@@ -59,7 +59,10 @@ attribute [bitvec_rules] BitVec.getLsbD_truncate
 attribute [bitvec_rules] BitVec.zeroExtend_zeroExtend_of_le
 attribute [bitvec_rules] BitVec.truncate_truncate_of_le
 attribute [bitvec_rules] BitVec.truncate_cast
+attribute [bitvec_rules] BitVec.extractLsb_ofFin
+attribute [bitvec_rules] BitVec.extractLsb_ofNat
 attribute [bitvec_rules] BitVec.extractLsb'_toNat
+attribute [bitvec_rules] BitVec.extractLsb_toNat
 attribute [bitvec_rules] BitVec.getLsbD_extract
 attribute [bitvec_rules] BitVec.toNat_allOnes
 attribute [bitvec_rules] BitVec.getLsbD_allOnes
