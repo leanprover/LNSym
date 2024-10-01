@@ -64,11 +64,7 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
   sym_aggregate
   -- Split conjunction
   repeat' apply And.intro
-  · -- Aggregate the memory (non)effects.
-    -- (FIXME) This will be tackled by `sym_aggregate` when `sym_n` and `simp_mem`
-    -- are merged.
-    simp only [*]
-    /-
+  · /-
     (FIXME @bollu) `simp_mem; rfl` creates a malformed proof here. The tactic produces
     no goals, but we get the following error message:
 

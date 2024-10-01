@@ -92,7 +92,7 @@ theorem popcount32_sym_meets_spec (s0 sf : ArmState)
   case h_s1_sp_aligned =>
     apply Aligned_BitVecSub_64_4 (by assumption) (by decide)
   case h_s26_sp_aligned =>
-    apply Aligned_BitVecAdd_64_4 (by assumption) (by decide)
+    exact h_s0_sp_aligned
   -- Split the conclusion
   repeat' apply And.intro
   · -- Functional Correctness
