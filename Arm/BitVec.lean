@@ -165,6 +165,7 @@ attribute [bitvec_rules] BitVec.ofNat_eq_ofNat
 attribute [bitvec_rules] BitVec.zero_eq
 attribute [bitvec_rules] BitVec.truncate_eq_zeroExtend
 attribute [bitvec_rules] BitVec.or_self
+attribute [minimal_theory] BitVec.zero_or
 
 attribute [bitvec_rules] BitVec.add_sub_cancel
 attribute [bitvec_rules] BitVec.sub_add_cancel

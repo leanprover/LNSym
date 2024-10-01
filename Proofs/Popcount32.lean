@@ -117,8 +117,7 @@ info: popcount32_program.stepi_eq_0x4005c0 {s : ArmState} (h_program : s.program
   stepi s =
     w StateField.PC (4195780#64)
       (w (StateField.GPR 0#5)
-        (zeroExtend 64 ((zeroExtend 32 (r (StateField.GPR 0#5) s)).rotateRight 1) &&& 4294967295#64 &&& 2147483647#64)
-        s)
+        (setWidth 64 ((setWidth 32 (r (StateField.GPR 0#5) s)).rotateRight 1) &&& 4294967295#64 &&& 2147483647#64) s)
 -/
 #guard_msgs in #check popcount32_program.stepi_eq_0x4005c0
 
