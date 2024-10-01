@@ -52,7 +52,7 @@ def pmult (x: BitVec (m + 1)) (y : BitVec (n + 1)) : BitVec (m + n + 1) :=
 example: pmult 0b1101#4 0b10#2 = 0b11010#5 := rfl
 
 /-- Degree of x. -/
-private def degree (x : BitVec n) : Nat :=
+def degree (x : BitVec n) : Nat :=
   let rec degreeTR (x : BitVec n) (n : Nat) : Nat :=
     match n with
     | 0 => 0
@@ -62,7 +62,7 @@ private def degree (x : BitVec n) : Nat :=
 example: GCMV8.degree 0b0101#4 = 2 := rfl
 
 /-- Subtract x from y if y's x-degree-th bit is 1. -/
-private def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
+def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
   if getLsbD y (GCMV8.degree x) then y ^^^ x else y
 
 /-- Performs division of polynomials over GF(2). -/
@@ -128,7 +128,7 @@ def refpoly : BitVec 129 := 0x1C2000000000000000000000000000001#129
   See Remark 5 in paper
     "A New Interpretation for the GHASH Authenticator of AES-GCM"
 -/
-private def gcm_init_H (H : BitVec 128) : BitVec 128 :=
+def gcm_init_H (H : BitVec 128) : BitVec 128 :=
   pmod (H ++ 0b0#1) refpoly (by omega)
 
 def gcm_polyval_mul (x : BitVec 128) (y : BitVec 128) : BitVec 256 :=
@@ -220,7 +220,7 @@ example : GCMGmultV8 0x1099f4b39468565ccdd297a9df145877#128
     0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ] := rfl
 
 
-private def gcm_ghash_block (H : BitVec 128) (Xi : BitVec 128)
+def gcm_ghash_block (H : BitVec 128) (Xi : BitVec 128)
   (inp : BitVec 128) : BitVec 128 :=
   let H := (lo H) ++ (hi H)
   GCMV8.gcm_polyval H (Xi ^^^ inp)
