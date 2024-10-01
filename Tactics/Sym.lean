@@ -182,10 +182,8 @@ def explodeStep (hStep : Expr) : SymM Unit :=
     eff ← eff.withProgramEq c.effects.programProof
     eff ← eff.withField (← c.effects.getField .ERR).proof
 
-    if let some h_sp := c.h_sp? then
-      let hSp ← SymContext.findFromUserName h_sp
-      -- let effWithSp?
-      eff ← match ← eff.withStackAlignment? hSp.toExpr with
+    if let some hSp := c.effects.stackAlignmentProof? then
+      eff ← match ← eff.withStackAlignment? hSp with
         | some newEff => pure newEff
         | none => do
             trace[Tactic.sym] "failed to show stack alignment"
@@ -210,7 +208,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
               let (ctx, simprocs) ←
                 LNSymSimpContext
                   (config := {failIfUnchanged := false, decide := true})
-                  (decls := #[hSp])
+                  (exprs := #[hSp])
               LNSymSimp subGoal ctx simprocs
 
             if let some subGoal := subGoal? then
