@@ -35,6 +35,7 @@ theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
 
 set_option maxRecDepth 1000000 in
 set_option maxHeartbeats 2000000 in
+set_option sat.timeout 180 in
 -- set_option linter.unusedVariables false in
 -- set_option profiler true in
 theorem gcm_init_v8_program_correct (s0 sf : ArmState)
@@ -60,7 +61,9 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     -- H_addr ptr stays the same
     ∧ H_addr sf = H_addr s0
     -- v20 - v31 stores results of Htable
-    ∧ read_sfp 128 20#5 sf = (GCMV8.GCMInitV8 (read_mem_bytes 16 (H_addr s0) s0)).get! 0
+    ∧ let Hinit := (read_mem_bytes 16 (H_addr s0) s0)
+      read_sfp 128 20#5 sf =
+      (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 0
     --
     -- TODO: Commenting out memory related conjuncts since it seems
     -- to make symbolic execution stuck
