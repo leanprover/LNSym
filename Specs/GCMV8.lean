@@ -51,15 +51,28 @@ def pmult (x: BitVec (m + 1)) (y : BitVec (n + 1)) : BitVec (m + n + 1) :=
 
 example: pmult 0b1101#4 0b10#2 = 0b11010#5 := rfl
 
-/-- Degree of x. -/
+-- /-- Degree of x. -/
+-- def degree (x : BitVec n) : Nat :=
+--   let rec degreeTR (x : BitVec n) (n : Nat) : Nat :=
+--     match n with
+--     | 0 => 0
+--     | m + 1 =>
+--       if getLsbD x n then n else degreeTR x m
+--   degreeTR x (n - 1)
+-- example: GCMV8.degree 0b0101#4 = 2 := rfl
+
+/-- Degree of x. Defined using non-ite statements. -/
 def degree (x : BitVec n) : Nat :=
-  let rec degreeTR (x : BitVec n) (n : Nat) : Nat :=
+  let rec degreeTR (x : BitVec n) (n : Nat) (i : Nat) (acc : Nat) : Nat :=
     match n with
-    | 0 => 0
+    | 0 => acc
     | m + 1 =>
-      if getLsbD x n then n else degreeTR x m
-  degreeTR x (n - 1)
+    let is_one := extractLsb' 0 1 (x &&& 1)
+    degreeTR (x >>> 1) m (i + 1) (acc + is_one.toNat * (i - acc))
+  degreeTR x n 0 0
+
 example: GCMV8.degree 0b0101#4 = 2 := rfl
+example: GCMV8.degree 0b1101#4 = 3 := rfl
 
 /-- Subtract x from y if y's x-degree-th bit is 1. -/
 def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
