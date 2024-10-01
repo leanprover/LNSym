@@ -169,20 +169,9 @@ def explodeStep (hStep : Expr) : SymM Unit :=
   withMainContext' <|
   withTraceNode m!"explodeStep {hStep}" (tag := "explodeStep") <| do
     let c ← getThe SymContext
-    let mut eff ← AxEffects.fromEq hStep c.effects.stackAlignmentProof?
+    let oldEff ← getThe AxEffects
 
-    let stateExpr ← getCurrentState
-    /- Assert that the initial state of the obtained `AxEffects` is equal to
-    the state tracked by `c`.
-    This will catch and throw an error if the semantics of the current
-    instruction still contains unsupported constructs (e.g., an `if`) -/
-    if !(← isDefEq eff.initialState stateExpr) then
-      throwError "[explodeStep] expected initial state {stateExpr}, but found:\n  \
-        {eff.initialState}\nin\n\n{eff}"
-
-    eff ← eff.withProgramEq c.effects.programProof
-    eff ← eff.withField (← c.effects.getField .ERR).proof
-
+    let mut eff ← oldEff.updateWithEq hStep
     if let some hSp := c.effects.stackAlignmentProof? then
       withVerboseTraceNode m!"discharging side condiitions" <| do
         for subGoal in eff.sideConditions do
@@ -204,16 +193,11 @@ def explodeStep (hStep : Expr) : SymM Unit :=
       appendGoals eff.sideConditions
     eff := { eff with sideConditions := [] }
 
-    -- Add new (non-)effect hyps to the context, and to the aggregation simpset
-    withMainContext' <| do
-      if ←(getBoolOption `Tactic.sym.debug) then
-        eff.validate
+    if ←(getBoolOption `Tactic.sym.debug) then
+      withMainContext' eff.validate
 
-      let eff ← eff.addHypothesesToLContext s!"h_{← getNextStateName}_"
-      withMainContext' <| do
-        let simpThms ← eff.toSimpTheorems
-        modifyThe SymContext (·.addSimpTheorems simpThms)
-      set eff
+    set eff
+    regenerateEffectTheorems
 
 /-- A tactic wrapper around `explodeStep`.
 Note the use of `SymContext.fromLocalContext`,
@@ -261,21 +245,14 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
     -- `simp` here
     withMainContext' <| do
       let hStep ← SymContext.findFromUserName h_step.getId
-
-      -- If we know SP is aligned, `simp` with that fact
-      if let some hSp := (← getThe AxEffects).stackAlignmentProof? then
-        let msg := m!"simplifying {hStep.toExpr} with {hSp}"
+      let some goal ←
+        let msg := m!"simplifying {hStep.toExpr}"
         withTraceNode msg (tag := "simplifyHStep") <| do
-          let some goal ← do
-              let (ctx, simprocs) ← LNSymSimpContext
-                (config := {decide := false}) (exprs := #[hSp])
-              let goal ← getMainGoal
-              LNSymSimp goal ctx simprocs hStep.fvarId
-            | throwError "internal error: simp closed goal unexpectedly"
-          replaceMainGoal [goal]
-      else
-        trace[Tactic.sym] "we have no relevant local hypotheses, \
-          skipping simplification step"
+          let c ← getThe SymContext
+          let goal ← getMainGoal
+          LNSymSimp goal c.aggregateSimpCtx c.aggregateSimprocs hStep.fvarId
+        | throwError "internal error: simp closed goal unexpectedly"
+      replaceMainGoal [goal]
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
     withMainContext' <| do
@@ -417,6 +394,11 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
           let goal ← subst goal hEqId
           trace[Tactic.sym] "performed subsitutition in:\n{goal}"
           replaceMainGoal [goal]
+
+
+      let _eff ← withMainContext' do
+        let hypPrefix := s!"h_{←getCurrentStateName}_"
+        c.effects.addHypothesesToLContext (hypPrefix := hypPrefix)
 
       -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
       -- added while symbolically evaluating to `simp`

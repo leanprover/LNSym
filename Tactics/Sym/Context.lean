@@ -78,14 +78,15 @@ structure SymContext where
   (i.e., `base - x` can never be equal to `base + y`) -/
   pc : BitVec 64
 
-  /-- The `simp` context used for effect aggregation.
-  This collects references to all (non-)effect hypotheses of the intermediate
-  states, together with sensible default simp-lemmas used for
-  effect aggregation -/
-  aggregateSimpCtx : Simp.Context
+  /-- The basic of the `simp` context used for effect aggregation, which
+  contains sensible default simp-lemmas used for effect aggregation, but does
+  not yet have the (non-)effect theorems  -/
+  aggregateSimpPreCtx : Simp.Context
   /-- Simprocs used for aggregation. This is stored for performance benefits,
   but should not be modified during the course of a `sym_n` call -/
   aggregateSimprocs : Simp.SimprocsArray
+  /-- The (non-)effect theorems of the latest step in symbolic simulation. -/
+  effectTheorems : SimpTheorems
 
   /-- `state_prefix` is used together with `curr_state_number`
   to determine the name of the next state variable that is added by `sym` -/
@@ -187,6 +188,11 @@ or throw an error if no local variable of that name exists -/
 def hRunDecl : MetaM LocalDecl := do
   findFromUserName c.h_run
 
+def aggregateSimpCtx : Simp.Context :=
+  { c.aggregateSimpPreCtx with
+    simpTheorems := c.aggregateSimpPreCtx.simpTheorems.push c.effectTheorems
+  }
+
 section Monad
 variable {m} [Monad m] [MonadReaderOf SymContext m]
 
@@ -239,14 +245,22 @@ for effect aggregation -/
 def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
   let addSimpThms := simpThms.foldl addSimpTheoremEntry
 
-  let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
+  let oldSimpTheorems := c.aggregateSimpPreCtx.simpTheorems
   let simpTheorems :=
     if oldSimpTheorems.isEmpty then
       oldSimpTheorems.push <| addSimpThms {}
     else
       oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
 
-  { c with aggregateSimpCtx.simpTheorems := simpTheorems }
+  { c with aggregateSimpPreCtx.simpTheorems := simpTheorems }
+
+/-- Set the `effectTheorems` field based on the current `effects`.
+
+NOTE: this generated the theorems from scratch, any previous effectTheorems will
+be disregarded. -/
+def regenerateEffectTheorems : SymM Unit := do
+  let effectTheorems ← (← getThe AxEffects).toSimpTheorems
+  modifyThe SymContext ({ · with effectTheorems })
 
 /-! ## Creating initial contexts -/
 
@@ -259,15 +273,8 @@ private def initial (state : Expr) : MetaM SymContext := do
   /- Create an mvar for the final state -/
   let finalState ← mkFreshExprMVar mkArmState
   /- Get the default simp lemmas & simprocs for aggregation -/
-  let (aggregateSimpCtx, aggregateSimprocs) ←
+  let (aggregateSimpPreCtx, aggregateSimprocs) ←
     LNSymSimpContext (config := {decide := true, failIfUnchanged := false})
-  let aggregateSimpCtx := { aggregateSimpCtx with
-    -- Create a new discrtree for effect hypotheses to be added to.
-    -- TODO(@alexkeizer): I put this here, since the previous version kept
-    -- a seperate discrtree for lemmas. I should run benchmarks to see what
-    -- happens if we keep everything in one simpset.
-    simpTheorems := aggregateSimpCtx.simpTheorems.push {}
-  }
   return {
     finalState
     runSteps? := none
@@ -277,8 +284,9 @@ private def initial (state : Expr) : MetaM SymContext := do
       instructions := ∅
     }
     pc := 0
-    aggregateSimpCtx,
+    aggregateSimpPreCtx,
     aggregateSimprocs,
+    effectTheorems := {}
     effects := AxEffects.initial state
   }
 
@@ -467,9 +475,7 @@ def fromMainContext (state? : Option Name) : TacticM SymContext := do
     searchLCtx SymContext.searchFor
 
     withMainContext' <| do
-      let thms ← (← readThe AxEffects).toSimpTheorems
-      modifyThe SymContext (·.addSimpTheorems thms)
-
+      regenerateEffectTheorems
       inferStatePrefixAndNumber
 
 /-! ## Incrementing the context to the next state -/

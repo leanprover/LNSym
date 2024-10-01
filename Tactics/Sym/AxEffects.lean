@@ -11,7 +11,7 @@ import Tactics.Simp
 
 import Std.Data.HashMap
 
-open Lean Meta
+open Lean Meta Elab.Tactic
 
 /-- A reflected `ArmState` field, see `AxEffects.fields` for more context -/
 structure AxEffects.FieldEffect where
@@ -197,7 +197,16 @@ Fails if the rewrite produces any subgoals.
 -/
 -- source: https://github.com/leanprover-community/mathlib4/blob/b35703fe5a80f1fa74b82a2adc22f3631316a5b3/Mathlib/Lean/Expr/Basic.lean#L476-L477
 private def rewriteType (e eq : Expr) : MetaM Expr := do
-  mkEqMP (← rewrite (← inferType e) eq) e
+  try
+    mkEqMP (← rewrite (← inferType e) eq) e
+  catch err =>
+    throwError "\
+While trying to rewrite:
+  {e}
+Along equality:
+  {eq}
+
+{err.toMessageData}"
 
 /-- Given a `field` such that `fields ∉ eff.fields`, return a proof of
   `r field <currentState> = r field <initialState>`
@@ -486,7 +495,7 @@ def fromExpr (e : Expr) : MetaM AxEffects := do
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
 def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
-    MetaM AxEffects := do
+    MetaM AxEffects :=
   withTraceNode `Tactic.sym (fun _ => pure "adjusting `currenstState`") do
     eff.traceCurrentState
     trace[Tactic.sym] "rewriting along {eq}"
@@ -503,7 +512,8 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
         pure (field, {fieldEff with proof})
     let fields := .ofList fields
 
-    let nonEffectProof ← rewriteType eff.nonEffectProof eq
+    let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
+      mkLambdaFVars args <|← rewriteType proof eq
     let memoryEffectProof ← rewriteType eff.memoryEffectProof eq
     -- ^^ TODO: what happens if `memoryEffect` is the same as `currentState`?
     --    Presumably, we would *not* want to encapsulate `memoryEffect` here
@@ -668,7 +678,7 @@ def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
     (mvar : Option MVarId := none) :
     TacticM AxEffects :=
   let msg := m!"adding hypotheses to local context"
-  withTraceNode `Tactic.sym (fun _ => pure msg) do
+  withTraceNode `Tactic.sym (fun _ => pure msg) (tag := "addHypothesesToLContext") do
     eff.traceCurrentState
     let mut goal ← mvar.getDM getMainGoal
 
@@ -743,7 +753,7 @@ where
 
 /-- Return an array of `SimpTheorem`s of the proofs contained in
 the given `AxEffects` -/
-def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
+def toSimpTheoremArray (eff : AxEffects) : MetaM (Array SimpTheorem) := do
   let msg := m!"computing SimpTheorems for (non-)effect hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
     let lctx ← getLCtx
@@ -787,5 +797,9 @@ def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
     trace[Tactic.sym] "done"
 
     pure thms
+
+def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
+  let thms ← eff.toSimpTheoremArray
+  return thms.foldl addSimpTheoremEntry {}
 
 end Tactic
