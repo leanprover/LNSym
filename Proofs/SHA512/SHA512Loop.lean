@@ -44,13 +44,13 @@ def loop_post (PC N SP CtxBase InputBase : BitVec 64)
   CheckSPAlignment si ∧
   ctx_addr si = CtxBase ∧
   stack_ptr si = SP - 16#64 ∧
-  si[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+  si[ktbl_addr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
   Memory.Region.pairwiseSeparate
                   [(SP - 16#64,   16),
                    (CtxBase,     64),
                    (InputBase,    (N.toNat * 128)),
-                   (KtblAddr,    (SHA2.k_512.length * 8))] ∧
-  r (.GPR 3#5) si = KtblAddr ∧
+                   (ktbl_addr,    (SHA2.k_512.length * 8))] ∧
+  r (.GPR 3#5) si = ktbl_addr ∧
   input_addr si = InputBase + (N * 128#64) ∧
   -- Registers contain the last processed input block.
   r (.SFP 16#5) si = vrev64_16 (si[input_addr si - (128#64 - (16#64 * 0)), 16]) ∧
@@ -78,7 +78,7 @@ set_option maxHeartbeats 0 in
 set_option maxRecDepth 8000 in
 theorem sha512_block_armv8_loop_1block (si sf : ArmState)
   (h_N : N = 1#64)
-  (h_si_prelude : SHA512.prelude 0x126500#64 N SP CtxBase InputBase si)
+  (h_si_prelude : sha512_prelude 0x126500#64 N SP CtxBase InputBase si)
   -- TODO: Ideally, nsteps ought to be 485 to be able to simulate the loop to
   -- completion.
   (h_steps : nsteps = 200)
