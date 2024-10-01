@@ -12,6 +12,5 @@ open Benchmarks
 benchmark sha512_150_instructions : SHA512Bench 150 := fun s0 _ h => by
   intros
   sym_n 150
-  simp only [h, bitvec_rules]
   · exact (sorry : Aligned ..)
   done
