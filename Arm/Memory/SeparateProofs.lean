@@ -126,7 +126,7 @@ theorem first_address_add_one_is_subset_of_region (n : Nat) (addr : BitVec 64)
   simp only [mem_subset]
   have : 0#64 < (BitVec.ofNat 64 n) := by
     bv_omega
-  bv_check "SeparateProofs.lean-first_address_add_one_is_subset_of_region-129-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-first_address_add_one_is_subset_of_region-129-2.lrat"
 
 private theorem first_addresses_add_one_is_subset_of_region_general_helper
   (n m addr1 addr2 : BitVec 64) (h0 : 0#64 < m) :
