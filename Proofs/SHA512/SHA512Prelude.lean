@@ -292,29 +292,6 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
     clear_named [h_, stepi]
     rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
     simp
-    try mem_decide_bv
-    exact h
-    /-
-    FIXME @hargoniX: This should once again be doable by bv_decide.
-    SHA512Prelude.lean:288:4
-    None of the hypotheses are in the supported BitVec fragment.
-    There are two potential fixes for this:
-    1. If you are using custom BitVec constructs simplify them to built-in ones.
-    2. If your problem is using only built-in ones it might currently be out of reach.
-    Consider expressing it in terms of different operations that are better supported.
-    -/
-    /-
-    (NOTE @bollu): Without the `clear_named...` above, we run into the following
-    error(s):
-
-    At this point, the conclusion is:
-    `Memory.read_bytes n addr s0.mem = Memory.read_bytes n addr s0.mem`
-    which rfl can't close (error: `The rfl tactic failed. Possible reasons:...`)
-    and
-    `exact Eq.refl _` errors out like so:
-    `(deterministic) timeout at elaborator, maximum number of heartbeats
-     (200000) has been reached...`
-    -/
-
+    mem_decide_bv
 
 end SHA512
