@@ -279,19 +279,18 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
     -- `simp` here
     withMainContext' <| do
       let hStep ← SymContext.findFromUserName h_step.getId
-      let lctx ← getLCtx
-      let decls := (← getThe SymContext).h_sp?.bind lctx.findFromUserName?
+      let decls := (← getThe AxEffects).stackAlignmentProof?
       let decls := decls.toArray
       -- If we know SP is aligned, `simp` with that fact
 
       if !decls.isEmpty then
         trace[Tactic.sym] "simplifying {hStep.toExpr} \
-          with {decls.map (·.toExpr)}"
+          with {decls}"
         -- If `decls` is empty, we have no more knowledge than before, so
         -- everything that could've been `simp`ed, already should have been
         let some goal ← do
             let (ctx, simprocs) ← LNSymSimpContext
-              (config := {decide := false}) (decls := decls)
+              (config := {decide := false}) (exprs := decls)
             let goal ← getMainGoal
             LNSymSimp goal ctx simprocs hStep.fvarId
           | throwError "internal error: simp closed goal unexpectedly"
