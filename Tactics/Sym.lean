@@ -168,7 +168,7 @@ store an `AxEffects` object with the newly added variables in the monad state
 def explodeStep (hStep : Expr) : SymM Unit :=
   withMainContext' do
     let c ← getThe SymContext
-    let mut eff ← AxEffects.fromEq hStep
+    let mut eff ← AxEffects.fromEq hStep c.effects.stackAlignmentProof?
 
     let stateExpr ← getCurrentState
     /- Assert that the initial state of the obtained `AxEffects` is equal to
@@ -183,44 +183,24 @@ def explodeStep (hStep : Expr) : SymM Unit :=
     eff ← eff.withField (← c.effects.getField .ERR).proof
 
     if let some hSp := c.effects.stackAlignmentProof? then
-      eff ← match ← eff.withStackAlignment? hSp with
-        | some newEff => pure newEff
-        | none => do
-            trace[Tactic.sym] "failed to show stack alignment"
-            -- FIXME: in future, we'd like to detect when the `sp_aligned`
-            -- hypothesis is actually necessary, and add the proof obligation
-            -- on-demand. For now, however, we over-approximate, and say that
-            -- if the original state was known to be aligned, and something
-            -- writes to the SP, then we eagerly add the obligation to proof
-            -- that the result is aligned as well.
-            -- If you don't want this obligation, simply remove the hypothesis
-            -- that the original state is aligned
-            let spEff ← eff.getField .SP
-            let subGoal ← mkFreshMVarId
-            -- subGoal.setTag <|
-            let hAligned ← do
-              let name := Name.mkSimple s!"h_{← getNextStateName}_sp_aligned"
-              mkFreshExprMVarWithId subGoal (userName := name) <|
-                mkAppN (mkConst ``Aligned) #[toExpr 64, spEff.value, toExpr 4]
+      for subGoal in eff.sideConditions do
+        trace[Tactic.sym] "attempting to discharge side-condition:\n  {subGoal}"
+        let subGoal? ← do
+          let (ctx, simprocs) ←
+            LNSymSimpContext
+              (config := {failIfUnchanged := false, decide := true})
+              (exprs := #[hSp])
+          LNSymSimp subGoal ctx simprocs
 
-            trace[Tactic.sym] "created subgoal to show alignment:\n{subGoal}"
-            let subGoal? ← do
-              let (ctx, simprocs) ←
-                LNSymSimpContext
-                  (config := {failIfUnchanged := false, decide := true})
-                  (exprs := #[hSp])
-              LNSymSimp subGoal ctx simprocs
-
-            if let some subGoal := subGoal? then
-              trace[Tactic.sym] "subgoal got simplified to:\n{subGoal}"
-              appendGoals [subGoal]
-            else
-              trace[Tactic.sym] "subgoal got closed by simplification"
-
-            let stackAlignmentProof? := some <|
-              mkAppN (mkConst ``CheckSPAlignment_of_r_sp_aligned)
-                #[eff.currentState, spEff.value, spEff.proof, hAligned]
-            pure { eff with stackAlignmentProof? }
+        if let some subGoal := subGoal? then
+          trace[Tactic.sym] "subgoal got simplified to:\n{subGoal}"
+          subGoal.setTag (.mkSimple s!"h_{← getNextStateName}_sp_aligned")
+          appendGoals [subGoal]
+        else
+          trace[Tactic.sym] "subgoal got closed by simplification"
+    else
+      appendGoals eff.sideConditions
+    eff := { eff with sideConditions := [] }
 
     -- Add new (non-)effect hyps to the context, and to the aggregation simpset
     withMainContext' <| do
