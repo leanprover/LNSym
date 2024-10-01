@@ -326,11 +326,7 @@ theorem nextc_to_run_from_0x4005b4_cond_holds_true (_h_pre : pre s0)
 
   rw [AddLoop.csteps_eq]
   have h_step_1 := program.stepi_0x4005b4_cut si (run 1 si)
-  simp_all only [minimal_theory, bitvec_rules]
-  -- (FIXME) Why do we need this decide?
-  simp (config := {decide := true}) only [*, minimal_theory] at h_inv_z
-  simp_all only [h_inv_z, minimal_theory]
-  --
+  simp_all only [minimal_theory, bitvec_rules, state_simp_rules, state_value]
   generalize h_s1 : run 1 si = s1 at h_step_1
 
   rw [AddLoop.csteps_eq]
