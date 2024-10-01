@@ -85,7 +85,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   -- ^^ Still needed, because `gcm_init_v8_program.min` is somehow
   --    unable to be reflected
   sym_n 152
-  simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
+  simp only [Htable_addr]
+  -- simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
   apply And.intro
   · bv_decide
   · simp only
@@ -95,4 +96,4 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     , DPSFP.AdvSIMDExpandImm
     , DPSFP.dup_aux_0_4_32]
     generalize read_mem_bytes 16 (r (StateField.GPR 1#5) s0) s0 = Hinit
-    sorry
+    bv_decide
