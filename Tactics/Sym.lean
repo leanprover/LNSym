@@ -11,15 +11,15 @@ import Tactics.Sym.Context
 import Lean
 
 open BitVec
-open Lean Meta
-open Lean.Elab.Tactic
+open Lean
+open Lean.Meta Lean.Elab.Tactic
 
 open AxEffects SymContext
 
 /-- A wrapper around `evalTactic` that traces the passed tactic script,
 executes those tactics, and then traces the new goal state -/
 private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
-  withTraceNode `Tactic.sym (fun _ => pure m!"running: {tactic}") <| do
+  withTraceNode m!"running: {tactic}" <| do
     evalTactic tactic
     trace[Tactic.sym] "new goal state:\n{← getGoals}"
 
@@ -50,7 +50,8 @@ to add a new local hypothesis in terms of `w` and `write_mem`
   `h_step : ?s' = w _ _ (w _ _ (... ?s))`
 -/
 def stepiTac (stepiEq : Expr) (hStep : Name) : SymReaderM Unit := fun ctx =>
-  withMainContext' do
+  withMainContext' <|
+  withVerboseTraceNode m!"stepiTac: {stepiEq}" <| do
     let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
     --  ^^ The PC in hex
     let stepLemma := Name.str ctx.program s!"stepi_eq_0x{pc}"
@@ -89,8 +90,7 @@ Finally, we use this proof to change the type of `h_run` accordingly.
 -/
 def unfoldRun (whileTac : Unit → TacticM Unit) : SymReaderM Unit := do
   let c ← readThe SymContext
-  let msg := m!"unfoldRun (runSteps? := {c.runSteps?})"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <|
+  withTraceNode m!"unfoldRun (runSteps? := {c.runSteps?})" <|
   match c.runSteps? with
     | some (_ + 1) => do
         trace[Tactic.sym] "runSteps is statically known to be non-zero, \
@@ -124,9 +124,9 @@ def unfoldRun (whileTac : Unit → TacticM Unit) : SymReaderM Unit := do
         let subGoal ← mkFreshMVarId
         let _ ← mkFreshExprMVarWithId subGoal subGoalTy
 
-        let msg := m!"runSteps is not statically known, so attempt to prove:\
-          {subGoal}"
-        withTraceNode `Tactic.sym (fun _ => pure msg) <| subGoal.withContext <| do
+        withTraceNode m!"runSteps is not statically known, so attempt to prove:\
+          {subGoal}" <|
+        subGoal.withContext <| do
           setGoals [subGoal]
           whileTac () -- run `whileTac` to attempt to close `subGoal`
 
@@ -166,7 +166,8 @@ add the relevant hypotheses to the local context, and
 store an `AxEffects` object with the newly added variables in the monad state
 -/
 def explodeStep (hStep : Expr) : SymM Unit :=
-  withMainContext' do
+  withMainContext' <|
+  withTraceNode m!"explodeStep {hStep}" <| do
     let c ← getThe SymContext
     let mut eff ← AxEffects.fromEq hStep c.effects.stackAlignmentProof?
 
@@ -183,21 +184,22 @@ def explodeStep (hStep : Expr) : SymM Unit :=
     eff ← eff.withField (← c.effects.getField .ERR).proof
 
     if let some hSp := c.effects.stackAlignmentProof? then
-      for subGoal in eff.sideConditions do
-        trace[Tactic.sym] "attempting to discharge side-condition:\n  {subGoal}"
-        let subGoal? ← do
-          let (ctx, simprocs) ←
-            LNSymSimpContext
-              (config := {failIfUnchanged := false, decide := true})
-              (exprs := #[hSp])
-          LNSymSimp subGoal ctx simprocs
+      withVerboseTraceNode m!"discharging side condiitions" <| do
+        for subGoal in eff.sideConditions do
+          trace[Tactic.sym] "attempting to discharge side-condition:\n  {subGoal}"
+          let subGoal? ← do
+            let (ctx, simprocs) ←
+              LNSymSimpContext
+                (config := {failIfUnchanged := false, decide := true})
+                (exprs := #[hSp])
+            LNSymSimp subGoal ctx simprocs
 
-        if let some subGoal := subGoal? then
-          trace[Tactic.sym] "subgoal got simplified to:\n{subGoal}"
-          subGoal.setTag (.mkSimple s!"h_{← getNextStateName}_sp_aligned")
-          appendGoals [subGoal]
-        else
-          trace[Tactic.sym] "subgoal got closed by simplification"
+          if let some subGoal := subGoal? then
+            trace[Tactic.sym] "subgoal got simplified to:\n{subGoal}"
+            subGoal.setTag (.mkSimple s!"h_{← getNextStateName}_sp_aligned")
+            appendGoals [subGoal]
+          else
+            trace[Tactic.sym] "subgoal got closed by simplification"
     else
       appendGoals eff.sideConditions
     eff := { eff with sideConditions := [] }
@@ -230,9 +232,9 @@ Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
 def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
   let stateNumber ← getCurrentStateNumber
-  let msg := m!"(sym1): simulating step {stateNumber}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
-    withTraceNode `Tactic.sym (fun _ => pure "verbose context") <| do
+  withTraceNode m!"(sym1): simulating step {stateNumber}" <|
+  withMainContext' do
+    withTraceNode "verbose context" <| do
       traceSymContext
       trace[Tactic.sym] "Goal state:\n {← getMainGoal}"
 
@@ -408,13 +410,11 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
 
         let goal ← subst goal hEqId
         trace[Tactic.sym] "performed subsitutition in:\n{goal}"
-
         replaceMainGoal [goal]
 
     -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
     -- added while symbolically evaluating to `simp`
-    let msg := m!"aggregating (non-)effects"
-    withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
+    withTraceNode m!"aggregating (non-)effects" <| withMainContext' do
       let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
       replaceMainGoal goal?.toList
 

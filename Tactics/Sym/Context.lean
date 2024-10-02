@@ -204,16 +204,22 @@ def toMessageData (c : SymContext) : MetaM MessageData := do
   curr_state_number := {c.currentStateNumber},
   effects := {c.effects} }"
 
+section Tracing
 variable {α : Type} {m : Type → Type} [Monad m] [MonadTrace m] [MonadLiftT IO m]
   [MonadRef m] [AddMessageContext m] [MonadOptions m] {ε : Type}
-  [MonadAlwaysExcept ε m] [MonadLiftT BaseIO m] in
-def withSymTraceNode (msg : MessageData) (k : m α) : m α := do
-  withTraceNode `Tactic.sym (fun _ => pure msg) k
+  [MonadAlwaysExcept ε m] [MonadLiftT BaseIO m]
+
+def withTraceNode (msg : MessageData) (k : m α) : m α := do
+  Lean.withTraceNode `Tactic.sym (fun _ => pure msg) k
+def withVerboseTraceNode (msg : MessageData) (k : m α) : m α := do
+  Lean.withTraceNode `Tactic.sym.verbose (fun _ => pure msg) k
 
 def traceSymContext : SymM Unit :=
-  withTraceNode `Tactic.sym (fun _ => pure m!"SymContext: ") <| do
+  withTraceNode m!"SymContext: " <| do
     let m ← (← getThe SymContext).toMessageData
     trace[Tactic.sym] m
+
+end Tracing
 
 /-! ## Adding new simp theorems for aggregation -/
 
@@ -416,7 +422,7 @@ we create a new subgoal of this type.
 -/
 def fromMainContext (state? : Option Name) : TacticM SymContext := do
   let msg := m!"Building a `SymContext` from the local context"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
+  withTraceNode msg <| withMainContext' do
   trace[Tactic.Sym] "state? := {state?}"
   let lctx ← getLCtx
 
