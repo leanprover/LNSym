@@ -8,7 +8,7 @@ import Arm.Map
 import Arm.Decode
 import Tactics.Common
 import Tactics.Simp
-import Tactics.Reflect.ProgramInfo
+import Tactics.Sym.ProgramInfo
 
 open Lean Lean.Expr Lean.Meta Lean.Elab Lean.Elab.Command
 open SymContext (h_pc_type h_program_type h_err_type)
@@ -204,6 +204,7 @@ def genStepEqTheorems : StepThmsM Unit := do
       name, type, value,
       levelParams := []
     }
+    trace[gen_step.print_names] "[genStepEqTheorems] Theorem added: {name}"
     trace[gen_step.debug.timing] "[genStepEqTheorems] added to environment in: {(← IO.monoMsNow) - startTime}ms"
 
 /-- `#genProgramInfo program` ensures the `ProgramInfo` for `program`

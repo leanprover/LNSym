@@ -9,9 +9,11 @@ import Lean.Meta
 import Arm.Exec
 import Tactics.Common
 import Tactics.Attr
-import Tactics.Reflect.ProgramInfo
-import Tactics.Reflect.AxEffects
+import Tactics.Sym.ProgramInfo
+import Tactics.Sym.AxEffects
+import Tactics.Sym.LCtxSearch
 import Tactics.Simp
+
 
 /-!
 This files defines the `SymContext` structure,
@@ -218,12 +220,56 @@ def traceSymContext : SymM Unit :=
     let m ← (← getThe SymContext).toMessageData
     trace[Tactic.sym] m
 
+/-! ## Adding new simp theorems for aggregation -/
+
+/-- Add a set of new simp-theorems to the simp-theorems used
+for effect aggregation -/
+def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
+  let addSimpThms := simpThms.foldl addSimpTheoremEntry
+
+  let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
+  let simpTheorems :=
+    if oldSimpTheorems.isEmpty then
+      oldSimpTheorems.push <| addSimpThms {}
+    else
+      oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
+
+  { c with aggregateSimpCtx.simpTheorems := simpTheorems }
+
 /-! ## Creating initial contexts -/
 
 /-- Modify a `SymContext` with a monadic action `k : SymM Unit` -/
 def modify (ctxt : SymContext) (k : SymM Unit) : TacticM SymContext := do
   let ((), ctxt) ← SymM.run ctxt k
   return ctxt
+
+private def initial (state : Expr) : MetaM SymContext := do
+  /- Create an mvar for the final state -/
+  let finalState ← mkFreshExprMVar mkArmState
+  /- Get the default simp lemmas & simprocs for aggregation -/
+  let (aggregateSimpCtx, aggregateSimprocs) ←
+    LNSymSimpContext (config := {decide := true, failIfUnchanged := false})
+  let aggregateSimpCtx := { aggregateSimpCtx with
+    -- Create a new discrtree for effect hypotheses to be added to.
+    -- TODO(@alexkeizer): I put this here, since the previous version kept
+    -- a seperate discrtree for lemmas. I should run benchmarks to see what
+    -- happens if we keep everything in one simpset.
+    simpTheorems := aggregateSimpCtx.simpTheorems.push {}
+  }
+  return {
+    finalState
+    runSteps? := none
+    h_run := `dummyValue
+    programInfo := {
+      name := `dummyValue
+      instructions := ∅
+    }
+    pc := 0
+    h_sp? := none
+    aggregateSimpCtx,
+    aggregateSimprocs,
+    effects := AxEffects.initial state
+  }
 
 /-- Infer `state_prefix` and `curr_state_number` from the `state` name
 as follows: if `state` is `s{i}` for some number `i` and a single character `s`,
@@ -247,7 +293,7 @@ Falling back to the default numbering scheme, \
 with `s1` as the first new intermediate state"
     modifyThe SymContext ({ · with
       state_prefix := "s",
-      currentStateNumber := 1 })
+      currentStateNumber := 0 })
 
 /-- Annotate any errors thrown by `k` with a local variable (and its type) -/
 private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) :
@@ -259,16 +305,127 @@ private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) 
       | none      => m!""
     throwErrorAt e.getRef "{e.toMessageData}\n\nIn {h}{type}"
 
-/-- Build a `SymContext` by searching the local context for hypotheses of the
-required types (up-to defeq) . The local context is modified to unfold the types
-to be syntactically equal to the expected type.
+-- protected def AxEffects.searchFor
+
+/-- Build the lazy search structure (for use with `searchLCtx`)
+to populate the `SymContext` state from the local context.
+
+NOTE: some search might be performed eagerly. The resulting search structure
+is tied to the specific `SymM` state and local context, it's expected that
+neither of these change between construction and execution of the search. -/
+protected def searchFor : SearchLCtxForM SymM Unit := do
+  let c ← getThe SymContext
+  let currentState ← AxEffects.getCurrentState
+
+  /- We start by doing an eager search for `h_run`, outside the `SearchLCxtForM`
+  monad. This is needed to instantiate the initial state -/
+  let runSteps ← mkFreshExprMVar (Expr.const ``Nat [])
+  let hRunType := h_run_type c.finalState runSteps currentState
+  let some hRun ← findLocalDeclOfType? hRunType
+    | throwNotFound hRunType
+
+  let runSteps? ← reflectNatLiteral? runSteps
+  if runSteps?.isNone then
+    trace[Tactic.sym] "failed to reflect {runSteps} \
+      (from {hRun.toExpr} : {hRun.type})"
+
+  modifyThe SymContext ({ · with
+    h_run := hRun.userName
+    finalState := ←instantiateMVars c.finalState
+    runSteps?
+  })
+
+  /-
+  From here on out, we're building the lazy search patterns
+  -/
+  -- Find `h_program : <s>.program = <program>`
+  let program ← mkFreshExprMVar none
+  searchLCtxForOnce (h_program_type currentState program)
+    (whenNotFound := throwNotFound)
+    (whenFound := fun decl _ => do
+      -- Register the program proof
+      modifyThe AxEffects ({· with
+        programProof := decl.toExpr
+      })
+      -- Assert that `program` is a(n application of a) constant
+      let program := (← instantiateMVars program).getAppFn
+      let .const program _ := program
+        | throwError "Expected a constant, found:\n\t{program}"
+      -- Retrieve the programInfo from the environment
+      let some programInfo ← ProgramInfo.lookup? program
+        | throwError "Could not find program info for `{program}`.\n\
+            Did you remember to generate step theorems with:\n  \
+              #generateStepEqTheorems {program}"
+      modifyThe SymContext ({· with
+        programInfo
+      })
+    )
+
+  -- Find `h_pc : r .PC <s> = <pc>`
+  let pc ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
+  searchLCtxForOnce (h_pc_type currentState pc)
+    (changeType := true)
+    (whenNotFound := throwNotFound)
+    (whenFound := fun decl _ => do
+      let pc ← instantiateMVars pc
+      -- Set the field effect
+      AxEffects.setFieldEffect .PC {
+        value := pc
+        proof := decl.toExpr
+      }
+      -- Then, reflect the value
+      let pc ← withErrorContext decl.userName decl.type <|
+        reflectBitVecLiteral 64 pc
+      modifyThe SymContext ({ · with pc })
+    )
+
+  -- Find `h_err : r .ERR <s> = .None`, or add a new subgoal if it isn't found
+  searchLCtxForOnce (h_err_type currentState)
+    (changeType := true)
+    (whenFound := fun decl _ =>
+      AxEffects.setErrorProof decl.toExpr
+    )
+    (whenNotFound := fun _ => do
+      let errHyp ← mkFreshExprMVar (h_err_type currentState)
+      replaceMainGoal [← getMainGoal, errHyp.mvarId!]
+      AxEffects.setErrorProof errHyp
+    )
+
+  -- Find `h_sp : CheckSPAlignment <currentState>`.
+  searchLCtxForOnce (h_sp_type currentState)
+    (changeType := true)
+    (whenNotFound := traceNotFound `Tactic.sym)
+    -- ^^ Note that `h_sp` is optional, so there's no need to throw an error,
+    --    we merely add a message to the trace and move on
+    (whenFound := fun decl _ => do
+      modifyThe AxEffects ({ · with
+        stackAlignmentProof? := some decl.toExpr
+      })
+      modifyThe SymContext ({· with
+        h_sp? := decl.userName
+      })
+    )
+
+  /- TODO(@alexkeizer): search for any other hypotheses of the form
+      `r ?field <currentState> = _`, and record those.
+    Keeping in mind that we have to do this search AFTER `h_pc` or `h_err`, to
+    ensure those field-specific searches take priority.
+    Also, maybe for memory-reads as well? Or we can hold off on that untill
+    after the equality refactor  -/
+
+  return ()
+
+/-- Build a `SymContext` by searching the local context of the main goal for
+hypotheses of the required types (up-to defeq).
+The local context is modified to unfold the types to be syntactically equal to
+the expected types.
 
 If an hypothesis `h_err : r <state> .ERR = None` is not found,
-we create a new subgoal of this type
+we create a new subgoal of this type.
 -/
-def fromLocalContext (state? : Option Name) : TacticM SymContext := do
+def fromMainContext (state? : Option Name) : TacticM SymContext := do
   let msg := m!"Building a `SymContext` from the local context"
-  withTraceNode `Tactic.sym (fun _ => pure msg) do
+  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
   trace[Tactic.Sym] "state? := {state?}"
   let lctx ← getLCtx
 
@@ -281,131 +438,16 @@ def fromLocalContext (state? : Option Name) : TacticM SymContext := do
       pure (Expr.fvar decl.fvarId)
     | none => mkFreshExprMVar (Expr.const ``ArmState [])
 
-  -- Find `h_run`
-  let finalState ← mkFreshExprMVar none
-  let runSteps ← mkFreshExprMVar (Expr.const ``Nat [])
-  let h_run ←
-    findLocalDeclOfTypeOrError <| h_run_type finalState runSteps stateExpr
+  -- We create a bogus initial context
+  let c ← SymContext.initial stateExpr
+  c.modify <| do
+    searchLCtx SymContext.searchFor
 
-  -- Unwrap and reflect `runSteps`
-  let runSteps? ← do
-    let msg := m!"Reflecting: {runSteps}"
-    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-      let runSteps? ← reflectNatLiteral? runSteps
-      trace[Tactic.sym] "got: {runSteps?}"
-      pure runSteps?
-  let finalState ← instantiateMVars finalState
+    withMainContext' <| do
+      let thms ← (← readThe AxEffects).toSimpTheorems
+      modifyThe SymContext (·.addSimpTheorems thms)
 
-  -- At this point, `stateExpr` should have been assigned (if it was an mvar),
-  -- so we can unwrap it to get the underlying name
-  let stateExpr ← instantiateMVars stateExpr
-
-  -- Try to find `h_program`, and infer `program` from it
-  let ⟨h_program, program⟩ ← withErrorContext h_run.userName h_run.type <|
-    findProgramHyp stateExpr
-
-  -- Then, try to find `h_pc`
-  let pcE ← mkFreshExprMVar (← mkAppM ``BitVec #[toExpr 64])
-  let h_pc ← findLocalDeclOfTypeOrError <| h_pc_type stateExpr pcE
-
-  -- Unwrap and reflect `pc`
-  let pcE ← instantiateMVars pcE
-  let pc ← withErrorContext h_pc.userName h_pc.type <|
-    reflectBitVecLiteral 64 pcE
-
-  -- Attempt to find `h_err`, adding a new subgoal if it couldn't be found
-  let errHyp ← do
-    let h_err? ← findLocalDeclOfType? (h_err_type stateExpr)
-    match h_err? with
-    | some d => pure d.toExpr
-    | none => do
-        let errHyp ← mkFreshExprMVar (h_err_type stateExpr)
-        replaceMainGoal [← getMainGoal, errHyp.mvarId!]
-        pure errHyp
-
-  let h_sp?  ← findLocalDeclOfType? (h_sp_type stateExpr)
-  if h_sp?.isNone then
-    trace[Sym] "Could not find local hypothesis of type {h_sp_type stateExpr}"
-
-  -- Finally, retrieve the programInfo from the environment
-  let some programInfo ← ProgramInfo.lookup? program
-    | throwError "Could not find program info for `{program}`.
-        Did you remember to generate step theorems with:
-          #generateStepEqTheorems {program}"
-
-  -- Initialize the axiomatic hypotheses with hypotheses for the initial state
-  let axHyps := #[h_program, h_pc] ++ h_sp?.toArray
-  let (aggregateSimpCtx, aggregateSimprocs) ←
-    LNSymSimpContext
-      (config := {decide := true, failIfUnchanged := false})
-      (decls := axHyps)
-      (exprs := #[errHyp])
-      (noIndexAtArgs := false)
-
-  -- Build an initial AxEffects
-  let effects := AxEffects.initial stateExpr
-  let effects := { effects with
-    fields := effects.fields
-      |>.insert .PC { value := pcE, proof := h_pc.toExpr}
-      |>.insert .ERR { value := mkConst ``StateError.None, proof := errHyp}
-    programProof := h_program.toExpr
-    stackAlignmentProof? := h_sp?.map (·.toExpr)
-  }
-  let c : SymContext := {
-    finalState, runSteps?, pc,
-    h_run := h_run.userName,
-    h_sp? := (·.userName) <$> h_sp?,
-    programInfo,
-    effects,
-    aggregateSimpCtx, aggregateSimprocs
-  }
-  c.modify <|
-    inferStatePrefixAndNumber
-where
-  findLocalDeclOfType? (expectedType : Expr) : MetaM (Option LocalDecl) := do
-    let msg := m!"Searching for hypothesis of type: {expectedType}"
-    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-      let decl? ← _root_.findLocalDeclOfType? expectedType
-      trace[Tactic.sym] "Found: {(·.toExpr) <$> decl?}"
-      return decl?
-  findLocalDeclOfTypeOrError (expectedType : Expr) : MetaM LocalDecl := do
-    let msg := m!"Searching for hypothesis of type: {expectedType}"
-    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-      let decl ← _root_.findLocalDeclOfTypeOrError expectedType
-      trace[Tactic.sym] "Found: {decl.toExpr}"
-      return decl
-
-/-! ## Massaging the local context -/
-
-/-- change the type (in the local context of the main goal)
-of the hypotheses tracked by the given `SymContext` to be *exactly* of the shape
-described in the relevant docstrings.
-
-That is, (un)fold types which were definitionally, but not syntactically,
-equal to the expected shape. -/
-def canonicalizeHypothesisTypes : SymReaderM Unit := withMainContext' do
-  let c ← readThe SymContext
-  let lctx ← getLCtx
-  let mut goal ← getMainGoal
-  let state := c.effects.currentState
-
-  let mut hyps := #[]
-  if let some runSteps := c.runSteps? then
-    hyps := hyps.push (c.h_run, h_run_type c.finalState (toExpr runSteps) state)
-  if let some h_sp := c.h_sp? then
-    hyps := hyps.push (h_sp, h_sp_type state)
-
-  let mut hypIds ← hyps.mapM fun ⟨name, type⟩ => do
-    let some decl := lctx.findFromUserName? name
-      | throwError "Unknown local hypothesis `{name}`"
-    pure (decl.fvarId, type)
-
-  let errHyp ← AxEffects.getFieldM .ERR
-  if let Expr.fvar id := errHyp.proof then
-    hypIds := hypIds.push (id, h_err_type state)
-  for ⟨fvarId, type⟩ in hypIds do
-    goal ← goal.replaceLocalDeclDefEq fvarId type
-  replaceMainGoal [goal]
+      inferStatePrefixAndNumber
 
 /-! ## Incrementing the context to the next state -/
 
@@ -431,17 +473,3 @@ def prepareForNextStep : SymM Unit := do
     runSteps?   := (· - 1) <$> c.runSteps?
     currentStateNumber := c.currentStateNumber + 1
   })
-
-/-- Add a set of new simp-theorems to the simp-theorems used
-for effect aggregation -/
-def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
-  let addSimpThms := simpThms.foldl addSimpTheoremEntry
-
-  let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
-  let simpTheorems :=
-    if oldSimpTheorems.isEmpty then
-      oldSimpTheorems.push <| addSimpThms {}
-    else
-      oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
-
-  { c with aggregateSimpCtx.simpTheorems := simpTheorems }

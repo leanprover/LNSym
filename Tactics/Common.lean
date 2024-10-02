@@ -242,8 +242,7 @@ def findProgramHyp (state : Expr) : MetaM (LocalDecl × Name) := do
   -- Assert that `program` is a(n application of a) constant, and find its name
   let program := (← instantiateMVars program).getAppFn
   let .const program _ := program
-    |  -- withErrorContext h_run h_run_type <|
-        throwError "Expected a constant, found:\n\t{program}"
+    | throwError "Expected a constant, found:\n\t{program}"
 
   return ⟨h_program, program⟩
 
@@ -278,3 +277,6 @@ variable {m} [Monad m] [MonadLiftT TacticM m] [MonadControlT MetaM m] in
 Unlike the standard `withMainContext`, `x` may live in a generic monad `m`. -/
 def withMainContext' (x : m α) : m α := do
   (← getMainGoal).withContext x
+
+/-- An emoji to show that a tactic is processing at an intermediate step. -/
+def processingEmoji : String := "⚙️"
