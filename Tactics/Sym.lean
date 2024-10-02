@@ -216,7 +216,7 @@ Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
 def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
   let stateNumber ← getCurrentStateNumber
-  withTraceNode m!"(sym1): simulating step {stateNumber}" (tag:="sym1") <|
+  withTraceNode m!"(sym1): simulating step {stateNumber}" <|
   withMainContext' do
     withVerboseTraceNode "verbose context" (tag := "infoDump") <| do
       traceSymContext
@@ -245,12 +245,12 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
     -- `simp` here
     withMainContext' <| do
       let hStep ← SymContext.findFromUserName h_step.getId
-      let some goal ←
-        let msg := m!"simplifying {hStep.toExpr}"
-        withTraceNode msg (tag := "simplifyHStep") <| do
-          let c ← getThe SymContext
-          let goal ← getMainGoal
-          LNSymSimp goal c.aggregateSimpCtx c.aggregateSimprocs hStep.fvarId
+      let some goal ← do
+          let msg := m!"simplifying {hStep.toExpr}"
+          withTraceNode msg (tag := "simplifyHStep") <| do
+            let c ← getThe SymContext
+            let goal ← getMainGoal
+            LNSymSimp goal c.aggregateSimpCtx c.aggregateSimprocs hStep.fvarId
         | throwError "internal error: simp closed goal unexpectedly"
       replaceMainGoal [goal]
 
