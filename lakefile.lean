@@ -33,6 +33,7 @@ lean_lib «Doc» where
   -- add library configuration options here
 
 lean_lib «Benchmarks» where
+  leanOptions := #[⟨`weak.benchmark.runs, (0 : Nat)⟩]
   -- add library configuration options here
 
 @[default_target]

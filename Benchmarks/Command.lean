@@ -12,58 +12,103 @@ initialize
     defValue := false
     descr := "enables/disables benchmarking in `withBenchmark` combinator"
   }
+  registerOption `benchmark.runs {
+    defValue := (5 : Nat)
+    descr := "controls how many runs the `benchmark` command does. \
+    NOTE: this value is ignored when the `profiler` option is set to true"
+  }
+  /- Shouldn't be set directly, instead, use the `benchmark` command -/
+  registerTraceClass `benchmark
 
 variable {m} [Monad m] [MonadLiftT BaseIO m] in
-def withHeartbeatsAndMs (x : m α) : m (α × Nat × Nat) := do
+/-- Measure the heartbeats and time (in milliseconds) taken by `x` -/
+def withHeartbeatsAndMilliseconds (x : m α) : m (α × Nat × Nat) := do
   let start ← IO.monoMsNow
   let (a, heartbeats) ← withHeartbeats x
   let endTime ← IO.monoMsNow
   return ⟨a, heartbeats, endTime - start⟩
 
-elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
-  logInfo m!"Running {id} benchmark\n"
+/-- Adds a trace node with the `benchmark` class, but only if the profiler
+option is *not* set.
 
+We deliberately suppress benchmarking nodes when profiling, since it generally
+only adds noise
+-/
+def withBenchTraceNode (msg : MessageData) (x : CommandElabM α )
+    : CommandElabM α := do
+  if (← getBoolOption `profiler) then
+    x
+  else
+    withTraceNode `benchmark (fun _ => pure msg) x (collapsed := false)
+
+/--
+Run a benchmark for a set number of times, and report the average runtime.
+
+If the `profiler` option is set true, we run the benchmark only once, with:
+- `trace.profiler` to true, and
+- `trace.profiler.output` set based on the `benchmark.profilerDir` and the
+    id of the benchmark
+-/
+elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
+  let originalOpts ← getOptions
+  let mut n := originalOpts.getNat `benchmark.runs 5
+  let mut opts := originalOpts
+  opts := opts.setBool `benchmark true
   let stx ← `(command|
-    set_option benchmark true in
     example $declSig:optDeclSig $val:declVal
   )
 
-  let n := 5
-  let mut totalRunTime := 0
-  -- geomean = exp(log((a₁ a₂ ... aₙ)^1/n)) =
-  -- exp(1/n * (log a₁ + log a₂ + log aₙ)).
-  let mut totalRunTimeLog := 0
-  for i in [0:n] do
-    logInfo m!"\n\nRun {i} (out of {n}):\n"
-    let ((), _, runTime) ← withHeartbeatsAndMs <|
-      elabCommand stx
+  if (← getBoolOption `profiler) then
+    opts := opts.setBool `trace.profiler true
+    n := 1 -- only run once, if `profiler` is set to true
+  else
+    opts := opts.setBool `trace.benchmark true
 
-    logInfo m!"Proof took {runTime / 1000}s in total"
-    totalRunTime := totalRunTime + runTime
-    totalRunTimeLog := totalRunTimeLog + Float.log runTime.toFloat
+  if n = 0 then
+    return ()
 
-  let avg := totalRunTime.toFloat / n.toFloat / 1000
-  let geomean := (Float.exp (totalRunTimeLog / n.toFloat)) / 1000.0
-  logInfo m!"\
-{id}:
-  average runtime over {n} runs:
-    {avg}s
-  geomean over {n} runs:
-    {geomean}s
-"
+  -- Set options
+  modifyScope fun scope => { scope with opts }
+
+  withBenchTraceNode m!"Running {id} benchmark" <| do
+    let mut totalRunTime := 0
+    -- geomean = exp(log((a₁ a₂ ... aₙ)^1/n)) =
+    -- exp(1/n * (log a₁ + log a₂ + log aₙ)).
+    let mut totalRunTimeLog : Float := 0
+    for i in [0:n] do
+      let runTime ← withBenchTraceNode m!"Run {i+1} (out of {n}):" <| do
+        let ((), _, runTime) ← withHeartbeatsAndMilliseconds <|
+          elabCommand stx
+
+        trace[benchmark] m!"Proof took {runTime / 1000}s in total"
+        pure runTime
+      totalRunTime := totalRunTime + runTime
+      totalRunTimeLog := totalRunTimeLog + Float.log runTime.toFloat
+
+    let avg := totalRunTime.toFloat / n.toFloat / 1000
+    let geomean := (Float.exp (totalRunTimeLog / n.toFloat)) / 1000.0
+    trace[benchmark] m!"\
+  {id}:
+    average runtime over {n} runs:
+      {avg}s
+    geomean over {n} runs:
+      {geomean}s
+  "
+    -- Restore options
+    modifyScope fun scope => { scope with opts := originalOpts }
 
 /-- Set various options to disable linters -/
 macro "disable_linters" "in" cmd:command : command => `(command|
-  set_option linter.constructorNameAsVariable false in
-  set_option linter.deprecated false in
-  set_option linter.missingDocs false in
-  set_option linter.omit false in
-  set_option linter.suspiciousUnexpanderPatterns false in
-  set_option linter.unnecessarySimpa false in
-  set_option linter.unusedRCasesPattern false in
-  set_option linter.unusedSectionVars false in
-  set_option linter.unusedVariables false in
-  $cmd
+set_option linter.constructorNameAsVariable false in
+set_option linter.deprecated false in
+set_option linter.missingDocs false in
+set_option linter.omit false in
+set_option linter.suspiciousUnexpanderPatterns false in
+set_option linter.unnecessarySimpa false in
+set_option linter.unusedRCasesPattern false in
+set_option linter.unusedSectionVars false in
+set_option linter.unusedVariables false in
+$cmd
 )
 
 /-- The default `maxHeartbeats` setting.
@@ -96,7 +141,7 @@ private def withBenchmarkAux (x : m α) (f : Nat → Nat → m Unit)  : m α := 
   if (← getBoolOption `benchmark) = false then
     x
   else
-    let (a, heartbeats, t) ← withHeartbeatsAndMs x
+    let (a, heartbeats, t) ← withHeartbeatsAndMilliseconds x
     f heartbeats t
     return a
 

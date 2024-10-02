@@ -5,6 +5,8 @@
 SHELL := /bin/bash
 
 LAKE = lake
+LEAN = $(LAKE) env lean
+GIT = git
 
 NUM_TESTS?=3
 VERBOSE?=--verbose
@@ -37,9 +39,22 @@ awslc_elf:
 cosim:
 	time -p lake exe lnsym $(VERBOSE) --num-tests $(NUM_TESTS)
 
+BENCHMARKS = Benchmarks/SHA512_75.lean \
+	Benchmarks/SHA512_75_noKernel_noLint.lean \
+	Benchmarks/SHA512_150.lean \
+	Benchmarks/SHA512_150_noKernel_noLint.lean \
+	Benchmarks/SHA512_225.lean \
+	Benchmarks/SHA512_225_noKernel_noLint.lean \
+	Benchmarks/SHA512_400.lean \
+	Benchmarks/SHA512_400_noKernel_noLint.lean
+
 .PHONY: benchmarks
 benchmarks:
-	$(LAKE) build Benchmarks
+	./scripts/benchmark.sh $(BENCHMARKS)
+
+.PHONY: profile
+profile:
+	./scripts/profile.sh $(BENCHMARKS)
 
 .PHONY: clean clean_all
 clean:
