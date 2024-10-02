@@ -1083,13 +1083,31 @@ Allow elaboration of `SimpMemConfig` arguments to tactics.
 declare_config_elab elabSimpMemConfig SeparateAutomation.SimpMemConfig
 
 /--
+Direct `simp_mem` to assume certain memory relationships when trying to rewrite the context.
+· ⟂w direct `simp_mem` to assume that the write is separated from the read.
+· ⊆w directs `simp_mem` to assume that the read is a subset of a write.
+· ⊆r directs `simp_mem` to assume that the read is a subset of a read in the hypothesis.
+-/
+syntax simpMemTarget := "⟂w" <|> "⊆w" <|> "⊆r"
+
+/--
 Implement the simp_mem tactic frontend.
 -/
-syntax (name := simp_mem) "simp_mem" (Lean.Parser.Tactic.config)? : tactic
+syntax (name := simp_mem) "simp_mem" (Lean.Parser.Tactic.config)? (simpMemTarget)? : tactic
+
 
 @[tactic simp_mem]
 def evalSimpMem : Tactic := fun
   | `(tactic| simp_mem $[$cfg]?) => do
+    let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
+    SeparateAutomation.simpMemTactic cfg
+  | `(tactic| simp_mem $[$cfg]? ⟂w) => do
+    let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
+    SeparateAutomation.simpMemTactic cfg
+  | `(tactic| simp_mem $[$cfg]? ⊆w) => do
+    let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
+    SeparateAutomation.simpMemTactic cfg
+  | `(tactic| simp_mem $[$cfg]? ⊆r) => do
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
     SeparateAutomation.simpMemTactic cfg
   | _ => throwUnsupportedSyntax
