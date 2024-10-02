@@ -39,32 +39,22 @@ awslc_elf:
 cosim:
 	time -p lake exe lnsym $(VERBOSE) --num-tests $(NUM_TESTS)
 
-BENCH = $(LEAN) -Dweak.benchmark.runs=5
+BENCHMARKS = Benchmarks/SHA512_75.lean \
+	Benchmarks/SHA512_75_noKernel_noLint.lean \
+	Benchmarks/SHA512_150.lean \
+	Benchmarks/SHA512_150_noKernel_noLint.lean \
+	Benchmarks/SHA512_225.lean \
+	Benchmarks/SHA512_225_noKernel_noLint.lean \
+	Benchmarks/SHA512_400.lean \
+	Benchmarks/SHA512_400_noKernel_noLint.lean
+
 .PHONY: benchmarks
 benchmarks:
-	echo "HEAD is on `$(GIT) rev-parse --short HEAD`"
-	$(LAKE) build Benchmarks
-	$(BENCH) Benchmarks/SHA512_75.lean
-	$(BENCH) Benchmarks/SHA512_75_noKernel_noLint.lean
-	$(BENCH) Benchmarks/SHA512_150.lean
-	$(BENCH) Benchmarks/SHA512_150_noKernel_noLint.lean
-	$(BENCH) Benchmarks/SHA512_225.lean
-	$(BENCH) Benchmarks/SHA512_225_noKernel_noLint.lean
-	$(BENCH) Benchmarks/SHA512_400.lean
-	$(BENCH) Benchmarks/SHA512_400_noKernel_noLint.lean
+	./scripts/benchmark.sh $(BENCHMARKS)
 
-PROF = $(LEAN) -Dprofiler=true
 .PHONY: profile
 profile:
-	$(LAKE) build Benchmarks
-	$(PROF) Benchmarks/SHA512_75.lean
-	$(PROF) Benchmarks/SHA512_75_noKernel_noLint.lean
-	$(PROF) Benchmarks/SHA512_150.lean
-	$(PROF) Benchmarks/SHA512_150_noKernel_noLint.lean
-	$(PROF) Benchmarks/SHA512_225.lean
-	$(PROF) Benchmarks/SHA512_225_noKernel_noLint.lean
-	$(PROF) Benchmarks/SHA512_400.lean
-	$(PROF) Benchmarks/SHA512_400_noKernel_noLint.lean
+	./scripts/profile.sh $(BENCHMARKS)
 
 .PHONY: clean clean_all
 clean:
