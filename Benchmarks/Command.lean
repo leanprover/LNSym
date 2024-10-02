@@ -25,7 +25,8 @@ initialize
   registerTraceClass `benchmark
 
 variable {m} [Monad m] [MonadLiftT BaseIO m] in
-def withHeartbeatsAndMs (x : m α) : m (α × Nat × Nat) := do
+/-- Measure the heartbeats and time (in milliseconds) taken by `x` -/
+def withHeartbeatsAndMilliseconds (x : m α) : m (α × Nat × Nat) := do
   let start ← IO.monoMsNow
   let (a, heartbeats) ← withHeartbeats x
   let endTime ← IO.monoMsNow
@@ -82,7 +83,7 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
     let mut totalRunTimeLog : Float := 0
     for i in [0:n] do
       let runTime ← withBenchTraceNode m!"Run {i+1} (out of {n}):" <| do
-        let ((), _, runTime) ← withHeartbeatsAndMs <|
+        let ((), _, runTime) ← withHeartbeatsAndMilliseconds <|
           elabCommand stx
 
         trace[benchmark] m!"Proof took {runTime / 1000}s in total"
@@ -146,7 +147,7 @@ private def withBenchmarkAux (x : m α) (f : Nat → Nat → m Unit)  : m α := 
   if (← getBoolOption `benchmark) = false then
     x
   else
-    let (a, heartbeats, t) ← withHeartbeatsAndMs x
+    let (a, heartbeats, t) ← withHeartbeatsAndMilliseconds x
     f heartbeats t
     return a
 
