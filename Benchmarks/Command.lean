@@ -17,10 +17,6 @@ initialize
     descr := "controls how many runs the `benchmark` command does. \
     NOTE: this value is ignored when the `profiler` option is set to true"
   }
-  registerOption `benchmark.profilerDir {
-    defValue := "profiles/"
-    descr := "where to put profile output files"
-  }
   /- Shouldn't be set directly, instead, use the `benchmark` command -/
   registerTraceClass `benchmark
 
@@ -63,9 +59,7 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   )
 
   if (← getBoolOption `profiler) then
-    let outDir := (← getOptions).getString `benchmark.profilerDir
     opts := opts.setBool `trace.profiler true
-    opts := opts.setString `trace.profiler.output s!"{outDir}/{id.getId}"
     n := 1 -- only run once, if `profiler` is set to true
   else
     opts := opts.setBool `trace.benchmark true
