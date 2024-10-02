@@ -216,6 +216,43 @@ theorem partial_correctness_from_verification_conditions [Sys σ] [Spec' σ]
         ⟨n, Nat.le_refl _, hexit, hpost⟩
     find 0 (v1 s0 hp) (Nat.zero_le ..)
 
+
+/--
+Prove partial correctness using inductive assertions and functions
+`csteps` and `nextc`.
+
+We use `s0`, `si`, and `sf` to refer to initial, intermediate, and
+final (exit) states respectively.
+
+This is Theorem 1 from page 5 of the paper. This proof method is more
+convenient to use than `partial_correctness_by_stepwise_invariants`
+because we need only attach assertions at certain cutpoints. However,
+it may still be tedious to use from the point of view of automation
+because it is difficult to both symbolically simulate an instruction
+and unwind `csteps` in tandem. So far, we have found that it is
+easiest to determine what concrete value `csteps` yields (via symbolic
+simulation), and then perform symbolic simulation -- however, then we
+end up doing simulation twice, which is expensive.
+
+Also see `partial_correctness_from_assertions`.
+-/
+theorem partial_correctness_from_verification_conditions_concrete_num_steps [Sys σ] [Spec' σ]
+    (csteps' : σ → Nat) -- a computable function that tells us the number of steps.
+    (hnsteps : ∀ (s0 si : σ), (hs : assert s0 si) →
+      run si (csteps' si) = (nextc (run si 1))) -- csteps' si is the steps till the next cutpoint.
+    (v1 : ∀ s0 : σ, pre s0 → assert s0 s0)
+    (v2 : ∀ sf : σ, exit sf → cut sf)
+    (v3 : ∀ s0 sf : σ, assert s0 sf → exit sf → post s0 sf)
+    -- We use `run` since it plays well with `sym_n` proof automation.
+    (v4 : ∀ s0 si : σ, assert s0 si → ¬ exit si → assert s0 (run si (csteps' si)))
+    : PartialCorrectness σ := by
+  intro s0 n hp hexit
+  apply partial_correctness_from_verification_conditions <;> try assumption
+  intros s0' si' hassert' hexit'
+  specialize (v4 s0' si' hassert' hexit')
+  rw [← hnsteps s0' si' hassert']
+  exact v4
+
 ----------------------------------------------------------------------
 
 /-!
