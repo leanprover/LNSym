@@ -60,6 +60,7 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
 
   if (← getBoolOption `profiler) then
     opts := opts.setBool `trace.profiler true
+    opts := opts.setNat `trace.profiler.threshold 1
     n := 1 -- only run once, if `profiler` is set to true
   else
     opts := opts.setBool `trace.benchmark true
