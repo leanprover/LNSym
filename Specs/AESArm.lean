@@ -113,10 +113,8 @@ protected def InitKey {Param : KBR} (i : Nat) (key : BitVec Param.key_len)
   match i with
   | 0 => acc
   | i' + 1 =>
-    let i := Param.Nk - i
-    let wd := extractLsb' (i * 32) 32 key
-    let (x:KeySchedule) := [wd]
-    AESArm.InitKey (Param := Param) i' key (acc ++ x)
+    let wd := extractLsb' ((i - 1) * 32) 32 key
+    AESArm.InitKey (Param := Param) i' key (wd :: acc)
 
 protected def KeyExpansion_helper {Param : KBR} (i : Nat) (ks : KeySchedule)
   : KeySchedule :=

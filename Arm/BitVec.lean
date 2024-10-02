@@ -955,7 +955,7 @@ theorem extractLsb'_or (x y : BitVec w₁) (n : Nat) :
 
 -- TODO: upstream
 protected theorem extractLsb'_ofNat (x n : Nat) (l lo : Nat) :
-  extractLsb' lo l (BitVec.ofNat n x) = .ofNat l ((x % 2^n) >>> lo) := by
+    extractLsb' lo l (BitVec.ofNat n x) = .ofNat l ((x % 2^n) >>> lo) := by
   apply eq_of_getLsbD_eq
   intro ⟨i, _lt⟩
   simp [BitVec.ofNat]

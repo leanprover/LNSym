@@ -862,14 +862,6 @@ theorem entire_memory_subset_legal_regions_eq_addr
   simp_all [mem_subset, mem_legal]
   bv_omega
 
-private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_eq_alt_helper (val : BitVec (x * 8)):
-  val =
-    extractLsb' ((BitVec.toNat (addr2 - addr2)) * 8) (x * 8) val := by
-  ext
-  simp only [BitVec.sub_self, toNat_ofNat, Nat.zero_mod,
-    Nat.zero_mul, extractLsb'_toNat,
-    Nat.shiftRight_zero, toNat_mod_cancel]
-
 private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_eq_alt
   (h0 : 0 < n1) (h1 : n1 <= my_pow 2 64) (h2 : 0 < n2) (h3 : n2 = my_pow 2 64)
   (h4 : mem_subset addr2 (addr2 + (BitVec.ofNat 64 (n2 - 1))) addr1 (addr1 + (BitVec.ofNat 64 (n1 - 1))))
@@ -883,7 +875,8 @@ private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_eq_alt
     have l1 := @entire_memory_subset_legal_regions_eq_addr addr2 addr1 h4 h6 h5
     subst addr1
     rw [read_mem_bytes_of_write_mem_bytes_same]
-    · apply read_mem_bytes_of_write_mem_bytes_subset_n2_eq_alt_helper
+    · simp only [BitVec.sub_self, toNat_ofNat, Nat.reducePow, Nat.zero_mod, Nat.zero_mul]
+      exact Eq.symm (extractLsb'_eq val)
     · unfold my_pow; decide
 
 @[state_simp_rules]
