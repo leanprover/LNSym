@@ -15,6 +15,8 @@ import Arm.BitVec
 import Arm.Memory.Attr
 import Arm.Memory.AddressNormalization
 import Lean
+import Lean.Meta.ForEachExpr
+import Lean.Meta.ExprTraverse
 import Lean.Meta.Tactic.Rewrite
 import Lean.Meta.Tactic.Rewrites
 import Lean.Elab.Tactic.Conv
@@ -333,6 +335,7 @@ instance : ToMessageData Hypothesis where
 structure State where
   hypotheses : Array Hypothesis := #[]
   rewriteFuel : Nat
+  changed : Bool := false
 
 def State.init (cfg : SimpMemConfig) : State :=
   { rewriteFuel := cfg.rewriteFuel}
@@ -807,6 +810,53 @@ def SimpMemM.rewriteWithEquality (rw : Expr) (msg : MessageData) : SimpMemM Unit
       replaceMainGoal [mvarId']
 
 /--
+Rewrites `e` via some `eq`, producing a proof `e = e'` for some `e'`.
+
+Rewrites with a fresh metavariable as the ambient goal.
+Fails if the rewrite produces any subgoals.
+-/
+-- source: https://github.com/leanprover-community/mathlib4/blob/b35703fe5a80f1fa74b82a2adc22f3631316a5b3/Mathlib/Lean/Expr/Basic.lean#L476-L477
+private def rewrite (e eq : Expr) : MetaM Expr := do
+  let ⟨_, eq', []⟩ ← (← mkFreshExprMVar none).mvarId!.rewrite e eq
+    | throwError "Expr.rewrite may not produce subgoals."
+  return eq'
+
+/--
+Rewrites the type of `e` via some `eq`, then moves `e` into the new type via `Eq.mp`.
+
+Rewrites with a fresh metavariable as the ambient goal.
+Fails if the rewrite produces any subgoals.
+-/
+-- source: https://github.com/leanprover-community/mathlib4/blob/b35703fe5a80f1fa74b82a2adc22f3631316a5b3/Mathlib/Lean/Expr/Basic.lean#L476-L477
+private def rewriteType (e eq : Expr) : MetaM Expr := do
+  mkEqMP (← rewrite (← inferType e) eq) e
+
+-- def ppExprWithInfos (ctx : PPContext) (e : Expr) (msg : MessageData) : MetaM FormatWithInfos := do
+--   let out : FormatWithInfos := {
+--     fmt := format (toString e),
+--     infos := RBMap.empty.insert 0 (.ofTermInfo { expr := e, lctx := ← getLCtx })
+--   }
+--   return out
+
+-- def mkExprTraceNode (e : Expr) (msg : MessageData) : MessageData :=
+--   MessageData.ofLazy
+--     (fun ctx? => do
+--       let msg ← MessageData.ofFormatWithInfos <$> match ctx? with
+--         | .none => pure (format (toString e))
+--         | .some ctx => ppExprWithInfos ctx e msg
+--       return Dynamic.mk msg)
+--     (fun mctx => instantiateMVarsCore mctx e |>.1.hasSyntheticSorry)
+
+def SimpMemM.rewriteWithEqualityAtTarget (rw : Expr) (targetExpr : Expr) (msg : MessageData) : SimpMemM Expr := do
+  withTraceNode msg do
+    withMainContext do
+      withTraceNode m!"rewrite (Note: can be large)" do
+        trace[simp_mem.info] "{← inferType rw}"
+      let targetExpr' ← rewriteType targetExpr rw
+      return targetExpr'
+
+
+/--
 info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat}
   {mem : Memory} (hsep : mem_separate' x xn y yn) (val : BitVec (yn * 8)) :
   Memory.read_bytes xn x (Memory.write_bytes yn y val mem) = Memory.read_bytes xn x mem
@@ -865,6 +915,11 @@ def SimpMemM.rewriteReadOfSubsetWrite
       ew.val]
   SimpMemM.rewriteWithEquality call m!"rewriting read({er})⊆write({ew})"
 
+
+structure SimplifyExprResult where
+  e : Expr
+  changed : Bool
+
 mutual
 
 /--
@@ -872,7 +927,13 @@ Pattern match for memory patterns, and simplify them.
 Close memory side conditions with `simplifyGoal`.
 Returns if progress was made.
 -/
-partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMemM Bool := do
+partial def SimpMemM.simplifyExpr
+  (e : Expr)
+  (hyps : Array Hypothesis)
+  (useSeparate : Bool := false)
+  (useSubset : Bool := false)
+  (useOverlappingRead : Bool := false)
+  : SimpMemM Bool := do
   consumeRewriteFuel
   if ← outofRewriteFuel? then
     trace[simp_mem.info] "out of fuel for rewriting, stopping."
@@ -883,75 +944,71 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
     return false
 
   if let .some er := ReadBytesExpr.ofExpr? e then
+    trace[simp_mem.info] "{checkEmoji} Found read {er.span}."
     if let .some ew := WriteBytesExpr.ofExpr? er.mem then
-      trace[simp_mem.info] "{checkEmoji} Found read of write."
-      trace[simp_mem.info] "read: {er}"
-      trace[simp_mem.info] "write: {ew}"
+      trace[simp_mem.info] "{checkEmoji} Found read({er.span}) of write ({ew.span})."
       trace[simp_mem.info] "{processingEmoji} read({er.span})⟂/⊆write({ew.span})"
 
       let separate := MemSeparateProp.mk er.span ew.span
       let subset := MemSubsetProp.mk er.span ew.span
-      if let .some separateProof ← proveWithOmega? separate hyps then do
-        trace[simp_mem.info] "{checkEmoji} {separate}"
-        rewriteReadOfSeparatedWrite er ew separateProof
-        return true
-      else if let .some subsetProof ← proveWithOmega? subset hyps then do
-        trace[simp_mem.info] "{checkEmoji} {subset}"
-        rewriteReadOfSubsetWrite er ew subsetProof
-        return true
-      else
-        trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
-        return false
-    else
-      -- read
-      trace[simp_mem.info] "{checkEmoji} Found read {er}."
+      if useSeparate then
+        if let .some separateProof ← proveWithOmega? separate hyps then do
+          trace[simp_mem.info] "{checkEmoji} {separate}"
+          rewriteReadOfSeparatedWrite er ew separateProof
+          return true
+        else
+          trace[simp_mem.info] "{crossEmoji} {separate}"
+
+      if useSubset then
+        if let .some subsetProof ← proveWithOmega? subset hyps then do
+          trace[simp_mem.info] "{checkEmoji} {subset}"
+          rewriteReadOfSubsetWrite er ew subsetProof
+          return true
+        else
+          trace[simp_mem.info] "{crossEmoji} {separate}"
+
+    if useOverlappingRead then
       -- TODO: we don't need a separate `subset` branch for the writes: instead, for the write,
       -- we can add the theorem that `(write region).read = write val`.
       -- Then this generic theory will take care of it.
-      let changedInCurrentIter? ← withTraceNode m!"Searching for overlapping read {er.span}." do
-        let mut changedInCurrentIter? := false
-        for hyp in hyps do
-          if let Hypothesis.read_eq hReadEq := hyp then do
-            changedInCurrentIter? := changedInCurrentIter? ||
-              (← withTraceNode m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? " do
-                -- the read we are analyzing should be a subset of the hypothesis
-                let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
-                if let some hSubsetProof ← proveWithOmega? subset hyps then
-                  trace[simp_mem.info] "{checkEmoji}  ... ⊆ {hReadEq.read.span}"
-                  rewriteReadOfSubsetRead er hReadEq hSubsetProof
-                  pure true
-                else
-                  trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
-                  pure false)
-        pure changedInCurrentIter?
-      return changedInCurrentIter?
+      trace[simp_mem.info] m!"Searching for overlapping read {er.span}."
+      for hyp in hyps do
+        if let Hypothesis.read_eq hReadEq := hyp then do
+          trace[simp_mem.info] "{processingEmoji} ... ⊆ {hReadEq.read.span} ? " do
+          -- the read we are analyzing should be a subset of the hypothesis
+          let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
+          if let some hSubsetProof ← proveWithOmega? subset hyps then
+            trace[simp_mem.info] "{checkEmoji}  ... ⊆ {hReadEq.read.span}"
+            rewriteReadOfSubsetRead er hReadEq hSubsetProof
+            return true
+    return false
   else
     if e.isForall then
       Lean.Meta.forallTelescope e fun xs b => do
         let mut changedInCurrentIter? := false
         for x in xs do
-          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
+          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps useSeparate useSubset useOverlappingRead)
           -- we may have a hypothesis like
           -- ∀ (x : read_mem (read_mem_bytes ...) ... = out).
           -- we want to simplify the *type* of x.
-          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
-        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
+          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps useSeparate useSubset useOverlappingRead)
+        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps useSeparate useSubset useOverlappingRead)
         return changedInCurrentIter?
     else if e.isLambda then
       Lean.Meta.lambdaTelescope e fun xs b => do
         let mut changedInCurrentIter? := false
         for x in xs do
-          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
-          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
-        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
+          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps useSeparate useSubset useOverlappingRead)
+          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps useSeparate useSubset useOverlappingRead)
+        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps useSeparate useSubset useOverlappingRead)
         return changedInCurrentIter?
     else
       -- check if we have expressions.
       match e with
       | .app f x =>
         let mut changedInCurrentIter? := false
-        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr f hyps)
-        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
+        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr f hyps useSeparate useSubset useOverlappingRead)
+        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps useSeparate useSubset useOverlappingRead)
         return changedInCurrentIter?
       | _ => return false
 
@@ -989,7 +1046,7 @@ partial def SimpMemM.simplifyGoal (g : MVarId) (hyps : Array Hypothesis) : SimpM
   SimpMemM.withContext g do
     let gt ← g.getType
     let changedInCurrentIter? ← withTraceNode m!"Simplifying goal." do
-        SimpMemM.simplifyExpr (← whnf gt) hyps
+        SimpMemM.simplifyExpr (← whnf gt) hyps (useSeparate := true) (useSubset := true) (useOverlappingRead := true)
     return changedInCurrentIter?
 end
 
@@ -1031,6 +1088,30 @@ partial def SimpMemM.simplifyLoop : SimpMemM Unit := do
     /- we haven't changed ever.. -/
     if !changedInAnyIter? && (← getConfig).failIfUnchanged then
         throwError "{crossEmoji} simp_mem failed to make any progress."
+
+def simpMemSpecialized (useSeparate : Bool) (useSubset : Bool) (useOverlappingRead : Bool) : SimpMemM Unit := do
+  let g ← getMainGoal
+  let gt ← getMainTarget
+  g.withContext do
+    let hyps := (← getLocalHyps)
+    let foundHyps : Array Hypothesis ← SimpMemM.withTraceNode m!"Searching for Hypotheses" do
+      let mut foundHyps : Array Hypothesis := #[]
+      for h in hyps do
+        foundHyps ← hypothesisOfExpr h foundHyps
+      pure foundHyps
+
+    SimpMemM.withTraceNode m!"Summary: Found {foundHyps.size} hypotheses" do
+    for (i, h) in foundHyps.toList.enum do
+      trace[simp_mem.info] m!"{i+1}) {h}"
+
+    let changed? ← SimpMemM.simplifyExpr (← whnf gt) foundHyps (useSeparate := useSeparate) (useSubset := useSubset) (useOverlappingRead := useOverlappingRead)
+    if !changed? then
+      throwError "{crossEmoji} simp_mem failed to make any progress."
+
+  def simpMemSeparate : SimpMemM Unit := simpMemSpecialized (useSeparate := true) (useSubset := false) (useOverlappingRead := false)
+  def simpMemSubset : SimpMemM Unit := simpMemSpecialized (useSeparate := false) (useSubset := true) (useOverlappingRead := false)
+  def simpMemOverlappingRead : SimpMemM Unit := simpMemSpecialized (useSeparate := false) (useSubset := false) (useOverlappingRead := true)
+
 end Simplify
 
 /--
@@ -1099,13 +1180,13 @@ def evalSimpMem : Tactic := fun
     SeparateAutomation.simpMemTactic cfg
   | `(tactic| simp_mem $[$cfg]? ⟂w) => do
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
-    SeparateAutomation.simpMemTactic cfg
+    SeparateAutomation.SimpMemM.run SeparateAutomation.simpMemSeparate cfg
   | `(tactic| simp_mem $[$cfg]? ⊆w) => do
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
-    SeparateAutomation.simpMemTactic cfg
+    SeparateAutomation.SimpMemM.run SeparateAutomation.simpMemSubset cfg
   | `(tactic| simp_mem $[$cfg]? ⊆r) => do
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
-    SeparateAutomation.simpMemTactic cfg
+    SeparateAutomation.SimpMemM.run SeparateAutomation.simpMemOverlappingRead cfg
   | _ => throwUnsupportedSyntax
 
 @[tactic mem_omega]
