@@ -349,6 +349,7 @@ def State.init (cfg : SimpMemConfig) : State :=
 
 abbrev SimpMemM := StateRefT State (ReaderT Context TacticM)
 
+
 def SimpMemM.run (m : SimpMemM α) (cfg : SimpMemConfig) : TacticM α :=
   m.run' (State.init cfg) |>.run (Context.init cfg)
 
@@ -800,6 +801,9 @@ def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
 
 section Simplify
 
+-- TODO: don't rewrite the main goal, rewrite the current (sub)expression!
+-- Note that we need to be careful about the context in which we rewrite,
+-- since e.g. when we see an app (f x), we rewrite both in the `f` and in the `x`.
 def SimpMemM.rewriteWithEquality (rw : Expr) (msg : MessageData) : SimpMemM Unit := do
   withTraceNode msg do
     withMainContext do
@@ -832,7 +836,9 @@ def SimpMemM.rewriteReadOfSeparatedWrite
         ew.mem,
         separate.h,
         ew.val]
-  SimpMemM.rewriteWithEquality call m!"rewriting read({er})⟂write({ew})"
+  -- TODO: put this behind a debug flag.
+  check call
+  SimpMemM.rewriteWithEquality call m!"rewriting read(...)⟂write(...)"
 
 /--
 info: Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' {bn : Nat} {b : BitVec 64} {val : BitVec (bn * 8)}
@@ -886,32 +892,36 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
     return false
 
   if e.isSort then
-    trace[simp_mem.info] "skipping sort '{e}'."
+    trace[simp_mem.info] "skipping sort '{e.hash}'."
     return false
 
   if let .some er := ReadBytesExpr.ofExpr? e then
+    trace[simp_mem.info] "{checkEmoji} Found read {er.span} @ '{e.hash}'."
     if let .some ew := WriteBytesExpr.ofExpr? er.mem then
-      trace[simp_mem.info] "{checkEmoji} Found read of write."
-      trace[simp_mem.info] "read: {er}"
-      trace[simp_mem.info] "write: {ew}"
-      trace[simp_mem.info] "{processingEmoji} read({er.span})⟂/⊆write({ew.span})"
+      trace[simp_mem.info] "{checkEmoji} Found read of write @ '{e.hash}'."
+      -- trace[simp_mem.info] "read: {er}"
+      -- trace[simp_mem.info] "write: {ew}"
+      trace[simp_mem.info] "{processingEmoji} read({er.span})⟂/⊆write({ew.span}) @ '{e.hash}'"
 
       let separate := MemSeparateProp.mk er.span ew.span
       let subset := MemSubsetProp.mk er.span ew.span
       if let .some separateProof ← proveWithOmega? separate hyps then do
-        trace[simp_mem.info] "{checkEmoji} {separate}"
+        trace[simp_mem.info] "{checkEmoji} {separate} @ '{e.hash}'"
         rewriteReadOfSeparatedWrite er ew separateProof
         return true
-      else if let .some subsetProof ← proveWithOmega? subset hyps then do
-        trace[simp_mem.info] "{checkEmoji} {subset}"
-        rewriteReadOfSubsetWrite er ew subsetProof
-        return true
       else
-        trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
-        return false
-    else
-      -- read
-      trace[simp_mem.info] "{checkEmoji} Found read {er}."
+        trace[simp_mem.info] "{crossEmoji} {separate} @ '{e.hash}'"
+        if let .some subsetProof ← proveWithOmega? subset hyps then do
+          trace[simp_mem.info] "{checkEmoji} {subset} @ '{e.hash}'"
+          rewriteReadOfSubsetWrite er ew subsetProof
+          return true
+        else
+          trace[simp_mem.info] "{crossEmoji} {subset} @ '{e.hash}'"
+          trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span} @ '{e.hash}'"
+          return false
+    else do
+      trace[simp_mem.info] "{crossEmoji} found read({er.span}), no write, searching for overlapping read in hyp @ ({e.hash})"
+      -- return false
       -- TODO: we don't need a separate `subset` branch for the writes: instead, for the write,
       -- we can add the theorem that `(write region).read = write val`.
       -- Then this generic theory will take care of it.
@@ -933,32 +943,32 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Hypothesis) : SimpMem
         pure changedInCurrentIter?
       return changedInCurrentIter?
   else
-    if e.isForall then
-      Lean.Meta.forallTelescope e fun xs b => do
-        let mut changedInCurrentIter? := false
-        for x in xs do
-          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
-          -- we may have a hypothesis like
-          -- ∀ (x : read_mem (read_mem_bytes ...) ... = out).
-          -- we want to simplify the *type* of x.
-          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
-        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
-        return changedInCurrentIter?
-    else if e.isLambda then
-      Lean.Meta.lambdaTelescope e fun xs b => do
-        let mut changedInCurrentIter? := false
-        for x in xs do
-          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
-          changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
-        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
-        return changedInCurrentIter?
-    else
+    -- if e.isForall then
+    --   Lean.Meta.forallTelescope e fun xs b => do
+    --     let mut changedInCurrentIter? := false
+    --     for x in xs do
+    --       changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
+    --       -- we may have a hypothesis like
+    --       -- ∀ (x : read_mem (read_mem_bytes ...) ... = out).
+    --       -- we want to simplify the *type* of x.
+    --       changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
+    --     changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
+    --     return changedInCurrentIter?
+    -- else if e.isLambda then
+    --   Lean.Meta.lambdaTelescope e fun xs b => do
+    --     let mut changedInCurrentIter? := false
+    --     for x in xs do
+    --       changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
+    --       changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
+    --     changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
+    --     return changedInCurrentIter?
+    -- else
       -- check if we have expressions.
       match e with
       | .app f x =>
         let mut changedInCurrentIter? := false
-        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr f hyps)
-        changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
+        changedInCurrentIter? := (← SimpMemM.simplifyExpr f hyps) || changedInCurrentIter?
+        changedInCurrentIter? := (← SimpMemM.simplifyExpr x hyps) || changedInCurrentIter?
         return changedInCurrentIter?
       | _ => return false
 
@@ -969,7 +979,7 @@ and simplifying all other expressions. return `true` if goal has been closed, an
 -/
 partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM Bool := do
   SimpMemM.withContext g do
-    trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
+    trace[simp_mem.info] "{processingEmoji} Matching on ⊢ ..."
     let gt ← g.getType
     if let .some e := MemLegalProp.ofExpr? gt then
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do

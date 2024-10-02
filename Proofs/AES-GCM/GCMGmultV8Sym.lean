@@ -16,13 +16,21 @@ open ArmStateNotation
 
 #genStepEqTheorems gcm_gmult_v8_program
 
+
+set_option trace.simp_mem.info true in
+theorem min_repro (s0 : ArmState)
+  (h_HTable : Memory.read_bytes 256 100 s0.mem = HTable)
+  (h_htableSep : mem_separate' 100 256 500 256) :
+  Memory.read_bytes 256 100 (Memory.write_bytes 256 500 (Memory.read_bytes 256 100 s0.mem) s0.mem) = HTable := by
+  simp_mem
+
 /-
 xxx: GCMGmultV8 Xi HTable
 -/
 
 set_option pp.deepTerms false in
 set_option pp.deepTerms.threshold 50 in
--- set_option trace.simp_mem.info true in
+set_option trace.simp_mem.info true in
 theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_gmult_v8_program)
     (h_s0_err : read_err s0 = .None)
@@ -68,6 +76,8 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     -- (FIXME) This will be tackled by `sym_aggregate` when `sym_n` and `simp_mem`
     -- are merged.
     simp only [*]
+    clear h_HTable
+    simp_mem; rfl
     /-
     (FIXME @bollu) `simp_mem; rfl` creates a malformed proof here. The tactic produces
     no goals, but we get the following error message:
@@ -86,8 +96,8 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
 
     simp_mem; rfl
     -/
-    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-    simp_mem
+    -- rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+    -- simp_mem
   · simp only [List.mem_cons, List.mem_singleton, not_or, and_imp]
     sym_aggregate
   · intro n addr h_separate
@@ -95,3 +105,97 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     -- Aggregate the memory (non)effects.
     simp only [*]
   done
+
+def consumeRewriteFuel : Id Unit := ()
+def outofRewriteFuel? : Id Bool := false
+
+def someVal : Option Bool := some true
+def noneVal : Option Bool := none
+
+def someMonadicVal (arg : Bool) : Id (Option Bool) := some true
+
+def ReadBytesExpr.ofExpr? (e : Expr) : Option Expr := none
+def WriteBytesExpr.ofExpr? (e : Expr) : Option Expr := none
+open Lean in
+partial def foo (e : Expr) (hyps : Array Int) : Id Bool := do
+  consumeRewriteFuel
+  if ← outofRewriteFuel? then
+    return false
+
+  -- if e.isSort then
+  --   return false
+
+  if let .some er := someVal then
+    if let .some ew := someVal then
+
+      -- let separate := MemSeparateProp.mk er.span ew.span
+      -- let subset := MemSubsetProp.mk er.span ew.span
+      -- if let .some separateProof ← proveWithOmega? separate hyps then do
+      if let .some separateProof ← someMonadicVal ew then do
+        dbg_trace "{checkEmoji} separate {separateProof}"
+        return true
+      else
+        dbg_trace "{crossEmoji} separate"
+        if let .some subsetProof ← someMonadicVal ew then do
+          dbg_trace "{checkEmoji} subset {subsetProof}"
+          return true
+        else
+          dbg_trace "{crossEmoji} subset"
+          dbg_trace "{crossEmoji} Could not prove er ⟂/⊆ ew"
+          return false
+    else do
+      dbg_trace "{crossEmoji} found no read of write, searching for overlapping read in hyp."
+      -- TODO: we don't need a separate `subset` branch for the writes: instead, for the write,
+      -- we can add the theorem that `(write region).read = write val`.
+      -- Then this generic theory will take care of it.
+      -- let changedInCurrentIter? ← withTraceNode m!"Searching for overlapping read {er.span}." do
+      --   let mut changedInCurrentIter? := false
+      --   for hyp in hyps do
+      --     if let Hypothesis.read_eq hReadEq := hyp then do
+      --       changedInCurrentIter? := changedInCurrentIter? ||
+      --         (← withTraceNode m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? " do
+      --           -- the read we are analyzing should be a subset of the hypothesis
+      --           let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
+      --           if let some hSubsetProof ← proveWithOmega? subset hyps then
+      --             trace[simp_mem.info] "{checkEmoji}  ... ⊆ {hReadEq.read.span}"
+      --             rewriteReadOfSubsetRead er hReadEq hSubsetProof
+      --             pure true
+      --           else
+      --             trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
+      --             pure false)
+      --   pure changedInCurrentIter?
+      -- return changedInCurrentIter?
+      return true
+  else
+    return false
+    -- if e.isForall then
+    --   Lean.Meta.forallTelescope e fun xs b => do
+    --     let mut changedInCurrentIter? := false
+    --     for x in xs do
+    --       changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
+    --       -- we may have a hypothesis like
+    --       -- ∀ (x : read_mem (read_mem_bytes ...) ... = out).
+    --       -- we want to simplify the *type* of x.
+    --       changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
+    --     changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
+    --     return changedInCurrentIter?
+    -- else if e.isLambda then
+    --   Lean.Meta.lambdaTelescope e fun xs b => do
+    --     let mut changedInCurrentIter? := false
+    --     for x in xs do
+    --       changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
+    --       changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr (← inferType x) hyps)
+    --     changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr b hyps)
+    --     return changedInCurrentIter?
+    -- else
+    --   -- check if we have expressions.
+    --   match e with
+    --   | .app f x =>
+    --     let mut changedInCurrentIter? := false
+    --     changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr f hyps)
+    --     changedInCurrentIter? := changedInCurrentIter? || (← SimpMemM.simplifyExpr x hyps)
+    --     return changedInCurrentIter?
+    --   | _ => return false
+
+open Lean in
+#eval foo (mkConst `foo) #[]
