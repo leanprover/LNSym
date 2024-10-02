@@ -109,14 +109,6 @@ structure SimpMemConfig where
   rewriteFuel : Nat := 1000
   /-- whether an error should be thrown if the tactic makes no progress. -/
   failIfUnchanged : Bool := true
-  /-- Time that omega is allowed to take (in `ms`), before we raise a failure from `simp_mem`. -/
-  omegaCutoffMs : Option Nat := .some 1000
-  /-- In the sequence of `omega` calls made by `simp_mem`, if the `i`th omega call times out,
-  it will only throw an error if it's not in the "permitted failures" list.
-  This is useful to make progress on a proof while still permitting debugging of
-  omega timeouts.
-  -/
-  omegaFailurePermittedOccs : Array Nat := #[]
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
 structure Context where
@@ -344,8 +336,10 @@ structure State where
   hypotheses : Array Hypothesis := #[]
   rewriteFuel : Nat
   changed : Bool := false
-  -- Times taken by the `omega` tactic.
+  /-- Times taken by the `omega` tactic. -/
   omegaTimingsMs : Array Nat := #[]
+  /-- Number of times omega has timed out. -/
+  omegaNumTimeouts : Nat := 0
 
 def State.init (cfg : SimpMemConfig) : State :=
   { rewriteFuel := cfg.rewriteFuel}
@@ -427,24 +421,26 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     let hdefVal ← simpResult.mkCast hdefVal
     let hdefTy ← inferType hdefVal
 
-    let goal ← goal.define name hdefTy hdefVal
+    let goal ← goal.assert name hdefTy hdefVal
     let (fvar, goal) ← goal.intro1P
     replaceMainGoal [goal]
     return fvar
 
-def pushOmegaTiming (target : Expr) (ms : Nat) : SimpMemM Unit := do
+def pushOmegaTiming (goal : MVarId) (ms : Nat) : SimpMemM Unit := do
   let s ← get
-  let ix := s.omegaTimingsMs.size
-  if ms ≥ (← getConfig).omegaCutoffMs.get! then
-    if ix ∈ (← getConfig).omegaFailurePermittedOccs then
-      trace[simp_mem.info] m!"[simp_mem] omega tactic took too long ({ms}ms) to run, but this is a permitted failure at index '{ix}'."
-    throwError m!"[simp_mem] omega tactic took too long ({ms}ms) at index {ix}.{indentD target}"
+  modify fun s => { s with omegaTimingsMs := s.omegaTimingsMs.push ms  }
+  if ms ≥ (← getOmegaTimeoutMs) then
+    let numTimeouts := s.omegaNumTimeouts + 1
+    modify fun s => { s with omegaNumTimeouts := numTimeouts }
+    if numTimeouts ≤ (← getOmegaNumIgnoredTimeouts) then
+      trace[simp_mem.info] m!"[simp_mem] 🚫 omega tactic took too long ({ms}ms) to run, but this is a permitted failure at occurrence {numTimeouts}. Goal: {indentD goal}"
+    else
+      throwError m!"[simp_mem] omega tactic took too long ({ms}ms) at occurrence {numTimeouts}. Goal: {indentD goal}"
 
-  modify fun s => { s with omegaTimingsMs := s.omegaTimingsMs.push ms }
 
 /-- SimpMemM's omega invoker -/
 def omega : SimpMemM Unit := do
-  let target ← getMainTarget
+  let g ← getMainGoal
   -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
   -- @bollu: TODO: understand what precisely we are recovering from.
   let startTime ← IO.monoMsNow
@@ -452,7 +448,7 @@ def omega : SimpMemM Unit := do
     -- TODO: replace this with filling in an MVar, sure, but not like this.
     evalTactic (← `(tactic| bv_omega))
   let endTime ← IO.monoMsNow
-  pushOmegaTiming target (endTime - startTime)
+  pushOmegaTiming g (endTime - startTime)
 
 section Hypotheses
 

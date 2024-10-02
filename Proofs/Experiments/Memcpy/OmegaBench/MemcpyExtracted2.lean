@@ -1,6 +1,11 @@
 import Arm
 import Arm.Memory.SeparateAutomation
 
+set_option maxHeartbeats 0 
+set_option trace.profiler true 
+set_option profiler true 
+
+
 /-
 tactic execution of Lean.Parser.Tactic.omega took 6.04s
 instantiate metavars took 31.6s
@@ -8,10 +13,10 @@ share common exprs took 5.61s
 type checking took 1.36s
 process pre-definitions took 1.02s
 -/
-set_option maxHeartbeats 0 in
-set_option trace.profiler true in
-set_option profiler true in
-theorem foo
+set_option maxHeartbeats 0 
+set_option trace.profiler true 
+set_option profiler true 
+theorem memcpy_extracted_2
 (s0 si : ArmState)
 (h_si_x0_nonzero : si.x0 ≠ 0)
 (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))

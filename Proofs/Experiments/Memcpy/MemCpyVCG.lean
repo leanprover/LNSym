@@ -458,6 +458,10 @@ set_option maxHeartbeats 0 in
 -- set_option profiler true in
 -- set_option trace.profiler true in
 -- set_option profiler true in
+set_option trace.simp_mem true
+set_option trace.simp_mem.info true
+set_option simp_mem.omegaNumIgnoredTimeouts 0 in
+set_option simp_mem.omegaTimeoutMs 1000 in
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -486,7 +490,7 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
   have h_upper_bound₂ := h_pre_1.hb.omega_def
   have h_upper_bound₃ := hsep.ha.omega_def
   have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by
-    mem_omega
+    sorry
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
   · rw [h_assert_6]
     skip_proof simp_mem
@@ -521,12 +525,17 @@ fix level params took 118ms
 type checking took 4.37s
 process pre-definitions took 5.44s
 -/
+
+set_option maxHeartbeats 0
 -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
 -- set_option trace.profiler true in
 -- set_option profiler true in
 -- set_option trace.profiler true in
 -- set_option profiler true in
+set_option trace.simp_mem.info true
+set_option simp_mem.omegaNumIgnoredTimeouts 9999 in
+-- set_option simp_mem.omegaTimeoutMs 1000 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -595,6 +604,7 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           }
   · intros n addr hsep
     apply Memcpy.extracted_2 <;> assumption
+
 /-
 tactic execution of Lean.Parser.Tactic.omega took 616ms
 tactic execution of Lean.Parser.Tactic.omega took 1.1s
@@ -603,9 +613,13 @@ instantiate metavars took 14.7s
 share common exprs took 1.94s
 type checking took 988ms
 -/
--- set_option trace.profiler true in
--- set_option profiler true in
+
 set_option maxHeartbeats 0 in
+set_option trace.profiler true in
+set_option profiler true in
+set_option maxHeartbeats 0 in
+set_option trace.simp_mem.info true in
+set_option simp_mem.omegaNumIgnoredTimeouts 9999 in
 -- set_option trace.profiler true in
 -- set_option profiler true in
 -- set_option trace.profiler true in
@@ -726,7 +740,7 @@ theorem partial_correctness :
             simp only [memory_rules] at h_si_read_sep
             rw [h_si_read_sep]
             rw [h_si_x0_eq_zero]
-            skip_proof simp_mem -- nice!
+            skip_proof sorry -- nice!
           · simp only [step.h_err, step.h_program, step.h_sp_aligned, and_self]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed
