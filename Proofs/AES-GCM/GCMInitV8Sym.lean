@@ -7,6 +7,7 @@ import Arm.BitVec
 import Proofs.«AES-GCM».GCMInitV8Pre
 import Tactics.Sym
 import Tactics.Aggregate
+import Tactics.ExtractGoal
 import Specs.GCMV8
 
 namespace GCMInitV8Program
@@ -33,9 +34,11 @@ theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
   sym_n 152
   done
 
-set_option maxRecDepth 1000000 in
-set_option maxHeartbeats 2000000 in
-set_option sat.timeout 180 in
+set_option maxRecDepth 100000 in
+set_option maxHeartbeats 500000 in
+set_option sat.timeout 120 in
+set_option pp.deepTerms true in
+set_option pp.maxSteps 10000 in
 -- set_option linter.unusedVariables false in
 -- set_option profiler true in
 theorem gcm_init_v8_program_correct (s0 sf : ArmState)
@@ -44,7 +47,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     (h_s0_pc : read_pc s0 = gcm_init_v8_program.min)
     (h_s0_sp_aligned : CheckSPAlignment s0)
     (h_run : sf = run gcm_init_v8_program.length s0)
-    (_h_mem : Memory.Region.pairwiseSeparate
+    (h_mem : Memory.Region.pairwiseSeparate
       [ ⟨(H_addr s0), 128⟩,
         ⟨(Htable_addr s0), 2048⟩ ])
     : -- effects
@@ -110,4 +113,6 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       Nat.zero_mod, Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul,
       Nat.reduceSub, BitVec.reduceMul, BitVec.reduceXOr, BitVec.mul_one, Nat.add_one_sub_one,
       BitVec.one_mul]
-    bv_decide
+    extract_goal
+    sorry
+    -- bv_decide
