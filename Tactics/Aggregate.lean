@@ -66,14 +66,24 @@ elab "sym_aggregate" simpConfig?:(config)? loc?:(location)? : tactic => withMain
     let simpConfig? ← simpConfig?.mapM fun cfg =>
       elabSimpConfig (mkNullNode #[cfg]) (kind := .simp)
 
+    /-
+    We construct `axHyps` by running a `State` monad, which is
+    initialized with an empty array
+    -/
     let ((), axHyps) ← StateT.run (s := #[]) <|
       searchLCtx <| do
         let whenFound := fun decl _ => do
+          -- Whenever a match is found, we add the corresponding declaration
+          -- to the `axHyps` array in the monadic state
           modify (·.push decl)
           return .continu
 
         -- `r ?field ?state = ?rhs`
         searchLCtxFor (whenFound := whenFound)
+          /- By matching under binders, this also matches for non-effect
+          hypotheses, which look like:
+            `∀ f, f ≠ _ → r f ?state = ?rhs`
+          -/
           (matchUnderBinders := true)
           (expectedType := do
             let fld ← mkFreshExprMVar (mkConst ``StateField)
