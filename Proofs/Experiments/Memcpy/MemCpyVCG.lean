@@ -440,9 +440,24 @@ end CutTheorems
 
 section PartialCorrectness
 
+/-
+tactic execution of Lean.Parser.Tactic.omega took 290ms
+tactic execution of Lean.Parser.Tactic.omega took 1.81s
+tactic execution of simp_mem took 751ms
+tactic execution of Lean.Parser.Tactic.omega took 1.11s
+tactic execution of Lean.Parser.Tactic.omega took 664ms
+tactic execution of Lean.Parser.Tactic.omega took 676ms
+instantiate metavars took 7.15s
+share common exprs took 3.9s
+type checking took 1.47s
+process pre-definitions took 440ms
+-/
 -- set_option skip_proof.skip true in
+set_option maxHeartbeats 0 in
 -- set_option trace.profiler true in
 -- set_option profiler true in
+set_option trace.profiler true in
+set_option profiler true in
 set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
@@ -471,7 +486,8 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
   have h_upper_bound := hsep.hb.omega_def
   have h_upper_bound₂ := h_pre_1.hb.omega_def
   have h_upper_bound₃ := hsep.ha.omega_def
-  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by mem_omega
+  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by
+    mem_omega
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
   · rw [h_assert_6]
     skip_proof simp_mem
@@ -482,10 +498,37 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
       skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
     · apply mem_subset'_refl hsep.hb
 
+
+/-
+tactic execution of Lean.Parser.Tactic.omega took 1.54s
+tactic execution of simp_mem took 274ms
+tactic execution of Lean.Parser.Tactic.omega took 1.11s
+tactic execution of simp_mem took 403ms
+tactic execution of Lean.Parser.Tactic.omega took 302ms
+tactic execution of Lean.Parser.Tactic.omega took 284ms
+tactic execution of Lean.Parser.Tactic.omega took 4.25s
+tactic execution of simp_mem took 1.96s
+tactic execution of Lean.Parser.Tactic.omega took 8.95s
+tactic execution of simp_mem took 1.68s
+tactic execution of Lean.Parser.Tactic.omega took 102ms
+tactic execution of Lean.Parser.Tactic.omega took 1.9s
+tactic execution of simp_mem took 318ms
+tactic execution of Lean.Parser.Tactic.omega took 322ms
+tactic execution of Lean.Parser.Tactic.omega took 115ms
+tactic execution of Lean.Parser.Tactic.omega took 101ms
+instantiate metavars took 30s
+share common exprs took 16.7s
+fix level params took 118ms
+type checking took 4.37s
+process pre-definitions took 5.44s
+-/
 -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
 -- set_option trace.profiler true in
 -- set_option profiler true in
+set_option trace.profiler true in
+set_option profiler true in
+set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -554,9 +597,22 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           }
   · intros n addr hsep
     apply Memcpy.extracted_2 <;> assumption
-
+/-
+tactic execution of Lean.Parser.Tactic.omega took 616ms
+tactic execution of Lean.Parser.Tactic.omega took 1.1s
+tactic execution of Lean.Parser.Tactic.assumption took 114ms
+instantiate metavars took 14.7s
+share common exprs took 1.94s
+type checking took 988ms
+-/
 -- set_option trace.profiler true in
 -- set_option profiler true in
+set_option maxHeartbeats 0 in
+-- set_option trace.profiler true in
+-- set_option profiler true in
+set_option trace.profiler true in
+set_option profiler true in
+set_option maxHeartbeats 0 in
 theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions

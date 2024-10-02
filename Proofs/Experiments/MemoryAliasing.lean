@@ -161,7 +161,7 @@ theorem mem_automation_test_2
   read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
   read_mem_bytes 16 src_addr s0 := by
   simp only [memory_rules]
-  simp_mem
+  simp_mem ⟂
   rfl
 
 
@@ -179,7 +179,7 @@ theorem mem_automation_test_3
   read_mem_bytes 10 (src_addr + 1) (write_mem_bytes ignore_n ignore_addr blah s0) =
    read_mem_bytes 10 (src_addr + 1) s0 := by
   simp only [memory_rules]
-  simp_mem
+  simp_mem ⟂
   rfl
 
 
@@ -198,7 +198,8 @@ theorem mem_automation_test_4
       (write_mem_bytes 48 src_addr val s0)) =
    val.extractLsBytes 1 10 := by
   simp only [memory_rules]
-  simp_mem
+  simp_mem ⟂
+  simp_mem ⊆w
   congr 1
   bv_omega -- TODO: address normalization.
 
@@ -226,7 +227,7 @@ theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
     (h : read_mem_bytes 16 src_addr s = out) :
     read_mem_bytes 10 (src_addr + 6) s = out.extractLsBytes 6 10 := by
   simp only [memory_rules] at h ⊢
-  simp_mem
+  simp_mem ⊆r
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
     bv_omega

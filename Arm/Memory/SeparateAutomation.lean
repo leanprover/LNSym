@@ -1160,7 +1160,7 @@ Direct `simp_mem` to assume certain memory relationships when trying to rewrite 
 · ⊆w directs `simp_mem` to assume that the read is a subset of a write.
 · ⊆r directs `simp_mem` to assume that the read is a subset of a read in the hypothesis.
 -/
-syntax simpMemTarget := "⟂w" <|> "⊆w" <|> "⊆r"
+syntax simpMemTarget := "⟂" <|> "⊆w" <|> "⊆r"
 
 /--
 Implement the simp_mem tactic frontend.
@@ -1178,7 +1178,7 @@ def evalSimpMem : Tactic := fun
   | `(tactic| simp_mem $[$cfg]?) => do
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
     SeparateAutomation.simpMemTactic cfg
-  | `(tactic| simp_mem $[$cfg]? ⟂w) => do
+  | `(tactic| simp_mem $[$cfg]? ⟂) => do
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
     SeparateAutomation.SimpMemM.run SeparateAutomation.simpMemSeparate cfg
   | `(tactic| simp_mem $[$cfg]? ⊆w) => do
