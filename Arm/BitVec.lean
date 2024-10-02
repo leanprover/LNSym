@@ -43,12 +43,13 @@ attribute [bitvec_rules] BitVec.msb_zero
 attribute [bitvec_rules] BitVec.toNat_cast
 attribute [bitvec_rules] BitVec.getLsbD_cast
 attribute [bitvec_rules] BitVec.getMsbD_cast
-attribute [bitvec_rules] BitVec.toNat_ofInt
+-- attribute [bitvec_rules] BitVec.toNat_ofInt -- TODO: not tagged bv_toNat.
+attribute [bv_toNat] BitVec.toNat_ofInt
 attribute [bitvec_rules] BitVec.toInt_ofInt
 attribute [bitvec_rules] BitVec.ofInt_natCast
 attribute [bitvec_rules] BitVec.toNat_zeroExtend'
-attribute [bitvec_rules] BitVec.toNat_zeroExtend
-attribute [bitvec_rules] BitVec.toNat_truncate
+-- attribute [bitvec_rules] BitVec.toNat_zeroExtend
+-- attribute [bitvec_rules] BitVec.toNat_truncate
 attribute [bitvec_rules] BitVec.zeroExtend_zero
 attribute [bitvec_rules] BitVec.ofNat_toNat
 attribute [bitvec_rules] BitVec.getLsbD_zeroExtend'
@@ -82,7 +83,7 @@ attribute [bitvec_rules] BitVec.toNat_xor
 attribute [bitvec_rules] BitVec.toFin_xor
 attribute [bitvec_rules] BitVec.getLsbD_xor
 attribute [bitvec_rules] BitVec.truncate_xor
-attribute [bitvec_rules] BitVec.toNat_not
+-- attribute [bitvec_rules] BitVec.toNat_not
 attribute [bitvec_rules] BitVec.toFin_not
 attribute [bitvec_rules] BitVec.getLsbD_not
 attribute [bitvec_rules] BitVec.truncate_not
@@ -90,7 +91,7 @@ attribute [bitvec_rules] BitVec.not_cast
 attribute [bitvec_rules] BitVec.and_cast
 attribute [bitvec_rules] BitVec.or_cast
 attribute [bitvec_rules] BitVec.xor_cast
-attribute [bitvec_rules] BitVec.toNat_shiftLeft
+-- attribute [bitvec_rules] BitVec.toNat_shiftLeft
 attribute [bitvec_rules] BitVec.toFin_shiftLeft
 attribute [bitvec_rules] BitVec.getLsbD_shiftLeft
 attribute [bitvec_rules] BitVec.getMsbD_shiftLeft
@@ -124,23 +125,24 @@ attribute [bitvec_rules] BitVec.not_concat
 attribute [bitvec_rules] BitVec.concat_or_concat
 attribute [bitvec_rules] BitVec.concat_and_concat
 attribute [bitvec_rules] BitVec.concat_xor_concat
-attribute [bitvec_rules] BitVec.toNat_add
+-- attribute [bitvec_rules] BitVec.toNat_add
 attribute [bitvec_rules] BitVec.toFin_add
 attribute [bitvec_rules] BitVec.ofFin_add
 attribute [bitvec_rules] BitVec.add_ofFin
 attribute [bitvec_rules] BitVec.add_zero
 attribute [bitvec_rules] BitVec.zero_add
 attribute [bitvec_rules] BitVec.toInt_add
-attribute [bitvec_rules] BitVec.toNat_sub
+-- attribute [bitvec_rules] BitVec.toNat_sub
+attribute [bv_toNat] toNat_sub
 attribute [bitvec_rules] BitVec.toFin_sub
 attribute [bitvec_rules] BitVec.ofFin_sub
 attribute [bitvec_rules] BitVec.sub_ofFin
 attribute [bitvec_rules] BitVec.sub_zero
 attribute [bitvec_rules] BitVec.sub_self
-attribute [bitvec_rules] BitVec.toNat_neg
+-- attribute [bitvec_rules] BitVec.toNat_neg
 attribute [bitvec_rules] BitVec.toFin_neg
 attribute [bitvec_rules] BitVec.neg_zero
-attribute [bitvec_rules] BitVec.toNat_mul
+-- attribute [bitvec_rules] BitVec.toNat_mul
 attribute [bitvec_rules] BitVec.toFin_mul
 attribute [bitvec_rules] BitVec.mul_zero
 attribute [bitvec_rules] BitVec.mul_one
@@ -244,6 +246,10 @@ attribute [bitvec_rules] Nat.reduceBneDiff
 attribute [bitvec_rules] Nat.reduceLTLE
 attribute [bitvec_rules] Nat.reduceLeDiff
 attribute [bitvec_rules] Nat.reduceSubDiff
+attribute [bitvec_rules] BitVec.toNat_ofNat
+
+-- This might be a neccesary evil: it introduces a modulus,
+-- but it's also really useful.
 attribute [bitvec_rules] BitVec.toNat_ofNat
 
 -- Some Fin lemmas useful for bitvector reasoning:
