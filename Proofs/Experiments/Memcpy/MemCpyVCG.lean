@@ -456,9 +456,8 @@ process pre-definitions took 440ms
 set_option maxHeartbeats 0 in
 -- set_option trace.profiler true in
 -- set_option profiler true in
-set_option trace.profiler true in
-set_option profiler true in
-set_option maxHeartbeats 0 in
+-- set_option trace.profiler true in
+-- set_option profiler true in
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -526,9 +525,8 @@ process pre-definitions took 5.44s
 set_option maxHeartbeats 0 in
 -- set_option trace.profiler true in
 -- set_option profiler true in
-set_option trace.profiler true in
-set_option profiler true in
-set_option maxHeartbeats 0 in
+-- set_option trace.profiler true in
+-- set_option profiler true in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -610,9 +608,8 @@ type checking took 988ms
 set_option maxHeartbeats 0 in
 -- set_option trace.profiler true in
 -- set_option profiler true in
-set_option trace.profiler true in
-set_option profiler true in
-set_option maxHeartbeats 0 in
+-- set_option trace.profiler true in
+-- set_option profiler true in
 theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions

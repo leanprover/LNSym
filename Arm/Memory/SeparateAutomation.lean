@@ -109,6 +109,14 @@ structure SimpMemConfig where
   rewriteFuel : Nat := 1000
   /-- whether an error should be thrown if the tactic makes no progress. -/
   failIfUnchanged : Bool := true
+  /-- Time that omega is allowed to take (in `ms`), before we raise a failure from `simp_mem`. -/
+  omegaCutoffMs : Option Nat := .some 1000
+  /-- In the sequence of `omega` calls made by `simp_mem`, if the `i`th omega call times out,
+  it will only throw an error if it's not in the "permitted failures" list.
+  This is useful to make progress on a proof while still permitting debugging of
+  omega timeouts.
+  -/
+  omegaFailurePermittedOccs : Array Nat := #[]
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
 structure Context where
@@ -336,6 +344,8 @@ structure State where
   hypotheses : Array Hypothesis := #[]
   rewriteFuel : Nat
   changed : Bool := false
+  -- Times taken by the `omega` tactic.
+  omegaTimingsMs : Array Nat := #[]
 
 def State.init (cfg : SimpMemConfig) : State :=
   { rewriteFuel := cfg.rewriteFuel}
@@ -422,12 +432,27 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
     replaceMainGoal [goal]
     return fvar
 
+def pushOmegaTiming (target : Expr) (ms : Nat) : SimpMemM Unit := do
+  let s ← get
+  let ix := s.omegaTimingsMs.size
+  if ms ≥ (← getConfig).omegaCutoffMs.get! then
+    if ix ∈ (← getConfig).omegaFailurePermittedOccs then
+      trace[simp_mem.info] m!"[simp_mem] omega tactic took too long ({ms}ms) to run, but this is a permitted failure at index '{ix}'."
+    throwError m!"[simp_mem] omega tactic took too long ({ms}ms) at index {ix}.{indentD target}"
+
+  modify fun s => { s with omegaTimingsMs := s.omegaTimingsMs.push ms }
+
 /-- SimpMemM's omega invoker -/
 def omega : SimpMemM Unit := do
+  let target ← getMainTarget
   -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
   -- @bollu: TODO: understand what precisely we are recovering from.
+  let startTime ← IO.monoMsNow
   withoutRecover do
+    -- TODO: replace this with filling in an MVar, sure, but not like this.
     evalTactic (← `(tactic| bv_omega))
+  let endTime ← IO.monoMsNow
+  pushOmegaTiming target (endTime - startTime)
 
 section Hypotheses
 
@@ -789,7 +814,7 @@ def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
     trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
     return (.some <| Proof.mk (← instantiateMVars factProof))
   catch e =>
-    trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+    trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:{indentD e.toMessageData}"
     setGoals oldGoals
     return none
   end ReductionToOmega
@@ -809,27 +834,27 @@ def SimpMemM.rewriteWithEquality (rw : Expr) (msg : MessageData) : SimpMemM Unit
         throwError m!"{crossEmoji} internal error: expected rewrite to produce no side conditions. Produced {result.mvarIds}"
       replaceMainGoal [mvarId']
 
-/--
-Rewrites `e` via some `eq`, producing a proof `e = e'` for some `e'`.
+-- /--
+-- Rewrites `e` via some `eq`, producing a proof `e = e'` for some `e'`.
 
-Rewrites with a fresh metavariable as the ambient goal.
-Fails if the rewrite produces any subgoals.
--/
--- source: https://github.com/leanprover-community/mathlib4/blob/b35703fe5a80f1fa74b82a2adc22f3631316a5b3/Mathlib/Lean/Expr/Basic.lean#L476-L477
-private def rewrite (e eq : Expr) : MetaM Expr := do
-  let ⟨_, eq', []⟩ ← (← mkFreshExprMVar none).mvarId!.rewrite e eq
-    | throwError "Expr.rewrite may not produce subgoals."
-  return eq'
+-- Rewrites with a fresh metavariable as the ambient goal.
+-- Fails if the rewrite produces any subgoals.
+-- -/
+-- -- source: https://github.com/leanprover-community/mathlib4/blob/b35703fe5a80f1fa74b82a2adc22f3631316a5b3/Mathlib/Lean/Expr/Basic.lean#L476-L477
+-- private def rewrite (e eq : Expr) : MetaM Expr := do
+--   let ⟨_, eq', []⟩ ← (← mkFreshExprMVar none).mvarId!.rewrite e eq
+--     | throwError "Expr.rewrite may not produce subgoals."
+--   return eq'
 
-/--
-Rewrites the type of `e` via some `eq`, then moves `e` into the new type via `Eq.mp`.
+-- /--
+-- Rewrites the type of `e` via some `eq`, then moves `e` into the new type via `Eq.mp`.
 
-Rewrites with a fresh metavariable as the ambient goal.
-Fails if the rewrite produces any subgoals.
--/
--- source: https://github.com/leanprover-community/mathlib4/blob/b35703fe5a80f1fa74b82a2adc22f3631316a5b3/Mathlib/Lean/Expr/Basic.lean#L476-L477
-private def rewriteType (e eq : Expr) : MetaM Expr := do
-  mkEqMP (← rewrite (← inferType e) eq) e
+-- Rewrites with a fresh metavariable as the ambient goal.
+-- Fails if the rewrite produces any subgoals.
+-- -/
+-- -- source: https://github.com/leanprover-community/mathlib4/blob/b35703fe5a80f1fa74b82a2adc22f3631316a5b3/Mathlib/Lean/Expr/Basic.lean#L476-L477
+-- private def rewriteType (e eq : Expr) : MetaM Expr := do
+--   mkEqMP (← rewrite (← inferType e) eq) e
 
 -- def ppExprWithInfos (ctx : PPContext) (e : Expr) (msg : MessageData) : MetaM FormatWithInfos := do
 --   let out : FormatWithInfos := {
@@ -838,22 +863,13 @@ private def rewriteType (e eq : Expr) : MetaM Expr := do
 --   }
 --   return out
 
--- def mkExprTraceNode (e : Expr) (msg : MessageData) : MessageData :=
---   MessageData.ofLazy
---     (fun ctx? => do
---       let msg ← MessageData.ofFormatWithInfos <$> match ctx? with
---         | .none => pure (format (toString e))
---         | .some ctx => ppExprWithInfos ctx e msg
---       return Dynamic.mk msg)
---     (fun mctx => instantiateMVarsCore mctx e |>.1.hasSyntheticSorry)
-
-def SimpMemM.rewriteWithEqualityAtTarget (rw : Expr) (targetExpr : Expr) (msg : MessageData) : SimpMemM Expr := do
-  withTraceNode msg do
-    withMainContext do
-      withTraceNode m!"rewrite (Note: can be large)" do
-        trace[simp_mem.info] "{← inferType rw}"
-      let targetExpr' ← rewriteType targetExpr rw
-      return targetExpr'
+-- def SimpMemM.rewriteWithEqualityAtTarget (rw : Expr) (targetExpr : Expr) (msg : MessageData) : SimpMemM Expr := do
+--   withTraceNode msg do
+--     withMainContext do
+--       withTraceNode m!"rewrite (Note: can be large)" do
+--         trace[simp_mem.info] "{← inferType rw}"
+--       let targetExpr' ← rewriteType targetExpr rw
+--       return targetExpr'
 
 
 /--
