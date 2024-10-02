@@ -471,7 +471,7 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
   have h_upper_bound := hsep.hb.omega_def
   have h_upper_bound₂ := h_pre_1.hb.omega_def
   have h_upper_bound₃ := hsep.ha.omega_def
-  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by simp_mem (config := {useOmegaToClose := true})
+  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by mem_omega
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
   · rw [h_assert_6]
     skip_proof simp_mem

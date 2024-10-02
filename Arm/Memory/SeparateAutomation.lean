@@ -107,18 +107,6 @@ structure SimpMemConfig where
   rewriteFuel : Nat := 1000
   /-- whether an error should be thrown if the tactic makes no progress. -/
   failIfUnchanged : Bool := true
-  /-- whether `simp_mem` should always try to use `omega` to close the goal,
-    even if goal state is not recognized as one of the blessed states.
-    This is useful when one is trying to establish some numerical invariant
-    about addresses based on knowledge of memory.
-    e.g.
-    ```
-    h : mem_separate' a 10 b 10
-    hab : a < b
-    ⊢ a + 5 < b
-    ```
-  -/
-  useOmegaToClose : Bool := false
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
 structure Context where
@@ -988,24 +976,6 @@ partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Hypothesis) : SimpMemM
       withTraceNode m!"Matched on ⊢ {e}. Proving..." do
         if let .some proof ← proveWithOmega? e hyps then
           g.assign proof.h
-
-    if (← getConfig).useOmegaToClose then
-      withTraceNode m!"Unknown memory expression ⊢ {gt}. Trying reduction to omega (`config.useOmegaToClose = true`):" do
-        let oldGoals := (← getGoals)
-        try
-          let gproof ← mkFreshExprMVar (type? := gt)
-          setGoals (gproof.mvarId! :: (← getGoals))
-          SimpMemM.withMainContext do
-          let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
-          trace[simp_mem.info] m!"Executing `omega` to close {gt}"
-          SimpMemM.withTraceNode m!"goal (Note: can be large)" do
-            trace[simp_mem.info] "{← getMainGoal}"
-          omega
-          trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
-          g.assign gproof
-        catch e =>
-          trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
-          setGoals oldGoals
   return ← g.isAssigned
 
 
@@ -1075,6 +1045,27 @@ def simpMem (cfg : SimpMemConfig := {}) : TacticM Unit := do
 /-- The `simp_mem` tactic, for simplifying away statements about memory. -/
 def simpMemTactic (cfg : SimpMemConfig) : TacticM Unit := simpMem cfg
 
+/-- The `mem_omega` finishing tactic, to close arithmetic related goals about memory addresses. -/
+def memOmegaTactic : TacticM Unit := do
+  SimpMemM.run (cfg := {}) do
+    let g ← getMainGoal
+    g.withContext do
+      let hyps := (← getLocalHyps)
+      let foundHyps ← SimpMemM.withTraceNode m!"Searching for Hypotheses" do
+        let mut foundHyps : Array Hypothesis := #[]
+        for h in hyps do
+          foundHyps ← hypothesisOfExpr h foundHyps
+        pure foundHyps
+
+      SimpMemM.withMainContext do
+      let _ ← Hypothesis.addOmegaFactsOfHyps foundHyps.toList #[]
+      trace[simp_mem.info] m!"Executing `omega` to close goal."
+      SimpMemM.withTraceNode m!"goal (Note: can be large)" do
+        trace[simp_mem.info] "{← getMainGoal}"
+      omega
+      trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+    return ()
+
 end SeparateAutomation
 
 /--
@@ -1095,6 +1086,11 @@ Implement the simp_mem tactic frontend.
 -/
 syntax (name := simp_mem) "simp_mem" (Lean.Parser.Tactic.config)? (simpMemTarget)? : tactic
 
+/--
+Use the `simp_mem` preprocessing to automatically close goals that involve
+reasoning about addresses in memory.
+-/
+syntax (name := mem_omega) "mem_omega" : tactic
 
 @[tactic simp_mem]
 def evalSimpMem : Tactic := fun
@@ -1111,3 +1107,9 @@ def evalSimpMem : Tactic := fun
     let cfg ← elabSimpMemConfig (mkOptionalNode cfg)
     SeparateAutomation.simpMemTactic cfg
   | _ => throwUnsupportedSyntax
+
+@[tactic mem_omega]
+def evalMemOmega : Tactic := fun
+| `(tactic| mem_omega) =>
+  SeparateAutomation.memOmegaTactic
+| _ => throwUnsupportedSyntax

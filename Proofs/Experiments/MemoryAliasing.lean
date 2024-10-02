@@ -47,7 +47,7 @@ theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
 
 /-- Show that we can perform address arithmetic based on subset constraints. -/
 theorem subset_4 (l : mem_subset' a 16 b 16) : a = b := by
-  simp_mem (config := {useOmegaToClose := true})
+  mem_omega
 
 /-- Show that we can perform address arithmetic based on subset constraints.
 Only two configurations possible:
@@ -59,7 +59,7 @@ a0 a1 a2 ..
 b0 b1 b2 b3
 -/
 theorem subset_5 (l : mem_subset' a 3 b 4) : a ≤ b + 1 := by
-  simp_mem (config := {useOmegaToClose := true})
+  mem_omega
 
 end MemSubset
 
@@ -135,7 +135,7 @@ us to exploit memory separateness properties.
 -/
 theorem mem_separate_9  (h : mem_separate' a 100 b 100)
   (hab : a < b) : a + 50 ≤ b := by
-  simp_mem (config := {useOmegaToClose := true})
+  mem_omega
 
 end MemSeparate
 

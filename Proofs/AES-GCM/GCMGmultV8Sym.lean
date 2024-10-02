@@ -91,7 +91,7 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
   · simp only [List.mem_cons, List.mem_singleton, not_or, and_imp]
     sym_aggregate
   · intro n addr h_separate
-    simp_mem (config := { useOmegaToClose := false })
+    simp_mem
     -- Aggregate the memory (non)effects.
     simp only [*]
   done
