@@ -101,6 +101,8 @@ end BvOmega
 namespace SeparateAutomation
 
 structure SimpMemConfig where
+  /-- Locally turn on tracing for this particular invocation of 'simp_mem'. -/
+  trace : Bool := false
   /-- number of times rewrites must be performed. -/
   rewriteFuel : Nat := 1000
   /-- whether an error should be thrown if the tactic makes no progress. -/
@@ -349,8 +351,11 @@ def State.init (cfg : SimpMemConfig) : State :=
 
 abbrev SimpMemM := StateRefT State (ReaderT Context TacticM)
 
-def SimpMemM.run (m : SimpMemM α) (cfg : SimpMemConfig) : TacticM α :=
-  m.run' (State.init cfg) |>.run (Context.init cfg)
+def SimpMemM.run (m : SimpMemM α) (cfg : SimpMemConfig) : TacticM α := do
+  let insertTraceIfEnabled := fun (opts : Options) =>
+    if cfg.trace then opts.insert `simp_mem.trace.info true else opts
+  withOptions insertTraceIfEnabled do
+    m.run' (State.init cfg) |>.run (Context.init cfg)
 
 /-- Add a `Hypothesis` to our hypothesis cache. -/
 def SimpMemM.addHypothesis (h : Hypothesis) : SimpMemM Unit :=
