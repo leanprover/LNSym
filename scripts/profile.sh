@@ -16,5 +16,5 @@ for file in "$@"; do
     echo + $file
     echo
     base="$(basename "$file" ".lean")"
-    $PROF -Dtrace.profiler.output="$out/$base" "$file.prof" | tee "$file.log"
+    $PROF -Dtrace.profiler.output="$out/$base.json" "$file" | tee "$base.log"
 done
