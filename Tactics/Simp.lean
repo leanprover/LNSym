@@ -37,7 +37,6 @@ def fixSimpTheoremKey (thm : SimpTheorem) : MetaM SimpTheorem := do
         let keys ← mkPath lhs simpDtConfig (noIndexAtArgs := false)
         pure { thm with keys }
 
-
 /- Create a context for using the `simp` tactic during symbolic
 simulation in LNSym proofs. -/
 def LNSymSimpContext
@@ -55,16 +54,10 @@ def LNSymSimpContext
   (simprocs : Array Name := #[])
   -- argument to `DiscrTree.mkPath`
   (noIndexAtArgs : Bool := true)
-  (useDefaultSimprocs : Bool := true)
   : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
   let mut ext_simpTheorems := #[]
-  let all_simprocs : Array Simp.Simprocs ← do
-    if useDefaultSimprocs then
-      pure #[(← Simp.getSimprocs)]
-    else
-      pure #[]
-  /- For whatever reason, can't have the `all_simprocs` be `mut`. -/
-  let mut all_simprocs := all_simprocs
+  let default_simprocs ← Simp.getSimprocs
+  let mut all_simprocs := (#[default_simprocs] : Simp.SimprocsArray)
 
   for a in simp_attrs do
     let some ext ← (getSimpExtension? a) |
@@ -119,22 +112,5 @@ def LNSymSimp (goal : MVarId)
     match new_goal with
     | none => return none
     | some (_, goal') => return goal'
-
-/--
-Invoke `simp [..] at *` at the given goal `g` with
-simp context `ctx` and simprocs `simprocs`.
--/
-def LNSymSimpAtStar (g : MVarId)
-    (ctx : Simp.Context)
-    (simprocs : Array Simp.Simprocs)
-    : MetaM (Option MVarId) := do
-   g.withContext do
-    let fvars : Array FVarId :=
-      (← getLCtx).foldl (init := #[]) fun fvars d => fvars.push d.fvarId
-    let (result, _stats) ← simpGoal g ctx simprocs (fvarIdsToSimp := fvars)
-      (simplifyTarget := true) (discharge? := none)
-    match result with
-    | none => return none
-    | some (_newHyps, g') => pure g'
 
 ----------------------------------------------------------------------
