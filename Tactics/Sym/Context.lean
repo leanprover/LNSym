@@ -305,7 +305,6 @@ private def withErrorContext (name : Name) (type? : Option Expr) (k : MetaM α) 
       | none      => m!""
     throwErrorAt e.getRef "{e.toMessageData}\n\nIn {h}{type}"
 
--- protected def AxEffects.searchFor
 
 /-- Build the lazy search structure (for use with `searchLCtx`)
 to populate the `SymContext` state from the local context.
@@ -406,13 +405,29 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
       })
     )
 
-  /- TODO(@alexkeizer): search for any other hypotheses of the form
-      `r ?field <currentState> = _`, and record those.
-    Keeping in mind that we have to do this search AFTER `h_pc` or `h_err`, to
-    ensure those field-specific searches take priority.
-    Also, maybe for memory-reads as well? Or we can hold off on that untill
-    after the equality refactor  -/
+  -- Find `r ?field currentState = ?value`
+  -- NOTE: this HAS to come after the search for specific fields, like `h_pc`,
+  --       or `h_err`, to ensure those take priority and the special handling
+  --       of those fields gets applied.
+  searchLCtxFor
+    (expectedType := do
+      let field ← mkFreshExprMVar (mkConst ``StateField)
+      let value ← mkFreshExprMVar none
+      return mkEqReadField field currentState value
+    )
+    (whenFound := fun decl ty => do
+      let some (field, _state, value) := ty.eqReadField?
+        | throwError "internal error: unexpected type:\n  {ty}"
 
+      let field ← reflectStateField (← instantiateMVars field)
+      AxEffects.setFieldEffect field {
+        value := ←instantiateMVars value,
+        proof := decl.toExpr
+      }
+      return .continu
+    )
+  /- TODO(@alexkeizer): Should we search for memory as well?
+     Probably we can only do so after the memoryProof refactor -/
   return ()
 
 /-- Build a `SymContext` by searching the local context of the main goal for
