@@ -836,6 +836,9 @@ def read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) :=
     have h : n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
     BitVec.cast h (rest ++ byte)
 
+def read_bytes' (n : BitVec 64) (addr : BitVec 64) (m : Memory) : BitVec (n.toNat * 8) :=
+  read_bytes n.toNat addr m
+
 @[memory_rules]
 theorem State.read_mem_bytes_eq_mem_read_bytes (s : ArmState) :
     read_mem_bytes n addr s = s.mem.read_bytes n addr := by
@@ -966,6 +969,10 @@ def write_bytes (n : Nat) (addr : BitVec 64)
     let m := m.write addr byte
     let val_rest := BitVec.zeroExtend (n' * 8) (val >>> 8)
     m.write_bytes n' (addr + 1#64) val_rest
+
+def write_bytes' (n : BitVec 64) (addr : BitVec 64)
+    (val : BitVec (n.toNat * 8)) (m : Memory) : Memory :=
+  write_bytes n.toNat addr val m
 
 /-- Writing zero bytes does not change memory. -/
 @[memory_rules]
