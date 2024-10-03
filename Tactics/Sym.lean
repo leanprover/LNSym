@@ -231,6 +231,10 @@ elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
 def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
+  /- `withCurHeartbeats` sets the initial heartbeats to the current heartbeats,
+  effectively resetting our heartbeat budget back to the maximum. -/
+  withCurrHeartbeats <| do
+
   let stateNumber ← getCurrentStateNumber
   withTraceNode m!"(sym1): simulating step {stateNumber}" (tag:="sym1") <|
   withMainContext' do
@@ -394,6 +398,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
         sym1 whileTac
 
     traceHeartbeats "symbolic simulation total"
+    withCurrHeartbeats <|
     withTraceNode "Post processing" (tag := "postProccessing") <| do
       let c ← getThe SymContext
       -- Check if we can substitute the final state
@@ -425,4 +430,4 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
         let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
         replaceMainGoal goal?.toList
 
-    traceHeartbeats "final usage"
+      traceHeartbeats "aggregation"
