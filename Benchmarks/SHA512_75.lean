@@ -12,6 +12,6 @@ open Benchmarks
 benchmark sha512_75 : SHA512Bench 75 := fun s0 _ h => by
   intros
   sym_n 75
-  simp only [h, bitvec_rules]
-  · exact (sorry : Aligned ..)
+  simp (config := {failIfUnchanged := false}) only [h, bitvec_rules]
+  all_goals exact (sorry : Aligned ..)
   done
