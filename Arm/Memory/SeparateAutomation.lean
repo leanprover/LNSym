@@ -444,9 +444,17 @@ def omega : SimpMemM Unit := do
   -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
   -- @bollu: TODO: understand what precisely we are recovering from.
   let startTime ← IO.monoMsNow
-  withoutRecover do
     -- TODO: replace this with filling in an MVar, sure, but not like this.
-    evalTactic (← `(tactic| bv_omega))
+    let (ctx, simprocs) ← LNSymSimpContext (config := { failIfUnchanged := false })
+      (simp_attrs := #[`bv_toNat])
+      (simprocs := #[])
+      (useDefaultSimprocs := false)
+    if let .some goal ← LNSymSimpAtStar (← getMainGoal) ctx simprocs then
+      replaceMainGoal [goal]
+      withoutRecover do
+        evalTactic (← `(tactic| omega))
+    else
+      trace[simp_mem.info] m!"{checkEmoji} bv_omega preprocessing automatically solved goal."
   let endTime ← IO.monoMsNow
   pushOmegaTiming g (endTime - startTime)
 
@@ -1143,15 +1151,7 @@ def memOmegaTactic : TacticM Unit := do
   SimpMemM.run (cfg := {}) do
     let g ← getMainGoal
     g.withContext do
-      let hyps := (← getLocalHyps)
-      let foundHyps ← SimpMemM.withTraceNode m!"Searching for Hypotheses" do
-        let mut foundHyps : Array Hypothesis := #[]
-        for h in hyps do
-          foundHyps ← hypothesisOfExpr h foundHyps
-        pure foundHyps
-
       SimpMemM.withMainContext do
-      let _ ← Hypothesis.addOmegaFactsOfHyps foundHyps.toList #[]
       trace[simp_mem.info] m!"Executing `omega` to close goal."
       SimpMemM.withTraceNode m!"goal (Note: can be large)" do
         trace[simp_mem.info] "{← getMainGoal}"

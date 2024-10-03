@@ -268,11 +268,10 @@ theorem program.step_8e4_8e8_of_wellformed_of_stepped (scur snext : ArmState)
   obtain h_sp_aligned := hscur.h_sp_aligned
 
   have := program.stepi_eq_0x8e4 h_program h_pc h_err
-  simp [BitVec.extractLsb] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules]
-  · constructor <;> simp [*, state_simp_rules, minimal_theory, BitVec.extractLsb]
+  · constructor <;> simp [*, state_simp_rules, minimal_theory]
 
 -- 3/7 (0x8e8#64, 0x3c810444#32),  /- str q4, [x2], #16        -/
 structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8ec : Prop where
@@ -296,7 +295,6 @@ theorem program.step_8e8_8ec_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hscur.h_sp_aligned
 
   have := program.stepi_eq_0x8e8 h_program h_pc h_err
-  simp [BitVec.extractLsb] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor
@@ -335,11 +333,10 @@ theorem program.step_8ec_8f0_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8ec h_program h_pc h_err
-  simp [BitVec.extractLsb] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> simp (config := { ground := true, decide := true}) [*,
-      state_simp_rules, minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg, memory_rules]
+      state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg, memory_rules]
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
 
 -- 5/7 (0x8f0#64, 0xf100001f#32),  /- cmp x0, #0x0             -/
@@ -364,7 +361,7 @@ theorem program.step_8f0_8f4_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f0 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [BitVec.extractLsb,
+  simp (config := { ground := true, decide := true}) [
     fst_AddWithCarry_eq_sub_neg,
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
@@ -396,14 +393,14 @@ theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f4 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [BitVec.extractLsb,
+  simp (config := { ground := true, decide := true}) [
     fst_AddWithCarry_eq_sub_neg,
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> solve
     | simp (config := { ground := true, decide := true}) [*,
-      state_simp_rules, minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg]
+      state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg]
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules]
 
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
@@ -426,116 +423,73 @@ theorem program.step_8f4_8f8_of_wellformed_of_z_eq_1 (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f4 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [BitVec.extractLsb,
+  simp (config := { ground := true, decide := true}) [
     fst_AddWithCarry_eq_sub_neg,
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;>
     simp (config := { ground := true, decide := true}) [*, state_simp_rules, h_z,
-      minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg, cut]
+      minimal_theory, fst_AddWithCarry_eq_sub_neg, cut]
   · constructor <;> simp [*, h_z, state_simp_rules, minimal_theory, bitvec_rules, cut]
 
 end CutTheorems
 
 section PartialCorrectness
 
-/-
-tactic execution of Lean.Parser.Tactic.omega took 290ms
-tactic execution of Lean.Parser.Tactic.omega took 1.81s
-tactic execution of simp_mem took 751ms
-tactic execution of Lean.Parser.Tactic.omega took 1.11s
-tactic execution of Lean.Parser.Tactic.omega took 664ms
-tactic execution of Lean.Parser.Tactic.omega took 676ms
-instantiate metavars took 7.15s
-share common exprs took 3.9s
-type checking took 1.47s
-process pre-definitions took 440ms
--/
+-- -- set_option skip_proof.skip true in
+-- -- set_option trace.profiler true in
+-- -- set_option profiler true in
+-- set_option maxHeartbeats 0 in
+-- theorem Memcpy.extracted_2 (s0 si : ArmState)
+--   (h_si_x0_nonzero : si.x0 ≠ 0)
+--   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
+--   (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
+--   (h_assert_1 : si.x0 ≤ s0.x0) (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
+--   (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+--   (h_assert_6 :
+--     ∀ (n : Nat) (addr : BitVec 64),
+--       mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat addr n →
+--         Memory.read_bytes n addr si.mem = Memory.read_bytes n addr s0.mem)
+--   (h_assert_5 :
+--     ∀ (i : BitVec 64),
+--       i < s0.x0 - si.x0 →
+--         Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
+--   (h_pre_1 : mem_separate' s0.x1 (s0.x0.toNat * 16) s0.x2 (s0.x0.toNat * 16))
+--   -- (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
+--   (n : Nat)
+--   (addr : BitVec 64)
+--   (hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n) :
+--   Memory.read_bytes n addr
+--       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
+--         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
+--     Memory.read_bytes n addr s0.mem := by
+--   -- have h_le : (s0.x0 - (si.x0 - 0x1#64)).toNat ≤ s0.x0.toNat := by mem_omega
+--   have h_upper_bound := hsep.hb.omega_def
+--   have h_upper_bound₂ := h_pre_1.hb.omega_def
+--   have h_upper_bound₃ := hsep.ha.omega_def
+--   -- have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by
+--   --   mem_omega
+--   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
+--   · rw [h_assert_6]
+--     sorry
+--     -- bv_omega
+--     -- skip_proof mem_omega
+--   · -- @bollu: TODO: figure out why this is so slow!
+--     apply mem_separate'.symm
+--     apply mem_separate'.of_subset'_of_subset' hsep
+--     · apply mem_subset'.of_omega
+--       skip_proof refine ⟨?_, ?_, ?_, ?_⟩
+--       · sorry
+--       · sorry
+--       · sorry
+--       · sorry
+--     · apply mem_subset'_refl hsep.hb
+
 -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
 -- set_option trace.profiler true in
 -- set_option profiler true in
--- set_option trace.profiler true in
--- set_option profiler true in
-set_option trace.simp_mem true
-set_option trace.simp_mem.info true
-set_option simp_mem.omegaNumIgnoredTimeouts 0 in
-set_option simp_mem.omegaTimeoutMs 1000 in
-theorem Memcpy.extracted_2 (s0 si : ArmState)
-  (h_si_x0_nonzero : si.x0 ≠ 0)
-  (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
-  (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
-  (h_assert_1 : si.x0 ≤ s0.x0) (h_assert_3 : si.x1 = s0.x1 + 0x10#64 * (s0.x0 - si.x0))
-  (h_assert_4 : si.x2 = s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-  (h_assert_6 :
-    ∀ (n : Nat) (addr : BitVec 64),
-      mem_separate' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat addr n →
-        Memory.read_bytes n addr si.mem = Memory.read_bytes n addr s0.mem)
-  (h_assert_5 :
-    ∀ (i : BitVec 64),
-      i < s0.x0 - si.x0 →
-        Memory.read_bytes 16 (s0.x2 + 0x10#64 * i) si.mem = Memory.read_bytes 16 (s0.x1 + 0x10#64 * i) s0.mem)
-  (h_pre_1 : mem_separate' s0.x1 (s0.x0.toNat * 16) s0.x2 (s0.x0.toNat * 16))
-  -- (h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
-  (n : Nat)
-  (addr : BitVec 64)
-  (hsep : mem_separate' s0.x2 (0x10#64 * (s0.x0 - (si.x0 - 0x1#64))).toNat addr n) :
-  Memory.read_bytes n addr
-      (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
-        (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
-    Memory.read_bytes n addr s0.mem := by
-  have h_le : (s0.x0 - (si.x0 - 0x1#64)).toNat ≤ s0.x0.toNat := by bv_omega
-  have h_upper_bound := hsep.hb.omega_def
-  have h_upper_bound₂ := h_pre_1.hb.omega_def
-  have h_upper_bound₃ := hsep.ha.omega_def
-  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by
-    sorry
-  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-  · rw [h_assert_6]
-    skip_proof simp_mem
-  · -- @bollu: TODO: figure out why this is so slow!
-    apply mem_separate'.symm
-    apply mem_separate'.of_subset'_of_subset' hsep
-    · apply mem_subset'.of_omega
-      skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
-    · apply mem_subset'_refl hsep.hb
-
-
-/-
-tactic execution of Lean.Parser.Tactic.omega took 1.54s
-tactic execution of simp_mem took 274ms
-tactic execution of Lean.Parser.Tactic.omega took 1.11s
-tactic execution of simp_mem took 403ms
-tactic execution of Lean.Parser.Tactic.omega took 302ms
-tactic execution of Lean.Parser.Tactic.omega took 284ms
-tactic execution of Lean.Parser.Tactic.omega took 4.25s
-tactic execution of simp_mem took 1.96s
-tactic execution of Lean.Parser.Tactic.omega took 8.95s
-tactic execution of simp_mem took 1.68s
-tactic execution of Lean.Parser.Tactic.omega took 102ms
-tactic execution of Lean.Parser.Tactic.omega took 1.9s
-tactic execution of simp_mem took 318ms
-tactic execution of Lean.Parser.Tactic.omega took 322ms
-tactic execution of Lean.Parser.Tactic.omega took 115ms
-tactic execution of Lean.Parser.Tactic.omega took 101ms
-instantiate metavars took 30s
-share common exprs took 16.7s
-fix level params took 118ms
-type checking took 4.37s
-process pre-definitions took 5.44s
--/
-
-set_option maxHeartbeats 0
--- set_option skip_proof.skip true in
-set_option maxHeartbeats 0 in
--- set_option trace.profiler true in
--- set_option profiler true in
--- set_option trace.profiler true in
--- set_option profiler true in
-set_option trace.simp_mem.info true
-set_option simp_mem.omegaNumIgnoredTimeouts 9999 in
--- set_option simp_mem.omegaTimeoutMs 1000 in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -569,9 +523,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
   apply And.intro
   · intros i hi
     have h_subset_2 : mem_subset' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat s0.x2 (s0.x0.toNat * 16) := by
-      skip_proof simp_mem
+      skip_proof mem_omega
     have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by
-      skip_proof simp_mem
+      skip_proof mem_omega
     have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by skip_proof bv_omega
     have s2_sum_inbounds := h_pre_1.hb.omega_def
     have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
@@ -582,13 +536,13 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       · simp only [Nat.reduceMul, BitVec.toNat_add, BitVec.toNat_mul, BitVec.toNat_ofNat,
         Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
         BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
-        rw [h_assert_6 _ _ (by simp_mem)]
-      · skip_proof simp_mem
+        rw [h_assert_6 _ _ (by mem_omega)]
+      · skip_proof mem_omega
     · rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
       · apply h_assert_5 _ hi
       · constructor
-        · skip_proof simp_mem
-        · skip_proof simp_mem
+        · skip_proof mem_omega
+        · skip_proof mem_omega
         · left
           -- @bollu: TODO, see if `simp_mem` can figure this out given less aggressive
           -- proof states.
@@ -605,23 +559,6 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
   · intros n addr hsep
     apply Memcpy.extracted_2 <;> assumption
 
-/-
-tactic execution of Lean.Parser.Tactic.omega took 616ms
-tactic execution of Lean.Parser.Tactic.omega took 1.1s
-tactic execution of Lean.Parser.Tactic.assumption took 114ms
-instantiate metavars took 14.7s
-share common exprs took 1.94s
-type checking took 988ms
--/
-
-set_option maxHeartbeats 0 in
-set_option trace.profiler true in
-set_option profiler true in
-set_option maxHeartbeats 0 in
-set_option trace.simp_mem.info true in
-set_option simp_mem.omegaNumIgnoredTimeouts 9999 in
--- set_option trace.profiler true in
--- set_option profiler true in
 -- set_option trace.profiler true in
 -- set_option profiler true in
 theorem partial_correctness :
@@ -740,7 +677,7 @@ theorem partial_correctness :
             simp only [memory_rules] at h_si_read_sep
             rw [h_si_read_sep]
             rw [h_si_x0_eq_zero]
-            skip_proof sorry -- nice!
+            skip_proof simp_mem -- nice!
           · simp only [step.h_err, step.h_program, step.h_sp_aligned, and_self]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed

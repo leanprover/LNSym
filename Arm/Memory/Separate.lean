@@ -237,6 +237,10 @@ theorem mem_legal'.iff_omega (a : BitVec 64) (n : Nat) :
   · intros h
     apply h.omega_def
 
+@[bv_toNat]
+theorem mem_legal'.iff_omega' (a : BitVec 64) (n : Nat) :
+    mem_legal' a n ↔ (a.toNat + n ≤ 2^64) := mem_legal'.iff_omega a n |>.symm
+
 instance : Decidable (mem_legal' a n) :=
   if h : a.toNat + n ≤ 2^64 then
     isTrue (mem_legal'.of_omega h)
@@ -350,6 +354,10 @@ theorem mem_separate'.iff_omega (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn :
   · intros h
     apply h.omega_def
 
+@[bv_toNat]
+  theorem mem_separate'.iff_omega' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
+    mem_separate' a an b bn ↔ (a.toNat + an ≤ 2^64 ∧ b.toNat + bn ≤ 2^64 ∧ (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn)) := mem_separate'.iff_omega a an b bn |>.symm
+
 instance : Decidable (mem_separate' a an b bn) :=
   if h : (a.toNat + an ≤ 2^64 ∧ b.toNat + bn ≤ 2^64 ∧ (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn)) then
     isTrue (mem_separate'.of_omega h)
@@ -433,6 +441,10 @@ theorem mem_subset'.iff_omega (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : N
     apply mem_subset'.of_omega h
   · intros h
     apply h.omega_def
+
+@[bv_toNat]
+theorem mem_subset'.iff_omega' (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
+    mem_subset' a an b bn ↔ (a.toNat + an ≤ 2^64 ∧ b.toNat + bn ≤ 2^64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn) := mem_subset'.iff_omega a an b bn |>.symm
 
 instance : Decidable (mem_subset' a an b bn) :=
   if h : (a.toNat + an ≤ 2^64 ∧ b.toNat + bn ≤ 2^64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn) then
