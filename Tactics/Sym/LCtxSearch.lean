@@ -61,6 +61,8 @@ structure LCtxSearchState.Pattern where
   whenNotFound : Expr → m Unit
   /-- Whether to change the type of successful matches -/
   changeType : Bool
+  /-- Whether to match under binders -/
+  matchUnderBinders : Bool
   /-- How many times have we (successfully) found the pattern -/
   occurences : Nat := 0
   /-- Whether the pattern is active; is `isActive = false`,
@@ -95,9 +97,14 @@ variable {m}
   def-eq to the pattern, or if `whenFound` returned `skip` for all variables
   that were found. For convenience, we pass in the `expectedType` here as well.
   See `throwNotFound` for a convenient way to throw an error here.
-- If `changeType` is set to true, then we change the type of every successful
-  match (i.e., `whenFound` returns `continu` or `done`) to be exactly the
-  `expectedType`
+- If `changeType` (default `false`) is set to true, then we change the type of
+  every successful match (i.e., `whenFound` returns `continu` or `done`)
+  to be exactly the `expectedType`
+- If `matchUnderBinders` (default `false`) is set to true, we will introduce
+  metavariable for any binders in a variable's type before matching.
+  For example, with `matchUnderBinders` set to true, we consider a variable
+    `h : ∀ f, r f s0 = r f s1`
+  as a match for expected type `r ?f s0 = r ?f s1`.
 
 WARNING: Once a pattern is found for which `whenFound` returns `done`, that
 particular variable will not be matched for any other patterns.
@@ -109,11 +116,12 @@ def searchLCtxFor
     (whenFound : LocalDecl → Expr → m LCtxSearchResult)
     (whenNotFound : Expr → m Unit := fun _ => pure ())
     (changeType : Bool := false)
+    (matchUnderBinders : Bool := false)
     : SearchLCtxForM m Unit := do
   let pattern := {
     -- Placeholder value, since we can't evaluate `m` inside of `LCtxSearchM`
     cachedExpectedType :=← expectedType
-    expectedType, whenFound, whenNotFound, changeType
+    expectedType, whenFound, whenNotFound, changeType, matchUnderBinders
   }
   modify fun state => { state with
     patterns := state.patterns.push pattern
@@ -128,15 +136,26 @@ def searchLCtxForOnce
     (whenFound : LocalDecl → Expr → m Unit)
     (whenNotFound : Expr → m Unit := fun _ => pure ())
     (changeType : Bool := false)
+    (matchUnderBinders : Bool := false)
     : SearchLCtxForM m Unit := do
   searchLCtxFor (pure expectedType)
     (fun d e => do whenFound d e; return .done)
-    whenNotFound changeType
+    whenNotFound changeType matchUnderBinders
 
 section Run
 open Elab.Tactic
 open Meta (isDefEq)
 variable [MonadLCtx m] [MonadLiftT MetaM m] [MonadLiftT TacticM m]
+
+namespace LCtxSearchState
+
+/-- Return `true` if `e` matches the pattern -/
+def Pattern.matches (pat : Pattern m) (e : Expr) : m Bool := do
+  let mut e := e
+  if pat.matchUnderBinders then
+    let ⟨_, _, e'⟩ ← Meta.forallMetaTelescope e
+    e := e'
+  isDefEq e pat.cachedExpectedType
 
 /--
 Attempt to match `e` against the given pattern:
@@ -145,11 +164,11 @@ Attempt to match `e` against the given pattern:
     the result of `whenFound`
 - Otherwise, if `e` is not def-eq, return `none`
 -/
-def LCtxSearchState.Pattern.match? (pat : Pattern m) (decl : LocalDecl) :
+def Pattern.match? (pat : Pattern m) (decl : LocalDecl) :
     m (Option (Pattern m × LCtxSearchResult)) := do
   if !pat.isActive then
     return none
-  else if !(← isDefEq decl.type pat.cachedExpectedType) then
+  else if !(← pat.matches decl.type) then
     return none
   else
     let cachedExpectedType ← pat.expectedType
@@ -162,6 +181,8 @@ def LCtxSearchState.Pattern.match? (pat : Pattern m) (decl : LocalDecl) :
         let goal ← goal.replaceLocalDeclDefEq decl.fvarId pat.cachedExpectedType
         replaceMainGoal [goal]
     return some ({pat with cachedExpectedType, occurences}, res)
+
+end LCtxSearchState
 
 /-- Search the local context for variables of certain types, in a single pass.
 `k` is a monadic continuation that determines the patterns to search for,
