@@ -31,12 +31,8 @@ def exec_advanced_simd_extract
     let hi := read_sfp datasize inst.Rm s
     let lo := read_sfp datasize inst.Rn s
     let concat := hi ++ lo
-    let result := extractLsb (position + datasize - 1) position concat
-    have h_datasize : 1 <= datasize := by simp_all! [datasize]; split <;> decide
-    have h : (position + datasize - 1 - position + 1) = datasize := by
-      rw [Nat.add_sub_assoc, Nat.add_sub_self_left]
-      exact Nat.sub_add_cancel h_datasize; trivial
-    let s := write_sfp datasize inst.Rd (BitVec.cast h result) s
+    let result := extractLsb' position datasize concat
+    let s := write_sfp datasize inst.Rd result s
     let s := write_pc ((read_pc s) + 4#64) s
     s
 

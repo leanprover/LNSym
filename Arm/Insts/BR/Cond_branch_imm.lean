@@ -29,7 +29,7 @@ def Cond_branch_imm_inst.condition_holds
   let N := read_flag PFlag.N s
   let V := read_flag PFlag.V s
   let result :=
-    match (extractLsb 3 1 inst.cond) with
+    match (extractLsb' 1 3 inst.cond) with
     | 0b000#3 => Z = 1#1
     | 0b001#3 => C = 1#1
     | 0b010#3 => N = 1#1

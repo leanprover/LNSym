@@ -39,7 +39,10 @@ awslc_elf:
 cosim:
 	time -p lake exe lnsym $(VERBOSE) --num-tests $(NUM_TESTS)
 
-BENCHMARKS = Benchmarks/SHA512_75.lean \
+BENCHMARKS = \
+	Benchmarks/SHA512_50.lean \
+	Benchmarks/SHA512_50_noKernel_noLint.lean \
+	Benchmarks/SHA512_75.lean \
 	Benchmarks/SHA512_75_noKernel_noLint.lean \
 	Benchmarks/SHA512_150.lean \
 	Benchmarks/SHA512_150_noKernel_noLint.lean \

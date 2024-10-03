@@ -63,7 +63,7 @@ def MoveWidePreferred (sf immN : BitVec 1) (imms immr : BitVec 6) : Bool :=
       false
     -- NOTE: the second conjunct below is semantically equivalent to the ASL code
     -- !((immN:imms) IN {'00xxxxx'})
-    else if sf = 0#1 ∧ ¬(immN = 0#1 ∧ imms.extractLsb 5 5 = 0#1) then
+    else if sf = 0#1 ∧ ¬(immN = 0#1 ∧ imms.extractLsb' 5 1 = 0#1) then
       false
 
     -- for MOVZ must contain no more than 16 ones

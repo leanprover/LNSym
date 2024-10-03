@@ -113,8 +113,7 @@ def AESHWCtr32EncryptBlocks_helper {Param : AESArm.KBR} (in_blocks : BitVec m)
     let lo := m - (i + 1) * 128
     let hi := lo + 127
     have h5 : hi - lo + 1 = 128 := by omega
-    let curr_block : BitVec 128 :=
-      BitVec.cast h5 $ BitVec.extractLsb hi lo in_blocks
+    let curr_block : BitVec 128 := BitVec.extractLsb' lo 128 in_blocks
     have h4 : 128 = Param.block_size := by
       cases h3
       · rename_i h; simp only [h, AESArm.AES128KBR, AESArm.BlockSize]

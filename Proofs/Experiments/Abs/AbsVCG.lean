@@ -39,7 +39,7 @@ def spec (x : BitVec 32) : BitVec 32 :=
   -- BitVec.ofNat 32 x.toInt.natAbs
   -- because the above has functions like `toInt` that do not play well with
   -- bitblasting/LeanSAT.
-  let msb := BitVec.extractLsb 31 31 x
+  let msb := BitVec.extractLsb' 31 1 x
   if msb == 0#1 then
     x
   else
@@ -205,12 +205,12 @@ theorem effects_of_nextc_from_0x4005d0 (h_pre : abs_pre s0)
   r (StateField.GPR 0#5) sn =
     BitVec.zeroExtend 64
       (AddWithCarry (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0))
-          (BitVec.replicate 32 (BitVec.extractLsb 31 31 (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0))) &&&
+          (BitVec.replicate 32 (BitVec.extractLsb' 31 1 (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0))) &&&
               0xfffffffe#32 |||
             (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0)).rotateRight 31 &&& 0xffffffff#32 &&& 0x1#32)
           0x0#1).fst ^^^
     (BitVec.zeroExtend 64
-          (BitVec.replicate 32 (BitVec.extractLsb 31 31 (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0)))) &&&
+          (BitVec.replicate 32 (BitVec.extractLsb' 31 1 (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0)))) &&&
         0xfffffffe#64 |||
       BitVec.zeroExtend 64 ((BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s0)).rotateRight 31) &&& 0xffffffff#64 &&&
         0x1#64) ∧
