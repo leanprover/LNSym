@@ -52,7 +52,7 @@ def decode_immediate_op (inst : Advanced_simd_modified_immediate_cls)
            else (some ImmediateOp.MOVI, s)
 
 def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitVec 64 :=
-  let cmode_high3 := extractLsb 3 1 cmode
+  let cmode_high3 := extractLsb' 1 3 cmode
   let cmode_low1 := lsb cmode 0
   match cmode_high3 with
   | 0b000#3 => replicate 2 $ BitVec.zero 24 ++ imm8
@@ -82,13 +82,13 @@ def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitV
     else if cmode_low1 = 1 ∧ op = 0 then
       let imm32 := lsb imm8 7 ++ ~~~(lsb imm8 6) ++
                    (replicate 5 $ lsb imm8 6) ++
-                   extractLsb 5 0 imm8 ++ BitVec.zero 19
+                   extractLsb' 0 6 imm8 ++ BitVec.zero 19
       replicate 2 imm32
     else
       -- Assume not UsingAArch32()
       -- if UsingAArch32() then ReservedEncoding();
       lsb imm8 7 ++ ~~~(lsb imm8 6) ++
-        (replicate 8 $ lsb imm8 6) ++ extractLsb 5 0 imm8 ++ BitVec.zero 48
+        (replicate 8 $ lsb imm8 6) ++ extractLsb' 0 6 imm8 ++ BitVec.zero 48
 
 
 private theorem mul_div_norm_form_lemma  (n m : Nat) (_h1 : 0 < m) (h2 : n ∣ m) :
@@ -107,9 +107,9 @@ def exec_advanced_simd_modified_immediate
     let datasize := 64 <<< inst.Q.toNat
     let imm8 := inst.a ++ inst.b ++ inst.c ++ inst.d ++ inst.e ++ inst.f ++ inst.g ++ inst.h
     let imm16 : BitVec 16 :=
-                 extractLsb 7 7 imm8 ++ ~~~ (extractLsb 6 6 imm8) ++
-                 (replicate 2 $ extractLsb 6 6 imm8) ++ extractLsb 5 0 imm8 ++
-                 BitVec.zero 6
+                 extractLsb' 7 1 imm8 ++ ~~~ (extractLsb' 6 1 imm8) ++
+                 (replicate 2 $ extractLsb' 6 1 imm8) ++
+                 extractLsb' 0 6 imm8 ++ BitVec.zero 6
     let imm64 := AdvSIMDExpandImm inst.op inst.cmode imm8
     have h₁ : 16 * (datasize / 16) = datasize := by omega
     have h₂ : 64 * (datasize / 64) = datasize := by omega
