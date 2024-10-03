@@ -15,6 +15,7 @@ open Lean
 open Lean.Meta Lean.Elab.Tactic
 
 open AxEffects SymContext
+open Sym (withTraceNode withVerboseTraceNode)
 
 /-- A wrapper around `evalTactic` that traces the passed tactic script,
 executes those tactics, and then traces the new goal state -/

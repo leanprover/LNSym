@@ -9,6 +9,7 @@ import Lean.Meta
 import Arm.Exec
 import Tactics.Common
 import Tactics.Attr
+import Tactics.Sym.Common
 import Tactics.Sym.ProgramInfo
 import Tactics.Sym.AxEffects
 import Tactics.Sym.LCtxSearch
@@ -33,6 +34,7 @@ and is likely to be deprecated and removed in the near future. -/
 
 open Lean Meta Elab.Tactic
 open BitVec
+open Sym (withTraceNode withVerboseTraceNode)
 
 /-- A `SymContext` collects the names of various variables/hypotheses in
 the local context required for symbolic evaluation -/
@@ -146,26 +148,6 @@ end SymM
 
 namespace SymContext
 
-/-! ## Trace Nodes -/
-section Tracing
-variable {α : Type} {m : Type → Type} [Monad m] [MonadTrace m] [MonadLiftT IO m]
-  [MonadRef m] [AddMessageContext m] [MonadOptions m] {ε : Type}
-  [MonadAlwaysExcept ε m] [MonadLiftT BaseIO m]
-
-def withTraceNode (msg : MessageData) (k : m α)
-    (collapsed : Bool := true)
-    (tag : String := "")
-    : m α := do
-  Lean.withTraceNode `Tactic.sym (fun _ => pure msg) k collapsed tag
-
-def withVerboseTraceNode (msg : MessageData) (k : m α)
-    (collapsed : Bool := true)
-    (tag : String := "")
-    : m α := do
-  Lean.withTraceNode `Tactic.sym.verbose (fun _ => pure msg) k collapsed tag
-
-end Tracing
-
 /-! ## Simple projections -/
 section
 open Lean (Ident mkIdent)
@@ -229,8 +211,6 @@ def traceSymContext : SymM Unit :=
   withTraceNode m!"SymContext: " <| do
     let m ← (← getThe SymContext).toMessageData
     trace[Tactic.sym] m
-
-
 
 /-! ## Adding new simp theorems for aggregation -/
 
