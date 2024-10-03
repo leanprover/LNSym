@@ -405,7 +405,7 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
 
     /- Simp to gain some more juice out of the defn.. -/
     let mut simpTheorems : Array SimpTheorems := #[]
-    for a in #[`minimal_theory, `bitvec_rules] do
+    for a in #[`minimal_theory, `bitvec_rules, `bv_toNat] do
       let some ext ← (getSimpExtension? a)
         | throwError m!"[simp_mem] Internal error: simp attribute {a} not found!"
       simpTheorems := simpTheorems.push (← ext.getTheorems)
