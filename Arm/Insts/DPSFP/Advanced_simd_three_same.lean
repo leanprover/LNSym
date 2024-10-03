@@ -25,8 +25,8 @@ def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
     result
   else
     have h₁ : e < elems := by omega
-    let element1 := elem_get x e esize H
-    let element2 := elem_get y e esize H
+    let element1 := elem_get x e esize
+    let element2 := elem_get y e esize
     let elem_result := op element1 element2
     let result := elem_set result e esize elem_result H
     have ht1 : elems - (e + 1) < elems - e := by omega

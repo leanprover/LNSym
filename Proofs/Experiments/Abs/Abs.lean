@@ -24,7 +24,7 @@ def spec (x : BitVec 32) : BitVec 32 :=
   -- BitVec.ofNat 32 x.toInt.natAbs
   -- because the above has functions like `toInt` that do not play well with
   -- bitblasting/LeanSAT.
-  let msb := BitVec.extractLsb 31 31 x
+  let msb := BitVec.extractLsb' 31 1 x
   if msb == 0#1 then
     x
   else
