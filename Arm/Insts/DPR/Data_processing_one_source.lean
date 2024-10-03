@@ -55,7 +55,7 @@ private theorem opc_and_sf_constraint (x : BitVec 2) (y : BitVec 1)
 @[state_simp_rules]
 def exec_data_processing_rev
   (inst : Data_processing_one_source_cls) (s : ArmState) : ArmState :=
-  let opc : BitVec 2 := extractLsb 1 0 inst.opcode
+  let opc : BitVec 2 := extractLsb' 0 2 inst.opcode
   if H₁ : opc = 0b11#2 ∧ inst.sf = 0b0#1 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
@@ -65,16 +65,16 @@ def exec_data_processing_rev
     let esize := 8
     have opc_h₁ : opc.toNat ≥ 0 := by simp only [ge_iff_le, Nat.zero_le]
     have opc_h₂ : opc.toNat < 4 := by
-      refine BitVec.isLt (extractLsb 1 0 inst.opcode)
+      refine BitVec.isLt (extractLsb' 0 2 inst.opcode)
     have opc_sf_h : ¬(opc.toNat = 3 ∧ inst.sf.toNat = 0) := by
-      apply opc_and_sf_constraint (extractLsb 1 0 inst.opcode) inst.sf H₁
+      apply opc_and_sf_constraint (extractLsb' 0 2 inst.opcode) inst.sf H₁
     have h₀ : 0 < esize := by decide
     have h₁ : esize ≤ container_size := by apply shiftLeft_ge
     have h₂ : container_size ≤ datasize := by
       apply container_size_le_datasize opc.toNat inst.sf.toNat opc_h₁ opc_h₂ opc_sf_h
     have h₃ : esize ∣ container_size := by
       simp only [esize, container_size]
-      generalize BitVec.toNat (extractLsb 1 0 inst.opcode) = x
+      generalize BitVec.toNat (extractLsb' 0 2 inst.opcode) = x
       simp only [Nat.shiftLeft_eq]
       generalize 2 ^ x = n
       simp only [Nat.dvd_mul_right]

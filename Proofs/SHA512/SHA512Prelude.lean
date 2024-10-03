@@ -124,7 +124,7 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
     /-
     (FIXME) The `rw` below fails with:
     tactic 'rewrite' failed, did not find instance of the pattern in the target expression
-    extractLsb 3 0 (?m.1887 + ?m.1888)
+    extractLsb' 0 4 (?m.1887 + ?m.1888)
 
     Why is `Aligned` opened up here?
     -/
