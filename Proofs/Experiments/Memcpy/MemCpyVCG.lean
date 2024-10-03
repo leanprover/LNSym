@@ -268,11 +268,10 @@ theorem program.step_8e4_8e8_of_wellformed_of_stepped (scur snext : ArmState)
   obtain h_sp_aligned := hscur.h_sp_aligned
 
   have := program.stepi_eq_0x8e4 h_program h_pc h_err
-  simp [BitVec.extractLsb] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules]
-  · constructor <;> simp [*, state_simp_rules, minimal_theory, BitVec.extractLsb]
+  · constructor <;> simp [*, state_simp_rules, minimal_theory]
 
 -- 3/7 (0x8e8#64, 0x3c810444#32),  /- str q4, [x2], #16        -/
 structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8ec : Prop where
@@ -296,7 +295,6 @@ theorem program.step_8e8_8ec_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hscur.h_sp_aligned
 
   have := program.stepi_eq_0x8e8 h_program h_pc h_err
-  simp [BitVec.extractLsb] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor
@@ -335,11 +333,10 @@ theorem program.step_8ec_8f0_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8ec h_program h_pc h_err
-  simp [BitVec.extractLsb] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> simp (config := { ground := true, decide := true}) [*,
-      state_simp_rules, minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg, memory_rules]
+      state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg, memory_rules]
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
 
 -- 5/7 (0x8f0#64, 0xf100001f#32),  /- cmp x0, #0x0             -/
@@ -364,7 +361,7 @@ theorem program.step_8f0_8f4_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f0 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [BitVec.extractLsb,
+  simp (config := { ground := true, decide := true}) [
     fst_AddWithCarry_eq_sub_neg,
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
@@ -396,14 +393,14 @@ theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f4 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [BitVec.extractLsb,
+  simp (config := { ground := true, decide := true}) [
     fst_AddWithCarry_eq_sub_neg,
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> solve
     | simp (config := { ground := true, decide := true}) [*,
-      state_simp_rules, minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg]
+      state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg]
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules]
 
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
@@ -426,14 +423,14 @@ theorem program.step_8f4_8f8_of_wellformed_of_z_eq_1 (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f4 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [BitVec.extractLsb,
+  simp (config := { ground := true, decide := true}) [
     fst_AddWithCarry_eq_sub_neg,
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;>
     simp (config := { ground := true, decide := true}) [*, state_simp_rules, h_z,
-      minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg, cut]
+      minimal_theory, fst_AddWithCarry_eq_sub_neg, cut]
   · constructor <;> simp [*, h_z, state_simp_rules, minimal_theory, bitvec_rules, cut]
 
 end CutTheorems

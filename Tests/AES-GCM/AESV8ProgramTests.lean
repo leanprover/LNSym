@@ -360,28 +360,28 @@ def final_state1 : ArmState :=
   aes_hw_ctr32_encrypt_blocks_test 88 1 in_block rounds key_schedule ivec
 def final_buf1 : BitVec 640 := read_mem_bytes 80 out_address final_state1
 example : read_err final_state1 = StateError.None := by native_decide
-example: final_buf1 = (BitVec.zero 512) ++ (extractLsb 127 0 (revflat buf_res_128)) := by native_decide
+example: final_buf1 = (BitVec.zero 512) ++ (extractLsb' 0 128 (revflat buf_res_128)) := by native_decide
 
 -- -- len = 2
 def final_state2 : ArmState :=
   aes_hw_ctr32_encrypt_blocks_test 89 2 in_block rounds key_schedule ivec
 def final_buf2 : BitVec 640 := read_mem_bytes 80 out_address final_state2
 example : read_err final_state2 = StateError.None := by native_decide
-example: final_buf2 = (BitVec.zero 384) ++ (extractLsb 255 0 (revflat buf_res_128)) := by native_decide
+example: final_buf2 = (BitVec.zero 384) ++ (extractLsb' 0 256 (revflat buf_res_128)) := by native_decide
 
 -- len = 3
 def final_state3 : ArmState :=
   aes_hw_ctr32_encrypt_blocks_test 128 3 in_block rounds key_schedule ivec
 def final_buf3 : BitVec 640 := read_mem_bytes 80 out_address final_state3
 example : read_err final_state3 = StateError.None := by native_decide
-example: final_buf3 = (BitVec.zero 256) ++ (extractLsb 383 0 (revflat buf_res_128)) := by native_decide
+example: final_buf3 = (BitVec.zero 256) ++ (extractLsb' 0 384 (revflat buf_res_128)) := by native_decide
 
 -- len = 4
 def final_state4 : ArmState :=
   aes_hw_ctr32_encrypt_blocks_test 190 4 in_block rounds key_schedule ivec
 def final_buf4 : BitVec 640 := read_mem_bytes 80 out_address final_state4
 example : read_err final_state4 = StateError.None := by native_decide
-example: final_buf4 = (BitVec.zero 127) ++ (extractLsb 512 0 (revflat buf_res_128)) := by native_decide
+example: final_buf4 = (BitVec.zero 128) ++ (extractLsb' 0 512 (revflat buf_res_128)) := by native_decide
 
 -- len = 5
 def final_state5 : ArmState :=
