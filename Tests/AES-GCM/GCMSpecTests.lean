@@ -14,8 +14,8 @@ namespace GCMInitV8SpecTest
 def flatten_H := BitVec.flatten GCMProgramTestParams.H
 def spec_table := GCMV8.GCMInitV8 flatten_H
 
-example : extractLsb (12 * 128) 0 (revflat spec_table)
-        = extractLsb (12 * 128) 0 (revflat GCMProgramTestParams.Htable)
+example : extractLsb' 0 (12 * 128) (revflat spec_table)
+        = extractLsb' 0 (12 * 128) (revflat GCMProgramTestParams.Htable)
         := by native_decide
 
 end GCMInitV8SpecTest

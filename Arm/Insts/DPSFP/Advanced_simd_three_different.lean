@@ -37,8 +37,8 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
   if h₀ : elements <= e then
     result
   else
-    let element1 := elem_get x e esize H
-    let element2 := elem_get y e esize H
+    let element1 := elem_get x e esize
+    let element2 := elem_get y e esize
     let elem_result := polynomial_mult element1 element2
     have h₁ : esize + esize = 2 * esize := by omega
     have h₂ : 2 * esize > 0 := by omega
@@ -58,9 +58,8 @@ def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmSt
     let datasize := 64
     let part := inst.Q.toNat
     let elements := datasize / esize
-    have h₁ : datasize > 0 := by decide
-    let operand1 := Vpart_read inst.Rn part datasize s h₁
-    let operand2 := Vpart_read inst.Rm part datasize s h₁
+    let operand1 := Vpart_read inst.Rn part datasize s
+    let operand2 := Vpart_read inst.Rm part datasize s
     let result :=
       pmull_op 0 esize elements operand1 operand2 (BitVec.zero (2*datasize)) h₀
     let s := write_sfp (datasize*2) inst.Rd result s

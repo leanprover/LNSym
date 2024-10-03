@@ -37,7 +37,7 @@ def spec (x : BitVec 32) : BitVec 32 :=
   -- BitVec.ofNat 32 x.toInt.natAbs
   -- because the above has functions like `toInt` that do not play well with
   -- bitblasting/LeanSAT.
-  let msb := BitVec.extractLsb 31 31 x
+  let msb := BitVec.extractLsb' 31 1 x
   if msb == 0#1 then
     x
   else
@@ -124,7 +124,7 @@ theorem program.stepi_0x4005d4_cut (s sn : ArmState)
   abs_cut sn = false  ∧
   r (StateField.GPR 0#5) sn =
     (BitVec.zeroExtend 64
-            (BitVec.replicate 32 (BitVec.extractLsb 31 31 (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s)))) &&&
+            (BitVec.replicate 32 (BitVec.extractLsb' 31 1 (BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s)))) &&&
           0xfffffffe#64 |||
         BitVec.zeroExtend 64 ((BitVec.zeroExtend 32 (r (StateField.GPR 0x0#5) s)).rotateRight 31) &&& 0xffffffff#64 &&&
           0x1#64) ∧
