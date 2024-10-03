@@ -77,9 +77,6 @@ structure SymContext where
   and we assume that no overflow happens
   (i.e., `base - x` can never be equal to `base + y`) -/
   pc : BitVec 64
-  /-- `h_sp?`, if present, is a local hypothesis of the form
-  `CheckSPAlignment state` -/
-  h_sp?  : Option Name
 
   /-- The `simp` context used for effect aggregation.
   This collects references to all (non-)effect hypotheses of the intermediate
@@ -149,6 +146,26 @@ end SymM
 
 namespace SymContext
 
+/-! ## Trace Nodes -/
+section Tracing
+variable {α : Type} {m : Type → Type} [Monad m] [MonadTrace m] [MonadLiftT IO m]
+  [MonadRef m] [AddMessageContext m] [MonadOptions m] {ε : Type}
+  [MonadAlwaysExcept ε m] [MonadLiftT BaseIO m]
+
+def withTraceNode (msg : MessageData) (k : m α)
+    (collapsed : Bool := true)
+    (tag : String := "")
+    : m α := do
+  Lean.withTraceNode `Tactic.sym (fun _ => pure msg) k collapsed tag
+
+def withVerboseTraceNode (msg : MessageData) (k : m α)
+    (collapsed : Bool := true)
+    (tag : String := "")
+    : m α := do
+  Lean.withTraceNode `Tactic.sym.verbose (fun _ => pure msg) k collapsed tag
+
+end Tracing
+
 /-! ## Simple projections -/
 section
 open Lean (Ident mkIdent)
@@ -159,10 +176,11 @@ def program : Name := c.programInfo.name
 
 /-- Find the local declaration that corresponds to a given name,
 or throw an error if no local variable of that name exists -/
-def findFromUserName (name : Name) : MetaM LocalDecl := do
-  let some decl := (← getLCtx).findFromUserName? name
-    | throwError "Unknown local variable `{name}`"
-  return decl
+def findFromUserName (name : Name) : MetaM LocalDecl :=
+  withVerboseTraceNode m!"[findFromUserName] {name}" <| do
+    let some decl := (← getLCtx).findFromUserName? name
+      | throwError "Unknown local variable `{name}`"
+    return decl
 
 /-- Find the local declaration that corresponds to `c.h_run`,
 or throw an error if no local variable of that name exists -/
@@ -197,28 +215,22 @@ end
 This is not a `ToMessageData` instance because we need access to `MetaM` -/
 def toMessageData (c : SymContext) : MetaM MessageData := do
   let h_run ← userNameToMessageData c.h_run
-  let h_sp?  ← c.h_sp?.mapM userNameToMessageData
 
   return m!"\{ finalState := {c.finalState},
   runSteps? := {c.runSteps?},
   h_run := {h_run},
   program := {c.program},
   pc := {c.pc},
-  h_sp? := {h_sp?},
   state_prefix := {c.state_prefix},
   curr_state_number := {c.currentStateNumber},
   effects := {c.effects} }"
 
-variable {α : Type} {m : Type → Type} [Monad m] [MonadTrace m] [MonadLiftT IO m]
-  [MonadRef m] [AddMessageContext m] [MonadOptions m] {ε : Type}
-  [MonadAlwaysExcept ε m] [MonadLiftT BaseIO m] in
-def withSymTraceNode (msg : MessageData) (k : m α) : m α := do
-  withTraceNode `Tactic.sym (fun _ => pure msg) k
-
 def traceSymContext : SymM Unit :=
-  withTraceNode `Tactic.sym (fun _ => pure m!"SymContext: ") <| do
+  withTraceNode m!"SymContext: " <| do
     let m ← (← getThe SymContext).toMessageData
     trace[Tactic.sym] m
+
+
 
 /-! ## Adding new simp theorems for aggregation -/
 
@@ -265,7 +277,6 @@ private def initial (state : Expr) : MetaM SymContext := do
       instructions := ∅
     }
     pc := 0
-    h_sp? := none
     aggregateSimpCtx,
     aggregateSimprocs,
     effects := AxEffects.initial state
@@ -400,9 +411,6 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
       modifyThe AxEffects ({ · with
         stackAlignmentProof? := some decl.toExpr
       })
-      modifyThe SymContext ({· with
-        h_sp? := decl.userName
-      })
     )
 
   -- Find `r ?field currentState = ?value`
@@ -440,7 +448,7 @@ we create a new subgoal of this type.
 -/
 def fromMainContext (state? : Option Name) : TacticM SymContext := do
   let msg := m!"Building a `SymContext` from the local context"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
+  withTraceNode msg (tag := "fromMainContext") <| withMainContext' do
   trace[Tactic.Sym] "state? := {state?}"
   let lctx ← getLCtx
 
@@ -473,18 +481,17 @@ evaluation:
   * the `currentStateNumber` is incremented
 -/
 def prepareForNextStep : SymM Unit := do
-  let s ← getNextStateName
-  let pc ← do
-    let { value, ..} ← AxEffects.getFieldM .PC
-    try
-      reflectBitVecLiteral 64 value
-    catch err =>
-      trace[Tactic.sym] "failed to reflect PC: {err.toMessageData}"
-      pure <| (← getThe SymContext).pc + 4
+  withVerboseTraceNode "prepareForNextStep" (tag := "prepareForNextStep") <| do
+    let pc ← do
+      let { value, ..} ← AxEffects.getFieldM .PC
+      try
+        reflectBitVecLiteral 64 value
+      catch err =>
+        trace[Tactic.sym] "failed to reflect PC: {err.toMessageData}"
+        pure <| (← getThe SymContext).pc + 4
 
-  modifyThe SymContext (fun c => { c with
-    pc
-    h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")
-    runSteps?   := (· - 1) <$> c.runSteps?
-    currentStateNumber := c.currentStateNumber + 1
-  })
+    modifyThe SymContext (fun c => { c with
+      pc
+      runSteps?   := (· - 1) <$> c.runSteps?
+      currentStateNumber := c.currentStateNumber + 1
+    })

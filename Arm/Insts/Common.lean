@@ -219,19 +219,31 @@ def CheckSPAlignment (s : ArmState) : Prop :=
 instance : Decidable (CheckSPAlignment s) := by unfold CheckSPAlignment; infer_instance
 
 @[state_simp_rules]
-theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
+theorem CheckSPAligment_w_different_eq (h : StateField.GPR 31#5 ≠ fld) :
   CheckSPAlignment (w fld v s) = CheckSPAlignment s := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
+
+theorem CheckSPAligment_w_of_ne_sp_of (h : StateField.GPR 31#5 ≠ fld) :
+    CheckSPAlignment s → CheckSPAlignment (w fld v s) := by
+  simp only [CheckSPAligment_w_different_eq h, imp_self]
 
 @[state_simp_rules]
 theorem CheckSPAligment_of_w_sp :
   CheckSPAlignment (w (StateField.GPR 31#5) v s) = (Aligned v 4) := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
+theorem CheckSPAligment_w_sp_of (h : Aligned v 4) :
+    CheckSPAlignment (w (StateField.GPR 31#5) v s) := by
+  simp only [CheckSPAlignment, read_gpr, r_of_w_same, zeroExtend_eq, h]
+
 @[state_simp_rules]
-theorem CheckSPAligment_of_write_mem_bytes :
+theorem CheckSPAligment_write_mem_bytes_eq :
   CheckSPAlignment (write_mem_bytes n addr v s) = CheckSPAlignment s := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
+
+theorem CheckSPAligment_write_mem_bytes_of :
+  CheckSPAlignment s → CheckSPAlignment (write_mem_bytes n addr v s) := by
+  simp only [CheckSPAligment_write_mem_bytes_eq, imp_self]
 
 @[state_simp_rules]
 theorem CheckSPAlignment_AddWithCarry_64_4 (st : ArmState) (y : BitVec 64) (carry_in : BitVec 1)
