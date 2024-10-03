@@ -1,9 +1,59 @@
-import Arm
 import Arm.Memory.SeparateAutomation
 
+set_option linter.all false
 set_option maxHeartbeats 0
-set_option trace.profiler true 
+set_option trace.profiler true
 set_option profiler true
+
+/-
+tactic execution of Lean.Parser.Tactic.omega took 3.71s
+instantiate metavars took 16.5s
+share common exprs took 3.59s
+type checking took 936ms
+process pre-definitions took 376ms
+elaboration took 2.32s
+-/
+theorem memcpy_extracted_0_line_585
+(h_si_x0_nonzero : six0 ≠ 0)
+(h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - six0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (six0 - 0x1#64)))
+(h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - six0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (six0 - 0x1#64)))
+(h_assert_1 : six0 ≤ s0.x0)
+(h_assert_3 : six1 = s0.x1 + 0x10#64 * (s0.x0 - six0))
+(h_assert_4 : six2 = s0.x2 + 0x10#64 * (s0.x0 - six0))
+(h_pre_1 : mem_separate' s0.x1 (s0.x0.toNat * 16) s0.x2 (s0.x0.toNat * 16))
+(h_pre_2 : r StateField.PC s0 = 0x8e0#64)
+(h_pre_6 : 16 * s0.x0.toNat < 2 ^ 64)
+(h_subset_2 : mem_subset' s0.x2 (0x10#64 * (s0.x0 - six0)).toNat s0.x2 (s0.x0.toNat * 16))
+(h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - six0)) 16 s0.x1 (s0.x0.toNat * 16))
+(s2_sum_inbounds : s0.x2.toNat + s0.x0.toNat * 16 ≤ 2 ^ 64)
+(hi : s0.x0 - six0 < s0.x0 - (six0 - 0x1#64))
+(i_sub_x0_mul_16 : 16 * (s0.x0 - six0).toNat < 16 * s0.x0.toNat)
+(hmemSeparate_omega : s0.x1.toNat + s0.x0.toNat * 16 ≤ 2 ^ 64 ∧
+  s0.x2.toNat + s0.x0.toNat * 16 ≤ 2 ^ 64 ∧
+    (s0.x1.toNat + s0.x0.toNat * 16 ≤ s0.x2.toNat ∨ s0.x1.toNat ≥ s0.x2.toNat + s0.x0.toNat * 16))
+(hmemLegal_omega : s0.x1.toNat + s0.x0.toNat * 16 ≤ 2 ^ 64)
+(hmemLegal_omega : s0.x2.toNat + s0.x0.toNat * 16 ≤ 2 ^ 64)
+(hmemSubset_omega : s0.x2.toNat + 16 % 2 ^ 64 * ((2 ^ 64 - six0.toNat + s0.x0.toNat) % 2 ^ 64) % 2 ^ 64 ≤ 2 ^ 64 ∧
+  s0.x2.toNat + s0.x0.toNat * 16 ≤ 2 ^ 64 ∧
+    s0.x2.toNat + 16 % 2 ^ 64 * ((2 ^ 64 - six0.toNat + s0.x0.toNat) % 2 ^ 64) % 2 ^ 64 ≤
+      s0.x2.toNat + s0.x0.toNat * 16)
+(hmemLegal_omega : s0.x2.toNat + 16 % 2 ^ 64 * ((2 ^ 64 - six0.toNat + s0.x0.toNat) % 2 ^ 64) % 2 ^ 64 ≤ 2 ^ 64)
+(hmemLegal_omega : s0.x2.toNat + s0.x0.toNat * 16 ≤ 2 ^ 64)
+(hmemSubset_omega : (s0.x1.toNat + 16 % 2 ^ 64 * ((2 ^ 64 - six0.toNat + s0.x0.toNat) % 2 ^ 64) % 2 ^ 64) % 2 ^ 64 + 16 ≤ 2 ^ 64 ∧
+  s0.x1.toNat + s0.x0.toNat * 16 ≤ 2 ^ 64 ∧
+    s0.x1.toNat ≤ (s0.x1.toNat + 16 % 2 ^ 64 * ((2 ^ 64 - six0.toNat + s0.x0.toNat) % 2 ^ 64) % 2 ^ 64) % 2 ^ 64 ∧
+      (s0.x1.toNat + 16 % 2 ^ 64 * ((2 ^ 64 - six0.toNat + s0.x0.toNat) % 2 ^ 64) % 2 ^ 64) % 2 ^ 64 + 16 ≤
+        s0.x1.toNat + s0.x0.toNat * 16)
+(hmemLegal_omega : (s0.x1.toNat + 16 % 2 ^ 64 * ((2 ^ 64 - six0.toNat + s0.x0.toNat) % 2 ^ 64) % 2 ^ 64) % 2 ^ 64 + 16 ≤ 2 ^ 64)
+(hmemLegal_omega : s0.x1.toNat + s0.x0.toNat * 16 ≤ 2 ^ 64)
+: s0.x2.toNat + (0x10#64 * (s0.x0 - six0)).toNat ≤ 2 ^ 64 ∧
+  (s0.x1 + 0x10#64 * (s0.x0 - six0)).toNat + 16 ≤ 2 ^ 64 ∧
+    (s0.x2.toNat + (0x10#64 * (s0.x0 - six0)).toNat ≤ (s0.x1 + 0x10#64 * (s0.x0 - six0)).toNat ∨
+      s0.x2.toNat ≥ (s0.x1 + 0x10#64 * (s0.x0 - six0)).toNat + 16) := by
+  bv_omega
+
+
+#exit
 
 /-
 tactic execution of Lean.Parser.Tactic.omega took 3.67s
@@ -59,5 +109,3 @@ theorem memcpy_extracted_0_line_585
     (s0.x2.toNat + (0x10#64 * (s0.x0 - si.x0)).toNat ≤ (s0.x1 + 0x10#64 * (s0.x0 - si.x0)).toNat ∨
       s0.x2.toNat ≥ (s0.x1 + 0x10#64 * (s0.x0 - si.x0)).toNat + 16) := by
   bv_omega
-
-
