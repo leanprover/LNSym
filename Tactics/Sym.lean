@@ -233,6 +233,7 @@ context `c`, returning the context for the next step in simulation. -/
 def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
   let stateNumber ← getCurrentStateNumber
   withTraceNode m!"(sym1): simulating step {stateNumber}" (tag:="sym1") <|
+  withInstantiateMainGoal <|
   withMainContext' do
     withVerboseTraceNode "verbose context" (tag := "infoDump") <| do
       traceSymContext
@@ -365,7 +366,8 @@ Hypotheses `h_err` and `h_sp` may be missing,
 in which case a new goal of the appropriate type will be added.
 The other hypotheses *must* be present,
 since we infer required information from their types. -/
-elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
+elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic =>
+  withTraceNode "" (tag := "sym_n") <| do
   traceHeartbeats "initial heartbeats"
 
   let s ← s.mapM fun
@@ -383,7 +385,9 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
         ))
 
   let c ← SymContext.fromMainContext s
-  SymM.run' c <| withMainContext' <|  do
+  SymM.run' c <|
+  withInstantiateMainGoal <|
+  withMainContext' <|  do
     -- Check pre-conditions
     assertStepTheoremsGenerated
     let n ← ensureAtMostRunSteps n.getNat

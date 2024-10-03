@@ -278,5 +278,36 @@ Unlike the standard `withMainContext`, `x` may live in a generic monad `m`. -/
 def withMainContext' (x : m α) : m α := do
   (← getMainGoal).withContext x
 
+variable {m} [Monad m] [MonadLiftT TacticM m] [MonadLiftT MetaM m]
+  [MonadTrace m] [MonadLiftT IO m] [MonadLiftT BaseIO m] [AddMessageContext m]
+  [MonadRef m] [MonadOptions m] [MonadAlwaysExcept ε m] [MonadMCtx m] in
+/--
+`withInstantiateMainGoal x` will replace the main goal with a fresh metavariable
+of the same type, run `x` to solve for the new main goal, and then
+assign the old goal with the instantiating of the new goal.
+
+This seems redundant, but allows us to spread out the cost of metavariable
+instantiation, and hopefully avoid some quadratic behaviour we've observed.
+-/
+def withInstantiateMainGoal (x : m α) : m α := do
+  let oldGoal ← getMainGoal
+  let newGoal ← @id (TacticM _) <| do
+    let newGoal ← mkFreshMVarId
+    let oldDecl ← oldGoal.getDecl
+    newGoal.modifyDecl (fun decl => { decl with
+      type := oldDecl.type
+      kind := oldDecl.kind
+      userName := oldDecl.userName
+      lctx := oldDecl.lctx
+      localInstances := oldDecl.localInstances
+    })
+    replaceMainGoal [newGoal]
+    pure newGoal
+  let a ← x
+  withTraceNode `Tactic.sym (fun _ => pure m!"instantiating goal")
+    (tag := "instantiateMVar") <| do
+      let _ ← oldGoal.assign (← instantiateMVars (Expr.mvar newGoal))
+  return a
+
 /-- An emoji to show that a tactic is processing at an intermediate step. -/
 def processingEmoji : String := "⚙️"
