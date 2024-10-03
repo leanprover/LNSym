@@ -666,6 +666,10 @@ def read_mem_bytes (n : Nat) (addr : BitVec 64) (s : ArmState) : BitVec (n * 8) 
     let rest := read_mem_bytes n' (addr + 1#64) s
     (rest ++ byte).cast (by omega)
 
+def read_mem_bytes' (n : BitVec 64) (addr : BitVec 64) (s : ArmState) : BitVec (n.toNat * 8) :=
+  read_mem_bytes n.toNat addr s
+
+
 /-- We export write_mem_bytes, not write_mem. FIXME: make private. -/
 def write_mem (addr : BitVec 64) (val : BitVec 8) (s : ArmState) : ArmState :=
   let new_mem := write_store addr val s.mem
@@ -680,6 +684,8 @@ def write_mem_bytes (n : Nat) (addr : BitVec 64) (val : BitVec (n * 8)) (s : Arm
     let val_rest := BitVec.zeroExtend (n' * 8) (val >>> 8)
     write_mem_bytes n' (addr + 1#64) val_rest s
 
+def write_mem_bytes' (n : BitVec 64) (addr : BitVec 64) (val : BitVec (n.toNat * 8)) (s : ArmState) : ArmState :=
+  write_mem_bytes n.toNat addr val s
 
 /-! # Memory accessors and updaters -/
 
@@ -703,6 +709,12 @@ theorem r_of_write_mem_bytes :
   case zero => rfl
   done
 
+@[state_simp_rules]
+theorem r_of_write_mem_bytes' :
+  r fld (write_mem_bytes' n addr val s) = r fld s := by
+  apply r_of_write_mem_bytes
+ 
+
 theorem fetch_inst_of_write_mem :
   fetch_inst addr1 (write_mem addr2 val s) = fetch_inst addr1 s := by
   unfold fetch_inst write_mem
@@ -718,6 +730,10 @@ theorem fetch_inst_of_write_mem_bytes :
     unfold write_mem_bytes; simp only
     rw [n_ih, fetch_inst_of_write_mem]
   done
+
+@[state_simp_rules]
+theorem fetch_inst_of_write_mem_bytes' :
+  fetch_inst addr1 (write_mem_bytes' n addr2 val s) = fetch_inst addr1 s := by simp [write_mem_bytes', state_simp_rules]
 
 theorem read_mem_of_w :
   read_mem addr (w fld v s) = read_mem addr s := by
@@ -745,6 +761,26 @@ theorem read_mem_bytes_w_of_read_mem_eq
     = read_mem_bytes n₁ addr₁ s₂ := by
   simp only [read_mem_bytes_of_w, h]
 
+
+
+private axiom read_mem_write_mem_n_lt_two_pow_64 (n : Nat) : n < 2^64
+
+@[state_simp_rules]
+theorem read_mem_bytes_w_of_read_mem_eq'
+    (h : ∀ n addr, read_mem_bytes' n addr s₁ = read_mem_bytes' n addr s₂)
+    (fld val n₁ addr₁) :
+    read_mem_bytes' n₁ addr₁ (w fld val s₁)
+    = read_mem_bytes' n₁ addr₁ s₂ := by
+  simp [read_mem_bytes'] at *
+  apply read_mem_bytes_w_of_read_mem_eq <;> try assumption
+  intros n addr
+  specialize (h n addr)
+  have : n < 2^64 := read_mem_write_mem_n_lt_two_pow_64 n
+  simp [BitVec.toNat_ofNat] at h
+  rw [BitVec.toNat_ofNat] at h
+  rw [show n % 2^64 = n by omega] at h
+  exact h
+
 @[state_simp_rules]
 theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n * 8)):
     (write_mem_bytes n addr bytes s).program = s.program := by
@@ -755,6 +791,12 @@ theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n 
     simp only [write_mem_bytes]
     rw [h_n]
     simp only [write_mem]
+
+
+@[state_simp_rules]
+theorem write_mem_bytes'_program :
+    (write_mem_bytes' n addr bytes s).program = s.program := by
+  apply write_mem_bytes_program
 
 /-! ### Memory RoW/WoW lemmas -/
 
@@ -1176,6 +1218,22 @@ theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq
   revert n₁ addr₁
   simp only [← Memory.mem_eq_iff_read_mem_bytes_eq] at h ⊢
   simp only [memory_rules, h]
+
+
+theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq'
+    (h : ∀ n addr, read_mem_bytes' n addr s₁ = read_mem_bytes' n addr s₂)
+    (n₂ addr₂ val n₁ addr₁) :
+    read_mem_bytes' n₁ addr₁ (write_mem_bytes' n₂ addr₂ val s₁)
+    = read_mem_bytes' n₁ addr₁ (write_mem_bytes' n₂ addr₂ val s₂) := by
+  simp [read_mem_bytes', write_mem_bytes']
+  apply read_mem_bytes_write_mem_bytes_of_read_mem_eq <;> try assumption
+  · intros n addr
+    specialize h n addr
+    have : n < 2^64 := read_mem_write_mem_n_lt_two_pow_64 n
+    simp [read_mem_bytes'] at h
+    rw [BitVec.toNat_ofNat] at h
+    rw [show n % 2^64 = n by omega] at h
+    exact h
 
 /- Helper lemma for `state_eq_iff_components_eq` -/
 

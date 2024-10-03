@@ -31,7 +31,7 @@ instance : ToString Reg_imm_cls where toString a := toString (repr a)
 @[state_simp_rules]
 def reg_imm_operation (inst_str : String) (op : BitVec 1)
   (wback : Bool) (postindex : Bool) (SIMD? : Bool)
-  (datasize : Nat) (regsize : Option Nat) (Rn : BitVec 5)
+  (datasize : Nat) (hdatasize : datasize < 2^64) (regsize : Option Nat) (Rn : BitVec 5)
   (Rt : BitVec 5) (offset : BitVec 64) (s : ArmState)
   (H : 8 ∣ datasize) : ArmState :=
   let address := read_gpr 64 Rn s
@@ -48,7 +48,15 @@ def reg_imm_operation (inst_str : String) (op : BitVec 1)
       match op with
       | 0#1 => -- STORE
         let data := ldst_read SIMD? datasize Rt s
-        write_mem_bytes (datasize / 8) address (BitVec.cast h.symm data) s
+        write_mem_bytes' (datasize / 8) address (data.cast (by 
+          simp [bv_toNat]
+          show _ = (BitVec.udiv _ _).toNat * 8
+          rw [BitVec.toNat_udiv]
+          simp
+          rw [Nat.mod_eq_of_lt (by omega)]
+          omega
+        )) s
+        -- write_mem_bytes (datasize / 8) address (BitVec.cast h.symm data) s
       | _ => -- LOAD
         let data := read_mem_bytes (datasize / 8) address s
         if SIMD? then write_sfp datasize Rt (BitVec.cast h data) s
@@ -79,12 +87,13 @@ def supported_reg_imm (size : BitVec 2) (opc : BitVec 2) (SIMD? : Bool) : Bool :
   | 0b00#2, 0b11#2, true => true -- LDR, 128-bit, SIMD&FP
   | _, _, _ => false -- other instructions that are not supported or illegal
 
+
 @[state_simp_rules]
 def exec_reg_imm_common
   (inst : Reg_imm_cls) (inst_str : String) (s : ArmState) : ArmState :=
-  let scale :=
-    if inst.SIMD? then ((lsb inst.opc 1) ++ inst.size).toNat
-    else inst.size.toNat
+  let ⟨scale, hscale⟩ : { n : Nat //  n ≤ 10} :=
+    if inst.SIMD? then ⟨((lsb inst.opc 1) ++ inst.size).toNat, by bv_omega⟩
+    else ⟨inst.size.toNat, by bv_omega⟩
   -- Only allow supported LDST Reg immediate instructions
   if not $ supported_reg_imm inst.size inst.opc inst.SIMD? then
     write_err (StateError.Unimplemented "Unsupported instruction {inst_str} encountered!") s
@@ -100,6 +109,12 @@ def exec_reg_imm_common
       | Sum.inl imm12 => (BitVec.zeroExtend 64 imm12) <<< scale
       | Sum.inr imm9 => signExtend 64 imm9
     let datasize := 8 <<< scale
+    have : datasize < 2^64 := by 
+      simp [datasize]
+      rw [Nat.shiftLeft_eq]
+      have : 2^scale ≤ 2^10 := by apply Nat.pow_le_pow_of_le (by decide) (by omega)
+      simp at this
+      omega
     let regsize :=
       if inst.SIMD? then none
       else if inst.size = 0b11#2 then some 64 else some 32
@@ -108,7 +123,7 @@ def exec_reg_imm_common
     -- State Updates
     let s' := reg_imm_operation inst_str
               (lsb inst.opc 0) inst.wback inst.postindex
-              inst.SIMD? datasize regsize inst.Rn inst.Rt offset s (H)
+              inst.SIMD? datasize (by omega) regsize inst.Rn inst.Rt offset s (H)
     let s' := write_pc ((read_pc s) + 4#64) s'
     s'
 

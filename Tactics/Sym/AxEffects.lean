@@ -134,7 +134,7 @@ def initial (state : Expr) : AxEffects where
       mkLambda `addr .default bv64 <|
         mkApp2 (.const ``Eq.refl [1])
           (mkApp (mkConst ``BitVec) <| mkNatMul (.bvar 1) (toExpr 8))
-          (mkApp3 (mkConst ``read_mem_bytes) (.bvar 1) (.bvar 0) state)
+          (mkApp3 (mkConst ``read_mem_bytes') (.bvar 1) (.bvar 0) state)
   programProof      :=
     -- `rfl`
     mkAppN (.const ``Eq.refl [1]) #[
@@ -251,7 +251,7 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
 
   -- Update each field
   let fields ← eff.fields.toList.mapM fun ⟨fld, {value, proof}⟩ => do
-    let r_of_w := mkApp5 (mkConst ``r_of_write_mem_bytes)
+    let r_of_w := mkApp5 (mkConst ``r_of_write_mem_bytes')
                     (toExpr fld) n addr val eff.currentState
     let proof ← mkEqTrans r_of_w proof
     return ⟨fld, {value, proof}⟩
@@ -259,7 +259,7 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
   -- Update the non-effects proof
   let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
     let f := args[0]!
-    let r_of_w := mkApp5 (mkConst ``r_of_write_mem_bytes)
+    let r_of_w := mkApp5 (mkConst ``r_of_write_mem_bytes')
                     f n addr val eff.currentState
     let proof ← mkEqTrans r_of_w proof
     mkLambdaFVars args proof
@@ -268,21 +268,21 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
   -- Update the memory effects proof
   let memoryEffectProof :=
     -- `read_mem_bytes_write_mem_bytes_of_read_mem_eq <memoryEffectProof> ...`
-    mkAppN (mkConst ``read_mem_bytes_write_mem_bytes_of_read_mem_eq)
+    mkAppN (mkConst ``read_mem_bytes_write_mem_bytes_of_read_mem_eq')
       #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, n, addr, val]
 
   -- Update the program proof
   let programProof ←
     -- `Eq.trans (@write_mem_bytes_program <currentState> ...) <programProof>`
     mkEqTrans
-      (mkAppN (mkConst ``write_mem_bytes_program)
+      (mkAppN (mkConst ``write_mem_bytes'_program)
         #[eff.currentState, n, addr, val])
       eff.programProof
 
   -- Assemble the result
   let addWrite (e : Expr) :=
     -- `@write_mem_bytes <n> <addr> <val> <e>`
-    mkApp4 (mkConst ``write_mem_bytes) n addr val e
+    mkApp4 (mkConst ``write_mem_bytes') n addr val e
   let eff := { eff with
     currentState    := addWrite eff.currentState
     fields          := .ofList fields
@@ -363,7 +363,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
   -- Update the memory effect proof
   let memoryEffectProof :=
     -- `read_mem_bytes_w_of_read_mem_eq ...`
-    mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
+    mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq')
       #[eff.currentState, eff.memoryEffect, eff.memoryEffectProof, fld, val]
 
   -- Update the program proof
@@ -401,7 +401,7 @@ return an `AxEffects` where `e` is the new `currentState`. -/
 partial def updateWithExpr (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
   let msg := m!"Updating effects with writes from: {e}"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
-    | write_mem_bytes n addr val e =>
+    | write_mem_bytes' n addr val e =>
         let eff ← eff.updateWithExpr e
         eff.update_write_mem n addr val
 
