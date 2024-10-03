@@ -14,6 +14,6 @@ set_option debug.skipKernelTC true in
 benchmark sha512_400_noKernel_noLint : SHA512Bench 400 := fun s0 _ h => by
   intros
   sym_n 400
-  simp only [h, bitvec_rules]
-  · exact (sorry : Aligned ..)
+  simp (config := {failIfUnchanged := false}) only [h, bitvec_rules]
+  all_goals exact (sorry : Aligned ..)
   done

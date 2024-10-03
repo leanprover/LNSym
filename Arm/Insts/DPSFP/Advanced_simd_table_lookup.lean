@@ -35,10 +35,10 @@ def tblx_aux (i : Nat) (elements : Nat) (indices : BitVec datasize)
     result
   else
     have h₁ : 8 > 0 := by decide
-    let index := (elem_get indices i 8 h₁).toNat
+    let index := (elem_get indices i 8).toNat
     let result :=
       if index < 16 * regs then
-        let val := elem_get table index 8 h₁
+        let val := elem_get table index 8
         elem_set result i 8 val h₁
       else
         result

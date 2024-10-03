@@ -23,12 +23,11 @@ def exec_advanced_simd_scalar_copy
   if size > 3 ∨ inst.imm4 ≠ 0b0000#4 ∨ inst.op ≠ 0 then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
-    let index := extractLsb 4 (size + 1) inst.imm5
+    let index := extractLsb' (size + 1) (4 - size) inst.imm5
     let idxdsize := 64 <<< (lsb inst.imm5 4).toNat
     let esize := 8 <<< size
     let operand := read_sfp idxdsize inst.Rn s
-    have h : esize > 0 := by apply zero_lt_shift_left_pos (by decide)
-    let result := elem_get operand index.toNat esize h
+    let result := elem_get operand index.toNat esize
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
     let s := write_sfp esize inst.Rd result s
