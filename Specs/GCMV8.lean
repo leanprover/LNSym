@@ -21,10 +21,10 @@ open BitVec
 ------------------------------------------------------------------------------
 
 def hi (x : BitVec 128) : BitVec 64 :=
-  extractLsb 127 64 x
+  extractLsb' 64 64 x
 
 def lo (x : BitVec 128) : BitVec 64 :=
-  extractLsb 63 0 x
+  extractLsb' 0 64 x
 
 ------------------------------------------------------------------------------
 -- Functions related to galois field operations

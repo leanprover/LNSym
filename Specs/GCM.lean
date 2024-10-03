@@ -22,16 +22,11 @@ def R : (BitVec 128) := 0b11100001#8 ++ 0b0#120
 abbrev Cipher {n : Nat} {m : Nat} :=  BitVec n → BitVec m → BitVec n
 
 /-- The s-bit incrementing function -/
-def inc_s (s : Nat) (X : BitVec l) (H₀ : 0 < s) (H₁ : s < l) : BitVec l :=
-  let msb_hi := l - 1
-  let msb_lo := s
-  let lsb_hi := s - 1
-  let lsb_lo := 0
-  have h₁ : lsb_hi - lsb_lo + 1 = s := by omega
-  let upper := extractLsb msb_hi msb_lo X
-  let lower := BitVec.cast h₁ (extractLsb lsb_hi lsb_lo X) + 0b1#s
-  have h₂ : msb_hi - msb_lo + 1 + s = l := by omega
-  BitVec.cast h₂ (upper ++ lower)
+def inc_s (s : Nat) (X : BitVec l) (H₀ : s < l) : BitVec l :=
+  let upper := extractLsb' s (l - s) X
+  let lower := (extractLsb' 0 s X) + 0b1#s
+  have h : l - s + s = l := by omega
+  (upper ++ lower).cast h
 
 def mul_aux (i : Nat) (X : BitVec 128) (Z : BitVec 128) (V : BitVec 128)
   : BitVec 128 :=
@@ -55,10 +50,8 @@ def GHASH_aux (i : Nat) (H : BitVec 128) (X : BitVec n) (Y : BitVec 128)
     Y
   else
     let lo := (n/128 - 1 - i) * 128
-    let hi := lo + 127
-    have h₀ : hi - lo + 1 = 128 := by omega
-    let Xi := extractLsb hi lo X
-    let res := Y ^^^ (BitVec.cast h₀ Xi)
+    let Xi := extractLsb' lo 128 X
+    let res := Y ^^^ Xi
     let Y := mul res H
     GHASH_aux (i + 1) H X Y h
   termination_by (n / 128 - i)
@@ -75,11 +68,11 @@ def GCTR_aux (CIPH : Cipher (n := 128) (m := m))
   else
     let lo := (n - i - 1) * 128
     let hi := lo + 127
-    have h : hi - lo + 1 = 128 := by omega
-    let Xi := extractLsb hi lo X
-    let Yi := BitVec.cast h Xi ^^^ CIPH ICB K
-    let Y := BitVec.partInstall hi lo (BitVec.cast h.symm Yi) Y
-    let ICB := inc_s 32 ICB (by omega) (by omega)
+    have h : 128 = hi - lo + 1 := by omega
+    let Xi := extractLsb' lo 128 X
+    let Yi := Xi ^^^ CIPH ICB K
+    let Y := BitVec.partInstall hi lo (BitVec.cast h Yi) Y
+    let ICB := inc_s 32 ICB (by omega)
     GCTR_aux CIPH (i + 1) n K ICB X Y
   termination_by (n - i)
 
@@ -137,7 +130,7 @@ def GCM_AE (CIPH : Cipher (n := 128) (m := m))
   : (BitVec p) × (BitVec t) :=
   let H := CIPH (BitVec.zero 128) K
   let J0 : BitVec 128 := GCM.initialize_J0 H IV
-  let ICB := inc_s 32 J0 (by decide) (by decide)
+  let ICB := inc_s 32 J0 (by decide)
   let C := GCTR (m := m) CIPH K ICB P
   let u := GCM.ceiling_in_bits p - p
   let v := GCM.ceiling_in_bits a - a
@@ -172,7 +165,7 @@ def GCM_AD (CIPH : Cipher (n := 128) (m := m))
   else
     let H := CIPH (BitVec.zero 128) K
     let J0 := GCM.initialize_J0 H IV
-    let ICB := inc_s 32 J0 (by decide) (by decide)
+    let ICB := inc_s 32 J0 (by decide)
     let P := GCTR (m := m) CIPH K ICB C
     let u := GCM.ceiling_in_bits c - c
     let v := GCM.ceiling_in_bits a - a
