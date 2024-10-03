@@ -367,7 +367,8 @@ in which case a new goal of the appropriate type will be added.
 The other hypotheses *must* be present,
 since we infer required information from their types. -/
 elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic =>
-  withTraceNode "" (tag := "sym_n") <| do
+  withTraceNode "" (tag := "sym_n") <|
+  withInstantiateMainGoal <| do
   traceHeartbeats "initial heartbeats"
 
   let s ← s.mapM fun
@@ -386,7 +387,6 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic =>
 
   let c ← SymContext.fromMainContext s
   SymM.run' c <|
-  withInstantiateMainGoal <|
   withMainContext' <|  do
     -- Check pre-conditions
     assertStepTheoremsGenerated

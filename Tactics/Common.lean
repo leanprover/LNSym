@@ -290,23 +290,14 @@ This seems redundant, but allows us to spread out the cost of metavariable
 instantiation, and hopefully avoid some quadratic behaviour we've observed.
 -/
 def withInstantiateMainGoal (x : m α) : m α := do
-  let oldGoal ← getMainGoal
-  let newGoal ← @id (TacticM _) <| do
-    let newGoal ← mkFreshMVarId
-    let oldDecl ← oldGoal.getDecl
-    newGoal.modifyDecl (fun decl => { decl with
-      type := oldDecl.type
-      kind := oldDecl.kind
-      userName := oldDecl.userName
-      lctx := oldDecl.lctx
-      localInstances := oldDecl.localInstances
-    })
-    replaceMainGoal [newGoal]
-    pure newGoal
+  let goals ← getUnsolvedGoals
   let a ← x
-  withTraceNode `Tactic.sym (fun _ => pure m!"instantiating goal")
-    (tag := "instantiateMVar") <| do
-      let _ ← oldGoal.assign (← instantiateMVars (Expr.mvar newGoal))
+  for goal in goals do
+    if ← goal.isAssigned then
+      withTraceNode `Tactic.sym (fun _ => pure m!"instantiating goal")
+        (tag := "withInstantiateMainGoal.instantiateMVar") <| do
+          let e ← instantiateMVars (Expr.mvar goal)
+          goal.assign e
   return a
 
 /-- An emoji to show that a tactic is processing at an intermediate step. -/
