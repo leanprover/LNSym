@@ -70,7 +70,9 @@ structure AxEffects where
       = read_mem_bytes n addr <memoryEffect>
     ``` -/
   memoryEffectProof : Expr
-  /-- A proof that `<currentState>.program = <initialState>.program` -/
+  /-- The program of the current state, see `programProof` -/
+  program : Expr
+  /-- A proof that `<currentState>.program = <program>` -/
   programProof : Expr
   /-- An optional proof of `CheckSPAlignment <currentState>`.
 
@@ -141,6 +143,8 @@ def initial (state : Expr) : AxEffects where
         mkApp2 (.const ``Eq.refl [1])
           (mkApp (mkConst ``BitVec) <| mkNatMul (.bvar 1) (toExpr 8))
           (mkApp3 (mkConst ``read_mem_bytes) (.bvar 1) (.bvar 0) state)
+  program := -- `ArmState.program <initialState>`
+    mkApp (mkConst ``ArmState.program) state
   programProof      :=
     -- `rfl`
     mkAppN (.const ``Eq.refl [1]) #[
@@ -487,11 +491,18 @@ def fromExpr (e : Expr) : MetaM AxEffects := do
   let eff ← eff.updateWithExpr e
   return { eff with initialState := ← instantiateMVars eff.initialState}
 
+
+/-- The expression `fun s => r <field> s = <value>` -/
+protected def fieldMotive (field value : Expr) : Expr :=
+  let body := mkEqReadField field (.bvar 0) value
+  Expr.lam `s mkArmState body (.default)
+open AxEffects (fieldMotive)
+
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
 def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     MetaM AxEffects := do
-  withTraceNode m!"adjustCurrentStateWithEq" (tag := "adjustCurrentStateWithEq") do
+  Sym.withTraceNode m!"adjustCurrentStateWithEq" (tag := "adjustCurrentStateWithEq") do
     trace[Tactic.sym] "rewriting along {eq}"
     eff.traceCurrentState
 
@@ -503,19 +514,47 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     let fields ← eff.fields.toList.mapM fun (field, fieldEff) => do
       withTraceNode m!"rewriting field {field}" (tag := "rewriteField") do
         trace[Tactic.sym] "original proof: {fieldEff.proof}"
-        let proof ← rewriteType fieldEff.proof eq
+        let motive := fieldMotive (toExpr field) fieldEff.value
+        let proof ← mkEqNDRec motive fieldEff.proof eq
         trace[Tactic.sym] "new proof: {proof}"
         pure (field, {fieldEff with proof})
     let fields := .ofList fields
 
-    withTraceNode m!"rewriting other proofs" (tag := "rewriteMisc") <| do
-      let nonEffectProof ← rewriteType eff.nonEffectProof eq
-      let memoryEffectProof ← rewriteType eff.memoryEffectProof eq
-      -- ^^ TODO: what happens if `memoryEffect` is the same as `currentState`?
-      --    Presumably, we would *not* want to encapsulate `memoryEffect` here
-      let programProof ← rewriteType eff.programProof eq
-      let stackAlignmentProof? ← eff.stackAlignmentProof?.mapM
-        (rewriteType · eq)
+    Sym.withTraceNode m!"rewriting other proofs" (tag := "rewriteMisc") <| do
+      let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
+        let f := args[0]!
+        let motive ← -- `fun s => r <f> s = r <f> <eff.initialState>`
+          withLocalDeclD `s mkArmState <| fun s =>
+            let eq := mkEqStateValue f
+              (mkApp2 (mkConst ``r) f s)
+              (mkApp2 (mkConst ``r) f eff.initialState)
+            mkLambdaFVars #[s] eq
+        mkLambdaFVars args <|← mkEqNDRec motive proof eq
+
+      let memoryMotive : Expr :=
+        Expr.lam `s mkArmState (binderInfo := .default) <|
+        Expr.forallE `n (mkConst ``Nat) (binderInfo := .default) <|
+        Expr.forallE `addr (mkBitVec <| toExpr 64) (binderInfo := .default) <|
+          let s := Expr.bvar 2
+          let n := Expr.bvar 1
+          let addr := Expr.bvar 0
+          let lhs := mkReadMemBytes n addr s
+          let rhs := mkReadMemBytes n addr eff.memoryEffect
+          mkEqBitVec (mkNatMul n (toExpr 8)) lhs rhs
+      let memoryEffectProof ← mkEqNDRec memoryMotive eff.memoryEffectProof eq
+
+      let programMotive : Expr :=
+        Expr.lam `s mkArmState (binderInfo := .default) <|
+          let s := Expr.bvar 0
+          mkEqProgram s eff.program
+      let programProof ← mkEqNDRec programMotive eff.programProof eq
+
+      let stackAlignmentProof? ← eff.stackAlignmentProof?.mapM fun proof => do
+        let motive :=
+          Expr.lam `s mkArmState (binderInfo := .default) <|
+            let s := Expr.bvar 0
+            mkApp (mkConst ``CheckSPAlignment) s
+        mkEqNDRec motive proof eq
 
       return { eff with
         currentState, fields, nonEffectProof, memoryEffectProof, programProof,
