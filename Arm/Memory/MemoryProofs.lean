@@ -156,7 +156,7 @@ theorem write_mem_of_write_mem_commute
   (h : mem_separate addr2 addr2 addr1 addr1) :
   write_mem addr2 val2 (write_mem addr1 val1 s) =
   write_mem addr1 val1 (write_mem addr2 val2 s) := by
-  simp_all only [write_mem, ArmState.mk.injEq, and_self, and_true, true_and]
+  simp_all only [write_mem, ArmState.mk.injEq, BitVec.and_self, and_true, true_and]
   unfold write_store
   have := @mem_separate_starting_addresses_neq addr2 addr2 addr1 addr1
   simp [h] at this
