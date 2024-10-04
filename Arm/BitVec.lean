@@ -58,7 +58,10 @@ attribute [bitvec_rules] BitVec.getLsbD_zeroExtend
 attribute [bitvec_rules] BitVec.getMsbD_zeroExtend_add
 attribute [bitvec_rules] BitVec.getLsbD_truncate
 attribute [bitvec_rules] BitVec.zeroExtend_zeroExtend_of_le
-attribute [bitvec_rules] BitVec.truncate_truncate_of_le
+
+-- FIXME: this theorem disappeared
+-- attribute [bitvec_rules] BitVec.truncate_truncate_of_le
+
 attribute [bitvec_rules] BitVec.truncate_cast
 attribute [bitvec_rules] BitVec.extractLsb_ofFin
 attribute [bitvec_rules] BitVec.extractLsb_ofNat
@@ -163,6 +166,9 @@ attribute [bitvec_rules] BitVec.ofBool_false
 attribute [bitvec_rules] BitVec.ofNat_eq_ofNat
 attribute [bitvec_rules] BitVec.zero_eq
 attribute [bitvec_rules] BitVec.truncate_eq_zeroExtend
+attribute [bitvec_rules] BitVec.zero_or
+attribute [bitvec_rules] BitVec.or_zero
+attribute [bitvec_rules] BitVec.or_self
 
 attribute [bitvec_rules] BitVec.add_sub_cancel
 attribute [bitvec_rules] BitVec.sub_add_cancel
@@ -215,7 +221,7 @@ attribute [bitvec_rules] BitVec.reduceULT
 attribute [bitvec_rules] BitVec.reduceULE
 attribute [bitvec_rules] BitVec.reduceSLT
 attribute [bitvec_rules] BitVec.reduceSLE
-attribute [bitvec_rules] BitVec.reduceZeroExtend'
+attribute [bitvec_rules] BitVec.reduceSetWidth'
 attribute [bitvec_rules] BitVec.reduceShiftLeftZeroExtend
 attribute [bitvec_rules] BitVec.reduceExtracLsb'
 attribute [bitvec_rules] BitVec.reduceReplicate
@@ -457,9 +463,6 @@ theorem toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
 
 ---------------------------- Comparison Lemmas -----------------------
 
-@[simp] protected theorem not_lt {n : Nat} {a b : BitVec n} : ¬ a < b ↔ b ≤ a := by
-  exact Fin.not_lt ..
-
 theorem ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by
   simp_all only [BitVec.le_def, BitVec.lt_def]
   omega
@@ -499,34 +502,11 @@ protected theorem zero_le_sub (x y : BitVec n) :
   refine (BitVec.nat_bitvec_le (0#n) (x - y)).mp ?a
   simp only [toNat_ofNat, Nat.zero_mod, toNat_sub, Nat.zero_le]
 
------------------------------ Logical  Lemmas ------------------------
-
-@[bitvec_rules]
-protected theorem zero_or (x : BitVec n) : 0#n ||| x = x := by
-  unfold HOr.hOr instHOrOfOrOp OrOp.or instOrOp BitVec.or
-  simp only [toNat_ofNat, Nat.zero_mod, Nat.zero_or]
-  congr
-
-@[bitvec_rules]
-protected theorem or_zero (x : BitVec n) : x ||| 0#n = x := by
-  rw [BitVec.or_comm]
-  rw [BitVec.zero_or]
-  done
-
-@[bitvec_rules]
-protected theorem or_self (x : BitVec n) :
-  x ||| x = x := by
-  refine eq_of_toNat_eq ?_
-  rw [BitVec.toNat_or]
-  apply Nat.eq_of_testBit_eq
-  simp only [Nat.testBit_or, Bool.or_self, implies_true]
-  done
-
 --------------------- ZeroExtend/Append/Extract  Lemmas ----------------
 
 @[bitvec_rules]
 theorem zeroExtend_zero_width : (zeroExtend 0 x) = 0#0 := by
-  unfold zeroExtend
+  unfold zeroExtend setWidth
   split <;> simp [bitvec_zero_is_unique]
 
 -- During symbolic simulation, we often encounter an `if` in the first argument
@@ -1101,20 +1081,13 @@ theorem BitVec.ofBool_getLsbD (a : BitVec w) (i : Nat) :
   intro ⟨0, _⟩
   simp
 
-/-- If multiplication does not overflow,
-then `(x * y).toNat` equals `x.toNat * y.toNat` -/
-theorem toNat_mul_of_lt {w} {x y : BitVec w} (h : x.toNat * y.toNat < 2^w) :
-    (x * y).toNat = x.toNat * y.toNat := by
-  rw [BitVec.toNat_mul, Nat.mod_eq_of_lt h]
-
 /-- If subtraction does not overflow,
 then `(x - y).toNat` equals `x.toNat - y.toNat` -/
-theorem toNat_sub_of_lt {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
+@[deprecated toNat_sub_of_le]
+theorem toNat_sub_of_lt' {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
     (y - x).toNat = y.toNat - x.toNat := by
-  rw [BitVec.toNat_sub,
-    show (2^w - x.toNat + y.toNat) = 2^w + (y.toNat - x.toNat) by omega,
-    Nat.add_mod, Nat.mod_self, Nat.zero_add, Nat.mod_mod,
-    Nat.mod_eq_of_lt (by omega)]
+  apply toNat_sub_of_le
+  bv_omega
 
 /-- `x.toNat * z.toNat ≤ k` if `z ≤ y` and `x.toNat * y.toNat ≤ k` -/
 theorem toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
@@ -1138,5 +1111,34 @@ theorem eq_zero_iff_neq_one {a : BitVec 1} : a ≠ 1#1 ↔ a = 0#1 := by bv_omeg
 instance (w : Nat) : Quote (BitVec w) `term where
   quote x :=
     Syntax.mkCApp ``BitVec.ofNat #[quote w, quote x.toNat]
+
+/-! ## Masking simproc -/
+
+#eval 18446744073709551615#128
+
+def maskOfLength? (m : Nat) : Option Nat :=
+  let logm := Nat.log2 (m+1)
+  if m = 2 ^ logm - 1 then
+    some logm
+  else
+    none
+
+-- theorem and_ofNat_two_pow {w n : Nat} (x : BitVec w) (h : n ≤ w) :
+--     x &&& BitVec.ofNat w (2^n - 1) = x.setWidth n := by
+--   sorry
+
+#check reduceAdd
+#check AndOp.and
+simproc simpAndMask ((_ &&& _ : BitVec _)) := fun e => do
+  let_expr AndOp.and _ _ lhs rhs := e
+    | return .continue
+
+  let some ⟨w, rhs⟩ ← Meta.getBitVecValue? rhs
+    | return .continue
+
+  let some m := maskOfLength? rhs.toNat
+    | return .continue
+
+  return .continue
 
 end BitVec

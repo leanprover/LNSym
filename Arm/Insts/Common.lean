@@ -409,9 +409,6 @@ dsimproc [state_simp_rules] reduceInvalidBitMasks (invalid_bit_masks _ _ _ _) :=
                     M)
   else return .continue
 
-theorem Nat.lt_one_iff {n : Nat} : n < 1 ↔ n = 0 := by
-  omega
-
 theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec 6)
   (immediate : Bool) (M : Nat):
   ¬ invalid_bit_masks immN imms immediate M →
