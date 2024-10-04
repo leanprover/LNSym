@@ -111,7 +111,7 @@ def getCurrentStateName : m Name := do
   @id (MetaM _) <| do
     let state ← instantiateMVars state
     let Expr.fvar id := state.consumeMData
-      | throwError "error: expected a free variable, found:\n  {state} WHHOPS"
+      | throwError "error: expected a free variable, found:\n  {state}"
     let lctx ← getLCtx
     let some decl := lctx.find? id
       | throwError "error: unknown fvar: {state}"
