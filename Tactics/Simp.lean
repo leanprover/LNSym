@@ -58,9 +58,12 @@ def LNSymSimpContext
   (noIndexAtArgs : Bool := true)
   : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
   let mut ext_simpTheorems := #[]
-  let default_simprocs ← Simp.getSimprocs
-  let mut all_simprocs :=
-    if useDefaultSimprocs then #[default_simprocs] else #[]
+  /- Workaround for https://github.com/leanprover/lean4/issues/5607: Elaboration failure with let mut whose RHS is a do notation -/
+  let all_simprocs ← do
+    if useDefaultSimprocs then
+      pure #[← Simp.getSimprocs]
+    else pure #[]
+  let mut all_simprocs := all_simprocs
 
   for a in simp_attrs do
     let some ext ← (getSimpExtension? a) |
