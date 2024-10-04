@@ -19,18 +19,15 @@ open BitVec
 
 def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
   (op : BitVec esize → BitVec esize → BitVec esize)
-  (x : BitVec n) (y : BitVec n) (result : BitVec n)
-  (H : esize > 0) : BitVec n :=
-  if h₀ : elems ≤ e then
+  (x : BitVec n) (y : BitVec n) (result : BitVec n) : BitVec n :=
+  if elems ≤ e then
     result
   else
-    have h₁ : e < elems := by omega
     let element1 := elem_get x e esize
     let element2 := elem_get y e esize
     let elem_result := op element1 element2
-    let result := elem_set result e esize elem_result H
-    have ht1 : elems - (e + 1) < elems - e := by omega
-    binary_vector_op_aux (e + 1) elems esize op x y result H
+    let result := elem_set result e esize elem_result
+    binary_vector_op_aux (e + 1) elems esize op x y result
   termination_by (elems - e)
 
 /--
@@ -38,8 +35,8 @@ def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
 -/
 @[state_simp_rules]
 def binary_vector_op (esize : Nat) (op : BitVec esize → BitVec esize → BitVec esize)
-  (x : BitVec n) (y : BitVec n) (H : 0 < esize) : BitVec n :=
-  binary_vector_op_aux 0 (n / esize) esize op x y (BitVec.zero n) H
+  (x : BitVec n) (y : BitVec n) : BitVec n :=
+  binary_vector_op_aux 0 (n / esize) esize op x y (BitVec.zero n)
 
 @[state_simp_rules]
 def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : ArmState :=
@@ -48,12 +45,11 @@ def exec_binary_vector (inst : Advanced_simd_three_same_cls) (s : ArmState) : Ar
   else
     let datasize := if inst.Q = 1#1 then 128 else 64
     let esize := 8 <<< (BitVec.toNat inst.size)
-    have h_esize : 0 < esize := by simp [esize]; apply zero_lt_shift_left_pos (by decide)
     let sub_op := inst.U = 1
     let operand1 := read_sfp datasize inst.Rn s
     let operand2 := read_sfp datasize inst.Rm s
     let op := if sub_op then BitVec.sub else BitVec.add
-    let result := binary_vector_op esize op operand1 operand2 h_esize
+    let result := binary_vector_op esize op operand1 operand2
     let s := write_sfp datasize inst.Rd result s
     s
 
