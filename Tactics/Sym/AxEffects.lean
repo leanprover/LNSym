@@ -491,11 +491,18 @@ def fromExpr (e : Expr) : MetaM AxEffects := do
   let eff ← eff.updateWithExpr e
   return { eff with initialState := ← instantiateMVars eff.initialState}
 
+
+/-- The expression `fun s => r <field> s = <value>` -/
+protected def fieldMotive (field value : Expr) : Expr :=
+  let body := mkEqReadField field (.bvar 0) value
+  Expr.lam `s mkArmState body (.default)
+open AxEffects (fieldMotive)
+
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
 def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     MetaM AxEffects := do
-  withTraceNode m!"adjustCurrentStateWithEq" (tag := "adjustCurrentStateWithEq") do
+  Sym.withTraceNode m!"adjustCurrentStateWithEq" (tag := "adjustCurrentStateWithEq") do
     trace[Tactic.sym] "rewriting along {eq}"
     eff.traceCurrentState
 
@@ -507,15 +514,13 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     let fields ← eff.fields.toList.mapM fun (field, fieldEff) => do
       withTraceNode m!"rewriting field {field}" (tag := "rewriteField") do
         trace[Tactic.sym] "original proof: {fieldEff.proof}"
-        let motive : Expr ← withLocalDeclD `s mkArmState <| fun s => do
-          let eq := mkEqReadField (toExpr field) s fieldEff.value
-          mkLambdaFVars #[s] eq
+        let motive := fieldMotive (toExpr field) fieldEff.value
         let proof ← mkEqNDRec motive fieldEff.proof eq
         trace[Tactic.sym] "new proof: {proof}"
         pure (field, {fieldEff with proof})
     let fields := .ofList fields
 
-    withTraceNode m!"rewriting other proofs" (tag := "rewriteMisc") <| do
+    Sym.withTraceNode m!"rewriting other proofs" (tag := "rewriteMisc") <| do
       let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
         let f := args[0]!
         let motive ← -- `fun s => r <f> s = r <f> <eff.initialState>`
@@ -526,26 +531,29 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
             mkLambdaFVars #[s] eq
         mkLambdaFVars args <|← mkEqNDRec motive proof eq
 
-      let memoryMotive : Expr ←
-        withLocalDeclD `s mkArmState <| fun s =>
-        withLocalDeclD `n (mkConst ``Nat) <| fun n =>
-        withLocalDeclD `addr (mkApp (mkConst ``BitVec) (toExpr 64)) <| fun addr => do
+      let memoryMotive : Expr :=
+        Expr.lam `s mkArmState (binderInfo := .default) <|
+        Expr.forallE `n (mkConst ``Nat) (binderInfo := .default) <|
+        Expr.forallE `addr (mkBitVec <| toExpr 64) (binderInfo := .default) <|
+          let s := Expr.bvar 2
+          let n := Expr.bvar 1
+          let addr := Expr.bvar 0
           let lhs := mkReadMemBytes n addr s
           let rhs := mkReadMemBytes n addr eff.memoryEffect
-          let eq := mkEqBitVec (mkNatMul n (toExpr 8)) lhs rhs
-          let eq ← mkForallFVars #[n, addr] eq
-          mkLambdaFVars #[s] eq
+          mkEqBitVec (mkNatMul n (toExpr 8)) lhs rhs
       let memoryEffectProof ← mkEqNDRec memoryMotive eff.memoryEffectProof eq
 
-      let programMotive : Expr ←
-        withLocalDeclD `s mkArmState <| fun s =>
-          let eq := mkEqProgram s eff.program
-          mkLambdaFVars #[s] eq
+      let programMotive : Expr :=
+        Expr.lam `s mkArmState (binderInfo := .default) <|
+          let s := Expr.bvar 0
+          mkEqProgram s eff.program
       let programProof ← mkEqNDRec programMotive eff.programProof eq
 
       let stackAlignmentProof? ← eff.stackAlignmentProof?.mapM fun proof => do
-        let motive ← withLocalDeclD `s mkArmState <| fun s =>
-          mkLambdaFVars #[s] <| mkApp (mkConst ``CheckSPAlignment) s
+        let motive :=
+          Expr.lam `s mkArmState (binderInfo := .default) <|
+            let s := Expr.bvar 0
+            mkApp (mkConst ``CheckSPAlignment) s
         mkEqNDRec motive proof eq
 
       return { eff with

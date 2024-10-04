@@ -283,10 +283,13 @@ def mkEqProgram (state program : Expr) : Expr :=
     (mkApp (mkConst ``ArmState.program) state)
     program
 
+/-- Return `BitVec n` given an expression `n : Nat` -/
+@[inline] def mkBitVec (n : Expr) : Expr :=
+  mkApp (mkConst ``BitVec) n
+
 /-- Return `x = y`, given expressions `x, y : BitVec <n>` -/
 def mkEqBitVec (n x y : Expr) : Expr :=
-  let ty := mkApp (mkConst ``BitVec) n
-  mkApp3 (.const ``Eq [1]) ty x y
+  mkApp3 (.const ``Eq [1]) (mkBitVec n) x y
 
 /-- Return `read_mem_bytes <n> <addr> <state>` -/
 def mkReadMemBytes (n addr state : Expr) : Expr :=
