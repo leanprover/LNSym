@@ -166,7 +166,7 @@ or throw an error if no local variable of that name exists -/
 def hRunDecl : MetaM LocalDecl := do
   findFromUserName c.h_run
 
-section Monad
+section MonadicGetters
 variable {m} [Monad m] [MonadReaderOf SymContext m]
 
 def getCurrentStateNumber : m Nat := do return (← read).currentStateNumber
@@ -184,7 +184,7 @@ def getNextStateName : m Name := do
   let c ← read
   return Name.mkSimple s!"{c.state_prefix}{c.currentStateNumber + 1}"
 
-end Monad
+end MonadicGetters
 
 end
 

@@ -90,9 +90,9 @@ structure AxEffects where
 
 namespace AxEffects
 
-/-! ## Monad getters -/
+/-! ## Monadic getters -/
 
-section Monad
+section MonadicGetters
 variable {m} [Monad m] [MonadReaderOf AxEffects m]
 
 def getCurrentState       : m Expr := do return (← read).currentState
@@ -119,7 +119,7 @@ def getCurrentStateName : m Name := do
       | throwError "error: unknown fvar: {state}"
     return decl.userName
 
-end Monad
+end MonadicGetters
 
 /-! ## Initial Reflected State -/
 
@@ -240,7 +240,7 @@ def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
       let proof  ← eff.mkAppNonEffect (toExpr fld)
       pure { value, proof }
 
-section Monad
+section MonadicGettersAndSetters
 variable {m} [Monad m] [MonadLiftT MetaM m]
 
 variable [MonadReaderOf AxEffects m] in
@@ -268,7 +268,7 @@ This is a specialization of `setFieldEffect`. -/
 def setErrorProof (proof : Expr) : m Unit :=
   setFieldEffect .ERR { value := mkConst ``StateError.None, proof }
 
-end Monad
+end MonadicGettersAndSetters
 
 /-! ## Update a Reflected State -/
 
