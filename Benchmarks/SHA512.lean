@@ -15,9 +15,15 @@ namespace Benchmarks
 
 def SHA512Bench (nSteps : Nat) : Prop :=
   ∀ (s0 sf : ArmState)
-    (_h_s0_pc : read_pc s0 = 0x1264c4#64)
+    (_h_s0_num_blocks : r (.GPR 2#5) s0 = 10#64)
+    (_h_s0_pc : read_pc s0 = 0x1264c0#64)
     (_h_s0_err : read_err s0 = StateError.None)
     (_h_s0_sp_aligned : CheckSPAlignment s0)
     (_h_s0_program : s0.program = SHA512.program)
     (_h_run : sf = run nSteps s0),
     r StateField.ERR sf = StateError.None
+    ∧ r (.GPR 2#5) sf = BitVec.ofNat 64 (10 - ((nSteps + 467) / 485))
+    -- / -------------------------------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    -- | This computes the expected value of x2, taking into account that
+    -- | the loop body is 485 instructions long, and that x2 is first
+    -- | decremented after 18 instructions (485 - 18 = 467).

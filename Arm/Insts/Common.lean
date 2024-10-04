@@ -109,7 +109,7 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   let C := read_flag C s
   let V := read_flag V s
   let result :=
-    match (extractLsb 3 1 cond) with
+    match (extractLsb' 1 3 cond) with
       | 0b000#3 => Z = 1#1           -- EQ or NE
       | 0b001#3 => C = 1#1           -- CS or CC
       | 0b010#3 => N = 1#1           -- MI or PL
@@ -129,7 +129,7 @@ def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
 theorem sgt_iff_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
   (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.slt y x := by
-  simp [AddWithCarry, make_pstate]
+  simp [AddWithCarry, make_pstate, lsb]
   split
   · bv_decide
   · bv_decide
@@ -138,7 +138,7 @@ theorem sgt_iff_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
 theorem sgt_iff_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
   (((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1) ↔ BitVec.slt y x := by
-  simp [AddWithCarry, make_pstate]
+  simp [AddWithCarry, make_pstate, lsb]
   split
   · bv_decide
   · bv_decide
@@ -147,7 +147,7 @@ theorem sgt_iff_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
 theorem sle_iff_not_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
   (¬(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
-  simp [AddWithCarry, make_pstate]
+  simp [AddWithCarry, make_pstate, lsb]
   split
   · bv_decide
   · bv_decide
@@ -156,7 +156,7 @@ theorem sle_iff_not_n_eq_v_and_z_eq_0_64 (x y : BitVec 64) :
 theorem sle_iff_not_n_eq_v_and_z_eq_0_32 (x y : BitVec 32) :
   (¬(((AddWithCarry x (~~~y) 1#1).snd.n = (AddWithCarry x (~~~y) 1#1).snd.v) ∧
    (AddWithCarry x (~~~y) 1#1).snd.z = 0#1)) ↔ BitVec.sle x y := by
-  simp [AddWithCarry, make_pstate]
+  simp [AddWithCarry, make_pstate, lsb]
   split
   · bv_decide
   · bv_decide
@@ -174,12 +174,10 @@ theorem zero_iff_z_eq_one (x : BitVec 64) :
   · bv_decide
   done
 
+
 /-- `Aligned x a` witnesses that the bitvector `x` is `a`-bit aligned. -/
 def Aligned (x : BitVec n) (a : Nat) : Prop :=
-  -- (TODO @alex) Switch to using extractLsb' to unify the two cases.
-  match a with
-  | 0 => True
-  | a' + 1 => extractLsb a' 0 x = BitVec.zero _
+  extractLsb' 0 a x = BitVec.zero _
 
 /-- We need to prove why the Aligned predicate is Decidable. -/
 instance : Decidable (Aligned x a) := by
@@ -201,7 +199,7 @@ theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
 
 theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : BitVec 1)
   (x_aligned : Aligned x 4)
-  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
+  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb' 0 4 y) (zeroExtend 4 carry_in)) 4)
   : Aligned (AddWithCarry x y carry_in).fst 4 := by
   unfold AddWithCarry Aligned at *
   simp_all only [Nat.sub_zero, zero_eq, add_eq]
@@ -221,24 +219,36 @@ def CheckSPAlignment (s : ArmState) : Prop :=
 instance : Decidable (CheckSPAlignment s) := by unfold CheckSPAlignment; infer_instance
 
 @[state_simp_rules]
-theorem CheckSPAligment_of_w_different (h : StateField.GPR 31#5 ≠ fld) :
+theorem CheckSPAligment_w_different_eq (h : StateField.GPR 31#5 ≠ fld) :
   CheckSPAlignment (w fld v s) = CheckSPAlignment s := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
+
+theorem CheckSPAligment_w_of_ne_sp_of (h : StateField.GPR 31#5 ≠ fld) :
+    CheckSPAlignment s → CheckSPAlignment (w fld v s) := by
+  simp only [CheckSPAligment_w_different_eq h, imp_self]
 
 @[state_simp_rules]
 theorem CheckSPAligment_of_w_sp :
   CheckSPAlignment (w (StateField.GPR 31#5) v s) = (Aligned v 4) := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
 
+theorem CheckSPAligment_w_sp_of (h : Aligned v 4) :
+    CheckSPAlignment (w (StateField.GPR 31#5) v s) := by
+  simp only [CheckSPAlignment, read_gpr, r_of_w_same, zeroExtend_eq, h]
+
 @[state_simp_rules]
-theorem CheckSPAligment_of_write_mem_bytes :
+theorem CheckSPAligment_write_mem_bytes_eq :
   CheckSPAlignment (write_mem_bytes n addr v s) = CheckSPAlignment s := by
   simp_all only [CheckSPAlignment, state_simp_rules, minimal_theory, bitvec_rules]
+
+theorem CheckSPAligment_write_mem_bytes_of :
+  CheckSPAlignment s → CheckSPAlignment (write_mem_bytes n addr v s) := by
+  simp only [CheckSPAligment_write_mem_bytes_eq, imp_self]
 
 @[state_simp_rules]
 theorem CheckSPAlignment_AddWithCarry_64_4 (st : ArmState) (y : BitVec 64) (carry_in : BitVec 1)
   (x_aligned : CheckSPAlignment st)
-  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb 3 0 y) (zeroExtend 4 carry_in)) 4)
+  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb' 0 4 y) (zeroExtend 4 carry_in)) 4)
   : Aligned (AddWithCarry (r (StateField.GPR 31#5) st) y carry_in).fst 4 := by
   simp_all only [CheckSPAlignment, read_gpr, zeroExtend_eq, Nat.sub_zero, add_eq,
     Aligned_AddWithCarry_64_4]
@@ -438,7 +448,7 @@ def decode_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immr : BitVec 6)
     let r := immr &&& levels
     let diff := s - r
     let esize := 1 <<< len
-    let d := extractLsb (len - 1) 0 diff
+    let d := extractLsb' 0 len diff
     let welem := zeroExtend esize (allOnes (s.toNat + 1))
     let telem := zeroExtend esize (allOnes (d.toNat + 1))
     let wmask := replicate (M/esize) $ rotateRight welem r.toNat
@@ -498,18 +508,16 @@ instance : ToString SIMDThreeSameLogicalType where toString a := toString (repr 
 ----------------------------------------------------------------------
 
 @[state_simp_rules]
-def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState) (H : width > 0)
+def Vpart_read (n : BitVec 5) (part width : Nat) (s : ArmState)
   : BitVec width :=
   -- assert n >= 0 && n <= 31;
   -- assert part IN {0, 1};
-  have h1: width - 1 + 1 = width := by omega
-  have h2: (width * 2 - 1 - width + 1) = width := by omega
   if part = 0 then
     -- assert width < 128;
-    BitVec.cast h1 $ extractLsb (width-1) 0 $ read_sfp 128 n s
+    extractLsb' 0 width $ read_sfp 128 n s
   else
     -- assert width IN {32,64};
-    BitVec.cast h2 $ extractLsb (width*2-1) width $ read_sfp 128 n s
+    extractLsb' width width $ read_sfp 128 n s
 
 
 @[state_simp_rules]
@@ -522,7 +530,7 @@ def Vpart_write (n : BitVec 5) (part width : Nat) (val : BitVec width) (s : ArmS
     write_sfp width n val s
   else
     -- assert width == 64
-    let res := (extractLsb 63 0 val) ++ (read_sfp 64 n s)
+    let res := (extractLsb' 0 64 val) ++ (read_sfp 64 n s)
     write_sfp 128 n res s
 
 ----------------------------------------------------------------------
@@ -628,13 +636,10 @@ example : rev_vector 32 16 8 0xaabbccdd#32 (by decide)
 /-- Divide bv `vector` into elements, each of size `size`. This function gets
 the `e`'th element from the `vector`. -/
 @[state_simp_rules]
-def elem_get (vector : BitVec n) (e : Nat) (size : Nat)
-  (h: size > 0): BitVec size :=
+def elem_get (vector : BitVec n) (e : Nat) (size : Nat) : BitVec size :=
   -- assert (e+1)*size <= n
   let lo := e * size
-  let hi := lo + size - 1
-  have h : hi - lo + 1 = size := by simp only [hi, lo]; omega
-  BitVec.cast h $ extractLsb hi lo vector
+  extractLsb' lo size vector
 
 /-- Divide bv `vector` into elements, each of size `size`. This function sets
 the `e`'th element in the `vector`. -/
@@ -663,7 +668,7 @@ deriving DecidableEq, Repr
 export ShiftInfo (esize elements shift unsigned round accumulate)
 
 @[state_simp_rules]
-def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool) (h : n > 0)
+def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool)
   : BitVec n :=
   -- assert shift > 0
   let fn := if unsigned then ushiftRight else sshiftRight
@@ -673,8 +678,7 @@ def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool) (h : n > 0
       BitVec.ofInt (n + 1) rounded
     else
       BitVec.ofInt (n + 1) value
-  have h₀ : n - 1 - 0 + 1 = n := by omega
-  BitVec.cast h₀ $ extractLsb (n-1) 0 (fn rounded_bv shift)
+  extractLsb' 0 n (fn rounded_bv shift)
 
 @[state_simp_rules]
 def Int_with_unsigned (unsigned : Bool) (value : BitVec n) : Int :=
@@ -686,9 +690,9 @@ def shift_right_common_aux
   if h : info.elements ≤ e then
     result
   else
-    let elem := Int_with_unsigned info.unsigned $ elem_get operand e info.esize info.h
-    let shift_elem := RShr info.unsigned elem info.shift info.round info.h
-    let acc_elem := elem_get operand2 e info.esize info.h + shift_elem
+    let elem := Int_with_unsigned info.unsigned $ elem_get operand e info.esize
+    let shift_elem := RShr info.unsigned elem info.shift info.round
+    let acc_elem := elem_get operand2 e info.esize + shift_elem
     let result := elem_set result e info.esize acc_elem info.h
     have _ : info.elements - (e + 1) < info.elements - e := by omega
     shift_right_common_aux (e + 1) info operand operand2 result
@@ -709,7 +713,7 @@ def shift_left_common_aux
   if h : info.elements ≤ e then
     result
   else
-    let elem := elem_get operand e info.esize info.h
+    let elem := elem_get operand e info.esize
     let shift_elem := elem <<< info.shift
     let result := elem_set result e info.esize shift_elem info.h
     have _ : info.elements - (e + 1) < info.elements - e := by omega

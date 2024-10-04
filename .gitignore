@@ -4,3 +4,4 @@
 /lake-packages/*
 /.lake/*
 *.log
+/data/*

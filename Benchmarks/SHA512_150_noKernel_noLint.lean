@@ -9,7 +9,9 @@ import Benchmarks.SHA512
 
 open Benchmarks
 
-benchmark sha512_150_instructions : SHA512Bench 150 := fun s0 _ h => by
+disable_linters in
+set_option debug.skipKernelTC true in
+benchmark sha512_150_noKernel_noLint : SHA512Bench 150 := fun s0 _ h => by
   intros
   sym_n 150
   simp (config := {failIfUnchanged := false}) only [h, bitvec_rules]
