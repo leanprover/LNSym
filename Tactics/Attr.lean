@@ -9,8 +9,11 @@ open Lean
 initialize
   -- CSE tactic's non-verbose summary logging.
   registerTraceClass `Tactic.cse.summary
+
   -- enable tracing for `sym_n` tactic and related components
   registerTraceClass `Tactic.sym
+  -- enable verbose tracing
+  registerTraceClass `Tactic.sym.debug
 
   -- enable tracing for heartbeat usage of `sym_n`
   registerTraceClass `Tactic.sym.heartbeats

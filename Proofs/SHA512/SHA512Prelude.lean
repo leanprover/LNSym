@@ -117,6 +117,8 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
           h_s0_num_blocks, h_s0_ctx_base,
           h_s0_input_base, h_s0_ctx, h_s0_ktbl,
           h_s0_mem_sep⟩ := h_s0_init
+  -- Unfold goal statement
+  unfold SHA512.prelude
   -- Symbolic Simulation
   sym_n 1
   case h_s1_sp_aligned =>
@@ -133,17 +135,16 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
     -- have := @Aligned_BitVecAdd_64_4 (r (StateField.GPR 31#5) s0) 18446744073709551600#64
     --         h_s0_sp_aligned (by decide)
     -- rw [this]
+    subst SP
     apply Aligned_BitVecAdd_64_4 h_s0_sp_aligned (by decide)
   sym_n 15 at s1
   -- Epilogue
   -- simp only [num_blocks, stack_ptr, ctx_addr, input_addr, ←add_eq_sub_16] at *
   simp only [←add_eq_sub_16] at *
   -- cse (config := { processHyps := .allHyps })
-  simp only [SHA512.prelude, bitvec_rules, minimal_theory]
-  -- Opening up `prelude`:
   -- (FIXME @alex) Why does `s16.program = program` remain even after aggregation?
-  sym_aggregate
-  simp only [h_s16_program, ←add_eq_sub_16, minimal_theory]
+  -- sym_aggregate
+  -- simp only [←add_eq_sub_16, minimal_theory]
   -- The following discharges
   --  InputBase + 0x40#64 + 0x40#64 =
   --  InputBase + 0x80#64
@@ -158,20 +159,6 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   simp only [memory_rules] at *
   -- (FIXME) Need to aggregate memory effects here automatically.
   simp only [h_s16_memory_effects,
-             h_s15_memory_effects,
-             h_s14_memory_effects,
-             h_s13_memory_effects,
-             h_s12_memory_effects,
-             h_s11_memory_effects,
-             h_s10_memory_effects,
-             h_s9_memory_effects,
-             h_s8_memory_effects,
-             h_s7_memory_effects,
-             h_s6_memory_effects,
-             h_s5_memory_effects,
-             h_s4_memory_effects,
-             h_s3_memory_effects,
-             h_s2_memory_effects,
              h_s1_memory_effects]
   -- (NOTE @bollu) The following need to be opened up for `simp_mem`,
   -- apparently. Is this a big deal though? Maybe not?
@@ -201,7 +188,6 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
                    h_s0_mem_sep,
                    BitVec.add_assoc, bitvec_rules, minimal_theory]
   · intro n addr h
-    simp only [←h_s0_sp] at h
     clear_named [h_, stepi]
     simp_mem
     /-

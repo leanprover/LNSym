@@ -8,10 +8,12 @@ import Arm.State
 import Tactics.Common
 import Tactics.Attr
 import Tactics.Simp
+import Tactics.Sym.Common
 
 import Std.Data.HashMap
 
-open Lean Meta
+open Lean Meta Elab.Tactic
+open Sym (withTraceNode withVerboseTraceNode)
 
 /-- A reflected `ArmState` field, see `AxEffects.fields` for more context -/
 structure AxEffects.FieldEffect where
@@ -68,7 +70,9 @@ structure AxEffects where
       = read_mem_bytes n addr <memoryEffect>
     ``` -/
   memoryEffectProof : Expr
-  /-- A proof that `<currentState>.program = <initialState>.program` -/
+  /-- The program of the current state, see `programProof` -/
+  program : Expr
+  /-- A proof that `<currentState>.program = <program>` -/
   programProof : Expr
   /-- An optional proof of `CheckSPAlignment <currentState>`.
 
@@ -78,6 +82,10 @@ structure AxEffects where
   However, if SP is written to, no effort is made to prove alignment of the
   new value; the field will be set to `none` -/
   stackAlignmentProof? : Option Expr
+
+  /-- `sideContitions` are proof obligations that come up during effect
+  characterization. -/
+  sideConditions : List MVarId
   deriving Repr
 
 namespace AxEffects
@@ -135,12 +143,15 @@ def initial (state : Expr) : AxEffects where
         mkApp2 (.const ``Eq.refl [1])
           (mkApp (mkConst ``BitVec) <| mkNatMul (.bvar 1) (toExpr 8))
           (mkApp3 (mkConst ``read_mem_bytes) (.bvar 1) (.bvar 0) state)
+  program := -- `ArmState.program <initialState>`
+    mkApp (mkConst ``ArmState.program) state
   programProof      :=
     -- `rfl`
     mkAppN (.const ``Eq.refl [1]) #[
       mkConst ``Program,
       mkApp (mkConst ``ArmState.program) state]
   stackAlignmentProof? := none
+  sideConditions := []
 
 /-! ## ToMessageData -/
 
@@ -165,9 +176,8 @@ instance : ToMessageData AxEffects where
     }"
 
 private def traceCurrentState (eff : AxEffects)
-    (header : MessageData := "current state") :
-    MetaM Unit :=
-  withTraceNode `Tactic.sym (fun _ => pure header) do
+    (header : MessageData := "current state") : MetaM Unit :=
+  withTraceNode header <| do
     trace[Tactic.sym] "{eff}"
 
 /-! ## Helpers -/
@@ -192,14 +202,23 @@ Fails if the rewrite produces any subgoals.
 -/
 -- source: https://github.com/leanprover-community/mathlib4/blob/b35703fe5a80f1fa74b82a2adc22f3631316a5b3/Mathlib/Lean/Expr/Basic.lean#L476-L477
 private def rewriteType (e eq : Expr) : MetaM Expr := do
-  mkEqMP (← rewrite (← inferType e) eq) e
+  try
+    mkEqMP (← rewrite (← inferType e) eq) e
+  catch err =>
+    throwError "\
+While trying to rewrite:
+  {e}
+Along equality:
+  {eq}
+
+{err.toMessageData}"
 
 /-- Given a `field` such that `fields ∉ eff.fields`, return a proof of
   `r field <currentState> = r field <initialState>`
 by constructing an application of `eff.nonEffectProof` -/
 partial def mkAppNonEffect (eff : AxEffects) (field : Expr) : MetaM Expr := do
   let msg := m!"constructing application of non-effects proof"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+  withTraceNode msg (tag := "mkAppNonEffect") <| do
     trace[Tactic.sym] "nonEffectProof: {eff.nonEffectProof}"
 
     let nonEffectProof := mkApp eff.nonEffectProof field
@@ -218,8 +237,7 @@ partial def mkAppNonEffect (eff : AxEffects) (field : Expr) : MetaM Expr := do
 /-- Get the value for a field, if one is stored in `eff.fields`,
 or assemble an instantiation of the non-effects proof otherwise -/
 def getField (eff : AxEffects) (fld : StateField) : MetaM FieldEffect :=
-  let msg := m!"getField {fld}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+  withTraceNode m!"getField {fld}" (tag := "getField") <| do
     eff.traceCurrentState
 
     if let some val := eff.fields.get? fld then
@@ -270,9 +288,8 @@ and all other fields are updated accordingly.
 Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
 -/
 private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
-    MetaM AxEffects := do
-  trace[Tactic.sym] "adding write of {n} bytes of value {val} \
-    to memory address {addr}"
+    MetaM AxEffects :=
+  withTraceNode m!"processing: write_mem {n} {addr} {val} …" (tag := "updateWriteMem") <| do
 
   -- Update each field
   let fields ← eff.fields.toList.mapM fun ⟨fld, {value, proof}⟩ => do
@@ -304,6 +321,11 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
         #[eff.currentState, n, addr, val])
       eff.programProof
 
+  -- Update the stack alignment proof
+  let stackAlignmentProof? := eff.stackAlignmentProof?.map fun proof =>
+    mkAppN (mkConst ``CheckSPAligment_write_mem_bytes_of)
+      #[eff.currentState, n, addr, val, proof]
+
   -- Assemble the result
   let addWrite (e : Expr) :=
     -- `@write_mem_bytes <n> <addr> <val> <e>`
@@ -315,9 +337,9 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
     memoryEffect    := addWrite eff.memoryEffect
     memoryEffectProof
     programProof
+    stackAlignmentProof?
   }
-  withTraceNode `Tactic.sym (fun _ => pure "new state") <| do
-      trace[Tactic.sym] "{eff}"
+  eff.traceCurrentState
   return eff
 
 /-- Execute `w <fld> <val>` against the state stored in `eff`
@@ -328,8 +350,8 @@ Note that no effort is made to preserve `currentStateEq`; it is set to `none`!
 -/
 private def update_w (eff : AxEffects) (fld val : Expr) :
     MetaM AxEffects := do
+  withTraceNode m!"processing: w {fld} {val} …" (tag := "updateWrite") <| do
   let rField ← reflectStateField fld
-  trace[Tactic.sym] "adding write of value {val} to register {rField}"
 
   -- Update all other fields
   let fields ←
@@ -398,6 +420,24 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
       (mkAppN (mkConst ``w_program) #[fld, val, eff.currentState])
       eff.programProof
 
+  -- Update the stack alignment proof
+  let mut sideConditions := eff.sideConditions
+  let mut stackAlignmentProof? := eff.stackAlignmentProof?
+  if let some proof := stackAlignmentProof? then
+    if rField ≠ StateField.SP then
+      let hNeq ← mkDecideProof <|
+        mkApp3 (.const ``Ne [1])
+          (mkConst ``StateField) (toExpr StateField.SP) fld
+      stackAlignmentProof? := mkAppN (mkConst ``CheckSPAligment_w_of_ne_sp_of)
+        #[fld, eff.currentState, val, hNeq, proof]
+    else
+      let hAligned ← mkFreshExprMVar (some <|
+        mkApp3 (mkConst ``Aligned) (toExpr 64) val (toExpr 4)
+      )
+      sideConditions := hAligned.mvarId! :: sideConditions
+      stackAlignmentProof? := mkAppN (mkConst ``CheckSPAligment_w_sp_of)
+        #[val, eff.currentState, hAligned]
+
   -- Assemble the result
   let eff := { eff with
     currentState    := mkApp3 (mkConst ``w) fld val eff.currentState
@@ -406,6 +446,8 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
     -- memory effects are unchanged
     memoryEffectProof
     programProof
+    stackAlignmentProof?
+    sideConditions
   }
   eff.traceCurrentState "new state"
   return eff
@@ -423,20 +465,27 @@ private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to `eff.currentState`,
 return an `AxEffects` where `e` is the new `currentState`. -/
+private partial def updateWithExprAux (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
+  match_expr e with
+  | write_mem_bytes n addr val e =>
+      let eff ← eff.updateWithExprAux e
+      eff.update_write_mem n addr val
+
+  | w field value e =>
+      let eff ← eff.updateWithExprAux e
+      eff.update_w field value
+
+  | _ =>
+      assertIsDefEq e eff.currentState
+      return eff
+
+/-- Given an expression `e : ArmState`,
+which is a sequence of `w`/`write_mem`s to `eff.currentState`,
+return an `AxEffects` where `e` is the new `currentState`. -/
 partial def updateWithExpr (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
   let msg := m!"Updating effects with writes from: {e}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do match_expr e with
-    | write_mem_bytes n addr val e =>
-        let eff ← eff.updateWithExpr e
-        eff.update_write_mem n addr val
-
-    | w field value e =>
-        let eff ← eff.updateWithExpr e
-        eff.update_w field value
-
-    | _ =>
-        assertIsDefEq e eff.currentState
-        return eff
+  withTraceNode msg (tag := "updateWithExpr") <|
+    updateWithExprAux eff e
 
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to the some state `s`,
@@ -451,62 +500,97 @@ def fromExpr (e : Expr) : MetaM AxEffects := do
   let eff ← eff.updateWithExpr e
   return { eff with initialState := ← instantiateMVars eff.initialState}
 
-
 /-- Given a proof `eq : s = <currentState>`,
 set `s` to be the new `currentState`, and update all proofs accordingly -/
 def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     MetaM AxEffects := do
-  withTraceNode `Tactic.sym (fun _ => pure "adjusting `currenstState`") do
-    eff.traceCurrentState
+  Sym.withTraceNode m!"adjustCurrentStateWithEq" (tag := "adjustCurrentStateWithEq") do
     trace[Tactic.sym] "rewriting along {eq}"
+    eff.traceCurrentState
+
     assertHasType eq <| mkEqArmState s eff.currentState
     let eq ← mkEqSymm eq
 
     let currentState := s
 
     let fields ← eff.fields.toList.mapM fun (field, fieldEff) => do
-      withTraceNode `Tactic.sym (fun _ => pure m!"rewriting field {field}") do
+      withTraceNode m!"rewriting field {field}" (tag := "rewriteField") do
         trace[Tactic.sym] "original proof: {fieldEff.proof}"
-        let proof ← rewriteType fieldEff.proof eq
+        let motive : Expr ← withLocalDeclD `s mkArmState <| fun s => do
+          let eq := mkEqReadField (toExpr field) s fieldEff.value
+          mkLambdaFVars #[s] eq
+        let proof ← mkEqNDRec motive fieldEff.proof eq
         trace[Tactic.sym] "new proof: {proof}"
         pure (field, {fieldEff with proof})
     let fields := .ofList fields
 
-    let nonEffectProof ← rewriteType eff.nonEffectProof eq
-    let memoryEffectProof ← rewriteType eff.memoryEffectProof eq
-    -- ^^ TODO: what happens if `memoryEffect` is the same as `currentState`?
-    --    Presumably, we would *not* want to encapsulate `memoryEffect` here
-    let programProof ← rewriteType eff.programProof eq
+    Sym.withTraceNode m!"rewriting other proofs" (tag := "rewriteMisc") <| do
+      let nonEffectProof ← lambdaTelescope eff.nonEffectProof fun args proof => do
+        let f := args[0]!
+        let motive ← -- `fun s => r f s = r f <eff.initialState>`
+          -- TODO: `
+          withLocalDeclD `s mkArmState <| fun s =>
+            let eq := mkEqStateValue f
+              (mkApp2 (mkConst ``r) f s)
+              (mkApp2 (mkConst ``r) f eff.initialState)
+            mkLambdaFVars #[s] eq
+        mkLambdaFVars args <|← mkEqNDRec motive proof eq
 
-    return { eff with
-      currentState, fields, nonEffectProof, memoryEffectProof, programProof
-    }
+      let memoryMotive : Expr ←
+        withLocalDeclD `s mkArmState <| fun s =>
+        withLocalDeclD `n (mkConst ``Nat) <| fun n =>
+        withLocalDeclD `addr (mkApp (mkConst ``BitVec) (toExpr 64)) <| fun addr => do
+          let lhs := mkReadMemBytes n addr s
+          let rhs := mkReadMemBytes n addr eff.memoryEffect
+          let eq := mkEqBitVec (mkNatMul n (toExpr 8)) lhs rhs
+          let eq ← mkForallFVars #[n, addr] eq
+          mkLambdaFVars #[s] eq
+      let memoryEffectProof ← mkEqNDRec memoryMotive eff.memoryEffectProof eq
+
+      let programMotive : Expr ←
+        withLocalDeclD `s mkArmState <| fun s =>
+          let eq := mkEqProgram s eff.program
+          mkLambdaFVars #[s] eq
+      let programProof ← mkEqNDRec programMotive eff.programProof eq
+
+      let stackAlignmentProof? ← eff.stackAlignmentProof?.mapM fun proof => do
+        let motive ← withLocalDeclD `s mkArmState <| fun s =>
+          mkLambdaFVars #[s] <| mkApp (mkConst ``CheckSPAlignment) s
+        mkEqNDRec motive proof eq
+
+      return { eff with
+        currentState, fields, nonEffectProof, memoryEffectProof, programProof,
+        stackAlignmentProof?
+      }
 
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to eff.currentState>`,
 where `?s` and `?s0` are arbitrary `ArmState`s,
 return an `AxEffect` with the rhs of the equality as the current state,
 and the (non-)effects updated accordingly -/
 def updateWithEq (eff : AxEffects) (eq : Expr) : MetaM AxEffects :=
-  let msg := m!"Building effects with equality: {eq}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+  withTraceNode m!"Building effects with equality: {eq}"
+                (tag := "updateWithEq") <| do
     let s ← mkFreshExprMVar mkArmState
     let rhs ← mkFreshExprMVar mkArmState
     assertHasType eq <| mkEqArmState s rhs
 
     let eff ← eff.updateWithExpr (← instantiateMVars rhs)
     let eff ← eff.adjustCurrentStateWithEq s eq
-    withTraceNode `Tactic.sym (fun _ => pure "new state") do
-      trace[Tactic.sym] "{eff}"
+    eff.traceCurrentState "new state"
     return eff
 
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to ?s0>`,
 where `?s` and `?s0` are arbitrary `ArmState`s,
 return an `AxEffect` with `?s0` as the initial state,
 the rhs of the equality as the current state,
-and the (non-)effects updated accordingly -/
-def fromEq (eq : Expr) : MetaM AxEffects := do
+and the (non-)effects updated accordingly
+
+One can optionally pass in a proof that `?s0` has a well-aligned stack pointer.
+-/
+def fromEq (eq : Expr) (stackAlignmentProof? : Option Expr := none) :
+    MetaM AxEffects := do
   let s0 ← mkFreshExprMVar mkArmState
-  let eff := initial s0
+  let eff := { initial s0 with stackAlignmentProof? }
   let eff ← eff.updateWithEq eq
   return { eff with initialState := ← instantiateMVars eff.initialState}
 
@@ -534,8 +618,7 @@ Note: throws an error when `initialState = currentState` *and*
 the field already has a value stored, as the rewrite might produce expressions
 of unexpected types. -/
 def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
-  let msg := m!"withField {eq}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+  withTraceNode m!"withField {eq}" (tag := "withField") <| do
     eff.traceCurrentState
     let fieldE ← mkFreshExprMVar (mkConst ``StateField)
     let value ← mkFreshExprMVar none
@@ -570,34 +653,6 @@ def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
       let fields := eff.fields.insert field { value, proof }
       return { eff with fields }
 
-/-- Given a proof of `CheckSPAlignment <initialState>`,
-attempt to transport it to a proof of `CheckSPAlignment <currentState>`
-and store that proof in `stackAlignmentProof?`.
-
-Returns `none` if the proof failed to be transported,
-i.e., if SP was written to. -/
-def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
-    MetaM (Option AxEffects) := do
-  let msg := m!"withInitialStackAlignment? {spAlignment}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-    eff.traceCurrentState
-
-    let { value, proof } ← eff.getField StateField.SP
-    let expected :=
-      mkApp2 (mkConst ``r) (toExpr <| StateField.SP) eff.initialState
-    trace[Tactic.sym] "checking whether value:\n  {value}\n\
-      is syntactically equal to expected value\n  {expected}"
-    if value != expected then
-      trace[Tactic.sym] "failed to transport proof:
-        expected value to be {expected}, but found {value}"
-      return none
-
-    let stackAlignmentProof? := some <|
-      mkAppN (mkConst ``CheckSPAlignment_of_r_sp_eq)
-        #[eff.initialState, eff.currentState, proof, spAlignment]
-    trace[Tactic.sym] "constructed stackAlignmentProof: {stackAlignmentProof?}"
-    return some { eff with stackAlignmentProof? }
-
 /-! ## Composition -/
 
 /- TODO: write a function that combines two effects `left` and `right`,
@@ -621,8 +676,8 @@ NOTE: does not necessarily validate *which* type an expression has,
 validation will still pass if types are different to those we claim in the
 docstrings -/
 def validate (eff : AxEffects) : MetaM Unit := do
-  let msg := "validating that the axiomatic effects are well-formed"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+  withTraceNode "validating that the axiomatic effects are well-formed"
+                (tag := "validate") <| do
     eff.traceCurrentState
 
     assertHasType eff.initialState mkArmState
@@ -657,8 +712,8 @@ that was just added to the local context -/
 def addHypothesesToLContext (eff : AxEffects) (hypPrefix : String := "h_")
     (mvar : Option MVarId := none) :
     TacticM AxEffects :=
-  let msg := m!"adding hypotheses to local context"
-  withTraceNode `Tactic.sym (fun _ => pure msg) do
+  withTraceNode m!"adding hypotheses to local context"
+                (tag := "addHypothesesToLContext") do
     eff.traceCurrentState
     let mut goal ← mvar.getDM getMainGoal
 
@@ -721,8 +776,8 @@ where
   replaceOrNote (goal : MVarId)
       (h : Name) (v : Expr) (t? : Option Expr := none) :
       MetaM (FVarId × MVarId) :=
-    let msg := m!"adding {h} to the local context"
-    withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    withTraceNode m!"adding {h} to the local context"
+                  (tag := "replaceOrNote") <| do
       trace[Tactic.sym] "with value {v} and type {t?}"
       if let some decl := (← getLCtx).findFromUserName? h then
         let ⟨fvar, goal, _⟩ ← goal.replace decl.fvarId v t?
@@ -733,9 +788,9 @@ where
 
 /-- Return an array of `SimpTheorem`s of the proofs contained in
 the given `AxEffects` -/
-def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
-  let msg := m!"computing SimpTheorems for (non-)effect hypotheses"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+def toSimpTheoremArray (eff : AxEffects) : MetaM (Array SimpTheorem) := do
+  withTraceNode m!"computing SimpTheorems for (non-)effect hypotheses"
+                (tag := "toSimpTheoremArray") <| do
     let lctx ← getLCtx
     let baseName? :=
       if eff.currentState.isFVar then
@@ -747,8 +802,7 @@ def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
 
     let add (thms : Array SimpTheorem) (e : Expr) (name : String)
         (prio : Nat := 1000) :=
-      let msg := m!"adding {e} with name {name}"
-      withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+      withTraceNode m!"adding {e} with name {name}" <| do
         let origin : Origin :=
           if e.isFVar then
             .fvar e.fvarId!
@@ -777,5 +831,11 @@ def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
     trace[Tactic.sym] "done"
 
     pure thms
+
+def toSimpTheorems (eff : AxEffects) : MetaM SimpTheorems := do
+  withTraceNode m!"computing DiscrTree for (non-)effect hypotheses"
+                (tag := "toSimpTheorems") <| do
+    let thms ← eff.toSimpTheoremArray
+    return thms.foldl addSimpTheoremEntry {}
 
 end Tactic
