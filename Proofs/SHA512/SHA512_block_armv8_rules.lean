@@ -145,6 +145,11 @@ theorem zeroextend_bigger_smaller_64 (x : BitVec 64) :
   BitVec.zeroExtend 64 x := by
   bv_omega
 
+theorem zeroextend_bigger_smaller (w : Nat) (x : BitVec w) :
+  BitVec.zeroExtend w (BitVec.zeroExtend (w + w) x) =
+  BitVec.zeroExtend w x := by
+  simp
+
 -- (FIXME) Generalize to arbitrary-length bitvecs.
 theorem rsh_concat_identity_128 (x : BitVec 128) :
   zeroExtend 64 (x >>> 64) ++ zeroExtend 64 x = x := by
