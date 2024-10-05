@@ -160,6 +160,45 @@ theorem rsh_concat_identity_128 (x : BitVec 128) :
   zeroExtend 64 (x >>> 64) ++ zeroExtend 64 x = x := by
   bv_check "lrat_files/Sha512_block_armv8_rules.lean-rsh_concat_identity_128-117-2.lrat"
 
+theorem ushiftRight_add (w n m: Nat) (x : BitVec w):
+  x.toNat >>> (n + m) = x.toNat >>> n >>> m := by
+  induction m
+  case zero =>
+    simp
+  case succ nn ih =>
+
+    sorry
+
+
+theorem ushiftRight_width (w : Nat) (x : BitVec w) :
+  x.toNat >>> w = 0 := by
+  induction w
+  case zero =>
+    simp
+    omega
+  case succ n ih =>
+    rw [ushiftRight_add (m := 1)]
+
+
+
+    sorry
+
+-- (FIXME) Generalize to arbitrary-length bitvecs.
+theorem rsh_concat_identity (w : Nat) (x : BitVec (w + w)) :
+  zeroExtend w (x >>> w) ++ zeroExtend w x = x := by
+  simp only [BitVec.append_def, shiftLeftZeroExtend, ushiftRight_width]
+  ext
+  simp
+
+
+  ext
+  simp only [toNat_or, toNat_zeroExtend', toNat_truncate]
+  simp only [toNat_append]
+  simp only [toNat_truncate]
+  simp only [toNat_ushiftRight]
+  rw [Bi]
+
+
 -- (FIXME) Generalize to arbitrary-length bitvecs.
 theorem rev_vector_of_rev_vector_128_64_8 (x : BitVec 128) :
   rev_vector 128 64 8
