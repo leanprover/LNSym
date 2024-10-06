@@ -24,7 +24,7 @@ def exec_pc_rel_addressing (inst : PC_rel_addressing_cls) (s : ArmState) : ArmSt
   let result := if inst.op = 0#1 then
                    orig_pc + imm -- ADR
                 else
-                   (BitVec.partInstall 11 0 0#12 orig_pc) + imm
+                   (BitVec.partInstall 0 12 0#12 orig_pc) + imm
   -- State Updates
   let s := write_gpr_zr 64 inst.Rd result s
   let s := write_pc (orig_pc + 4#64) s

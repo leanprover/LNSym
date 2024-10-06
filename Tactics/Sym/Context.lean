@@ -77,9 +77,6 @@ structure SymContext where
   and we assume that no overflow happens
   (i.e., `base - x` can never be equal to `base + y`) -/
   pc : BitVec 64
-  /-- `h_sp?`, if present, is a local hypothesis of the form
-  `CheckSPAlignment state` -/
-  h_sp?  : Option Name
 
   /-- The `simp` context used for effect aggregation.
   This collects references to all (non-)effect hypotheses of the intermediate
@@ -197,14 +194,12 @@ end
 This is not a `ToMessageData` instance because we need access to `MetaM` -/
 def toMessageData (c : SymContext) : MetaM MessageData := do
   let h_run ← userNameToMessageData c.h_run
-  let h_sp?  ← c.h_sp?.mapM userNameToMessageData
 
   return m!"\{ finalState := {c.finalState},
   runSteps? := {c.runSteps?},
   h_run := {h_run},
   program := {c.program},
   pc := {c.pc},
-  h_sp? := {h_sp?},
   state_prefix := {c.state_prefix},
   curr_state_number := {c.currentStateNumber},
   effects := {c.effects} }"
@@ -265,7 +260,6 @@ private def initial (state : Expr) : MetaM SymContext := do
       instructions := ∅
     }
     pc := 0
-    h_sp? := none
     aggregateSimpCtx,
     aggregateSimprocs,
     effects := AxEffects.initial state
@@ -400,9 +394,6 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
       modifyThe AxEffects ({ · with
         stackAlignmentProof? := some decl.toExpr
       })
-      modifyThe SymContext ({· with
-        h_sp? := decl.userName
-      })
     )
 
   -- Find `r ?field currentState = ?value`
@@ -473,7 +464,6 @@ evaluation:
   * the `currentStateNumber` is incremented
 -/
 def prepareForNextStep : SymM Unit := do
-  let s ← getNextStateName
   let pc ← do
     let { value, ..} ← AxEffects.getFieldM .PC
     try
@@ -484,7 +474,6 @@ def prepareForNextStep : SymM Unit := do
 
   modifyThe SymContext (fun c => { c with
     pc
-    h_sp?       := c.h_sp?.map (fun _ => .mkSimple s!"h_{s}_sp_aligned")
     runSteps?   := (· - 1) <$> c.runSteps?
     currentStateNumber := c.currentStateNumber + 1
   })

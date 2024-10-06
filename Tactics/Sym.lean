@@ -182,10 +182,8 @@ def explodeStep (hStep : Expr) : SymM Unit :=
     eff ← eff.withProgramEq c.effects.programProof
     eff ← eff.withField (← c.effects.getField .ERR).proof
 
-    if let some h_sp := c.h_sp? then
-      let hSp ← SymContext.findFromUserName h_sp
-      -- let effWithSp?
-      eff ← match ← eff.withStackAlignment? hSp.toExpr with
+    if let some hSp := c.effects.stackAlignmentProof? then
+      eff ← match ← eff.withStackAlignment? hSp with
         | some newEff => pure newEff
         | none => do
             trace[Tactic.sym] "failed to show stack alignment"
@@ -210,7 +208,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
               let (ctx, simprocs) ←
                 LNSymSimpContext
                   (config := {failIfUnchanged := false, decide := true})
-                  (decls := #[hSp])
+                  (exprs := #[hSp])
               LNSymSimp subGoal ctx simprocs
 
             if let some subGoal := subGoal? then
@@ -279,19 +277,14 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
     -- `simp` here
     withMainContext' <| do
       let hStep ← SymContext.findFromUserName h_step.getId
-      let lctx ← getLCtx
-      let decls := (← getThe SymContext).h_sp?.bind lctx.findFromUserName?
-      let decls := decls.toArray
-      -- If we know SP is aligned, `simp` with that fact
 
-      if !decls.isEmpty then
+      -- If we know SP is aligned, `simp` with that fact
+      if let some hSp := (← getThe AxEffects).stackAlignmentProof? then
         trace[Tactic.sym] "simplifying {hStep.toExpr} \
-          with {decls.map (·.toExpr)}"
-        -- If `decls` is empty, we have no more knowledge than before, so
-        -- everything that could've been `simp`ed, already should have been
+          with {hSp}"
         let some goal ← do
             let (ctx, simprocs) ← LNSymSimpContext
-              (config := {decide := false}) (decls := decls)
+              (config := {decide := false}) (exprs := #[hSp])
             let goal ← getMainGoal
             LNSymSimp goal ctx simprocs hStep.fvarId
           | throwError "internal error: simp closed goal unexpectedly"
