@@ -21,8 +21,7 @@ def create_table (i : Nat) (regs : Nat) (Rn : BitVec 5) (table : BitVec (128 * r
     table
   else
     let val := read_sfp 128 Rn s
-    have h₁ : 128 = 128 * i + 127 - 128 * i + 1 := by omega
-    let table := BitVec.partInstall (128 * i + 127) (128 * i) (BitVec.cast h₁ val) table
+    let table := BitVec.partInstall (128 * i) 128 val table
     let Rn := (Rn + 1) % 32
     have h₂ : regs - (i + 1) < regs - i := by omega
     create_table (i + 1) regs Rn table s
@@ -31,18 +30,16 @@ def create_table (i : Nat) (regs : Nat) (Rn : BitVec 5) (table : BitVec (128 * r
 def tblx_aux (i : Nat) (elements : Nat) (indices : BitVec datasize)
   (regs : Nat) (table : BitVec (128 * regs)) (result: BitVec datasize)
   : BitVec datasize :=
-  if h₀ : elements <= i then
+  if elements <= i then
     result
   else
-    have h₁ : 8 > 0 := by decide
     let index := (elem_get indices i 8).toNat
     let result :=
       if index < 16 * regs then
         let val := elem_get table index 8
-        elem_set result i 8 val h₁
+        elem_set result i 8 val
       else
         result
-    have h₂ : elements - (i + 1) < elements - i := by omega
     tblx_aux (i + 1) elements indices regs table result
   termination_by (elements - i)
 

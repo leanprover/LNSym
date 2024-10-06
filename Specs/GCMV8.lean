@@ -76,7 +76,7 @@ def pdiv (x: BitVec n) (y : BitVec m): BitVec n :=
       let zi := extractLsb' 0 m ((GCMV8.reduce y z) ++ xi)
       let bit := extractLsb' (GCMV8.degree y) 1 zi
       let newacc : BitVec n :=
-        partInstall (i - 1) (i - 1) (bit.cast (by omega)) acc
+        partInstall (i - 1) 1 bit acc
       pdivTR x y j zi newacc
   pdivTR x y n (BitVec.zero m) (BitVec.zero n)
 
