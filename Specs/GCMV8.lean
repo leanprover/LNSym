@@ -21,10 +21,10 @@ open BitVec
 ------------------------------------------------------------------------------
 
 def hi (x : BitVec 128) : BitVec 64 :=
-  extractLsb 127 64 x
+  extractLsb' 64 64 x
 
 def lo (x : BitVec 128) : BitVec 64 :=
-  extractLsb 63 0 x
+  extractLsb' 0 64 x
 
 ------------------------------------------------------------------------------
 -- Functions related to galois field operations
@@ -76,7 +76,7 @@ def pdiv (x: BitVec n) (y : BitVec m): BitVec n :=
       let zi := extractLsb' 0 m ((GCMV8.reduce y z) ++ xi)
       let bit := extractLsb' (GCMV8.degree y) 1 zi
       let newacc : BitVec n :=
-        partInstall (i - 1) (i - 1) (bit.cast (by omega)) acc
+        partInstall (i - 1) 1 bit acc
       pdivTR x y j zi newacc
   pdivTR x y n (BitVec.zero m) (BitVec.zero n)
 

@@ -112,9 +112,7 @@ def AESHWCtr32EncryptBlocks_helper {Param : AESArm.KBR} (in_blocks : BitVec m)
   else
     let lo := m - (i + 1) * 128
     let hi := lo + 127
-    have h5 : hi - lo + 1 = 128 := by omega
-    let curr_block : BitVec 128 :=
-      BitVec.cast h5 $ BitVec.extractLsb hi lo in_blocks
+    let curr_block : BitVec 128 := BitVec.extractLsb' lo 128 in_blocks
     have h4 : 128 = Param.block_size := by
       cases h3
       · rename_i h; simp only [h, AESArm.AES128KBR, AESArm.BlockSize]
@@ -127,7 +125,7 @@ def AESHWCtr32EncryptBlocks_helper {Param : AESArm.KBR} (in_blocks : BitVec m)
         (Param := Param) (BitVec.cast h4 ivec_rev) key.rd_key
     let res_block := rev_elems 128 8 res_block (by decide) (by decide)
     let res_block := res_block ^^^ curr_block
-    let new_acc := BitVec.partInstall hi lo (BitVec.cast h5.symm res_block) acc
+    let new_acc := BitVec.partInstall lo 128 res_block acc
     AESHWCtr32EncryptBlocks_helper (Param := Param)
       in_blocks (i + 1) len key (ivec + 1#128) new_acc h1 h2 h3
   termination_by (len - i)

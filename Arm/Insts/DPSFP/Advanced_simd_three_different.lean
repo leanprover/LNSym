@@ -33,18 +33,16 @@ def polynomial_mult (op1 : BitVec m) (op2 : BitVec n) : BitVec (m+n) :=
   polynomial_mult_aux 0 result op1 extended_op2
 
 def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
-  (y : BitVec n) (result : BitVec (n*2)) (H : 0 < esize) : BitVec (n*2) :=
-  if h₀ : elements <= e then
+  (y : BitVec n) (result : BitVec (n*2)) : BitVec (n*2) :=
+  if elements <= e then
     result
   else
-    let element1 := elem_get x e esize H
-    let element2 := elem_get y e esize H
+    let element1 := elem_get x e esize
+    let element2 := elem_get y e esize
     let elem_result := polynomial_mult element1 element2
     have h₁ : esize + esize = 2 * esize := by omega
-    have h₂ : 2 * esize > 0 := by omega
-    let result := elem_set result e (2 * esize) (BitVec.cast h₁ elem_result) h₂
-    have _ : elements - (e + 1) < elements - e := by omega
-    pmull_op (e + 1) esize elements x y result H
+    let result := elem_set result e (2 * esize) (BitVec.cast h₁ elem_result)
+    pmull_op (e + 1) esize elements x y result
   termination_by (elements - e)
 
 @[state_simp_rules]
@@ -54,15 +52,13 @@ def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmSt
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let esize := 8 <<< inst.size.toNat
-    have h₀ : 0 < esize := by apply zero_lt_shift_left_pos (by decide)
     let datasize := 64
     let part := inst.Q.toNat
     let elements := datasize / esize
-    have h₁ : datasize > 0 := by decide
-    let operand1 := Vpart_read inst.Rn part datasize s h₁
-    let operand2 := Vpart_read inst.Rm part datasize s h₁
+    let operand1 := Vpart_read inst.Rn part datasize s
+    let operand2 := Vpart_read inst.Rm part datasize s
     let result :=
-      pmull_op 0 esize elements operand1 operand2 (BitVec.zero (2*datasize)) h₀
+      pmull_op 0 esize elements operand1 operand2 (BitVec.zero (2*datasize))
     let s := write_sfp (datasize*2) inst.Rd result s
     let s := write_pc ((read_pc s) + 4#64) s
     s

@@ -40,7 +40,7 @@ def reg_pair_constrain_unpredictable (wback : Bool) (inst : Reg_pair_cls) : Bool
 @[state_simp_rules]
 def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
   (datasize : Nat) (offset : BitVec 64) (s : ArmState)
-  (H1 : 8 ∣ datasize) (H2 : 0 < datasize) : ArmState :=
+  (H1 : 8 ∣ datasize): ArmState :=
   -- Note: we do not need to model the ASL function
   -- "CreateAccDescGPR" here, given the simplicity of our memory
   -- model
@@ -64,18 +64,15 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
         let full_data := data2 ++ data1
         write_mem_bytes (2 * (datasize / 8)) address (BitVec.cast h3 full_data) s
       | _ => -- LOAD
-        have h4 : datasize - 1 - 0 + 1 = datasize := by
-          simp; apply Nat.sub_add_cancel H2
-        have h5 : 2 * datasize - 1 - datasize + 1 = datasize := by omega
         let full_data := read_mem_bytes (2 * (datasize / 8)) address s
-        let data1 := extractLsb (datasize - 1) 0 full_data
-        let data2 := extractLsb ((2 * datasize) - 1) datasize full_data
+        let data1 := extractLsb' 0 datasize full_data
+        let data2 := extractLsb' datasize datasize full_data
         if not inst.SIMD? ∧ signed then
           let s := write_gpr 64 inst.Rt (signExtend 64 data1) s
           write_gpr 64 inst.Rt2 (signExtend 64 data2) s
         else
-          let s:= ldst_write inst.SIMD? datasize inst.Rt (BitVec.cast h4 data1) s
-          ldst_write inst.SIMD? datasize inst.Rt2 (BitVec.cast h5 data2) s
+          let s:= ldst_write inst.SIMD? datasize inst.Rt data1 s
+          ldst_write inst.SIMD? datasize inst.Rt2 data2 s
     if inst.wback then
       let address := if inst.postindex then address + offset else address
       write_gpr 64 inst.Rn address s
@@ -102,11 +99,8 @@ def exec_reg_pair_common (inst : Reg_pair_cls) (inst_str : String) (s : ArmState
     let offset := (signExtend 64 inst.imm7) <<< scale
     have H1 : 8 ∣ datasize := by
       simp_all! only [gt_iff_lt, Nat.shiftLeft_eq, Nat.dvd_mul_right, datasize]
-    have H2 : 0 < datasize := by
-      simp_all! only [datasize]
-      apply zero_lt_shift_left_pos (by decide)
     -- State Updates
-    let s' := reg_pair_operation inst inst_str signed datasize offset s H1 H2
+    let s' := reg_pair_operation inst inst_str signed datasize offset s H1
     let s' := write_pc ((read_pc s) + 4#64) s'
     s'
 

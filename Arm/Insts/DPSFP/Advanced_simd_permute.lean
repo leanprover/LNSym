@@ -17,17 +17,16 @@ open BitVec
 
 def trn_aux (p : Nat) (pairs : Nat) (esize : Nat) (part : Nat)
   (operand1 : BitVec datasize) (operand2 : BitVec datasize)
-  (result : BitVec datasize) (h : esize > 0) : BitVec datasize :=
-  if h₀ : pairs <= p then
+  (result : BitVec datasize) : BitVec datasize :=
+  if pairs <= p then
     result
   else
     let idx_from := 2 * p + part
-    let op1_part := elem_get operand1 idx_from esize h
-    let op2_part := elem_get operand2 idx_from esize h
-    let result := elem_set result (2 * p) esize op1_part h
-    let result := elem_set result (2 * p + 1) esize op2_part h
-    have h₁ : pairs - (p + 1) < pairs - p := by omega
-    trn_aux (p + 1) pairs esize part operand1 operand2 result h
+    let op1_part := elem_get operand1 idx_from esize
+    let op2_part := elem_get operand2 idx_from esize
+    let result := elem_set result (2 * p) esize op1_part
+    let result := elem_set result (2 * p + 1) esize op2_part
+    trn_aux (p + 1) pairs esize part operand1 operand2 result
   termination_by (pairs - p)
 
 @[state_simp_rules]
@@ -43,8 +42,7 @@ def exec_trn (inst : Advanced_simd_permute_cls) (s : ArmState) : ArmState :=
     let pairs := elements / 2
     let operand1 := read_sfp datasize inst.Rn s
     let operand2 := read_sfp datasize inst.Rm s
-    have h : esize > 0 := by apply zero_lt_shift_left_pos (by decide)
-    let result := trn_aux 0 pairs esize part operand1 operand2 (BitVec.zero datasize) h
+    let result := trn_aux 0 pairs esize part operand1 operand2 (BitVec.zero datasize)
     -- Update States
     let s := write_sfp datasize inst.Rd result s
     let s := write_pc ((read_pc s) + 4#64) s
