@@ -293,22 +293,21 @@ abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
 abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
   BitVec.extractLsb' i 1 x
 
-abbrev partInstall (hi lo : Nat) (val : BitVec (hi - lo + 1)) (x : BitVec n): BitVec n :=
-  let mask := allOnes (hi - lo + 1)
-  let val_aligned := (zeroExtend n val) <<< lo
-  let mask_with_hole := ~~~ ((zeroExtend n mask) <<< lo)
+abbrev partInstall (start len : Nat) (val : BitVec len) (x : BitVec n): BitVec n :=
+  let mask := allOnes len
+  let val_aligned := (zeroExtend n val) <<< start
+  let mask_with_hole := ~~~ ((zeroExtend n mask) <<< start)
   let x_with_hole := x &&& mask_with_hole
   x_with_hole ||| val_aligned
 
-example : (partInstall 3 0 0xC#4 0xAB0D#16 = 0xAB0C#16) := rfl
+example : (partInstall 0 4 0xC#4 0xAB0D#16 = 0xAB0C#16) := rfl
 
 def flattenTR {n : Nat} (xs : List (BitVec n)) (i : Nat)
   (acc : BitVec len) (H : n > 0) : BitVec len :=
   match xs with
   | [] => acc
   | x :: rest =>
-    have h : n = (i * n + n - 1 - i * n + 1) := by omega
-    let new_acc := (BitVec.partInstall (i * n + n - 1) (i * n) (BitVec.cast h x) acc)
+    let new_acc := (BitVec.partInstall (i * n) n x acc)
     flattenTR rest (i + 1) new_acc H
 
 /-- Reverse bits of a bit-vector. -/
@@ -317,8 +316,8 @@ def reverse (x : BitVec n) : BitVec n :=
     match i with
     | 0 => acc
     | j + 1 =>
-      let xi : BitVec 1 := extractLsb' (i - 1) 1 x
-      let acc := BitVec.partInstall (n - i) (n - i) (xi.cast (by omega)) acc
+      let xi := extractLsb' (i - 1) 1 x
+      let acc := BitVec.partInstall (n - i) 1 xi acc
       reverseTR x j acc
   reverseTR x n $ BitVec.zero n
 

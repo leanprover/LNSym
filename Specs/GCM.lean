@@ -67,11 +67,9 @@ def GCTR_aux (CIPH : Cipher (n := 128) (m := m))
     Y
   else
     let lo := (n - i - 1) * 128
-    let hi := lo + 127
-    have h : 128 = hi - lo + 1 := by omega
     let Xi := extractLsb' lo 128 X
     let Yi := Xi ^^^ CIPH ICB K
-    let Y := BitVec.partInstall hi lo (BitVec.cast h Yi) Y
+    let Y := BitVec.partInstall lo 128 Yi Y
     let ICB := inc_s 32 ICB (by omega)
     GCTR_aux CIPH (i + 1) n K ICB X Y
   termination_by (n - i)
