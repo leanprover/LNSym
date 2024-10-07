@@ -27,3 +27,13 @@ initialize
       generally not set this option, unless they are reporting a bug with \
       `sym_n`"
   }
+
+  -- enable extra checks for debugging `sym_n`,
+  -- see `AxEffects.validate` for more detail on what is being type-checked
+  register_option Tactic.bv_omega_bench.file_path : String := {
+    defValue := "/tmp/omega-bench.txt"
+    descr := "File path that `omega-bench` writes its results to."
+  }
+
+def getBvOmegaBenchFilePath [Monad m] [MonadOptions m] : m String := do
+  return Tactic.bv_omega_bench.file_path.get (← getOptions)

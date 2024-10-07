@@ -8,6 +8,7 @@ This module implements `bv_omega_bench`, which writes benchmarking results of `b
 into a user-defined file. This is used for extracting out calls to `bv_omega` that are slow,
 and allows us to send bug reports to the Lean developers.
 -/
+import Tactics.Attr
 import Lean
 open Lean Elab Meta Tactic
 
@@ -22,7 +23,19 @@ with the goal state that is being run, and the time elapsed to solve the goal if
 was solved, and a 'failed to solve goal' if the goal was left unsolved.
 -/
 def run : TacticM Unit := do
-  evalTactic (← `(tactic| bv_omega))
+  let target ← getMainTarget
+  let startTime ← IO.monoMsNow
+  try
+    withoutRecover do
+    evalTactic (← `(tactic| bv_omega))
+    let endTime ← IO.monoMsNow
+    let delta := endTime - startTime
+    let filePath ← getBvOmegaBenchFilePath
+    IO.FS.withFile filePath IO.FS.Mode.append fun h => do
+      h.putStr "---\n"
+      h.putStr s!"{delta}\n{target}"
+  catch e =>
+    throw e
   return ()
 
 end BvOmegaBench
@@ -30,6 +43,6 @@ end BvOmegaBench
 
 @[tactic bvOmegaBench]
 def bvOmegaBenchTac : Tactic
-| `(tactic| bv_omega_bench) => 
+| `(tactic| bv_omega_bench) =>
    BvOmegaBench.run
 | _ => throwUnsupportedSyntax
