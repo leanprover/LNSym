@@ -50,8 +50,7 @@ def SubBytes_aux (i : Nat) (op : BitVec 128) (out : BitVec 128)
     let i := 16 - i
     let idx := (extractLsb' (i * 8) 8 op).toNat
     let val := extractLsb' (idx * 8) 8 $ BitVec.flatten SBOX
-    have h₁ : 8 = i * 8 + 7 - i * 8 + 1 := by omega
-    let out := BitVec.partInstall (i * 8 + 7) (i * 8) (BitVec.cast h₁ val) out
+    let out := BitVec.partInstall (i * 8) 8 val out
     SubBytes_aux i' op out
 
 def SubBytes (op : BitVec 128) : BitVec 128 :=
@@ -66,20 +65,18 @@ def MixColumns_aux (c : Nat)
   | 0 => (out0, out1, out2, out3)
   | c' + 1 =>
     let lo := (4 - c) * 8
-    let hi := lo + 7
     let in0_byte := extractLsb' lo 8 in0
     let in1_byte := extractLsb' lo 8 in1
     let in2_byte := extractLsb' lo 8 in2
     let in3_byte := extractLsb' lo 8 in3
-    have h : 8 = hi - lo + 1 := by omega
-    let val0 := BitVec.cast h $ FFmul02 in0_byte ^^^ FFmul03 in1_byte ^^^ in2_byte ^^^ in3_byte
-    let out0 := BitVec.partInstall hi lo val0 out0
-    let val1 := BitVec.cast h $ FFmul02 in1_byte ^^^ FFmul03 in2_byte ^^^ in3_byte ^^^ in0_byte
-    let out1 := BitVec.partInstall hi lo val1 out1
-    let val2 := BitVec.cast h $ FFmul02 in2_byte ^^^ FFmul03 in3_byte ^^^ in0_byte ^^^ in1_byte
-    let out2 := BitVec.partInstall hi lo val2 out2
-    let val3 := BitVec.cast h $ FFmul02 in3_byte ^^^ FFmul03 in0_byte ^^^ in1_byte ^^^ in2_byte
-    let out3 := BitVec.partInstall hi lo val3 out3
+    let val0 := FFmul02 in0_byte ^^^ FFmul03 in1_byte ^^^ in2_byte ^^^ in3_byte
+    let out0 := BitVec.partInstall lo 8 val0 out0
+    let val1 := FFmul02 in1_byte ^^^ FFmul03 in2_byte ^^^ in3_byte ^^^ in0_byte
+    let out1 := BitVec.partInstall lo 8 val1 out1
+    let val2 := FFmul02 in2_byte ^^^ FFmul03 in3_byte ^^^ in0_byte ^^^ in1_byte
+    let out2 := BitVec.partInstall lo 8 val2 out2
+    let val3 := FFmul02 in3_byte ^^^ FFmul03 in0_byte ^^^ in1_byte ^^^ in2_byte
+    let out3 := BitVec.partInstall lo 8 val3 out3
     MixColumns_aux c' in0 in1 in2 in3 out0 out1 out2 out3 FFmul02 FFmul03
 
 def MixColumns (op : BitVec 128) (FFmul02 : BitVec 8 -> BitVec 8)

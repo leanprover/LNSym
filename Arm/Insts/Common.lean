@@ -633,12 +633,10 @@ def elem_get (vector : BitVec n) (e : Nat) (size : Nat) : BitVec size :=
 the `e`'th element in the `vector`. -/
 @[state_simp_rules]
 def elem_set (vector : BitVec n) (e : Nat) (size : Nat)
-  (value : BitVec size) (h: size > 0): BitVec n :=
+  (value : BitVec size) : BitVec n :=
   -- assert (e+1)*size <= n
   let lo := e * size
-  let hi := lo + size - 1
-  have h : size = hi - lo + 1 := by simp only [hi, lo]; omega
-  BitVec.partInstall hi lo (BitVec.cast h value) vector
+  BitVec.partInstall lo size value vector
 
 ----------------------------------------------------------------------
 
@@ -681,7 +679,7 @@ def shift_right_common_aux
     let elem := Int_with_unsigned info.unsigned $ elem_get operand e info.esize
     let shift_elem := RShr info.unsigned elem info.shift info.round
     let acc_elem := elem_get operand2 e info.esize + shift_elem
-    let result := elem_set result e info.esize acc_elem info.h
+    let result := elem_set result e info.esize acc_elem
     have _ : info.elements - (e + 1) < info.elements - e := by omega
     shift_right_common_aux (e + 1) info operand operand2 result
   termination_by (info.elements - e)
@@ -703,7 +701,7 @@ def shift_left_common_aux
   else
     let elem := elem_get operand e info.esize
     let shift_elem := elem <<< info.shift
-    let result := elem_set result e info.esize shift_elem info.h
+    let result := elem_set result e info.esize shift_elem
     have _ : info.elements - (e + 1) < info.elements - e := by omega
     shift_left_common_aux (e + 1) info operand result
   termination_by (info.elements - e)
