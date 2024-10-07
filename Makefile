@@ -6,7 +6,6 @@ SHELL := /bin/bash
 
 LAKE = lake
 LEAN = $(LAKE) env lean
-GIT = git
 
 NUM_TESTS?=3
 VERBOSE?=--verbose

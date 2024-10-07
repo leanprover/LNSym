@@ -15,7 +15,8 @@ initialize
   registerOption `benchmark.runs {
     defValue := (5 : Nat)
     descr := "controls how many runs the `benchmark` command does. \
-    NOTE: this value is ignored when the `profiler` option is set to true"
+    NOTE: Benchmarks are run only once when the `profiler` option is true, \
+    regardless of the value of `benchmark.runs`"
   }
   /- Shouldn't be set directly, instead, use the `benchmark` command -/
   registerTraceClass `benchmark
@@ -44,11 +45,8 @@ def withBenchTraceNode (msg : MessageData) (x : CommandElabM α )
 /--
 Run a benchmark for a set number of times, and report the average runtime.
 
-If the `profiler` option is set true, we run the benchmark only once, with:
-- `trace.profiler` to true, and
-- `trace.profiler.output` set based on the `benchmark.profilerDir` and the
-    id of the benchmark
--/
+If the `profiler` option is set true, we run the benchmark only once,
+with `trace.profiler` to true. -/
 elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   let originalOpts ← getOptions
   let mut n := originalOpts.getNat `benchmark.runs 5
