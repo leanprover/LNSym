@@ -164,7 +164,7 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
   | apply Aligned_AddWithCarry_64_4'
   repeat solve
   | decide
-  | bv_omega
+  | bv_omega_bench
   | assumption
 
 /--
