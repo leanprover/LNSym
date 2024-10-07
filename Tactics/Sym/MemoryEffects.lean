@@ -115,7 +115,7 @@ def validate (eff : MemoryEffects) : MetaM Unit := do
   Sym.withTraceNode msg do
     eff.traceCurrentState
     check eff.effects
-    assertHasType eff.effects mkMemory
+    assertHasType eff.effects mkArmState
 
     check eff.proof
 
