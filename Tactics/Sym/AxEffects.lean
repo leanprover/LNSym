@@ -161,28 +161,6 @@ private def traceCurrentState (eff : AxEffects)
 
 /-! ## Helpers -/
 
-/--
-Rewrites `e` via some `eq`, producing a proof `e = e'` for some `e'`.
-
-Rewrites with a fresh metavariable as the ambient goal.
-Fails if the rewrite produces any subgoals.
--/
--- source: https://github.com/leanprover-community/mathlib4/blob/b35703fe5a80f1fa74b82a2adc22f3631316a5b3/Mathlib/Lean/Expr/Basic.lean#L476-L477
-private def rewrite (e eq : Expr) : MetaM Expr := do
-  let ⟨_, eq', []⟩ ← (← mkFreshExprMVar none).mvarId!.rewrite e eq
-    | throwError "Expr.rewrite may not produce subgoals."
-  return eq'
-
-/--
-Rewrites the type of `e` via some `eq`, then moves `e` into the new type via `Eq.mp`.
-
-Rewrites with a fresh metavariable as the ambient goal.
-Fails if the rewrite produces any subgoals.
--/
--- source: https://github.com/leanprover-community/mathlib4/blob/b35703fe5a80f1fa74b82a2adc22f3631316a5b3/Mathlib/Lean/Expr/Basic.lean#L476-L477
-private def rewriteType (e eq : Expr) : MetaM Expr := do
-  mkEqMP (← rewrite (← inferType e) eq) e
-
 /-- Given a `field` such that `fields ∉ eff.fields`, return a proof of
   `r field <currentState> = r field <initialState>`
 by constructing an application of `eff.nonEffectProof` -/
@@ -414,16 +392,6 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
   }
   eff.traceCurrentState "new state"
   return eff
-
-/-- Throw an error if `e` is not of type `expectedType` -/
-private def assertHasType (e expectedType : Expr) : MetaM Unit := do
-  let eType ← inferType e
-  if !(←isDefEq eType expectedType) then
-    throwError "{e} {← mkHasTypeButIsExpectedMsg eType expectedType}"
-
-private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
-  if !(←isDefEq e expected) then
-    throwError "expected:\n  {expected}\nbut found:\n  {e}"
 
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to `eff.currentState`,

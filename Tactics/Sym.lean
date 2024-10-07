@@ -5,6 +5,7 @@ Author(s): Shilpi Goel, Alex Keizer
 -/
 import Arm.Exec
 import Arm.Memory.MemoryProofs
+import Arm.Memory.SeparateAutomation
 import Tactics.FetchAndDecode
 import Tactics.Sym.Context
 
@@ -296,6 +297,41 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
 
       traceHeartbeats
 
+/-! ## simp_mem -/
+
+/-- TODO(@bollu): implement `simpMem` to simplify the
+reads from memory in the given target.
+We *do not* want to iterate over all the hypotheses at this point,
+since that would be way too expensive.
+-/
+def simpMem (_c : SymContext) (mvar : MVarId) : SymM MVarId := do
+  /-
+  This should actually allow us to not need the follow processing in `Proofs/Popcount32`:
+  simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *
+  simp only [memory_rules] at *
+  intro n addr h_separate
+  -- (TODO @alex/@bollu) Can we hope to make this shorter after the marriage
+  -- of `sym_n` and `simp_mem`?
+  simp_mem
+  sym_aggregate
+  simp only [*, bitvec_rules]
+  sym_aggregate
+  -/
+  let gs ← getGoals
+  setGoals [mvar]
+  evalTactic (← `(tactic| try simp_mem))
+  let gs' ← getGoals
+  match gs' with
+  | [g'] =>
+     setGoals gs
+     return g'
+  | [] => do
+    throwError "expected `simp_mem` to produce exactly one goal, but it was too clever and closed all goals."
+  | _ => do
+    throwError "expected `simp_mem` to produce only a single goal, but it produced more than one goal: {gs'}"
+
+/-! ## sym_n preprocessing -/
+
 /-- `ensureLessThanRunSteps n` will
 - log a warning and return `m`, if `runSteps? = some m` and `m < n`, or
 - return `n` unchanged, otherwise  -/
@@ -340,6 +376,8 @@ def assertStepTheoremsGenerated : SymM Unit :=
     #genStepEqTheorems {c.program}"
   -- TODO: can we make this error ^^ into a `Try this:` suggestion that
   --       automatically adds the right command just before the theorem?
+
+/-! ## sym_n -/
 
 /- used in `sym_n` tactic to specify an initial state -/
 syntax sym_at := "at" ident
@@ -429,6 +467,7 @@ elab "sym_n" whileTac?:(sym_while)? n:num s:(sym_at)? : tactic => do
       withMainContext' <|
       withTraceNode m!"aggregating (non-)effects" (tag := "aggregateEffects") <| do
         let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
+        let goal? ← goal?.mapM (simpMem c)
         replaceMainGoal goal?.toList
 
       traceHeartbeats "aggregation"
