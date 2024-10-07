@@ -27,6 +27,13 @@ def withVerboseTraceNode (msg : MessageData) (k : m α)
     : m α := do
   Lean.withTraceNode `Tactic.sym.verbose (fun _ => pure msg) k collapsed tag
 
+/-- Create a trace note that folds `header` with `(NOTE: can be large)`,
+and prints `msg` under such a trace node.
+-/
+def traceLargeMsg (header : MessageData) (msg : MessageData) : MetaM Unit :=
+    withTraceNode m!"{header} (NOTE: can be large)" do
+      trace[Tactic.sym] msg
+
 end Tracing
 
 end Sym
