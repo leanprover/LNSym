@@ -1142,6 +1142,11 @@ by_cases h : ix < base
   · simp only [h₂, ↓reduceIte]
   · simp only [h₂, ↓reduceIte, BitVec.getLsbD_extractLsByte]
 
+@[memory_rules]
+theorem Memory.read_bytes_write_bytes (m : Memory) :
+    Memory.read_bytes n addr (m.write_bytes n addr val) = val := by
+  sorry
+
 end Memory
 
 
