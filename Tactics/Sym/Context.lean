@@ -240,7 +240,9 @@ private def initial (state : Expr) : MetaM SymContext := do
   let finalState ← mkFreshExprMVar mkArmState
   /- Get the default simp lemmas & simprocs for aggregation -/
   let (aggregateSimpCtx, aggregateSimprocs) ←
-    LNSymSimpContext (config := {decide := true, failIfUnchanged := false})
+    LNSymSimpContext
+      (config := {decide := true, failIfUnchanged := false})
+      (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules, `memory_rules])
   let aggregateSimpCtx := { aggregateSimpCtx with
     -- Create a new discrtree for effect hypotheses to be added to.
     -- TODO(@alexkeizer): I put this here, since the previous version kept
