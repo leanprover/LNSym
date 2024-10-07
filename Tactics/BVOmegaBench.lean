@@ -14,16 +14,13 @@ open Lean Elab Meta Tactic
 
 namespace BvOmegaBench
 
-#check instToMessageDataMVarId
-#synth ToMessageData MVarId
-
 /--
 Run bv_omega, gather the results, and then store them at the value that is given by the option.
 By default, it's stored at `pwd`, with filename `omega-bench`. The file is appended to,
-with the goal state that is being run, and the time elapsed to solve the goal if the goal
-was solved, and a 'failed to solve goal' if the goal was left unsolved.
+with the goal state that is being run, and the time elapsed to solve the goal is written.
 -/
 def run : TacticM Unit := do
+  let minMs ← getBvOmegaBenchMinMs
   let goal ← getMainGoal
   let goalStr ← ppGoal goal
   let startTime ← IO.monoMsNow
@@ -31,11 +28,13 @@ def run : TacticM Unit := do
     withMainContext do
       withoutRecover do
         evalTactic (← `(tactic| bv_omega))
+        if !(← getBvOmegaBenchIsEnabled) then
+          return ()
         let endTime ← IO.monoMsNow
         let delta := endTime - startTime
         let filePath ← getBvOmegaBenchFilePath
         IO.FS.withFile filePath IO.FS.Mode.append fun h => do
-          if delta >= 1000 then
+          if delta >= minMs then
             h.putStrLn "\n---\n"
             h.putStrLn s!"time"
             h.putStrLn s!"{delta}"

@@ -31,10 +31,27 @@ initialize
   -- enable extra checks for debugging `sym_n`,
   -- see `AxEffects.validate` for more detail on what is being type-checked
 
-  register_option Tactic.bv_omega_bench.file_path : String := {
+  register_option Tactic.bv_omega_bench.filePath : String := {
     defValue := "/tmp/omega-bench.txt"
     descr := "File path that `omega-bench` writes its results to."
   }
 
+  register_option Tactic.bv_omega_bench.enabled : Bool := {
+    defValue := true,
+    descr := "Enable `bv_omega_bench`'s logging, which writes benchmarking data to `Tactic.bv_omega_bench.filePath`."
+  }
+
+  register_option Tactic.bv_omega_bench.minMs : Nat := {
+    defValue := 1000,
+    descr := "Log into `Tactic.bv_omega_bench.filePath` if the time spent in milliseconds is greater than or equal to `Tactic.bv_omega_bench.minMs`."
+  }
+
 def getBvOmegaBenchFilePath [Monad m] [MonadOptions m] : m String := do
-  return Tactic.bv_omega_bench.file_path.get (← getOptions)
+  return Tactic.bv_omega_bench.filePath.get (← getOptions)
+
+
+def getBvOmegaBenchIsEnabled [Monad m] [MonadOptions m] : m Bool := do
+  return Tactic.bv_omega_bench.enabled.get (← getOptions)
+
+def getBvOmegaBenchMinMs [Monad m] [MonadOptions m] : m Nat := do
+  return Tactic.bv_omega_bench.minMs.get (← getOptions)
