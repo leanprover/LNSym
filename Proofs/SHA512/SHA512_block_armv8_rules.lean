@@ -138,20 +138,16 @@ theorem truncate_of_concat_is_lsb_64 (x y : BitVec 64) :
   BitVec.zeroExtend 64 (x ++ y) = y := by
   bv_check "lrat_files/Sha512_block_armv8_rules.lean-truncate_of_concat_is_lsb_64-106-2.lrat"
 
-theorem truncate_of_concat_is_lsb (w : Nat) (x y : BitVec w) :
+theorem zeroExtend_append_eq (w : Nat) (x y : BitVec w) :
   BitVec.zeroExtend w (x ++ y) = y := by
   ext
-  simp [BitVec.leftshift_n_or_mod_2n]
+  simp only [truncate_append, Nat.le_refl, ↓reduceDIte, zeroExtend_eq]
 
+-- use BitVec.zeroExtend_zeroExtend_of_le for arbitrary-length bitvec
 theorem zeroextend_bigger_smaller_64 (x : BitVec 64) :
   BitVec.zeroExtend 64 (BitVec.zeroExtend 128 x) =
   BitVec.zeroExtend 64 x := by
   bv_omega
-
-theorem zeroextend_bigger_smaller (w : Nat) (x : BitVec w) :
-  BitVec.zeroExtend w (BitVec.zeroExtend (w + w) x) =
-  BitVec.zeroExtend w x := by
-  simp
 
 -- (FIXME) Generalize to arbitrary-length bitvecs.
 theorem rsh_concat_identity_128 (x : BitVec 128) :
