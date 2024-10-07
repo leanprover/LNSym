@@ -730,6 +730,8 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
              Nat.reduceSub,
              Nat.one_mul,
              reduceHShiftLeft,
+             -- FIXME: should partInstall be state_simp_rules?
+             partInstall,
              -- Eliminating casting functions
              Int.ofNat_eq_coe, ofInt_natCast, ofNat_toNat
     ]
@@ -825,6 +827,7 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
              Nat.reduceSub,
              Nat.one_mul,
              reduceHShiftLeft,
+             partInstall,
              -- Eliminating casting functions
              ofInt_eq_signExtend
     ]
@@ -904,7 +907,7 @@ theorem shift_left_common_aux_64_2 (operand : BitVec 128)
   simp only [minimal_theory, bitvec_rules]
   unfold shift_left_common_aux
   simp only [minimal_theory, bitvec_rules]
-  simp only [state_simp_rules, minimal_theory, bitvec_rules]
+  simp only [state_simp_rules, minimal_theory, bitvec_rules, partInstall]
   bv_decide
 
 @[state_simp_rules]
