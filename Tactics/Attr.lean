@@ -30,6 +30,7 @@ initialize
 
   -- enable extra checks for debugging `sym_n`,
   -- see `AxEffects.validate` for more detail on what is being type-checked
+
   register_option Tactic.bv_omega_bench.file_path : String := {
     defValue := "/tmp/omega-bench.txt"
     descr := "File path that `omega-bench` writes its results to."

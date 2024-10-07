@@ -23,7 +23,7 @@ with the goal state that is being run, and the time elapsed to solve the goal if
 was solved, and a 'failed to solve goal' if the goal was left unsolved.
 -/
 def run : TacticM Unit := do
-  let target ← getMainTarget
+  let goal ← getMainGoal
   let startTime ← IO.monoMsNow
   try
     withoutRecover do
@@ -32,8 +32,14 @@ def run : TacticM Unit := do
     let delta := endTime - startTime
     let filePath ← getBvOmegaBenchFilePath
     IO.FS.withFile filePath IO.FS.Mode.append fun h => do
-      h.putStr "---\n"
-      h.putStr s!"{delta}\n{target}"
+      if delta >= 1000 then
+        h.putStrLn "\n---\n"
+        h.putStrLn s!"time"
+        h.putStrLn s!"{delta}"
+        h.putStrLn s!"endtime"
+        h.putStrLn s!"goal"
+        h.putStrLn (← m!"{goal}".toString)
+        h.putStrLn s!"endgoal"
   catch e =>
     throw e
   return ()
