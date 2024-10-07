@@ -6,6 +6,7 @@ Author(s): Shilpi Goel
 import Arm.State
 import Arm.Memory.Separate
 import Std.Tactic.BVDecide
+import Tactics.BVOmegaBench
 
 ----------------------------------------------------------------------
 
@@ -30,45 +31,45 @@ theorem n_minus_1_lt_2_64_1 (n : Nat)
 -- (FIXME) Prove for all bitvector widths.
 theorem BitVec.add_sub_self_left_64 (a m : BitVec 64) :
   a + m - a = m := by
-  bv_omega
+  bv_omega_bench
 
 -- (FIXME) Prove for all bitvector widths.
 theorem BitVec.add_sub_self_right_64 (a m : BitVec 64) :
   a + m - m = a := by
-  bv_omega
+  bv_omega_bench
 
 -- (FIXME) Prove for all bitvector widths.
 theorem BitVec.add_sub_add_left (a m n : BitVec 64) :
   a + m - (a + n) = m - n := by
-  bv_omega
+  bv_omega_bench
 
 -- (FIXME) Prove for all bitvector widths, using general assoc/comm
 -- BitVec lemmas.
 theorem BitVec.sub_of_add_is_sub_sub (a b c : BitVec 64) :
   (a - (b + c)) = a - b - c := by
-  bv_omega
+  bv_omega_bench
 
 -- (FIXME) Prove for all bitvector widths, using general assoc/comm
 -- BitVec lemmas.
 theorem BitVec.add_of_sub_sub_of_add (a b c : BitVec 64) :
   (a + b - c) = a - c + b := by
-  bv_omega
+  bv_omega_bench
 
 theorem nat_bitvec_sub1 (x y : BitVec 64)
   (_h : y.toNat <= x.toNat) :
   (x - y).toNat = (x.toNat - y.toNat) % 2^64 := by
-  bv_omega
+  bv_omega_bench
 
 theorem nat_bitvec_sub2 (x y : Nat)
   (h : y <= x) (xub : x < 2^64) :
   BitVec.ofNat 64 (x - y) =
   (BitVec.ofNat 64 x) - (BitVec.ofNat 64 y) := by
-  bv_omega
+  bv_omega_bench
 
 theorem addr_add_one_add_m_sub_one  (n : Nat) (addr : BitVec 64)
   (h_lb : Nat.succ 0 ≤ n) (h_ub : n + 1 ≤ 2 ^ 64) :
   (addr + 1#64 + (BitVec.ofNat 64 (n - 1))) = addr + (BitVec.ofNat 64 n) := by
-  bv_omega
+  bv_omega_bench
 
 ----------------------------------------------------------------------
 ---- mem_subset ----
@@ -124,7 +125,7 @@ theorem first_address_add_one_is_subset_of_region (n : Nat) (addr : BitVec 64)
   mem_subset (addr + 1#64) (addr + (BitVec.ofNat 64 n)) addr (addr + (BitVec.ofNat 64 n)) := by
   simp [mem_subset]
   apply first_address_add_one_is_subset_of_region_helper
-  bv_omega
+  bv_omega_bench
 
 private theorem first_addresses_add_one_is_subset_of_region_general_helper
   (n m addr1 addr2 : BitVec 64) (h0 : 0#64 < m) :
@@ -146,7 +147,7 @@ theorem first_addresses_add_one_is_subset_of_region_general
   revert h3
   simp [mem_subset]
   apply first_addresses_add_one_is_subset_of_region_general_helper
-  bv_omega
+  bv_omega_bench
 
 private theorem first_addresses_add_one_preserves_subset_same_addr_helper (h1l : 0#64 < m) :
   m - 1#64 ≤ (BitVec.ofNat 64 (2^64 - 1)) - 1#64 := by
@@ -208,9 +209,9 @@ theorem mem_subset_one_addr_region_lemma (addr1 addr2 : BitVec 64) (h : n1 <= 2 
   mem_subset addr1 (addr1 + (BitVec.ofNat 64 n1) - 1#64) addr2 addr2 → (n1 = 1) ∧ (addr1 = addr2) := by
   simp [mem_subset]
   have h0 := mem_subset_one_addr_region_lemma_helper (BitVec.ofNat 64 n1) addr1 addr2
-  have h1 : 0#64 ≠ 18446744073709551615#64 := by bv_omega
+  have h1 : 0#64 ≠ 18446744073709551615#64 := by bv_omega_bench
   simp_all only [ofNat_eq_ofNat, and_imp, ne_eq, false_or]
-  have h2 : (BitVec.ofNat 64 n1) = 1#64 → n1 = 1 := by bv_omega
+  have h2 : (BitVec.ofNat 64 n1) = 1#64 → n1 = 1 := by bv_omega_bench
   intro h₀ h₁
   simp_all only [true_implies, BitVec.sub_self, and_self]
 
@@ -218,16 +219,16 @@ theorem mem_subset_one_addr_region_lemma_alt (addr1 addr2 : BitVec 64)
   (h : n1 < 2 ^ 64) :
   mem_subset addr1 (addr1 + (BitVec.ofNat 64 n1)) addr2 addr2 → (n1 = 0) ∧ (addr1 = addr2) := by
   simp only [mem_subset, bitvec_rules, minimal_theory]
-  have h1 : 0#64 ≠ 18446744073709551615#64 := by bv_omega
+  have h1 : 0#64 ≠ 18446744073709551615#64 := by bv_omega_bench
   simp_all only [ne_eq, false_or, and_imp]
-  bv_omega
+  bv_omega_bench
 
 theorem mem_subset_same_region_lemma
   (h0 : 0 < n)
   (h1 : Nat.succ n ≤ 2 ^ 64) :
   mem_subset (addr + 1#64) (addr + 1#64 + (BitVec.ofNat 64 (n - 1))) addr (addr + (BitVec.ofNat 64 (Nat.succ n - 1))) := by
   simp [mem_subset]
-  bv_omega
+  bv_omega_bench
   done
 
 theorem mem_subset_trans
@@ -281,7 +282,7 @@ theorem mem_separate_contiguous_regions_one_address (addr : BitVec 64) (h : n' <
   mem_separate addr addr (addr + 1#64) (addr + 1#64 + (BitVec.ofNat 64 (n' - 1))) := by
   simp [mem_separate, mem_overlap]
   have h' : (BitVec.ofNat 64 (n' - 1)) < 0xffffffffffffffff#64 := by
-    bv_omega
+    bv_omega_bench
   apply mem_separate_contiguous_regions_one_address_helper
   assumption
 
