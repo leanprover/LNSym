@@ -7,7 +7,7 @@ import Arm.FromMathlib
 import Arm.State
 import Arm.Memory.Separate
 import Arm.Memory.SeparateProofs
-import Tactics.BVOmegaBench
+import Tactics.BvOmegaBench
 -- In this file, we have memory (non-)interference proofs.
 
 ----------------------------------------------------------------------

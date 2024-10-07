@@ -12,9 +12,10 @@ import Tactics.Attr
 import Lean
 open Lean Elab Meta Tactic
 
-syntax (name := bvOmegaBench) "bv_omega_bench" : tactic
-
 namespace BvOmegaBench
+
+#check instToMessageDataMVarId
+#synth ToMessageData MVarId
 
 /--
 Run bv_omega, gather the results, and then store them at the value that is given by the option.
@@ -24,31 +25,34 @@ was solved, and a 'failed to solve goal' if the goal was left unsolved.
 -/
 def run : TacticM Unit := do
   let goal ← getMainGoal
+  let goalStr ← ppGoal goal
   let startTime ← IO.monoMsNow
   try
-    withoutRecover do
-    evalTactic (← `(tactic| bv_omega))
-    let endTime ← IO.monoMsNow
-    let delta := endTime - startTime
-    let filePath ← getBvOmegaBenchFilePath
-    IO.FS.withFile filePath IO.FS.Mode.append fun h => do
-      if delta >= 1000 then
-        h.putStrLn "\n---\n"
-        h.putStrLn s!"time"
-        h.putStrLn s!"{delta}"
-        h.putStrLn s!"endtime"
-        h.putStrLn s!"goal"
-        h.putStrLn (← m!"{goal}".toString)
-        h.putStrLn s!"endgoal"
+    withMainContext do
+      withoutRecover do
+        evalTactic (← `(tactic| bv_omega))
+        let endTime ← IO.monoMsNow
+        let delta := endTime - startTime
+        let filePath ← getBvOmegaBenchFilePath
+        IO.FS.withFile filePath IO.FS.Mode.append fun h => do
+          if delta >= 1000 then
+            h.putStrLn "\n---\n"
+            h.putStrLn s!"time"
+            h.putStrLn s!"{delta}"
+            h.putStrLn s!"endtime"
+            h.putStrLn s!"goal"
+            h.putStrLn goalStr.pretty
+            h.putStrLn s!"endgoal"
   catch e =>
     throw e
   return ()
 
 end BvOmegaBench
 
+syntax (name := bvOmegaBenchTac) "bv_omega_bench" : tactic
 
-@[tactic bvOmegaBench]
-def bvOmegaBenchTac : Tactic
+@[tactic bvOmegaBenchTac]
+def bvOmegaBenchImpl : Tactic
 | `(tactic| bv_omega_bench) =>
    BvOmegaBench.run
 | _ => throwUnsupportedSyntax

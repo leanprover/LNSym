@@ -6,7 +6,7 @@ Author(s): Shilpi Goel
 import Arm.State
 import Arm.Memory.Separate
 import Std.Tactic.BVDecide
-import Tactics.BVOmegaBench
+import Tactics.BvOmegaBench
 
 ----------------------------------------------------------------------
 
