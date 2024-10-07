@@ -30,6 +30,7 @@ def aggregate (axHyps : Array LocalDecl) (location : Location)
 
     let config := simpConfig?.getD aggregate.defaultSimpConfig
     let (ctx, simprocs) ← LNSymSimpContext
+        (noIndexAtArgs := false)
         (config := config)
         (decls := axHyps)
 
