@@ -80,7 +80,11 @@ structure AxEffects where
   stackAlignmentProof? : Option Expr
 
   /-- `sideContitions` are proof obligations that come up during effect
-  characterization. -/
+  characterization.
+
+  Currently, the only side condition that arises is of the form
+  `CheckSPAlignment _`, after updating the SP, but this may change
+  when we add better handling for branches -/
   sideConditions : List MVarId
   deriving Repr
 
@@ -311,7 +315,7 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
 
   -- Update the stack alignment proof
   let stackAlignmentProof? := eff.stackAlignmentProof?.map fun proof =>
-    mkAppN (mkConst ``CheckSPAligment_write_mem_bytes_of)
+    mkAppN (mkConst ``CheckSPAlignment_write_mem_bytes_of)
       #[eff.currentState, n, addr, val, proof]
 
   -- Assemble the result
@@ -417,14 +421,14 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
       let hNeq ← mkDecideProof <|
         mkApp3 (.const ``Ne [1])
           (mkConst ``StateField) (toExpr StateField.SP) fld
-      stackAlignmentProof? := mkAppN (mkConst ``CheckSPAligment_w_of_ne_sp_of)
+      stackAlignmentProof? := mkAppN (mkConst ``CheckSPAlignment_w_of_ne_sp_of)
         #[fld, eff.currentState, val, hNeq, proof]
     else
       let hAligned ← mkFreshExprMVar (some <|
         mkApp3 (mkConst ``Aligned) (toExpr 64) val (toExpr 4)
       )
       sideConditions := hAligned.mvarId! :: sideConditions
-      stackAlignmentProof? := mkAppN (mkConst ``CheckSPAligment_w_sp_of)
+      stackAlignmentProof? := mkAppN (mkConst ``CheckSPAlignment_w_sp_of)
         #[val, eff.currentState, hAligned]
 
   -- Assemble the result
