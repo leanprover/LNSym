@@ -9,6 +9,7 @@ Author(s): Shilpi Goel, Siddharth Bhat
 ----------------------------------------------------------------------
 
 import Arm.Attr
+import Tactics.BVOmegaBench
 
 namespace BitVec
 
@@ -1124,15 +1125,15 @@ theorem toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
     x.toNat * z.toNat ≤ k := by
   apply Nat.le_trans (m := x.toNat * y.toNat)
   · apply Nat.mul_le_mul_left
-    bv_omega
+    bv_omega_bench
   · exact hxy
 
 
 /-! ## Length one bitvector lemmas -/
 
-theorem eq_one_iff_neq_zero {a : BitVec 1} : a ≠ 0#1 ↔ a = 1#1 := by bv_omega
+theorem eq_one_iff_neq_zero {a : BitVec 1} : a ≠ 0#1 ↔ a = 1#1 := by bv_omega_bench
 
-theorem eq_zero_iff_neq_one {a : BitVec 1} : a ≠ 1#1 ↔ a = 0#1 := by bv_omega
+theorem eq_zero_iff_neq_one {a : BitVec 1} : a ≠ 1#1 ↔ a = 0#1 := by bv_omega_bench
 
 /-! ## `Quote` instance -/
 
