@@ -78,6 +78,14 @@ structure AxEffects where
   However, if SP is written to, no effort is made to prove alignment of the
   new value; the field will be set to `none` -/
   stackAlignmentProof? : Option Expr
+
+  /-- `sideContitions` are proof obligations that come up during effect
+  characterization.
+
+  Currently, the only side condition that arises is of the form
+  `CheckSPAlignment _`, after updating the SP, but this may change
+  when we add better handling for branches -/
+  sideConditions : List MVarId
   deriving Repr
 
 namespace AxEffects
@@ -141,6 +149,7 @@ def initial (state : Expr) : AxEffects where
       mkConst ``Program,
       mkApp (mkConst ``ArmState.program) state]
   stackAlignmentProof? := none
+  sideConditions := []
 
 /-! ## ToMessageData -/
 
@@ -304,6 +313,11 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
         #[eff.currentState, n, addr, val])
       eff.programProof
 
+  -- Update the stack alignment proof
+  let stackAlignmentProof? := eff.stackAlignmentProof?.map fun proof =>
+    mkAppN (mkConst ``CheckSPAlignment_write_mem_bytes_of)
+      #[eff.currentState, n, addr, val, proof]
+
   -- Assemble the result
   let addWrite (e : Expr) :=
     -- `@write_mem_bytes <n> <addr> <val> <e>`
@@ -315,6 +329,7 @@ private def update_write_mem (eff : AxEffects) (n addr val : Expr) :
     memoryEffect    := addWrite eff.memoryEffect
     memoryEffectProof
     programProof
+    stackAlignmentProof?
   }
   withTraceNode `Tactic.sym (fun _ => pure "new state") <| do
       trace[Tactic.sym] "{eff}"
@@ -398,6 +413,24 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
       (mkAppN (mkConst ``w_program) #[fld, val, eff.currentState])
       eff.programProof
 
+  -- Update the stack alignment proof
+  let mut sideConditions := eff.sideConditions
+  let mut stackAlignmentProof? := eff.stackAlignmentProof?
+  if let some proof := stackAlignmentProof? then
+    if rField ≠ StateField.SP then
+      let hNeq ← mkDecideProof <|
+        mkApp3 (.const ``Ne [1])
+          (mkConst ``StateField) (toExpr StateField.SP) fld
+      stackAlignmentProof? := mkAppN (mkConst ``CheckSPAlignment_w_of_ne_sp_of)
+        #[fld, eff.currentState, val, hNeq, proof]
+    else
+      let hAligned ← mkFreshExprMVar (some <|
+        mkApp3 (mkConst ``Aligned) (toExpr 64) val (toExpr 4)
+      )
+      sideConditions := hAligned.mvarId! :: sideConditions
+      stackAlignmentProof? := mkAppN (mkConst ``CheckSPAlignment_w_sp_of)
+        #[val, eff.currentState, hAligned]
+
   -- Assemble the result
   let eff := { eff with
     currentState    := mkApp3 (mkConst ``w) fld val eff.currentState
@@ -406,6 +439,8 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
     -- memory effects are unchanged
     memoryEffectProof
     programProof
+    stackAlignmentProof?
+    sideConditions
   }
   eff.traceCurrentState "new state"
   return eff
@@ -477,9 +512,12 @@ def adjustCurrentStateWithEq (eff : AxEffects) (s eq : Expr) :
     -- ^^ TODO: what happens if `memoryEffect` is the same as `currentState`?
     --    Presumably, we would *not* want to encapsulate `memoryEffect` here
     let programProof ← rewriteType eff.programProof eq
+    let stackAlignmentProof? ← eff.stackAlignmentProof?.mapM
+      (rewriteType · eq)
 
     return { eff with
-      currentState, fields, nonEffectProof, memoryEffectProof, programProof
+      currentState, fields, nonEffectProof, memoryEffectProof, programProof,
+      stackAlignmentProof?
     }
 
 /-- Given a proof `eq : ?s = <sequence of w/write_mem to eff.currentState>`,
@@ -503,10 +541,14 @@ def updateWithEq (eff : AxEffects) (eq : Expr) : MetaM AxEffects :=
 where `?s` and `?s0` are arbitrary `ArmState`s,
 return an `AxEffect` with `?s0` as the initial state,
 the rhs of the equality as the current state,
-and the (non-)effects updated accordingly -/
-def fromEq (eq : Expr) : MetaM AxEffects := do
+and the (non-)effects updated accordingly
+
+One can optionally pass in a proof that `?s0` has a well-aligned stack pointer.
+-/
+def fromEq (eq : Expr) (stackAlignmentProof? : Option Expr := none) :
+    MetaM AxEffects := do
   let s0 ← mkFreshExprMVar mkArmState
-  let eff := initial s0
+  let eff := { initial s0 with stackAlignmentProof? }
   let eff ← eff.updateWithEq eq
   return { eff with initialState := ← instantiateMVars eff.initialState}
 
@@ -569,34 +611,6 @@ def withField (eff : AxEffects) (eq : Expr) : MetaM AxEffects := do
       let proof ← mkEqMP valEq fieldEff.proof
       let fields := eff.fields.insert field { value, proof }
       return { eff with fields }
-
-/-- Given a proof of `CheckSPAlignment <initialState>`,
-attempt to transport it to a proof of `CheckSPAlignment <currentState>`
-and store that proof in `stackAlignmentProof?`.
-
-Returns `none` if the proof failed to be transported,
-i.e., if SP was written to. -/
-def withStackAlignment? (eff : AxEffects) (spAlignment : Expr) :
-    MetaM (Option AxEffects) := do
-  let msg := m!"withInitialStackAlignment? {spAlignment}"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| do
-    eff.traceCurrentState
-
-    let { value, proof } ← eff.getField StateField.SP
-    let expected :=
-      mkApp2 (mkConst ``r) (toExpr <| StateField.SP) eff.initialState
-    trace[Tactic.sym] "checking whether value:\n  {value}\n\
-      is syntactically equal to expected value\n  {expected}"
-    if value != expected then
-      trace[Tactic.sym] "failed to transport proof:
-        expected value to be {expected}, but found {value}"
-      return none
-
-    let stackAlignmentProof? := some <|
-      mkAppN (mkConst ``CheckSPAlignment_of_r_sp_eq)
-        #[eff.initialState, eff.currentState, proof, spAlignment]
-    trace[Tactic.sym] "constructed stackAlignmentProof: {stackAlignmentProof?}"
-    return some { eff with stackAlignmentProof? }
 
 /-! ## Composition -/
 
