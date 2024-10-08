@@ -1112,33 +1112,4 @@ instance (w : Nat) : Quote (BitVec w) `term where
   quote x :=
     Syntax.mkCApp ``BitVec.ofNat #[quote w, quote x.toNat]
 
-/-! ## Masking simproc -/
-
-#eval 18446744073709551615#128
-
-def maskOfLength? (m : Nat) : Option Nat :=
-  let logm := Nat.log2 (m+1)
-  if m = 2 ^ logm - 1 then
-    some logm
-  else
-    none
-
--- theorem and_ofNat_two_pow {w n : Nat} (x : BitVec w) (h : n ≤ w) :
---     x &&& BitVec.ofNat w (2^n - 1) = x.setWidth n := by
---   sorry
-
-#check reduceAdd
-#check AndOp.and
-simproc simpAndMask ((_ &&& _ : BitVec _)) := fun e => do
-  let_expr AndOp.and _ _ lhs rhs := e
-    | return .continue
-
-  let some ⟨w, rhs⟩ ← Meta.getBitVecValue? rhs
-    | return .continue
-
-  let some m := maskOfLength? rhs.toNat
-    | return .continue
-
-  return .continue
-
 end BitVec
