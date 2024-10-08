@@ -90,6 +90,21 @@ def AdvSIMDExpandImm (op : BitVec 1) (cmode : BitVec 4) (imm8 : BitVec 8) : BitV
       lsb imm8 7 ++ ~~~(lsb imm8 6) ++
         (replicate 8 $ lsb imm8 6) ++ extractLsb' 0 6 imm8 ++ BitVec.zero 48
 
+open Lean Meta Simp in
+dsimproc [state_simp_rules] reduceAdvSIMDExpandImm (AdvSIMDExpandImm _ _ _) := fun e => do
+  let_expr AdvSIMDExpandImm op cmode imm8 ← e | return .continue
+  let some ⟨op_n, op⟩ ← getBitVecValue? op | return .continue
+  if h_op_n : ¬ op_n = 1 then return .continue
+  else
+    let some ⟨cmode_n, cmode⟩ ← getBitVecValue? cmode | return .continue
+    if h_cmode_n : ¬ cmode_n = 4 then return .continue
+    else
+      let some ⟨imm8_n, imm8⟩ ← getBitVecValue? imm8 | return .continue
+      if h_imm8_n : ¬ imm8_n = 8 then return .continue else
+      return .done <| toExpr (AdvSIMDExpandImm
+                                (BitVec.cast (by simp_all only [Decidable.not_not]) op)
+                                (BitVec.cast (by simp_all only [Decidable.not_not]) cmode)
+                                (BitVec.cast (by simp_all only [Decidable.not_not]) imm8))
 
 private theorem mul_div_norm_form_lemma  (n m : Nat) (_h1 : 0 < m) (h2 : n ∣ m) :
   (n * (m / n)) = n * m / n := by

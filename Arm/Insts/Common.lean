@@ -648,7 +648,6 @@ structure ShiftInfo where
   unsigned := true
   round := false
   accumulate := false
-  h : esize > 0
 deriving DecidableEq, Repr
 
 export ShiftInfo (esize elements shift unsigned round accumulate)
