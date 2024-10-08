@@ -33,6 +33,17 @@ lean_lib «Doc» where
   -- add library configuration options here
 
 lean_lib «Benchmarks» where
+  /- We want `lake build Benchmarks` to build all dependencies needed to run
+  benchmarks, but not run the actual benchmarks themselves.
+  To ensure we build all dependencies, we build the actual benchmark files,
+  but to prevent the benchmarks from running, we set the `benchmark.runs` option
+  to `0`.
+
+  Note that regular options (without the `weak` prefix) are checked to exist,
+  but not all files will have imported the `benchmark.runs` option, so we have
+  to set the option with the `weak` prefix. As a result, the option will be
+  silently ignored when compiling files where the option hasn't been defined -/
+  leanOptions := #[⟨`weak.benchmark.runs, (0 : Nat)⟩]
   -- add library configuration options here
 
 @[default_target]

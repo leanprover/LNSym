@@ -28,7 +28,8 @@ The default `make` command corresponds to the following invocation:
 
 `clean`: remove build outputs.
 
-`clean_all`: `clean` plus remove Lean dependencies.
+`clean_all`: `clean` plus remove Lean dependencies and
+    all benchmarking and profiling data.
 
 `specs`: [run under `all`] builds only the specifications of
 native-code programs of interest.
@@ -42,6 +43,8 @@ native-code programs of interest.
 `awslc_elf`: perform ELF loading tests for AWS-LC.
 
 `benchmarks`: run benchmarks for the symbolic simulator.
+
+`profiler`: run a single round of each benchmark, with the profiler enabled
 
 ### Makefile variables that can be passed in at the command line
 
