@@ -1,7 +1,7 @@
 /-
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Alex Keizer
+Author(s): Alex Keizer, Shilpi Goel
 -/
 import Specs.GCMV8
 import Tests.«AES-GCM».GCMGmultV8Program
@@ -28,13 +28,22 @@ private theorem msb_from_extractLsb'_of_append_self (x : BitVec 128) :
   BitVec.extractLsb' 64 64 x := by
   bv_decide
 
-theorem extractLsb'_extractLsb'_of_le (h : len1 ≤ len2) :
+theorem extractLsb'_zero_extractLsb'_of_le (h : len1 ≤ len2) :
   BitVec.extractLsb' 0 len1 (BitVec.extractLsb' start len2 x) =
   BitVec.extractLsb' start len1 x := by
   apply BitVec.eq_of_getLsbD_eq; intro i
   simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
              decide_True, Nat.zero_add, Bool.true_and,
              Bool.and_iff_right_iff_imp, decide_eq_true_eq]
+  omega
+
+theorem extractLsb'_extractLsb'_zero_of_le (h : start + len1 ≤ len2):
+  BitVec.extractLsb' start len1 (BitVec.extractLsb' 0 len2 x) =
+  BitVec.extractLsb' start len1 x := by
+  apply BitVec.eq_of_getLsbD_eq; intro i
+  simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
+            decide_True, Nat.zero_add, Bool.true_and,
+            Bool.and_iff_right_iff_imp, decide_eq_true_eq]
   omega
 
 set_option pp.deepTerms false in
@@ -149,11 +158,13 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     -- (FIXME @bollu) cse leaves the goal unchanged here, quietly, likely due to
     -- subexpressions occurring in dep. contexts. Maybe a message here would be helpful.
     generalize h_Xi_rev : rev_vector 128 64 8 Xi _ _ _ _ _ = Xi_rev
-    repeat rw [extractLsb'_extractLsb'_of_le (by decide)]
     -- Simplifying the RHS
     simp only [←h_HTable, GCMV8.GCMGmultV8_alt,
                GCMV8.lo, GCMV8.hi,
                GCMV8.gcm_polyval]
+    repeat rw [extractLsb'_zero_extractLsb'_of_le (by decide)]
+    repeat rw [extractLsb'_extractLsb'_zero_of_le (by decide)]
+
     sorry
   done
 
