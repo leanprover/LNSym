@@ -9,6 +9,7 @@ import Lean.Meta
 import Arm.Exec
 import Tactics.Common
 import Tactics.Attr
+import Tactics.Sym.Common
 import Tactics.Sym.ProgramInfo
 import Tactics.Sym.AxEffects
 import Tactics.Sym.LCtxSearch
@@ -33,6 +34,7 @@ and is likely to be deprecated and removed in the near future. -/
 
 open Lean Meta Elab.Tactic
 open BitVec
+open Sym (withTraceNode withVerboseTraceNode)
 
 /-- A `SymContext` collects the names of various variables/hypotheses in
 the local context required for symbolic evaluation -/
@@ -156,17 +158,18 @@ def program : Name := c.programInfo.name
 
 /-- Find the local declaration that corresponds to a given name,
 or throw an error if no local variable of that name exists -/
-def findFromUserName (name : Name) : MetaM LocalDecl := do
-  let some decl := (← getLCtx).findFromUserName? name
-    | throwError "Unknown local variable `{name}`"
-  return decl
+def findFromUserName (name : Name) : MetaM LocalDecl :=
+  withVerboseTraceNode m!"[findFromUserName] {name}" <| do
+    let some decl := (← getLCtx).findFromUserName? name
+      | throwError "Unknown local variable `{name}`"
+    return decl
 
 /-- Find the local declaration that corresponds to `c.h_run`,
 or throw an error if no local variable of that name exists -/
 def hRunDecl : MetaM LocalDecl := do
   findFromUserName c.h_run
 
-section Monad
+section MonadicGetters
 variable {m} [Monad m] [MonadReaderOf SymContext m]
 
 def getCurrentStateNumber : m Nat := do return (← read).currentStateNumber
@@ -184,7 +187,7 @@ def getNextStateName : m Name := do
   let c ← read
   return Name.mkSimple s!"{c.state_prefix}{c.currentStateNumber + 1}"
 
-end Monad
+end MonadicGetters
 
 end
 
@@ -204,14 +207,8 @@ def toMessageData (c : SymContext) : MetaM MessageData := do
   curr_state_number := {c.currentStateNumber},
   effects := {c.effects} }"
 
-variable {α : Type} {m : Type → Type} [Monad m] [MonadTrace m] [MonadLiftT IO m]
-  [MonadRef m] [AddMessageContext m] [MonadOptions m] {ε : Type}
-  [MonadAlwaysExcept ε m] [MonadLiftT BaseIO m] in
-def withSymTraceNode (msg : MessageData) (k : m α) : m α := do
-  withTraceNode `Tactic.sym (fun _ => pure msg) k
-
 def traceSymContext : SymM Unit :=
-  withTraceNode `Tactic.sym (fun _ => pure m!"SymContext: ") <| do
+  withTraceNode m!"SymContext: " <| do
     let m ← (← getThe SymContext).toMessageData
     trace[Tactic.sym] m
 
@@ -431,7 +428,7 @@ we create a new subgoal of this type.
 -/
 def fromMainContext (state? : Option Name) : TacticM SymContext := do
   let msg := m!"Building a `SymContext` from the local context"
-  withTraceNode `Tactic.sym (fun _ => pure msg) <| withMainContext' do
+  withTraceNode msg (tag := "fromMainContext") <| withMainContext' do
   trace[Tactic.Sym] "state? := {state?}"
   let lctx ← getLCtx
 
@@ -464,16 +461,17 @@ evaluation:
   * the `currentStateNumber` is incremented
 -/
 def prepareForNextStep : SymM Unit := do
-  let pc ← do
-    let { value, ..} ← AxEffects.getFieldM .PC
-    try
-      reflectBitVecLiteral 64 value
-    catch err =>
-      trace[Tactic.sym] "failed to reflect PC: {err.toMessageData}"
-      pure <| (← getThe SymContext).pc + 4
+  withVerboseTraceNode "prepareForNextStep" (tag := "prepareForNextStep") <| do
+    let pc ← do
+      let { value, ..} ← AxEffects.getFieldM .PC
+      try
+        reflectBitVecLiteral 64 value
+      catch err =>
+        trace[Tactic.sym] "failed to reflect PC: {err.toMessageData}"
+        pure <| (← getThe SymContext).pc + 4
 
-  modifyThe SymContext (fun c => { c with
-    pc
-    runSteps?   := (· - 1) <$> c.runSteps?
-    currentStateNumber := c.currentStateNumber + 1
-  })
+    modifyThe SymContext (fun c => { c with
+      pc
+      runSteps?   := (· - 1) <$> c.runSteps?
+      currentStateNumber := c.currentStateNumber + 1
+    })
