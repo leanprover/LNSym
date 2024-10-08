@@ -28,7 +28,8 @@ The default `make` command corresponds to the following invocation:
 
 `clean`: remove build outputs.
 
-`clean_all`: `clean` plus remove Lean dependencies.
+`clean_all`: `clean` plus remove Lean dependencies and
+    all benchmarking and profiling data.
 
 `specs`: [run under `all`] builds only the specifications of
 native-code programs of interest.

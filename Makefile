@@ -68,3 +68,5 @@ clean_all: clean
 	rm -rf lake-packages
 	rm -rf .lake
 	rm -rf lakefile.olean
+	rm -rf data/benchmarks
+	rm -rf data/profiles
