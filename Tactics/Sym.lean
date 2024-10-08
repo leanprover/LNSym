@@ -185,7 +185,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
     eff ← eff.withField (← c.effects.getField .ERR).proof
 
     if let some hSp := c.effects.stackAlignmentProof? then
-      withVerboseTraceNode m!"discharging side condiitions" <| do
+      withVerboseTraceNode m!"discharging side conditions" <| do
         for subGoal in eff.sideConditions do
           trace[Tactic.sym] "attempting to discharge side-condition:\n  {subGoal}"
           let subGoal? ← do
