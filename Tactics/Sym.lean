@@ -52,7 +52,7 @@ to add a new local hypothesis in terms of `w` and `write_mem`
 -/
 def stepiTac (stepiEq : Expr) (hStep : Name) : SymReaderM Unit := fun ctx =>
   withMainContext' <|
-  withVerboseTraceNode m!"stepiTac: {stepiEq}" <| do
+  withVerboseTraceNode m!"stepiTac: {stepiEq}" (tag := "stepiTac") <| do
     let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
     --  ^^ The PC in hex
     let stepLemma := Name.str ctx.program s!"stepi_eq_0x{pc}"
