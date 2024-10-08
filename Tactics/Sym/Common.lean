@@ -28,3 +28,5 @@ def withVerboseTraceNode (msg : MessageData) (k : m α)
   Lean.withTraceNode `Tactic.sym.verbose (fun _ => pure msg) k collapsed tag
 
 end Tracing
+
+end Sym
