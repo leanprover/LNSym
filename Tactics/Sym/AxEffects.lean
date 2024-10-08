@@ -455,7 +455,10 @@ private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
 
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to `eff.currentState`,
-return an `AxEffects` where `e` is the new `currentState`. -/
+return an `AxEffects` where `e` is the new `currentState`. 
+
+See also `updateWithExpr`, which is a wrapper around `updateWithExprAux` which adds a top-level trace node.
+-/
 private partial def updateWithExprAux (eff : AxEffects) (e : Expr) : MetaM AxEffects := do
   match_expr e with
   | write_mem_bytes n addr val e =>
