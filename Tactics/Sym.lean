@@ -232,7 +232,7 @@ elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
 def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
-  /- `withCurHeartbeats` sets the initial heartbeats to the current heartbeats,
+  /- `withCurrHeartbeats` sets the initial heartbeats to the current heartbeats,
   effectively resetting our heartbeat budget back to the maximum. -/
   withCurrHeartbeats <| do
 
