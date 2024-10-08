@@ -94,17 +94,14 @@ open Lean Meta Simp in
 dsimproc [state_simp_rules] reduceAdvSIMDExpandImm (AdvSIMDExpandImm _ _ _) := fun e => do
   let_expr AdvSIMDExpandImm op cmode imm8 ← e | return .continue
   let some ⟨op_n, op⟩ ← getBitVecValue? op | return .continue
-  if h_op_n : ¬ op_n = 1 then return .continue
-  else
-    let some ⟨cmode_n, cmode⟩ ← getBitVecValue? cmode | return .continue
-    if h_cmode_n : ¬ cmode_n = 4 then return .continue
-    else
-      let some ⟨imm8_n, imm8⟩ ← getBitVecValue? imm8 | return .continue
-      if h_imm8_n : ¬ imm8_n = 8 then return .continue else
-      return .done <| toExpr (AdvSIMDExpandImm
-                                (BitVec.cast (by simp_all only [Decidable.not_not]) op)
-                                (BitVec.cast (by simp_all only [Decidable.not_not]) cmode)
-                                (BitVec.cast (by simp_all only [Decidable.not_not]) imm8))
+  let some ⟨cmode_n, cmode⟩ ← getBitVecValue? cmode | return .continue
+  let some ⟨imm8_n, imm8⟩ ← getBitVecValue? imm8 | return .continue
+  if h : op_n = 1 ∧ cmode_n = 4 ∧ imm8_n = 8 then
+    return .done <| toExpr (AdvSIMDExpandImm
+                              (BitVec.cast (by simp_all only) op)
+                              (BitVec.cast (by simp_all only) cmode)
+                              (BitVec.cast (by simp_all only) imm8))
+  else return .continue
 
 private theorem mul_div_norm_form_lemma  (n m : Nat) (_h1 : 0 < m) (h2 : n ∣ m) :
   (n * (m / n)) = n * m / n := by
