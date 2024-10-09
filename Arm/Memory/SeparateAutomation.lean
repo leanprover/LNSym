@@ -13,15 +13,16 @@ import Arm
 import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.Attr
+import Arm.Memory.AddressNormalization
 import Lean
 import Lean.Meta.Tactic.Rewrite
 import Lean.Meta.Tactic.Rewrites
 import Lean.Elab.Tactic.Conv
 import Lean.Elab.Tactic.Conv.Basic
 import Tactics.Simp
+import Tactics.BvOmegaBench
 
 open Lean Meta Elab Tactic
-
 
 /-! ## Memory Separation Automation
 
@@ -421,7 +422,7 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
 
     /- Simp to gain some more juice out of the defn.. -/
     let mut simpTheorems : Array SimpTheorems := #[]
-    for a in #[`minimal_theory, `bitvec_rules] do
+    for a in #[`minimal_theory, `bitvec_rules, `bv_toNat] do
       let some ext ← (getSimpExtension? a)
         | throwError m!"[simp_mem] Internal error: simp attribute {a} not found!"
       simpTheorems := simpTheorems.push (← ext.getTheorems)
@@ -455,7 +456,7 @@ def omega : SimpMemM Unit := do
       trace[simp_mem.info] "{goal}"
     -- @bollu: TODO: understand what precisely we are recovering from.
     withoutRecover do
-      evalTactic (← `(tactic| omega))
+    evalTactic (← `(tactic| bv_omega_bench))
 
 section Hypotheses
 

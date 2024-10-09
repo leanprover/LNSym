@@ -150,7 +150,7 @@ def reflectPFLag (e : Expr) : MetaM PFlag :=
 
 /-- Reflect a concrete `StateField` -/
 def reflectStateField (e : Expr) : MetaM StateField :=
-  match_expr e with
+  match_expr e.consumeMData with
     | StateField.GPR x  => StateField.GPR <$> reflectBitVecLiteral _ x
     | StateField.SFP x  => StateField.SFP <$> reflectBitVecLiteral _ x
     | StateField.PC     => pure StateField.PC
@@ -242,8 +242,7 @@ def findProgramHyp (state : Expr) : MetaM (LocalDecl × Name) := do
   -- Assert that `program` is a(n application of a) constant, and find its name
   let program := (← instantiateMVars program).getAppFn
   let .const program _ := program
-    |  -- withErrorContext h_run h_run_type <|
-        throwError "Expected a constant, found:\n\t{program}"
+    | throwError "Expected a constant, found:\n\t{program}"
 
   return ⟨h_program, program⟩
 
@@ -259,6 +258,24 @@ def mkEqArmState (x y : Expr) : Expr :=
 /-- Return a proof of type `x = x`, where `x : ArmState` -/
 def mkEqReflArmState (x : Expr) : Expr :=
   mkApp2 (.const ``Eq.refl [1]) mkArmState x
+
+/-- Return `x = y` given expressions `x, y : StateField <field>` -/
+def mkEqStateValue (field x y : Expr) : Expr :=
+  let ty := mkApp (mkConst ``state_value) field
+  mkApp3 (.const ``Eq [1]) ty x y
+
+/-- Return `r <field> <state> = <value>` -/
+def mkEqReadField (field state value : Expr) : Expr :=
+  let r := mkApp2 (mkConst ``r) field state
+  mkEqStateValue field r value
+
+/-- If expression `e` is `r ?field ?state = ?value`, return
+`some (field, state, value)`, else return `none` -/
+def Lean.Expr.eqReadField? (e : Expr) : Option (Expr × Expr × Expr) := do
+  let (_ty, lhs, value) ← e.eq?
+  let_expr r field state := lhs
+    | none
+  some (field, state, value)
 
 /-! ## Tracing helpers -/
 
@@ -278,3 +295,6 @@ variable {m} [Monad m] [MonadLiftT TacticM m] [MonadControlT MetaM m] in
 Unlike the standard `withMainContext`, `x` may live in a generic monad `m`. -/
 def withMainContext' (x : m α) : m α := do
   (← getMainGoal).withContext x
+
+/-- An emoji to show that a tactic is processing at an intermediate step. -/
+def processingEmoji : String := "⚙️"

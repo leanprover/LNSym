@@ -268,11 +268,10 @@ theorem program.step_8e4_8e8_of_wellformed_of_stepped (scur snext : ArmState)
   obtain h_sp_aligned := hscur.h_sp_aligned
 
   have := program.stepi_eq_0x8e4 h_program h_pc h_err
-  simp [BitVec.extractLsb] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules]
-  · constructor <;> simp [*, state_simp_rules, minimal_theory, BitVec.extractLsb]
+  · constructor <;> simp [*, state_simp_rules, minimal_theory]
 
 -- 3/7 (0x8e8#64, 0x3c810444#32),  /- str q4, [x2], #16        -/
 structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8ec : Prop where
@@ -296,7 +295,6 @@ theorem program.step_8e8_8ec_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hscur.h_sp_aligned
 
   have := program.stepi_eq_0x8e8 h_program h_pc h_err
-  simp [BitVec.extractLsb] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor
@@ -335,11 +333,10 @@ theorem program.step_8ec_8f0_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8ec h_program h_pc h_err
-  simp [BitVec.extractLsb] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> simp (config := { ground := true, decide := true}) [*,
-      state_simp_rules, minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg, memory_rules]
+      state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg, memory_rules]
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
 
 -- 5/7 (0x8f0#64, 0xf100001f#32),  /- cmp x0, #0x0             -/
@@ -364,7 +361,7 @@ theorem program.step_8f0_8f4_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f0 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [BitVec.extractLsb,
+  simp (config := { ground := true, decide := true}) [
     fst_AddWithCarry_eq_sub_neg,
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
@@ -396,14 +393,14 @@ theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f4 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [BitVec.extractLsb,
+  simp (config := { ground := true, decide := true}) [
     fst_AddWithCarry_eq_sub_neg,
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> solve
     | simp (config := { ground := true, decide := true}) [*,
-      state_simp_rules, minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg]
+      state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg]
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules]
 
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
@@ -426,14 +423,14 @@ theorem program.step_8f4_8f8_of_wellformed_of_z_eq_1 (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f4 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [BitVec.extractLsb,
+  simp (config := { ground := true, decide := true}) [
     fst_AddWithCarry_eq_sub_neg,
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;>
     simp (config := { ground := true, decide := true}) [*, state_simp_rules, h_z,
-      minimal_theory, BitVec.extractLsb, fst_AddWithCarry_eq_sub_neg, cut]
+      minimal_theory, fst_AddWithCarry_eq_sub_neg, cut]
   · constructor <;> simp [*, h_z, state_simp_rules, minimal_theory, bitvec_rules, cut]
 
 end CutTheorems
@@ -441,6 +438,8 @@ end CutTheorems
 section PartialCorrectness
 
 -- set_option skip_proof.skip true in
+-- set_option trace.profiler true in
+-- set_option profiler true in
 set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
@@ -465,7 +464,7 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
     Memory.read_bytes n addr s0.mem := by
-  have h_le : (s0.x0 - (si.x0 - 0x1#64)).toNat ≤ s0.x0.toNat := by bv_omega
+  have h_le : (s0.x0 - (si.x0 - 0x1#64)).toNat ≤ s0.x0.toNat := by bv_omega_bench
   have h_upper_bound := hsep.hb.omega_def
   have h_upper_bound₂ := h_pre_1.hb.omega_def
   have h_upper_bound₃ := hsep.ha.omega_def
@@ -477,11 +476,13 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
     apply mem_separate'.symm
     apply mem_separate'.of_subset'_of_subset' hsep
     · apply mem_subset'.of_omega
-      skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
+      skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega_bench
     · apply mem_subset'_refl hsep.hb
 
 -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
+-- set_option trace.profiler true in
+-- set_option profiler true in
 theorem Memcpy.extracted_0 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -518,9 +519,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       skip_proof simp_mem
     have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by
       skip_proof simp_mem
-    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by skip_proof bv_omega
+    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by skip_proof bv_omega_bench
     have s2_sum_inbounds := h_pre_1.hb.omega_def
-    have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
+    have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega_bench
 
     rcases icases with hi | hi
     · subst hi
@@ -540,16 +541,19 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           -- proof states.
           skip_proof {
             have s2_sum_inbounds := h_pre_1.hb.omega_def
-            have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
-            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
-            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
-            rw [BitVec.toNat_mul_of_lt (by bv_omega)]
-            rw [BitVec.toNat_mul_of_lt (by bv_omega)]
-            rw [BitVec.toNat_sub_of_lt (by bv_omega)]
-            bv_omega
+            have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega_bench
+            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega_bench)]
+            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega_bench)]
+            rw [BitVec.toNat_mul_of_lt (by bv_omega_bench)]
+            rw [BitVec.toNat_mul_of_lt (by bv_omega_bench)]
+            rw [BitVec.toNat_sub_of_lt (by bv_omega_bench)]
+            bv_omega_bench
           }
   · intros n addr hsep
     apply Memcpy.extracted_2 <;> assumption
+
+-- set_option trace.profiler true in
+-- set_option profiler true in
 theorem partial_correctness :
   PartialCorrectness ArmState := by
   apply Correctness.partial_correctness_from_assertions
@@ -737,19 +741,19 @@ theorem partial_correctness :
           apply zero_iff_z_eq_one
         simp only [h_s5_z]
 
-        simp only [show s5.x0 ≤ s0.x0 by bv_omega, true_and]
+        simp only [show s5.x0 ≤ s0.x0 by bv_omega_bench, true_and]
         rw [h_s5_x0, h_s5_x1, h_si_x1]
         have h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
-          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega,
+          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega_bench,
             BitVec.BitVec.mul_add,
             BitVec.add_assoc, BitVec.mul_one]
         simp only [h_s0_x1, true_and]
 
         rw [h_s5_x2, h_si_x2]
         have h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
-          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega,
+          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega_bench,
             BitVec.BitVec.mul_add]
-          skip_proof bv_omega
+          skip_proof bv_omega_bench
         simp only [h_s0_x2, true_and]
         simp only [step_8f0_8f4.h_err,
           step_8f0_8f4.h_program,
