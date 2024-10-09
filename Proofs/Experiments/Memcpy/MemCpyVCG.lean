@@ -464,7 +464,7 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
     Memory.read_bytes n addr s0.mem := by
-  have h_le : (s0.x0 - (si.x0 - 0x1#64)).toNat ≤ s0.x0.toNat := by bv_omega
+  have h_le : (s0.x0 - (si.x0 - 0x1#64)).toNat ≤ s0.x0.toNat := by bv_omega_bench
   have h_upper_bound := hsep.hb.omega_def
   have h_upper_bound₂ := h_pre_1.hb.omega_def
   have h_upper_bound₃ := hsep.ha.omega_def
@@ -476,7 +476,7 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
     apply mem_separate'.symm
     apply mem_separate'.of_subset'_of_subset' hsep
     · apply mem_subset'.of_omega
-      skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega
+      skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega_bench
     · apply mem_subset'_refl hsep.hb
 
 -- set_option skip_proof.skip true in
@@ -519,9 +519,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       skip_proof simp_mem
     have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by
       skip_proof simp_mem
-    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by skip_proof bv_omega
+    have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by skip_proof bv_omega_bench
     have s2_sum_inbounds := h_pre_1.hb.omega_def
-    have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
+    have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega_bench
 
     rcases icases with hi | hi
     · subst hi
@@ -541,13 +541,13 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
           -- proof states.
           skip_proof {
             have s2_sum_inbounds := h_pre_1.hb.omega_def
-            have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega
-            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
-            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega)]
-            rw [BitVec.toNat_mul_of_lt (by bv_omega)]
-            rw [BitVec.toNat_mul_of_lt (by bv_omega)]
-            rw [BitVec.toNat_sub_of_lt (by bv_omega)]
-            bv_omega
+            have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega_bench
+            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega_bench)]
+            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega_bench)]
+            rw [BitVec.toNat_mul_of_lt (by bv_omega_bench)]
+            rw [BitVec.toNat_mul_of_lt (by bv_omega_bench)]
+            rw [BitVec.toNat_sub_of_lt (by bv_omega_bench)]
+            bv_omega_bench
           }
   · intros n addr hsep
     apply Memcpy.extracted_2 <;> assumption
@@ -741,19 +741,19 @@ theorem partial_correctness :
           apply zero_iff_z_eq_one
         simp only [h_s5_z]
 
-        simp only [show s5.x0 ≤ s0.x0 by bv_omega, true_and]
+        simp only [show s5.x0 ≤ s0.x0 by bv_omega_bench, true_and]
         rw [h_s5_x0, h_s5_x1, h_si_x1]
         have h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
-          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega,
+          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega_bench,
             BitVec.BitVec.mul_add,
             BitVec.add_assoc, BitVec.mul_one]
         simp only [h_s0_x1, true_and]
 
         rw [h_s5_x2, h_si_x2]
         have h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
-          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega,
+          rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega_bench,
             BitVec.BitVec.mul_add]
-          skip_proof bv_omega
+          skip_proof bv_omega_bench
         simp only [h_s0_x2, true_and]
         simp only [step_8f0_8f4.h_err,
           step_8f0_8f4.h_program,

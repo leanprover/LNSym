@@ -11,6 +11,7 @@ import Arm
 import Tactics.StepThms
 import Tactics.Sym
 import Correctness.ArmSpec
+import Tactics.BvOmegaBench
 
 namespace AddLoop
 
@@ -523,18 +524,18 @@ private theorem loop_inv_x0_le (x y : BitVec 64)
   (h_assert_x0 : x ≤ y)
   (h_assert_x0_nz : ¬x = 0x0#64) :
   x - 0x1#64 ≤ y := by
-  bv_omega
+  bv_omega_bench
 
 private theorem AddWithCarry.add_one_64 (x : BitVec 64) :
   (AddWithCarry x 0x1#64 0x0#1).fst = x + 0x1#64 := by
   simp only [AddWithCarry, bitvec_rules]
-  bv_omega
+  bv_omega_bench
 
 private theorem crock_lemma (x y z : BitVec 64) :
   x + (y - z) + 1#64 = x + (y - (z - 1#64)) := by
-  -- (FIXME) Without this apply below, bv_omega crashes my editor.
+  -- (FIXME) Without this apply below, bv_omega_bench crashes my editor.
   apply BitVec.eq_sub_iff_add_eq.mp
-  bv_omega
+  bv_omega_bench
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by

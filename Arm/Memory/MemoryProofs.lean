@@ -7,7 +7,7 @@ import Arm.FromMathlib
 import Arm.State
 import Arm.Memory.Separate
 import Arm.Memory.SeparateProofs
-
+import Tactics.BvOmegaBench
 -- In this file, we have memory (non-)interference proofs.
 
 ----------------------------------------------------------------------
@@ -321,7 +321,7 @@ private theorem mem_subset_neq_first_addr_small_second_region
       omega
     simp only [l1, Nat.lt_irrefl] at h1
   · rename_i h
-    bv_omega
+    bv_omega_bench
     done
 
 private theorem write_mem_bytes_of_write_mem_bytes_shadow_general_n2_lt
@@ -756,7 +756,7 @@ private theorem mem_legal_lemma (h0 : 0 < n) (h1 : n < 2^64)
   revert h0 h1 h2
   have : 2^64 = 18446744073709551616 := by decide
   simp_all [mem_legal]
-  bv_omega
+  bv_omega_bench
 
 private theorem addr_diff_upper_bound_lemma (h0 : 0 < n1) (h1 : n1 ≤ 2 ^ 64)
   (h2 : 0 < n2) (h3 : n2 < 2^64)
@@ -768,7 +768,7 @@ private theorem addr_diff_upper_bound_lemma (h0 : 0 < n1) (h1 : n1 ≤ 2 ^ 64)
   have _ : 2^64 = 18446744073709551616 := by decide
   have _ : 2^64 - 1 = 18446744073709551615 := by decide
   simp_all [mem_subset, mem_legal]
-  bv_omega
+  bv_omega_bench
 
 private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_lt
   (h0 : 0 < n1) (h1 : n1 <= 2^64) (h2 : 0 < n2) (h3 : n2 < 2^64)
@@ -850,7 +850,7 @@ theorem entire_memory_subset_of_only_itself
   have : 2^64 = 18446744073709551616 := by decide
   unfold my_pow at *
   simp_all [mem_subset, BitVec.add_sub_self_left_64]
-  bv_omega
+  bv_omega_bench
 
 theorem entire_memory_subset_legal_regions_eq_addr
   (h1 : mem_subset addr2 (addr2 + (BitVec.ofNat 64 (my_pow 2 64 - 1))) addr1 (addr1 + (BitVec.ofNat 64 (my_pow 2 64 - 1))))
@@ -860,7 +860,7 @@ theorem entire_memory_subset_legal_regions_eq_addr
   have : 2^64-1 = 18446744073709551615 := by decide
   unfold my_pow at *
   simp_all [mem_subset, mem_legal]
-  bv_omega
+  bv_omega_bench
 
 private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_eq_alt
   (h0 : 0 < n1) (h1 : n1 <= my_pow 2 64) (h2 : 0 < n2) (h3 : n2 = my_pow 2 64)
