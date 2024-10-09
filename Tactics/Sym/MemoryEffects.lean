@@ -80,8 +80,13 @@ so that `s` is the new `currentState` -/
 def adjustCurrentStateWithEq (eff : MemoryEffects) (eq : Expr) :
     MetaM MemoryEffects := do
   let proof ← rewriteType eff.proof eq
-    -- ^^ TODO: what happens if `memoryEffect` is the same as `currentState`?
-    --    Presumably, we would *not* want to encapsulate `memoryEffect` here
+  /- ^^ This looks scary, since it can rewrite the left-hand-side of the proof
+    if `memoryEffect` is the same as `currentState` (which would be bad!).
+    However, this cannot ever happen in LNSym: every instruction has to modify
+    either the PC or the error field, neither of which is incorporated into
+    the `memoryEffect` and thus, `memoryEffect` never coincides with
+    `currentState` (assuming we're dealing with instruction semantics, as we
+    currently do!). -/
   return { eff with proof }
 
 /-- Convert a `MemoryEffects` into a `MessageData` for logging. -/
