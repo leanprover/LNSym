@@ -4,7 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Yan Peng
 -/
 -- PMULL and PMULL2
--- Polynomial arithmetic over {0,1}: https://tiny.amazon.com/5h01fjm6/devearmdocuddi0cApplApplPoly
+-- Polynomial arithmetic over {0,1}:
+-- Ref.:
+-- https://developer.arm.com/documentation/ddi0602/2024-09/SIMD-FP-Instructions/PMULL--PMULL2--Polynomial-multiply-long-?lang=en
 
 import Arm.Decode
 import Arm.State

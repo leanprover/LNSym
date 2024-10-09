@@ -131,10 +131,10 @@ def refpoly : BitVec 129 := 0x1C2000000000000000000000000000001#129
 private def gcm_init_H (H : BitVec 128) : BitVec 128 :=
   pmod (H ++ 0b0#1) refpoly (by omega)
 
-private def gcm_polyval_mul (x : BitVec 128) (y : BitVec 128) : BitVec 256 :=
+def gcm_polyval_mul (x : BitVec 128) (y : BitVec 128) : BitVec 256 :=
   0b0#1 ++ pmult x y
 
-private def gcm_polyval_red (x : BitVec 256) : BitVec 128 :=
+def gcm_polyval_red (x : BitVec 256) : BitVec 128 :=
   reverse $ pmod (reverse x) irrepoly (by omega)
 
 /--
@@ -146,7 +146,7 @@ private def gcm_polyval_red (x : BitVec 256) : BitVec 128 :=
     "A New Interpretation for the GHASH Authenticator of AES-GCM"
   2. Lemma: reverse (pmult x y) = pmult (reverse x) (reverse y)
 -/
-private def gcm_polyval (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
+def gcm_polyval (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
   GCMV8.gcm_polyval_red $ GCMV8.gcm_polyval_mul x y
 
 /-- GCMInitV8 specification:
@@ -202,6 +202,15 @@ def GCMGmultV8 (H : BitVec 128) (Xi : List (BitVec 8)) (h : 8 * Xi.length = 128)
   : (List (BitVec 8)):=
   let H := (lo H) ++ (hi H)
   split (GCMV8.gcm_polyval H (BitVec.cast h (BitVec.flatten Xi))) 8 (by omega)
+
+/-- Alternative GCMGmultV8 specification that does not use lists:
+    H  : BitVec 128 -- the first element in Htable, not the initial H input to GCMInitV8
+    Xi : BitVec 128 -- current hash value
+    output : BitVec 128 -- next hash value
+-/
+def GCMGmultV8_alt (H : BitVec 128) (Xi : BitVec 128) : BitVec 128 :=
+  let H := (lo H) ++ (hi H)
+  gcm_polyval H Xi
 
 set_option maxRecDepth 8000 in
 example : GCMGmultV8 0x1099f4b39468565ccdd297a9df145877#128
