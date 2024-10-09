@@ -398,22 +398,16 @@ dsimproc [state_simp_rules] reduceInvalidBitMasks (invalid_bit_masks _ _ _ _) :=
   let imm ← simp imm
   let M ← simp M
   let some ⟨immN_width, immN⟩ ← getBitVecValue? immN.expr | return .continue
-  if h1 : ¬ (immN_width = 1) then
-    return .continue
-  else
-    let some ⟨imms_width, imms⟩ ← getBitVecValue? imms.expr | return .continue
-    if h2 : ¬ (imms_width = 6) then
-      return .continue
-    else
-      let some M ← Nat.fromExpr? M.expr | return .continue
-      have h1' : immN_width = 1 := by simp_all only [Decidable.not_not]
-      have h2' : imms_width = 6 := by simp_all only [Decidable.not_not]
-      return .done <|
-          toExpr (invalid_bit_masks
-                      (BitVec.cast h1' immN)
-                      (BitVec.cast h2' imms)
-                      imm.expr.isTrue
-                      M)
+  let some ⟨imms_width, imms⟩ ← getBitVecValue? imms.expr | return .continue
+  if h : immN_width = 1 ∧ imms_width = 6 then
+    let some M ← Nat.fromExpr? M.expr | return .continue
+    return .done <|
+        toExpr (invalid_bit_masks
+                    (BitVec.cast (by simp_all only) immN)
+                    (BitVec.cast (by simp_all only) imms)
+                    imm.expr.isTrue
+                    M)
+  else return .continue
 
 theorem Nat.lt_one_iff {n : Nat} : n < 1 ↔ n = 0 := by
   omega
@@ -442,8 +436,9 @@ theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec
 --   https://kddnewton.com/2022/08/11/aarch64-bitmask-immediates.html
 -- Arm Implementation:
 --   https://developer.arm.com/documentation/ddi0602/2023-12/Shared-Pseudocode/aarch64-functions-bitmasks?lang=en#impl-aarch64.DecodeBitMasks.5
-def decode_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immr : BitVec 6)
-  (immediate : Bool) (M : Nat) : Option (BitVec M × BitVec M) :=
+def decode_bit_masks (immN : BitVec 1) (imms immr : BitVec 6)
+                     (immediate : Bool) (M : Nat) :
+                     Option (BitVec M × BitVec M) :=
   if h0 : invalid_bit_masks immN imms immediate M then none
   else
     let len := Option.get! $ highest_set_bit $ immN ++ ~~~imms
@@ -463,7 +458,8 @@ def decode_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immr : BitVec 6)
     some (BitVec.cast h wmask, BitVec.cast h tmask)
 
 open Lean Meta Simp in
-dsimproc [state_simp_rules] reduceDecodeBitMasks (decode_bit_masks _ _ _ _ _) := fun e => do
+dsimproc [state_simp_rules] reduceDecodeBitMasks (decode_bit_masks _ _ _ _ _) :=
+  fun e => do
   let_expr decode_bit_masks immN imms immr imm M ← e | return .continue
   let immN ← simp immN
   let imms ← simp imms
@@ -471,28 +467,18 @@ dsimproc [state_simp_rules] reduceDecodeBitMasks (decode_bit_masks _ _ _ _ _) :=
   let imm ← simp imm
   let M ← simp M
   let some ⟨immN_width, immN⟩ ← getBitVecValue? immN.expr | return .continue
-  if h1 : ¬ (immN_width = 1) then
-    return .continue
-  else
-    let some ⟨imms_width, imms⟩ ← getBitVecValue? imms.expr | return .continue
-    if h2 : ¬ (imms_width = 6) then
-      return .continue
-    else
-      let some ⟨immr_width, immr⟩ ← getBitVecValue? immr.expr | return .continue
-      if h3 : ¬ (immr_width = 6) then
-        return .continue
-      else
-        let some M ← Nat.fromExpr? M.expr | return .continue
-        have h1' : immN_width = 1 := by simp_all only [Decidable.not_not]
-        have h2' : imms_width = 6 := by simp_all only [Decidable.not_not]
-        have h3' : immr_width = 6 := by simp_all only [Decidable.not_not]
-        return .done <|
-            toExpr (decode_bit_masks
-                        (BitVec.cast h1' immN)
-                        (BitVec.cast h2' imms)
-                        (BitVec.cast h3' immr)
-                        imm.expr.isTrue
-                        M)
+  let some ⟨imms_width, imms⟩ ← getBitVecValue? imms.expr | return .continue
+  let some ⟨immr_width, immr⟩ ← getBitVecValue? immr.expr | return .continue
+  if h : immN_width = 1 ∧ imms_width = 6 ∧ immr_width = 6 then
+    let some M ← Nat.fromExpr? M.expr | return .continue
+    return .done <|
+        toExpr (decode_bit_masks
+                    (BitVec.cast (by simp_all only) immN)
+                    (BitVec.cast (by simp_all only) imms)
+                    (BitVec.cast (by simp_all only) immr)
+                    imm.expr.isTrue
+                    M)
+  else return .continue
 
 ----------------------------------------------------------------------
 
@@ -664,7 +650,6 @@ structure ShiftInfo where
   unsigned := true
   round := false
   accumulate := false
-  h : esize > 0
 deriving DecidableEq, Repr
 
 export ShiftInfo (esize elements shift unsigned round accumulate)
