@@ -446,7 +446,6 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : SimpMemM FVarId  := do
 def omega : SimpMemM Unit := do
   SimpMemM.withMainContext do
     -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
-    -- @bollu: TODO: understand what precisely we are recovering from.
     let bvToNatSimpCtx ← SimpMemM.getBvToNatSimpCtx
     let bvToNatSimprocs ← SimpMemM.getBvToNatSimprocs
     let .some goal ← LNSymSimpAtStar (← getMainGoal) bvToNatSimpCtx bvToNatSimprocs
@@ -454,6 +453,7 @@ def omega : SimpMemM Unit := do
     replaceMainGoal [goal]
     SimpMemM.withTraceNode m!"goal post `bv_toNat` reductions (Note: can be large)" do
       trace[simp_mem.info] "{goal}"
+    -- @bollu: TODO: understand what precisely we are recovering from.
     withoutRecover do
       evalTactic (← `(tactic| omega))
 
