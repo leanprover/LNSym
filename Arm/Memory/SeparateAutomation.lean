@@ -20,9 +20,9 @@ import Lean.Meta.Tactic.Rewrites
 import Lean.Elab.Tactic.Conv
 import Lean.Elab.Tactic.Conv.Basic
 import Tactics.Simp
+import Tactics.BvOmegaBench
 
 open Lean Meta Elab Tactic
-
 
 /-! ## Memory Separation Automation
 
@@ -431,7 +431,7 @@ def omega : SimpMemM Unit := do
   -- https://leanprover.zulipchat.com/#narrow/stream/326056-ICERM22-after-party/topic/Regression.20tests/near/290131280
   -- @bollu: TODO: understand what precisely we are recovering from.
   withoutRecover do
-    evalTactic (← `(tactic| bv_omega))
+    evalTactic (← `(tactic| bv_omega_bench))
 
 section Hypotheses
 

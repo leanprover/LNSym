@@ -5,7 +5,7 @@ Author(s): Shilpi Goel, Siddharth Bhat
 -/
 import Arm.State
 import Arm.BitVec
-
+import Tactics.BvOmegaBench
 section Separate
 
 open BitVec
@@ -137,7 +137,7 @@ theorem lt_or_gt_of_mem_separate_of_mem_legal_of_mem_legal (h : mem_separate a1 
   · by_cases h₆ : a1.toNat > b2.toNat
     · simp only  [BitVec.val_bitvec_lt, gt_iff_lt, h₆, or_true]
     · exfalso
-      bv_omega
+      bv_omega_bench
 
 /--
 Given two legal memory regions `[a1, a2]` and `[b1, b2]`,
@@ -153,7 +153,7 @@ theorem mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal (h : a2 < b1 ∨ a1 >
   unfold mem_legal at ha hb
   simp only [decide_eq_true_eq] at ha hb
   rw [BitVec.le_def] at ha hb
-  bv_omega
+  bv_omega_bench
 
 /--
 Given two legal memory regions `[a1, a2]` and `[b1, b2]`,
@@ -183,7 +183,7 @@ theorem add_lt_of_mem_legal_of_lt
   by_cases hadd : a.toNat + n.toNat < 2^64
   · assumption
   · exfalso
-    bv_omega
+    bv_omega_bench
 
 /--
 If we express a memory region as `[a..(a+n)]` for `(n : Nat)`,
@@ -274,7 +274,7 @@ theorem mem_legal_of_mem_legal' (h : mem_legal' a n) :
   simp only [mem_legal', mem_legal, BitVec.le_def] at h ⊢
   rw [BitVec.toNat_add_eq_toNat_add_toNat]
   simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.le_add_right, decide_True]
-  bv_omega
+  bv_omega_bench
 
 /--
 Legal in the new sense implies legal in the old sense.
@@ -283,7 +283,7 @@ Note that the subtraction could also have been written as `(b - a).toNat + 1`
 theorem mem_legal'_of_mem_legal (h: mem_legal a b) : mem_legal' a (b.toNat - a.toNat + 1) := by
   simp only [mem_legal, decide_eq_true_eq] at h
   rw [mem_legal']
-  bv_omega
+  bv_omega_bench
 
 def mem_legal'_of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n) :
     mem_legal' a m := by
@@ -304,7 +304,7 @@ theorem mem_legal_iff_mem_legal' : mem_legal a b ↔
   · intros h
     simp only [mem_legal'] at h
     simp only [mem_legal, BitVec.le_def, decide_eq_true_eq]
-    bv_omega
+    bv_omega_bench
 
 /--
 `mem_separate' a an b bn` asserts that two memory regions [a..an) and [b..bn) are separate.
@@ -449,7 +449,7 @@ theorem mem_subset'_refl (h : mem_legal' a an) : mem_subset' a an a an where
 theorem mem_separate'.symm (h : mem_separate' addr₁ n₁ addr₂ n₂) : mem_separate' addr₂ n₂ addr₁ n₁ := by
   have := h.omega_def
   apply mem_separate'.of_omega
-  bv_omega
+  bv_omega_bench
 
 theorem mem_separate'.of_subset'_of_subset'
   (h : mem_separate' addr₁ n₁ addr₂ n₂)
@@ -460,7 +460,7 @@ theorem mem_separate'.of_subset'_of_subset'
   have := h₁.omega_def
   have := h₂.omega_def
   apply mem_separate'.of_omega
-  bv_omega
+  bv_omega_bench
 
 /--
 If `[a'..a'+an')` begins at least where `[a..an)` begins,
@@ -522,8 +522,8 @@ theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hb
   simp only [bitvec_rules, minimal_theory]
   by_cases hb : bn = 2^64
   · left
-    bv_omega
-  · bv_omega
+    bv_omega_bench
+  · bv_omega_bench
 
 /- value of read_mem_bytes when separate from the write. -/
 theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
@@ -541,7 +541,7 @@ theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
   simp only [decide_True, ite_eq_left_iff, Bool.true_and]
   intros h₁
   intros h₂
-  bv_omega
+  bv_omega_bench
 
 /- value of `read_mem_bytes'` when subset of the write. -/
 theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
@@ -619,17 +619,17 @@ theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
     have ⟨h1, h2, h3, h4⟩ := hsubset.omega_def
     apply BitVec.eq_of_extractLsByte_eq
     intros i
-    rw [extractLsByte_read_bytes (by bv_omega)]
+    rw [extractLsByte_read_bytes (by bv_omega_bench)]
     rw [BitVec.extractLsByte_extractLsBytes]
     by_cases h : i < an
     · simp only [h, ↓reduceIte]
       apply BitVec.eq_of_getLsbD_eq
       intros j
       rw [← hread]
-      rw [extractLsByte_read_bytes (by bv_omega)]
-      simp only [show a.toNat - b.toNat + i < bn by bv_omega, if_true]
+      rw [extractLsByte_read_bytes (by bv_omega_bench)]
+      simp only [show a.toNat - b.toNat + i < bn by bv_omega_bench, if_true]
       congr 2
-      bv_omega
+      bv_omega_bench
     · simp only [h, ↓reduceIte]
 
 /-- A region of memory, given by (base pointer, length) -/
