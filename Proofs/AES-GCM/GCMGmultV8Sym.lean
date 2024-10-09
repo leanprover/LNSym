@@ -1,13 +1,15 @@
 /-
 Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Alex Keizer
+Author(s): Alex Keizer, Shilpi Goel
 -/
+import Specs.GCMV8
 import Tests.«AES-GCM».GCMGmultV8Program
 import Tactics.Sym
 import Tactics.Aggregate
 import Tactics.StepThms
 import Tactics.CSE
+import Tactics.ClearNamed
 import Arm.Memory.SeparateAutomation
 import Arm.Syntax
 
@@ -16,9 +18,33 @@ open ArmStateNotation
 
 #genStepEqTheorems gcm_gmult_v8_program
 
-/-
-xxx: GCMGmultV8 Xi HTable
--/
+private theorem lsb_from_extractLsb'_of_append_self (x : BitVec 128) :
+  BitVec.extractLsb' 64 64 (BitVec.extractLsb' 64 128 (x ++ x)) =
+  BitVec.extractLsb' 0 64 x := by
+  bv_decide
+
+private theorem msb_from_extractLsb'_of_append_self (x : BitVec 128) :
+  BitVec.extractLsb' 0 64 (BitVec.extractLsb' 64 128 (x ++ x)) =
+  BitVec.extractLsb' 64 64 x := by
+  bv_decide
+
+theorem extractLsb'_zero_extractLsb'_of_le (h : len1 ≤ len2) :
+  BitVec.extractLsb' 0 len1 (BitVec.extractLsb' start len2 x) =
+  BitVec.extractLsb' start len1 x := by
+  apply BitVec.eq_of_getLsbD_eq; intro i
+  simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
+             decide_True, Nat.zero_add, Bool.true_and,
+             Bool.and_iff_right_iff_imp, decide_eq_true_eq]
+  omega
+
+theorem extractLsb'_extractLsb'_zero_of_le (h : start + len1 ≤ len2):
+  BitVec.extractLsb' start len1 (BitVec.extractLsb' 0 len2 x) =
+  BitVec.extractLsb' start len1 x := by
+  apply BitVec.eq_of_getLsbD_eq; intro i
+  simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
+            decide_True, Nat.zero_add, Bool.true_and,
+            Bool.and_iff_right_iff_imp, decide_eq_true_eq]
+  omega
 
 set_option pp.deepTerms false in
 set_option pp.deepTerms.threshold 50 in
@@ -29,10 +55,10 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     (h_s0_pc : read_pc s0 = gcm_gmult_v8_program.min)
     (h_s0_sp_aligned : CheckSPAlignment s0)
     (h_Xi : Xi = s0[read_gpr 64 0#5 s0, 16])
-    (h_HTable : HTable = s0[read_gpr 64 1#5 s0, 256])
+    (h_HTable : HTable = s0[read_gpr 64 1#5 s0, 32])
     (h_mem_sep : Memory.Region.pairwiseSeparate
                  [(read_gpr 64 0#5 s0, 16),
-                  (read_gpr 64 1#5 s0, 256)])
+                  (read_gpr 64 1#5 s0, 32)])
     (h_run : sf = run gcm_gmult_v8_program.length s0) :
     -- The final state is error-free.
     read_err sf = .None ∧
@@ -42,8 +68,11 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     CheckSPAlignment sf ∧
     -- The final state returns to the address in register `x30` in `s0`.
     read_pc sf = r (StateField.GPR 30#5) s0 ∧
+    -- (TODO) Delete the following conjunct because it is covered by the
+    -- MEM_UNCHANGED_EXCEPT frame condition. We keep it around because it
+    -- exposes the issue with `simp_mem` that @bollu will fix.
     -- HTable is unmodified.
-    sf[read_gpr 64 1#5 s0, 256] = HTable ∧
+    sf[read_gpr 64 1#5 s0, 32] = HTable ∧
     -- Frame conditions.
     -- Note that the following also covers that the Xi address in .GPR 0
     -- is unmodified.
@@ -52,8 +81,11 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
                            .SFP 21, .PC]
                           (sf, s0) ∧
     -- Memory frame condition.
-    MEM_UNCHANGED_EXCEPT [(r (.GPR 0) s0, 128)] (sf, s0) := by
-  simp_all only [state_simp_rules, -h_run] -- prelude
+    MEM_UNCHANGED_EXCEPT [(r (.GPR 0) s0, 16)] (sf, s0) ∧
+    sf[r (.GPR 0) s0, 16] = GCMV8.GCMGmultV8_alt (HTable.extractLsb' 0 128) Xi := by
+  -- Prelude
+  simp_all only [state_simp_rules, -h_run]
+  simp only [Nat.reduceMul] at Xi HTable
   simp (config := {ground := true}) only at h_s0_pc
   -- ^^ Still needed, because `gcm_gmult_v8_program.min` is somehow
   --    unable to be reflected
@@ -94,4 +126,46 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     simp_mem (config := { useOmegaToClose := false })
     -- Aggregate the memory (non)effects.
     simp only [*]
+  · clear_named [h_s, stepi_]
+    clear s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26
+    -- Simplifying the LHS
+    have h_HTable_low :
+      Memory.read_bytes 16 (r (StateField.GPR 1#5) s0) s0.mem = HTable.extractLsb' 0 128 := by
+      -- (FIXME @bollu) use `simp_mem` instead of the rw below.
+      rw [@Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
+           32 (r (StateField.GPR 1#5) s0) HTable (r (StateField.GPR 1#5) s0) 16 _ h_HTable.symm]
+      · simp only [Nat.reduceMul, BitVec.extractLsBytes, Nat.sub_self, Nat.zero_mul]
+      · simp_mem
+    have h_HTable_high :
+      (Memory.read_bytes 16 (r (StateField.GPR 1#5) s0 + 16#64) s0.mem) = HTable.extractLsb' 128 128 := by
+      -- (FIXME @bollu) use `simp_mem` instead of the rw below.
+      rw [@Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
+          32 (r (StateField.GPR 1#5) s0) HTable (r (StateField.GPR 1#5) s0 + 16#64) 16 _ h_HTable.symm]
+      repeat sorry
+    simp only [h_HTable_high, h_HTable_low, ←h_Xi]
+    /-
+    simp/ground below to reduce
+    (BitVec.extractLsb' 0 64
+                      (shift_left_common_aux 0
+                        { esize := 64, elements := 2, shift := 57, unsigned := true, round := false,
+                          accumulate := false }
+                        300249147283180997173565830086854304225#128 0#128))
+    -/
+    simp (config := {ground := true}) only
+    simp only [msb_from_extractLsb'_of_append_self,
+               lsb_from_extractLsb'_of_append_self,
+               BitVec.partInstall]
+    -- (FIXME @bollu) cse leaves the goal unchanged here, quietly, likely due to
+    -- subexpressions occurring in dep. contexts. Maybe a message here would be helpful.
+    generalize h_Xi_rev : rev_vector 128 64 8 Xi _ _ _ _ _ = Xi_rev
+    -- Simplifying the RHS
+    simp only [←h_HTable, GCMV8.GCMGmultV8_alt,
+               GCMV8.lo, GCMV8.hi,
+               GCMV8.gcm_polyval]
+    repeat rw [extractLsb'_zero_extractLsb'_of_le (by decide)]
+    repeat rw [extractLsb'_extractLsb'_zero_of_le (by decide)]
+
+    sorry
   done
+
+end GCMGmultV8Program

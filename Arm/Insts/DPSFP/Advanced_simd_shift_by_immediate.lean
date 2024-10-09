@@ -32,9 +32,6 @@ def exec_shift_right_vector
   else
     let l := highest_set_bit inst.immh
     let esize := 8 <<< l
-    have h : esize > 0 := by
-      simp only [esize]
-      apply zero_lt_shift_left_pos (by decide)
     let datasize := 64 <<< inst.Q.toNat
     let (info : ShiftInfo) :=
       { esize := esize,
@@ -42,8 +39,7 @@ def exec_shift_right_vector
         shift := (2 * esize) - (inst.immh ++ inst.immb).toNat,
         unsigned := inst.U = 0b1#1,
         round := (lsb inst.opcode 2) = 0b1#1,
-        accumulate := (lsb inst.opcode 1) = 0b1#1,
-        h := h }
+        accumulate := (lsb inst.opcode 1) = 0b1#1 }
     let result := shift_right_common info datasize inst.Rn inst.Rd s
     -- State Update
     let s := write_sfp datasize inst.Rd result s
@@ -58,15 +54,11 @@ def exec_shl_vector
   else
     let l := highest_set_bit inst.immh
     let esize := 8 <<< l
-    have h : esize > 0 := by
-      simp only [esize]
-      apply zero_lt_shift_left_pos (by decide)
     let datasize := 64 <<< inst.Q.toNat
     let (info : ShiftInfo) :=
       { esize := esize,
         elements := datasize / esize,
-        shift := (inst.immh ++ inst.immb).toNat - esize,
-        h := h }
+        shift := (inst.immh ++ inst.immb).toNat - esize }
     let result := shift_left_common info datasize inst.Rn s
     -- State Update
     let s := write_sfp datasize inst.Rd result s

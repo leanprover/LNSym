@@ -22,7 +22,6 @@ def exec_shift_right_scalar
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let esize := 8 <<< 3
-    have h : esize > 0 := by decide
     let datasize := esize
     let (info : ShiftInfo) :=
       { esize := esize,
@@ -30,9 +29,7 @@ def exec_shift_right_scalar
         shift := (esize * 2) - (inst.immh ++ inst.immb).toNat,
         unsigned := inst.U = 0b1#1,
         round := (lsb inst.opcode 2) = 0b1#1,
-        accumulate := (lsb inst.opcode 1) = 0b1#1,
-        h := h
-       }
+        accumulate := (lsb inst.opcode 1) = 0b1#1 }
     let result := shift_right_common info datasize inst.Rn inst.Rd s
     -- State Update
     let s := write_sfp datasize inst.Rd result s
@@ -46,14 +43,11 @@ def exec_shl_scalar
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
   else
     let esize := 8 <<< 3
-    have h : esize > 0 := by decide
     let datasize := esize
     let (info : ShiftInfo) :=
       { esize := esize,
         elements := 1,
-        shift := (inst.immh ++ inst.immb).toNat - esize,
-        h := h
-      }
+        shift := (inst.immh ++ inst.immb).toNat - esize }
     let result := shift_left_common info datasize inst.Rn s
     -- State Update
     let s := write_sfp datasize inst.Rd result s
