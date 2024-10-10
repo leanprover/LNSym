@@ -8,6 +8,7 @@ import Specs.SHA512
 import Std.Tactic.BVDecide
 
 set_option sat.timeout 60
+set_option bv.ac_nf false
 
 section sha512_block_armv8_rules
 

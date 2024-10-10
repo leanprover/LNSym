@@ -14,6 +14,7 @@ section MemoryProofs
 open BitVec
 
 set_option sat.timeout 60
+set_option bv.ac_nf false
 
 ----------------------------------------------------------------------
 ---- Some helpful bitvector lemmas ----
