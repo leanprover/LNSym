@@ -119,11 +119,11 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     simp_mem; rfl
     -/
     rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-    simp_mem
+    mem_omega!
   · simp only [List.mem_cons, List.mem_singleton, not_or, and_imp]
     sym_aggregate
   · intro n addr h_separate
-    simp_mem (config := { useOmegaToClose := false })
+    simp_mem
     -- Aggregate the memory (non)effects.
     simp only [*]
   · clear_named [h_s, stepi_]

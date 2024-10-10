@@ -245,17 +245,35 @@ instance : ToMessageData Hypothesis where
 
 /-- create a trace node in trace class (i.e. `set_option traceClass true`),
 with header `header`, whose default collapsed state is `collapsed`. -/
-def TacticM.withTraceNode' (header : MessageData) (k : TacticM α)
+def TacticM.withTraceNode'
+    [Monad m]
+    [MonadTrace m]
+    [MonadLiftT IO m]
+    [MonadRef m]
+    [AddMessageContext m]
+    [MonadOptions m]
+    [always : MonadAlwaysExcept ε m]
+    [MonadLiftT BaseIO m]
+    (header : MessageData) (k : m α)
     (collapsed : Bool := false)
-    (traceClass : Name := `simp_mem.info) : TacticM α :=
+    (traceClass : Name := `simp_mem.info) : m α :=
   Lean.withTraceNode traceClass (fun _ => return header) k (collapsed := collapsed)
 
 /-- Create a trace note that folds `header` with `(NOTE: can be large)`,
 and prints `msg` under such a trace node. Collapsed by default.
 -/
-def TacticM.traceLargeMsg (header : MessageData) (msg : MessageData) : TacticM Unit := do
+def TacticM.traceLargeMsg
+    [Monad m]
+    [MonadTrace m]
+    [MonadLiftT IO m]
+    [MonadRef m]
+    [AddMessageContext m]
+    [MonadOptions m]
+    [always : MonadAlwaysExcept ε m]
+    [MonadLiftT BaseIO m]
+    (header : MessageData)
+    (msg : MessageData) : m Unit := do
     withTraceNode' m!"{header} (NOTE: can be large)" (collapsed := true) do
-      -- | TODO: change trace class?
       trace[simp_mem.info] msg
 
 
@@ -270,7 +288,7 @@ def omega (bvToNatSimpCtx : Simp.Context) (bvToNatSimprocs : Array Simp.Simprocs
       trace[simp_mem.info] "{goal}"
     -- @bollu: TODO: understand what precisely we are recovering from.
     withoutRecover do
-    evalTactic (← `(tactic| bv_omega_bench))
+      evalTactic (← `(tactic| bv_omega_bench))
 
 /-
 Introduce a new definition into the local context, simplify it using `simp`,
