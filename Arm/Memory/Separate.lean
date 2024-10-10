@@ -366,27 +366,22 @@ theorem mem_separate'_comm (h : mem_separate' a an b bn) :
   apply mem_separate'.of_omega
   omega
 
+
 /-#
 This is a theorem we ought to prove, which establishes the equivalence
 between the old and new defintions of 'mem_separate'.
 However, the proof is finicky, and so we leave it commented for now.
 -/
-/-
-theorem mem_separate_of_mem_separate' (h : mem_separate' a an b bn)
-    (ha' : a' = a + (BitVec.ofNat w₁ (an - 1) ) (hb' : b' = b + (BitVec.ofNat w₁ (bn - 1)))
-    (hlegala : mem_legal a an) (hlegalb: mem_legal b bn) :
-    mem_separate a a' b b' := by
+theorem mem_separate_of_mem_separate' (a b : BitVec 64)
+    (an bn : Nat)
+    (han : an > 0) (hbn : bn > 0)
+    (h : mem_separate' a an b bn) :
+    mem_separate a (a + an - 1) b (b + bn - 1) := by
   simp [mem_separate]
   simp [mem_overlap]
   obtain ⟨ha, hb, hsep⟩ := h
   simp [mem_legal'] at ha hb
-  subst ha'
-  subst hb'
-  apply Classical.byContradiction
-  intro hcontra
-  · sorry
-  · sorry
--/
+  bv_omega
 
 /-- `mem_subset' a an b bn` witnesses that `[a..a+an)` is a subset of `[b..b+bn)`.
 In prose, we may notate this as `[a..an) ≤ [b..bn)`.
