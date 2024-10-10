@@ -25,8 +25,10 @@ open BitVec
 -- types, but their sub-categories' names (e.g.,
 -- DataProcImmInst.Add_sub_imm) are longer and use underscores.
 
-/-- A fully-decoded Arm instruction is represented by the ArmInst
-structure. --/
+/--
+A fully-decoded Arm instruction is represented by the ArmInst
+structure.
+-/
 inductive ArmInst where
   | DPI   : DataProcImmInst → ArmInst
   | BR    : BranchInst      → ArmInst
@@ -36,6 +38,14 @@ inductive ArmInst where
 deriving DecidableEq, Repr
 
 instance : ToString ArmInst where toString a := toString (repr a)
+
+/--
+Two main types of registers available on the machine.
+-/
+inductive RegType where
+  | GPR : BitVec 5 → RegType
+  | SFP : BitVec 5 → RegType
+deriving Repr, DecidableEq
 
 def decode_data_proc_imm (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
@@ -53,6 +63,18 @@ def decode_data_proc_imm (i : BitVec 32) : Option ArmInst :=
     DPI (Move_wide_imm {sf, opc, hw, imm16, Rd})
   | _ => none
 
+/--
+Return the indices of all the GPR/SFP registers that may be modified by the
+DPI instruction `i`.
+-/
+def DPI.mayModifyRegs (i : BitVec 32) : Except String (List RegType) :=
+  if let some _ := decode_data_proc_imm i then
+    -- The 5 LSBs of all DPI instructions give the index of the Rd register.
+    .ok [(.GPR (extractLsb' 0 5 i))]
+  else
+    .error
+      "Instruction 0x{i.toHex} is not of class Data Processing (Immediate)."
+
 def decode_branch (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
   open BranchInst in
@@ -68,6 +90,18 @@ def decode_branch (i : BitVec 32) : Option ArmInst :=
   | [11010101000000110010, CRm:4, op2:3, 11111] =>
     BR (Hints {CRm, op2})
   | _ => none
+
+/--
+Return the indices of all the GPR/SFP registers that may be modified by the
+BR instruction `i`.
+-/
+def BR.mayModifiedRegs (i : BitVec 32) : Except String (List RegType) :=
+  if let some _ := decode_branch i then
+    -- None of the branch instructions modify any GPR or SFP registers.
+    .ok []
+  else
+    .error
+      "Instruction 0x{i.toHex} is not of class Branch Processing."
 
 def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
@@ -88,6 +122,18 @@ def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=
   | [sf:1, op54:2, 11011, op31:3, Rm:5, o0:1, Ra:5, Rn:5, Rd:5] =>
     DPR (Data_processing_three_source {sf, op54, op31, Rm, o0, Ra, Rn, Rd})
   | _ => none
+
+/--
+Return the indices of all the GPR/SFP registers that may be modified by the
+DPR instruction `i`.
+-/
+def DPR.MayModifyRegs (i : BitVec 32) : Except String (List RegType) :=
+  if let some _ := decode_data_proc_reg i then
+    -- The 5 LSBs of all DPR instructions give the index of the Rd register.
+    .ok [(.GPR (extractLsb' 0 5 i))]
+  else
+    .error
+      "Instruction 0x{i.toHex} is not of class Data Processing (Register)."
 
 def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
@@ -111,9 +157,9 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
     DPSFP (Advanced_simd_permute {Q, size, Rm, opcode, Rn, Rd})
   | [0, Q:1, op:1, 0111100000, a:1, b:1, c:1, cmode:4, o2:1, 1, d:1, e:1, f:1, g:1, h:1, Rd:5] =>
     DPSFP (Advanced_simd_modified_immediate {Q, op, a, b, c, cmode, o2, d, e, f, g, h, Rd})
-  -- Note: Advanced SIMD shift by immediate constraint immh != 0000
+  -- Note: Advanced SIMD shift by immediate constraint `immh != 0000`
   -- An instruction will be matched against `Advanced_simd_modified_immediate` first,
-  -- if it doesn't match, then we know immh can't be 0b0000#4
+  -- if it doesn't match, then we know `immh` can't be `0b0000#4`
   | [0, Q:1, U:1, 011110, immh:4, immb:3, opcode:5, 1, Rn:5, Rd:5] =>
     DPSFP (Advanced_simd_shift_by_immediate {Q, U, immh, immb, opcode, Rn, Rd})
   | [01, U:1, 111110, immh:4, immb:3, opcode:5, 1, Rn:5, Rd:5] =>
@@ -129,6 +175,41 @@ def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
   | [sf:1, 0, S:1, 11110, ftype:2, 1, rmode:2, opcode:3, 000000, Rn:5, Rd:5] =>
     DPSFP (Conversion_between_FP_and_Int {sf, S, ftype, rmode, opcode, Rn, Rd})
   | _ => none
+
+/--
+Does the `Rd` field of a DPSFP instruction indicate a GPR?
+All other DPSFP instructions' `Rd` field indicate an SFP register.
+-/
+def DPSFP.isGPRdest (inst : ArmInst) : Bool :=
+  open ArmInst in
+  open DataProcSFPInst in
+  match inst with
+  | DPSFP (Advanced_simd_copy i) =>
+  -- SMOV and UMOV write to a GPR.
+  -- Ref. the following in `exec_advanced_simd_copy`:
+  -- | [_Q:1, 0, _imm5:5, 0101] => exec_smov_umov inst s true
+  -- | [_Q:1, 0, _imm5:5, 0111] => exec_smov_umov inst s false
+    (i.Q = 1#1 ∧ i.op = 0#1 ∧ (i.imm4 = 0b0101#4 ∨ i.imm4 = 0b0111#4))
+  | DPSFP (Conversion_between_FP_and_Int i) =>
+  -- FPConvOp.FPConvOp_MOV_FtoI writes to a GPR.
+  -- Ref. `exec_fmov_general`.
+    ((extractLsb' 1 2 i.opcode) ++ i.rmode) ∈ [0b1100#4, 0b1101#4] ∧
+    ¬(lsb i.opcode 0 = 1#1)
+  | _ => false
+
+/--
+Return the indices of all the GPR/SFP registers that may be modified by the
+DPSFP instruction `i`.
+-/
+def DPSFP.MayModifyRegs (i : BitVec 32) : Except String (List RegType) :=
+  if let some arm_inst := decode_data_proc_sfp i then
+    -- The 5 LSBs of all DPSFP instructions give the index of the Rd register.
+    let is_gpr := DPSFP.isGPRdest arm_inst
+    let idx := (extractLsb' 0 5 i)
+    .ok [(if is_gpr then (.GPR idx) else (.SFP idx))]
+  else
+    .error
+      "Instruction 0x{i.toHex} is not of class Data Processing (SIMD&FP)."
 
 def decode_ldst_inst (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
@@ -152,6 +233,79 @@ def decode_ldst_inst (i : BitVec 32) : Option ArmInst :=
     LDST (Advanced_simd_multiple_struct_post_indexed {Q, L, Rm, opcode, size, Rn, Rt})
   | _ => none
 
+@[state_simp_rules]
+def LDST.multiple_struct_rpt_selem (opcode : BitVec 4) : Nat × Nat :=
+  match opcode with
+    | 0b0000#4 => (1, 4) -- LD/ST4: 4 registers
+    | 0b0010#4 => (4, 1) -- LD/ST1: 4 registers
+    | 0b0100#4 => (1, 3) -- LD/ST3: 3 registers
+    | 0b0110#4 => (3, 1) -- LD/ST1: 3 registers
+    | 0b0111#4 => (1, 1) -- LD/ST1: 1 register
+    | 0b1000#4 => (1, 2) -- LD/ST2: 2 registers
+    | _        => (2, 1) -- LD/ST1: 2 registers (opcode: 0b1010#4)
+
+/--
+Return the indices of all the GPR/SFP registers that may be modified by the LDST
+instruction `i`.
+-/
+def LDST.mayModifiedRegs (i : BitVec 32) : Except String (List RegType) :=
+  if let some arm_inst := decode_ldst_inst i then
+    open ArmInst LDSTInst in
+    match arm_inst with
+    | LDST (Reg_imm_post_indexed x) =>
+      if (getLsbD x.opc 0) then .ok [] -- Load
+      else if x.V = 1#1 then -- Store and SIMD
+        .ok [(.SFP x.Rt), (.GPR x.Rn)]
+      else .ok [(.GPR x.Rt), (.GPR x.Rn)] -- Store and non-SIMD
+    | LDST (Reg_unsigned_imm x) =>
+      -- Similar to `Reg_imm_post_indexed`, except that `wback` is `false`,
+      -- which means that `x.Rn` isn't updated.
+      if (getLsbD x.opc 0) then .ok [] -- Load
+      else if x.V = 1#1 then -- Store and SIMD
+        .ok [(.SFP x.Rt)]
+      else .ok [(.GPR x.Rt)] -- Store and non-SIMD
+    | LDST (Reg_unscaled_imm x) =>
+      if getLsbD x.opc 0 then .ok [] -- Load
+      else .ok [(.SFP x.Rt)] -- Store
+    | LDST (Reg_pair_pre_indexed x) | LDST (Reg_pair_post_indexed x) =>
+      if x.L = 0#1 then -- Store
+        if x.V = 1#1 then
+          .ok [(.SFP x.Rt), (.SFP x.Rt2), (.GPR x.Rn)] -- SIMD
+        else .ok [(.GPR x.Rt), (.GPR x.Rt2), (.GPR x.Rn)] -- non-SIMD
+      else .ok [] -- Load
+    | LDST (Reg_pair_signed_offset x) =>
+      -- Similar to `Reg_pair_pre_indexed` and `Reg_pair_post_indexed`, except
+      -- `wback` is `false`, which means that `x.Rn` isn't updated.
+      if x.L = 0#1 then -- Store
+        if x.V = 1#1 then
+          .ok [(.SFP x.Rt), (.SFP x.Rt2)] -- SIMD
+        else .ok [(.GPR x.Rt), (.GPR x.Rt2)] -- non-SIMD
+      else .ok [] -- Load
+    | LDST (Advanced_simd_multiple_struct_post_indexed x) =>
+      if x.L = 0#1 then -- Store
+        let (rpt, _) := LDST.multiple_struct_rpt_selem x.opcode
+        match rpt with
+        | 1 => .ok [(.SFP x.Rt), (.GPR x.Rn)]
+        | 2 => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1)), (.GPR x.Rn)]
+        | 3 => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1)), (.SFP (x.Rt + 2)), (.GPR x.Rn)]
+        | _ => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1)), (.SFP (x.Rt + 2)), (.SFP (x.Rt + 3)), (.GPR x.Rn)]
+      else .ok [] -- Load
+    | LDST (Advanced_simd_multiple_struct x) =>
+      -- Similar to `Advanced_simd_multiple_struct_post_indexed`, except
+      -- `wback` is `false`, which means that `x.Rn` isn't updated.
+      if x.L = 0#1 then -- Store
+        let (rpt, _) := LDST.multiple_struct_rpt_selem x.opcode
+        match rpt with
+        | 1 => .ok [(.SFP x.Rt)]
+        | 2 => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1))]
+        | 3 => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1)), (.SFP (x.Rt + 2))]
+        | _ => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1)), (.SFP (x.Rt + 2)), (.SFP (x.Rt + 3))]
+      else .ok [] -- Load
+    | _ => .ok []
+  else
+    .error
+      "Instruction 0x{i.toHex} is not of class LDST."
+
 -- Decode a 32-bit instruction `i`.
 def decode_raw_inst (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
@@ -165,6 +319,24 @@ def decode_raw_inst (i : BitVec 32) : Option ArmInst :=
     | _, 0b0100#4 | _, 0b1100#4 | _, 0b0110#4 | _, 0b1110#4 => decode_ldst_inst i
     | _, _ => none
   | _ => none
+
+/--
+Return the indices of all the GPR/SFP registers that may be modified by the
+instruction `i`. Note that this is an (over)approximation. The use-case is to
+statically determine which register components can be affected by a program.
+-/
+def mayModifiedRegs (i : BitVec 32) : Except String (List RegType) :=
+  open ArmInst in
+  match_bv i with
+  | [op0:1, _x:2, op1:4, _y:25] =>
+    match op0, op1 with
+    | _, 0b1000#4 | _, 0b1001#4 => DPI.mayModifyRegs i
+    | _, 0b1010#4 | _, 0b1011#4 => BR.mayModifiedRegs i
+    | _, 0b1101#4 | _, 0b0101#4 => DPR.MayModifyRegs i
+    | _, 0b0111#4 | _, 0b1111#4 => DPSFP.MayModifyRegs i
+    | _, 0b0100#4 | _, 0b1100#4 | _, 0b0110#4 | _, 0b1110#4 => LDST.mayModifiedRegs i
+    | _, _ => .ok []
+  | _ => .ok []
 
 ------------------------------------------------------------------------
 
