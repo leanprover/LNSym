@@ -19,149 +19,18 @@ We want to check that it correctly sees that there are:
 
 -/
 
-set_option trace.Tactic.cse.summary true in
 /--
 warning: declaration uses 'sorry'
 ---
-info: [Tactic.cse.summary] CSE collecting hypotheses:
-  [Tactic.cse.summary] (x + x + (y + y + (y + y)) =
-        y + y + (y + y) + (y + y + (y + y)) + (y + y + (y + y))):(Prop) [relevant? ❌️] (unfold for subexpressions...)
-    [Tactic.cse.summary] (x + x + (y + y + (y + y))):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-      [Tactic.cse.summary] (x + x):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-        [Tactic.cse.summary] (x):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 1 }) (NOTE: can be large)
-            [Tactic.cse.summary] x
-        [Tactic.cse.summary] (x):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] updated expr (...) with info ({ occs := 2, size := 1 }) (NOTE: can be large)
-            [Tactic.cse.summary] x
-        [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 3 }) (NOTE: can be large)
-          [Tactic.cse.summary] x + x
-      [Tactic.cse.summary] (y + y + (y + y)):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-        [Tactic.cse.summary] (y + y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 1 }) (NOTE: can be large)
-              [Tactic.cse.summary] y
-          [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 2, size := 1 }) (NOTE: can be large)
-              [Tactic.cse.summary] y
-          [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 3 }) (NOTE: can be large)
-            [Tactic.cse.summary] y + y
-        [Tactic.cse.summary] (y + y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 3, size := 1 }) (NOTE: can be large)
-              [Tactic.cse.summary] y
-          [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 4, size := 1 }) (NOTE: can be large)
-              [Tactic.cse.summary] y
-          [Tactic.cse.summary] updated expr (...) with info ({ occs := 2, size := 3 }) (NOTE: can be large)
-            [Tactic.cse.summary] y + y
-        [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 7 }) (NOTE: can be large)
-          [Tactic.cse.summary] y + y + (y + y)
-      [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 11 }) (NOTE: can be large)
-        [Tactic.cse.summary] x + x + (y + y + (y + y))
-    [Tactic.cse.summary] (y + y + (y + y) + (y + y + (y + y)) +
-          (y + y + (y + y))):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-      [Tactic.cse.summary] (y + y + (y + y) + (y + y + (y + y))):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-        [Tactic.cse.summary] (y + y + (y + y)):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] (y + y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-              [Tactic.cse.summary] updated expr (...) with info ({ occs := 5, size := 1 }) (NOTE: can be large)
-                [Tactic.cse.summary] y
-            [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-              [Tactic.cse.summary] updated expr (...) with info ({ occs := 6, size := 1 }) (NOTE: can be large)
-                [Tactic.cse.summary] y
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 3, size := 3 }) (NOTE: can be large)
-              [Tactic.cse.summary] y + y
-          [Tactic.cse.summary] (y + y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-              [Tactic.cse.summary] updated expr (...) with info ({ occs := 7, size := 1 }) (NOTE: can be large)
-                [Tactic.cse.summary] y
-            [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-              [Tactic.cse.summary] updated expr (...) with info ({ occs := 8, size := 1 }) (NOTE: can be large)
-                [Tactic.cse.summary] y
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 4, size := 3 }) (NOTE: can be large)
-              [Tactic.cse.summary] y + y
-          [Tactic.cse.summary] updated expr (...) with info ({ occs := 2, size := 7 }) (NOTE: can be large)
-            [Tactic.cse.summary] y + y + (y + y)
-        [Tactic.cse.summary] (y + y + (y + y)):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] (y + y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-              [Tactic.cse.summary] updated expr (...) with info ({ occs := 9, size := 1 }) (NOTE: can be large)
-                [Tactic.cse.summary] y
-            [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-              [Tactic.cse.summary] updated expr (...) with info ({ occs := 10, size := 1 }) (NOTE: can be large)
-                [Tactic.cse.summary] y
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 5, size := 3 }) (NOTE: can be large)
-              [Tactic.cse.summary] y + y
-          [Tactic.cse.summary] (y + y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-              [Tactic.cse.summary] updated expr (...) with info ({ occs := 11, size := 1 }) (NOTE: can be large)
-                [Tactic.cse.summary] y
-            [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-              [Tactic.cse.summary] updated expr (...) with info ({ occs := 12, size := 1 }) (NOTE: can be large)
-                [Tactic.cse.summary] y
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 6, size := 3 }) (NOTE: can be large)
-              [Tactic.cse.summary] y + y
-          [Tactic.cse.summary] updated expr (...) with info ({ occs := 3, size := 7 }) (NOTE: can be large)
-            [Tactic.cse.summary] y + y + (y + y)
-        [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 15 }) (NOTE: can be large)
-          [Tactic.cse.summary] y + y + (y + y) + (y + y + (y + y))
-      [Tactic.cse.summary] (y + y + (y + y)):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-        [Tactic.cse.summary] (y + y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 13, size := 1 }) (NOTE: can be large)
-              [Tactic.cse.summary] y
-          [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 14, size := 1 }) (NOTE: can be large)
-              [Tactic.cse.summary] y
-          [Tactic.cse.summary] updated expr (...) with info ({ occs := 7, size := 3 }) (NOTE: can be large)
-            [Tactic.cse.summary] y + y
-        [Tactic.cse.summary] (y + y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 15, size := 1 }) (NOTE: can be large)
-              [Tactic.cse.summary] y
-          [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-            [Tactic.cse.summary] updated expr (...) with info ({ occs := 16, size := 1 }) (NOTE: can be large)
-              [Tactic.cse.summary] y
-          [Tactic.cse.summary] updated expr (...) with info ({ occs := 8, size := 3 }) (NOTE: can be large)
-            [Tactic.cse.summary] y + y
-        [Tactic.cse.summary] updated expr (...) with info ({ occs := 4, size := 7 }) (NOTE: can be large)
-          [Tactic.cse.summary] y + y + (y + y)
-      [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 23 }) (NOTE: can be large)
-        [Tactic.cse.summary] y + y + (y + y) + (y + y + (y + y)) + (y + y + (y + y))
-[Tactic.cse.summary] ⏭️ CSE eliminiating unprofitable expressions (#expressions:8):
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 16, size := 1 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: y
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 2, size := 1 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: x
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 3 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: x + x
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 23 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: y + y + (y + y) + (y + y + (y + y)) + (y + y + (y + y))
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 11 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: x + x + (y + y + (y + y))
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 15 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: y + y + (y + y) + (y + y + (y + y))
-[Tactic.cse.summary] CSE summary of profitable expressions (#expressions:2):
-  [Tactic.cse.summary] 1) { occs := 8, size := 3 } (NOTE: can be large)
-    [Tactic.cse.summary] y + y
-  [Tactic.cse.summary] 2) { occs := 4, size := 7 } (NOTE: can be large)
-    [Tactic.cse.summary] y + y + (y + y)
-[Tactic.cse.summary] CSE rewriting (#expressions:2):
-  [Tactic.cse.summary] ⌛ Generalizing hx1: x1 = ... (NOTE: can be large)
-    [Tactic.cse.summary] y + y + (y + y)
-  [Tactic.cse.summary] ✅️ succeeded in generalizing hx1. (NOTE: can be large)
-    [Tactic.cse.summary] x y z x1 : Nat
-        hx1 : y + y + (y + y) = x1
-        ⊢ x + x + x1 = x1 + x1 + x1
-  [Tactic.cse.summary] ⌛ Generalizing hx2: x2 = ... (NOTE: can be large)
-    [Tactic.cse.summary] y + y
-  [Tactic.cse.summary] ✅️ succeeded in generalizing hx2. (NOTE: can be large)
-    [Tactic.cse.summary] x y z x1 x2 : Nat hx2 : y + y = x2 hx1 : x2 + x2 = x1 ⊢ x + x + x1 = x1 + x1 + x1
+info: x y z x1 x2 : Nat
+hx2 : y + y = x2
+hx1 : x2 + x2 = x1
+⊢ x + x + x1 = x1 + x1 + x1
 -/
 #guard_msgs in theorem many_subexpr (x y z : Nat) : (x + x) + ((y + y) + (y + y)) =
   (((y + y) + (y + y)) + ((y + y) + (y + y))) + (((y + y) + (y + y))) := by
   cse (config := {minOccsToCSE := 2})
+  trace_state
   all_goals sorry
 
 
@@ -170,59 +39,17 @@ info: [Tactic.cse.summary] CSE collecting hypotheses:
 In this test case, we try to generalize on `64`, which is a dependent index
 of the type `BitVec 64`. Therefore, this should fail to generalize.
 -/
-set_option trace.Tactic.cse.summary true in
 /--
 warning: declaration uses 'sorry'
 ---
-info: [Tactic.cse.summary] CSE collecting hypotheses:
-  [Tactic.cse.summary] (BitVec.ofNat (y + y) (y + y) = x):(Prop) [relevant? ❌️] (unfold for subexpressions...)
-    [Tactic.cse.summary] (BitVec.ofNat (y + y) (y + y)):(BitVec (y + y)) [relevant? ✅️] (unfold for subexpressions...)
-      [Tactic.cse.summary] (y + y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-        [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 1 }) (NOTE: can be large)
-            [Tactic.cse.summary] y
-        [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] updated expr (...) with info ({ occs := 2, size := 1 }) (NOTE: can be large)
-            [Tactic.cse.summary] y
-        [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 3 }) (NOTE: can be large)
-          [Tactic.cse.summary] y + y
-      [Tactic.cse.summary] (y + y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-        [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] updated expr (...) with info ({ occs := 3, size := 1 }) (NOTE: can be large)
-            [Tactic.cse.summary] y
-        [Tactic.cse.summary] (y):(Nat) [relevant? ✅️] (unfold for subexpressions...)
-          [Tactic.cse.summary] updated expr (...) with info ({ occs := 4, size := 1 }) (NOTE: can be large)
-            [Tactic.cse.summary] y
-        [Tactic.cse.summary] updated expr (...) with info ({ occs := 2, size := 3 }) (NOTE: can be large)
-          [Tactic.cse.summary] y + y
-      [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 7 }) (NOTE: can be large)
-        [Tactic.cse.summary] BitVec.ofNat (y + y) (y + y)
-    [Tactic.cse.summary] (x):(BitVec (y + (y + 0))) [relevant? ✅️] (unfold for subexpressions...)
-      [Tactic.cse.summary] Added new expr (...) with info ({ occs := 1, size := 1 }) (NOTE: can be large)
-        [Tactic.cse.summary] x
-[Tactic.cse.summary] ⏭️ CSE eliminiating unprofitable expressions (#expressions:4):
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 4, size := 1 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: y
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 1 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: x
-  [Tactic.cse.summary] ⏭️ Unprofitable { occs := 1, size := 7 } . (NOTE: can be large)
-    [Tactic.cse.summary] expr: BitVec.ofNat (y + y) (y + y)
-[Tactic.cse.summary] CSE summary of profitable expressions (#expressions:1):
-  [Tactic.cse.summary] 1) { occs := 2, size := 3 } (NOTE: can be large)
-    [Tactic.cse.summary] y + y
-[Tactic.cse.summary] CSE rewriting (#expressions:1):
-  [Tactic.cse.summary] ⌛ Generalizing hx1: x1 = ... (NOTE: can be large)
-    [Tactic.cse.summary] y + y
-  [Tactic.cse.summary] 💥️ failed to generalize hx1 (NOTE: can be large)
-    [Tactic.cse.summary] tactic 'generalize' failed, result is not type correct
-          ∀ (x1 : Nat), BitVec.ofNat x1 x1 = x
-        y : Nat
-        x : BitVec (y + (y + 0))
-        ⊢ BitVec.ofNat (y + y) (y + y) = x
+info: y : Nat
+x : BitVec (y + (y + 0))
+⊢ BitVec.ofNat (y + y) (y + y) = x
 -/
 #guard_msgs in theorem generalize_failure (x : BitVec (y + (y + 0))) :
     (BitVec.ofNat (y + y) (y + y)) = x := by
   cse
+  trace_state
   all_goals sorry
 
 /- ### Test from SHA -/
@@ -256,7 +83,8 @@ hx2 : BitVec.zeroExtend 128 x3 = x2
 namespace SHA
 
 open BitVec sha512_helpers DPSFP SHA2 in
-/--warning: declaration uses 'sorry'
+/--
+warning: declaration uses 'sorry'
 ---
 info: a b c d e : BitVec 128
 x1 x2 x3 : BitVec 64
@@ -265,11 +93,11 @@ hx3 : BitVec.extractLsb' 64 64 x4 = x3
 x5 x6 x7 x8 x9 : BitVec 64
 hx2 : x9 + x3 = x2
 x10 x11 : BitVec 128
-hx4 : x10 ||| x11 = x4
+hx4 : x11 ||| x10 = x4
 x12 : BitVec 128
-hx10 : x12 &&& 18446744073709551615#128 = x10
+hx11 : x12 &&& 18446744073709551615#128 = x11
 x13 : BitVec 128
-hx11 : x13 <<< 64 = x11
+hx10 : x13 <<< 64 = x10
 x14 : BitVec 64
 hx12 : BitVec.zeroExtend 128 x14 = x12
 x15 : BitVec 64
@@ -282,14 +110,13 @@ x19 x20 : BitVec 64
 hx8 : x19 + x20 = x8
 x21 : BitVec 64
 hx9 : x20 + x21 = x9
-x22 : BitVec 128
-x23 : BitVec 64
-x24 : BitVec 128
-hx18 : x22 ||| x24 = x18
+x22 : BitVec 64
+x23 x24 : BitVec 128
+hx18 : x24 ||| x23 = x18
 x25 : BitVec 128
-hx24 : x25 <<< 64 = x24
+hx23 : x25 <<< 64 = x23
 x26 : BitVec 128
-hx22 : x26 &&& 18446744073709551615#128 = x22
+hx24 : x26 &&& 18446744073709551615#128 = x24
 x27 x28 : BitVec 64
 hx26 : BitVec.zeroExtend 128 x28 = x26
 x29 : BitVec 64
@@ -297,9 +124,9 @@ hx25 : BitVec.zeroExtend 128 x29 = x25
 x30 : BitVec 64
 hx20 : x30 ^^^ x27 = x20
 x31 x32 : BitVec 64
-hx23 : x31 ^^^ x32 = x23
+hx22 : x31 ^^^ x32 = x22
 x33 x34 : BitVec 64
-hx21 : x23 ^^^ x34 = x21
+hx21 : x22 ^^^ x34 = x21
 x35 : BitVec 64
 hx35 : BitVec.extractLsb' 0 64 b = x35
 hx1 : x2 + x35 = x1
@@ -342,7 +169,6 @@ hx28 : x44 + x39 = x28
       (x44 + (x5.rotateRight 14 ^^^ x5.rotateRight 18 ^^^ x5.rotateRight 41) + (x5 &&& x37 ^^^ ~~~x5 &&& x43) + x39 +
         x40)
 -/
-
 #guard_msgs in theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let elements := 2
   let esize := 64
