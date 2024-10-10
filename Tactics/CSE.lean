@@ -10,6 +10,8 @@ import Lean
 import Std
 import Tactics.Attr
 import Lean.Meta.Tactic.Generalize
+import Lean.Meta.Match
+import Lean.Meta.LitValues
 open Lean Elab Tactic Expr Meta
 
 /-- An emoji for when we are processing or trying. -/
@@ -198,15 +200,6 @@ private def Array.replicate (n : Nat) (v : α) : Array α := List.replicate n v 
 def ExprData.isProfitable? (data : ExprData) : CSEM Bool :=
   return data.size > 1 && data.occs >= (← getConfig).minOccsToCSE
 
-/-- Check if an expression is a nat literal, or a `OfNat.ofNat` of a nat literal.
-This lets us avoid CSEing over nat literals, which are already in canonical form.
--/
-def CSEM.isNatLit (e : Expr) : Bool :=
-  if e.isRawNatLit then true
-  else
-  match_expr e with
-  | OfNat.ofNat _α x _inst  => x.isRawNatLit -- @OfNat.ofNat Nat 1 (instOfNatNat 1)
-  | _ => false
 
 /--
 The function is partial because of the call to `tryAddExpr` that
@@ -219,8 +212,8 @@ partial def CSEM.tryAddExpr (e : Expr) : CSEM (Option ExprData) := do
     return .none
 
   let t ← inferType e
-  -- for now, we ignore function terms.
-  let relevant? := !t.isArrow && !t.isSort && !t.isForall && !isNatLit e
+  -- for now, we ignore function terms and all literals.
+  let relevant? := !t.isArrow && !t.isSort && !t.isForall && !(← isLitValue e)
   withTraceNode m!"({e}):({t}) [relevant? {if relevant? then checkEmoji else crossEmoji}] (unfold for subexpressions...)" do
     /-
     If we have an application, then only add its children
