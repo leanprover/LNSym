@@ -227,6 +227,9 @@ inductive Hypothesis
 | pairwiseSeparate (proof : MemPairwiseSeparateProof e)
 | read_eq (proof : ReadBytesEqProof)
 
+def Hypothesis.isPairwiseSeparate : Hypothesis → Bool
+| .pairwiseSeparate _ => true
+| _ => false
 
 def Hypothesis.proof : Hypothesis → Expr
 | .pairwiseSeparate proof  => proof.h
@@ -245,17 +248,35 @@ instance : ToMessageData Hypothesis where
 
 /-- create a trace node in trace class (i.e. `set_option traceClass true`),
 with header `header`, whose default collapsed state is `collapsed`. -/
-def TacticM.withTraceNode' (header : MessageData) (k : TacticM α)
+def TacticM.withTraceNode'
+    [Monad m]
+    [MonadTrace m]
+    [MonadLiftT IO m]
+    [MonadRef m]
+    [AddMessageContext m]
+    [MonadOptions m]
+    [always : MonadAlwaysExcept ε m]
+    [MonadLiftT BaseIO m]
+    (header : MessageData) (k : m α)
     (collapsed : Bool := false)
-    (traceClass : Name := `simp_mem.info) : TacticM α :=
+    (traceClass : Name := `simp_mem.info) : m α :=
   Lean.withTraceNode traceClass (fun _ => return header) k (collapsed := collapsed)
 
 /-- Create a trace note that folds `header` with `(NOTE: can be large)`,
 and prints `msg` under such a trace node. Collapsed by default.
 -/
-def TacticM.traceLargeMsg (header : MessageData) (msg : MessageData) : TacticM Unit := do
+def TacticM.traceLargeMsg
+    [Monad m]
+    [MonadTrace m]
+    [MonadLiftT IO m]
+    [MonadRef m]
+    [AddMessageContext m]
+    [MonadOptions m]
+    [always : MonadAlwaysExcept ε m]
+    [MonadLiftT BaseIO m]
+    (header : MessageData)
+    (msg : MessageData) : m Unit := do
     withTraceNode' m!"{header} (NOTE: can be large)" (collapsed := true) do
-      -- | TODO: change trace class?
       trace[simp_mem.info] msg
 
 
@@ -270,7 +291,7 @@ def omega (bvToNatSimpCtx : Simp.Context) (bvToNatSimprocs : Array Simp.Simprocs
       trace[simp_mem.info] "{goal}"
     -- @bollu: TODO: understand what precisely we are recovering from.
     withoutRecover do
-    evalTactic (← `(tactic| bv_omega_bench))
+      evalTactic (← `(tactic| bv_omega_bench))
 
 /-
 Introduce a new definition into the local context, simplify it using `simp`,
@@ -278,7 +299,6 @@ and return the FVarId of the new definition in the goal.
 -/
 def simpAndIntroDef (name : String) (hdefVal : Expr) : TacticM FVarId  := do
   withMainContext do
-
     let name ← mkFreshUserName <| .mkSimple name
     let goal ← getMainGoal
     let hdefTy ← inferType hdefVal
@@ -301,7 +321,7 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : TacticM FVarId  := do
     let hdefVal ← simpResult.mkCast hdefVal
     let hdefTy ← inferType hdefVal
 
-    let goal ← goal.define name hdefTy hdefVal
+    let goal ← goal.assert name hdefTy hdefVal
     let (fvar, goal) ← goal.intro1P
     replaceMainGoal [goal]
     return fvar
@@ -408,7 +428,7 @@ partial def MemPairwiseSeparateProof.ofExpr? (e : Expr) : Option MemPairwiseSepa
 /-- Match an expression `h` to see if it's a useful hypothesis. -/
 def hypothesisOfExpr (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothesis) := do
   let ht ← inferType h
-  trace[simp_mem.info] "{processingEmoji} Processing '{h}' : '{toString ht}'"
+  trace[simp_mem.info] "{processingEmoji} Processing '{h}' : '{ht}'"
   if let .some sep := MemSeparateProp.ofExpr? ht then
     let proof : MemSeparateProof sep := ⟨h⟩
     let hyps := hyps.push (.separate proof)
@@ -748,5 +768,33 @@ def proveWithOmega?  {α : Type} [ToMessageData α] [OmegaReducible α] (e : α)
     setGoals oldGoals
     return none
   end ReductionToOmega
+
+/--
+simplify the goal state, closing legality, subset, and separation goals,
+and simplifying all other expressions. return `true` if goal has been closed, and `false` otherwise.
+-/
+partial def closeMemSideCondition (g : MVarId)
+    (bvToNatSimpCtx : Simp.Context) (bvToNatSimprocs : Array Simp.Simprocs)
+    (hyps : Array Memory.Hypothesis) : TacticM Bool := do
+  g.withContext do
+    trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
+    let gt ← g.getType
+    if let .some e := MemLegalProp.ofExpr? gt then
+      TacticM.withTraceNode' m!"Matched on ⊢ {e}. Proving..." do
+        if let .some proof ← proveWithOmega? e bvToNatSimpCtx bvToNatSimprocs hyps then
+          g.assign proof.h
+    if let .some e := MemSubsetProp.ofExpr? gt then
+      TacticM.withTraceNode' m!"Matched on ⊢ {e}. Proving..." do
+        if let .some proof ← proveWithOmega? e bvToNatSimpCtx bvToNatSimprocs hyps then
+          g.assign proof.h
+    if let .some e := MemSeparateProp.ofExpr? gt then
+      TacticM.withTraceNode' m!"Matched on ⊢ {e}. Proving..." do
+        if let .some proof ← proveWithOmega? e bvToNatSimpCtx bvToNatSimprocs hyps then
+          g.assign proof.h
+  return ← g.isAssigned
+
+
+
+
 
 end Tactic.Memory

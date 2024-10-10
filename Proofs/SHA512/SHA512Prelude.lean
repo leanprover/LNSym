@@ -182,7 +182,7 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   · constructor
     · -- (TODO @bollu) Think about whether `simp_mem` should be powerful enough to solve this goal.
       -- Also, `mem_omega` name suggestion from Alex for the already souped up `simp_mem`.
-      simp_mem (config := { useOmegaToClose := false } )
+      simp_mem
       simp only [h_s0_ctx_base, Nat.sub_self, minimal_theory, bitvec_rules]
     · constructor
       · -- (FIXME @bollu) simp_mem doesn't make progress here. :-(
