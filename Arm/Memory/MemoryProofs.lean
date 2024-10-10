@@ -64,7 +64,7 @@ theorem read_mem_of_write_mem_bytes_different (hn1 : n <= 2^64)
 theorem append_byte_of_extract_rest_same_cast (n : Nat) (v : BitVec ((n + 1) * 8))
   (hn0 : Nat.succ 0 ≤ n)
   (h : (n * 8 + 8) = (n + 1) * 8) :
-  BitVec.cast h (zeroExtend (n * 8) (v >>> 8) ++ extractLsb' 0 8 v) = v := by
+  BitVec.cast h (setWidth (n * 8) (v >>> 8) ++ extractLsb' 0 8 v) = v := by
   apply BitVec.append_of_extract
   · omega
   done
@@ -428,7 +428,7 @@ private theorem write_mem_bytes_of_write_mem_bytes_shadow_general_n2_eq
     case succ =>
       rename_i n n_ih
       conv in write_mem_bytes (Nat.succ n) .. => simp only [write_mem_bytes]
-      have n_ih' := @n_ih (addr1 + 1#64) val2 (zeroExtend (n * 8) (val1 >>> 8))
+      have n_ih' := @n_ih (addr1 + 1#64) val2 (setWidth (n * 8) (val1 >>> 8))
                    (write_mem addr1 (extractLsb' 0 8 val1) s)
                    (by omega)
       simp only [Nat.succ_sub_succ_eq_sub, Nat.sub_zero] at h3
@@ -540,7 +540,7 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_same_first_address
           erw [Nat.mod_eq_of_lt h1] at hn
           exact hn
         rw [n_ih (by omega) (by omega) (by omega) _]
-        · rw [BitVec.extractLsb'_of_zeroExtend (v >>> 8)]
+        · rw [BitVec.extractLsb'_of_setWidth (v >>> 8)]
           · have l1 := @BitVec.append_of_extract_general ((n1_1 + 1) * 8) (n*8) 8 v
             simp (config := { decide := true }) only [Nat.zero_lt_succ,
               Nat.mul_pos_iff_of_pos_left, Nat.succ_sub_succ_eq_sub,
@@ -551,7 +551,7 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_same_first_address
           · omega
         · have rw_lemma2 := @read_mem_of_write_mem_bytes_same_first_address
                               n1_1 (addr + 1#64)
-                              (zeroExtend (n1_1 * 8) (v >>> 8))
+                              (setWidth (n1_1 * 8) (v >>> 8))
                               (write_mem addr (extractLsb' 0 8 v) s)
           simp only [Nat.reducePow, Nat.sub_zero, Nat.reduceAdd,
                      BitVec.cast_eq, forall_const] at rw_lemma2
@@ -662,7 +662,7 @@ theorem read_mem_of_write_mem_bytes_subset
         rw [n_ih]
         · ext
           -- simp only [bv_toNat]
-          simp only [toNat_cast, extractLsb', toNat_zeroExtend]
+          simp only [toNat_cast, extractLsb', toNat_setWidth]
           simp only [toNat_ushiftRight]
           simp_all only [toNat_ofNat, toNat_ofNatLt]
           simp only [BitVec.sub_of_add_is_sub_sub, Nat.succ_sub_succ_eq_sub,
@@ -921,7 +921,7 @@ theorem leftshift_n_or_rightshift_n (n x y : Nat) (h : y < 2^n) :
              Nat.le_add_right, Bool.true_and, Bool.or_false]
 
 private theorem write_mem_bytes_irrelevant_helper (h : n * 8 + 8 = (n + 1) * 8) :
-  (zeroExtend (n * 8)
+  (setWidth (n * 8)
     ((BitVec.cast h (read_mem_bytes n (addr + 1#64) s ++ read_mem addr s)) >>> 8)) =
   read_mem_bytes n (addr + 1#64) s := by
   ext
