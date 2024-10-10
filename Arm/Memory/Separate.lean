@@ -368,9 +368,7 @@ theorem mem_separate'_comm (h : mem_separate' a an b bn) :
 
 
 /-#
-This is a theorem we ought to prove, which establishes the equivalence
-between the old and new defintions of 'mem_separate'.
-However, the proof is finicky, and so we leave it commented for now.
+This theorem establishes the equivalence between the old and new definitions of 'mem_separate'.
 -/
 theorem mem_separate_of_mem_separate' (a b : BitVec 64)
     (an bn : Nat)
