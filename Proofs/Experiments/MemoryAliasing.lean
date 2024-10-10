@@ -255,10 +255,6 @@ info: 'ReadOverlappingRead.overlapping_read_test_3' depends on axioms: [propext,
 -/
 #guard_msgs in #print axioms overlapping_read_test_3
 
-/- TODO(@bollu): This test case hangs at `bv_omega_bench`. This is to be debugged.
-/-- A read in the goal state overlaps with a read in the
-right hand side of the hypotheis `h`.
--/
 theorem overlapping_read_test_4
     (hlegal : mem_legal' src_addr 16)
     (h : read_mem_bytes 16 other_addr s = read_mem_bytes 16 src_addr s) :
@@ -268,11 +264,11 @@ theorem overlapping_read_test_4
   simp only [memory_rules] at h ⊢
   simp_mem
   · congr
-    -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    bv_omega_bench -- TODO: Lean gets stuck here?
+    bv_omega
 
+/-- info: 'ReadOverlappingRead.overlapping_read_test_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms overlapping_read_test_4
--/
+
 end ReadOverlappingRead
 
 namespace ReadOverlappingWrite

@@ -314,7 +314,7 @@ we can have some kind of funny situation where both LHS and RHS are ReadBytes.
 For example, `mem1.read base1 n = mem2.read base2 n`.
 In such a scenario, we should record both reads.
 -/
-def ReadBytesEqProof.ofExpr? (eval : Expr) (etype : Expr) :  Array ReadBytesEqProof := Id.run do
+def ReadBytesEqProof.ofExpr? (eval : Expr) (etype : Expr) : MetaM (Array ReadBytesEqProof) := do
   let mut out := #[]
   if let .some ⟨_ty, lhs, rhs⟩ := etype.eq? then do
     let lhs := lhs
@@ -323,7 +323,7 @@ def ReadBytesEqProof.ofExpr? (eval : Expr) (etype : Expr) :  Array ReadBytesEqPr
       out := out.push { val := rhs, read := read, h := eval }
 
     if let .some read := ReadBytesExpr.ofExpr? rhs then
-      out:= out.push { val := lhs, read := read, h := eval }
+      out:= out.push { val := lhs, read := read, h := ← mkEqSymm eval }
   return out
 
 inductive Hypothesis
@@ -583,7 +583,7 @@ def hypothesisOfExpr (h : Expr) (hyps : Array Hypothesis) : MetaM (Array Hypothe
     return hyps
   else
     let mut hyps := hyps
-    for eqProof in ReadBytesEqProof.ofExpr? h ht do
+    for eqProof in ← ReadBytesEqProof.ofExpr? h ht do
       let proof : Hypothesis := .read_eq eqProof
       hyps := hyps.push proof
     return hyps
