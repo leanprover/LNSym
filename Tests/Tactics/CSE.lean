@@ -99,9 +99,9 @@ hx11 : x12 &&& 18446744073709551615#128 = x11
 x13 : BitVec 128
 hx10 : x13 <<< 64 = x10
 x14 : BitVec 64
-hx12 : BitVec.zeroExtend 128 x14 = x12
+hx13 : BitVec.zeroExtend 128 x14 = x13
 x15 : BitVec 64
-hx13 : BitVec.zeroExtend 128 x15 = x13
+hx12 : BitVec.zeroExtend 128 x15 = x12
 x16 x17 : BitVec 64
 x18 : BitVec 128
 hx16 : BitVec.extractLsb' 64 64 x18 = x16
@@ -114,7 +114,7 @@ x22 : BitVec 64
 x23 x24 : BitVec 128
 hx18 : x24 ||| x23 = x18
 x25 : BitVec 128
-hx23 : x25 <<< 64 = x23
+hx22 : x25 &&& 18446744073709551615#128 = x22
 x26 : BitVec 128
 hx24 : x26 &&& 18446744073709551615#128 = x24
 x27 x28 : BitVec 64
@@ -224,7 +224,7 @@ x15 : BitVec 128
 hx12 : BitVec.extractLsb' 0 64 x15 = x12
 hx13 : BitVec.extractLsb' 64 64 x15 = x13
 x16 : BitVec 256
-hx15 : BitVec.extractLsb' 64 128 x16 = x15
+hx14 : BitVec.extractLsb' 64 128 x16 = x14
 x17 x18 : BitVec 64
 hx2 : x18 + x3 = x2
 x19 : BitVec 64
