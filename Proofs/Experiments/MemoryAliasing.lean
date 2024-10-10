@@ -12,6 +12,7 @@ import Arm.Memory.SeparateAutomation
 
 -- set_option trace.simp_mem true
 -- set_option trace.simp_mem.info true
+-- set_option trace.Meta.Tactic.simp true
 
 namespace MemLegal
 /-- Show reflexivity of legality. -/
@@ -200,7 +201,7 @@ theorem mem_automation_test_4
   simp only [memory_rules]
   simp_mem
   congr 1
-  bv_omega -- TODO: address normalization.
+  bv_omega_bench -- TODO: address normalization.
 
 /-- info: 'mem_automation_test_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_4
@@ -229,7 +230,7 @@ theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
   simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    bv_omega
+    bv_omega_bench
 /--
 info: 'ReadOverlappingRead.overlapping_read_test_2' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
@@ -248,13 +249,13 @@ theorem overlapping_read_test_3
   simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    bv_omega
+    bv_omega_bench
 /--
 info: 'ReadOverlappingRead.overlapping_read_test_3' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms overlapping_read_test_3
 
-/- TODO(@bollu): This test case hangs at `bv_omega`. This is to be debugged.
+/- TODO(@bollu): This test case hangs at `bv_omega_bench`. This is to be debugged.
 /-- A read in the goal state overlaps with a read in the
 right hand side of the hypotheis `h`.
 -/
@@ -268,7 +269,7 @@ theorem overlapping_read_test_4
   simp_mem
   · congr
     -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
-    bv_omega -- TODO: Lean gets stuck here?
+    bv_omega_bench -- TODO: Lean gets stuck here?
 
 #guard_msgs in #print axioms overlapping_read_test_4
 -/
@@ -290,7 +291,7 @@ theorem test_2 {val : BitVec _}
     Memory.read_bytes 6 (src_addr + 10) (Memory.write_bytes 16 src_addr val mem) =
     val.extractLsBytes 10 6 := by
   simp_mem
-  have : ((src_addr + 10).toNat - src_addr.toNat) = 10 := by bv_omega
+  have : ((src_addr + 10).toNat - src_addr.toNat) = 10 := by bv_omega_bench
   rw [this]
 
 /--
