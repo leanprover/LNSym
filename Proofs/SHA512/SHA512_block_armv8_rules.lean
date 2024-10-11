@@ -125,24 +125,6 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   generalize (b_hi &&& a_lo ^^^ ~~~b_hi &&& a_hi) = aux1
   ac_rfl
 
--- (FIXME) Generalize to arbitrary-length bitvecs.
-theorem rev_elems_of_rev_elems_64_8 (x : BitVec 64) :
-  rev_elems 64 8 (rev_elems 64 8 x h₀ h₁) h₀ h₁ = x := by
-  repeat (
-    unfold rev_elems;
-    (simp (config := { ground := true, decide := true }) only [
-        ↓reduceDIte, Nat.reduceSub, Nat.reduceAdd, Nat.reduceLeDiff,
-        setWidth_setWidth_of_le, BitVec.cast_eq])
-  )
-  simp_arith at h₀
-  simp_arith at h₁
-  bv_check "SHA512_block_armv8_rules.lean-rev_elems_of_rev_elems_64_8-135-2.lrat"
-
--- (FIXME) Generalize to arbitrary-length bitvecs.
-theorem concat_of_rsh_is_msb_128 (x y : BitVec 64) :
-  (x ++ y) >>> 64 = BitVec.setWidth 128 x := by
-  bv_check "SHA512_block_armv8_rules.lean-concat_of_rsh_is_msb_128-140-2.lrat"
-
 -- TODO: upstream?
 @[simp]
 theorem setWidth_append_right (x : BitVec n) (y : BitVec m) :
@@ -157,47 +139,6 @@ theorem setWidth_append_right (x : BitVec n) (y : BitVec m) :
   simp only [Nat.and_pow_two_sub_one_eq_mod, Nat.testBit_mod_two_pow, Nat.testBit_shiftLeft,
     ge_iff_le, Nat.zero_testBit, Bool.and_eq_false_imp, decide_eq_true_eq]
   omega
-
--- (FIXME) Generalize to arbitrary-length bitvecs.
-theorem rsh_concat_identity_128 (x : BitVec 128) :
-  setWidth 64 (x >>> 64) ++ setWidth 64 x = x := by
-  bv_check "SHA512_block_armv8_rules.lean-rsh_concat_identity_128-156-2.lrat"
-
--- (FIXME) Generalize to arbitrary-length bitvecs.
-theorem rev_vector_of_rev_vector_128_64_8 (x : BitVec 128) :
-  rev_vector 128 64 8
-    (rev_vector 128 64 8 x h₀ h₁ h₂ h₃ h₄) h₀ h₁ h₂ h₃ h₄ = x := by
-  repeat (
-    unfold rev_vector;
-    simp only [Nat.reduceEqDiff, ↓reduceDIte, Nat.reduceSub, Nat.reduceAdd, truncate_eq_setWidth,
-      BitVec.cast_eq]
-  )
-  rw [concat_of_rsh_is_msb_128,
-      setWidth_append_right,
-      rev_elems_of_rev_elems_64_8,
-      setWidth_setWidth_of_le _ (by decide),
-      @setWidth_eq 64,
-      rev_elems_of_rev_elems_64_8,
-      rsh_concat_identity_128]
-  done
-
-private theorem sha512h_rule_2_helper_1 (x y : BitVec 64) :
-  extractLsb' 0 64
-          (extractLsb' 64 128
-            ((setWidth 128 x ||| setWidth 128 y <<< 64) ++
-              (setWidth 128 x ||| setWidth 128 y <<< 64)))
-  =
-  y := by
-  bv_decide
-
-private theorem sha512h_rule_2_helper_2 (x y : BitVec 64) :
-  extractLsb' 64 64
-          (extractLsb' 64 128
-            ((setWidth 128 x ||| setWidth 128 y <<< 64) ++
-              (setWidth 128 x ||| setWidth 128 y <<< 64)))
-  =
-  x := by
-  bv_decide
 
 theorem BitVec.extractLsb'_append (x : BitVec n) (y : BitVec m) :
     (x ++ y).extractLsb' start len
