@@ -20,8 +20,7 @@ open BitVec
 attribute [bitvec_rules] BitVec.ofFin_eq_ofNat
 attribute [bitvec_rules] BitVec.ofFin.injEq
 attribute [bitvec_rules] BitVec.cast_eq
-attribute [bitvec_rules] BitVec.zeroExtend_eq
-attribute [bitvec_rules] BitVec.truncate_eq
+attribute [bitvec_rules] BitVec.setWidth_eq
 attribute [bitvec_rules] BitVec.getLsbD_ofFin
 attribute [bitvec_rules] BitVec.getLsbD_ge
 attribute [bitvec_rules] BitVec.getMsbD_ge
@@ -47,19 +46,23 @@ attribute [bitvec_rules] BitVec.getMsbD_cast
 attribute [bv_toNat] BitVec.toNat_ofInt
 attribute [bitvec_rules] BitVec.toInt_ofInt
 attribute [bitvec_rules] BitVec.ofInt_natCast
-attribute [bitvec_rules] BitVec.toNat_zeroExtend'
--- attribute [bitvec_rules] BitVec.toNat_zeroExtend
--- attribute [bitvec_rules] BitVec.toNat_truncate
-attribute [bitvec_rules] BitVec.zeroExtend_zero
 attribute [bitvec_rules] BitVec.ofNat_toNat
-attribute [bitvec_rules] BitVec.getLsbD_zeroExtend'
-attribute [bitvec_rules] BitVec.getMsbD_zeroExtend'
-attribute [bitvec_rules] BitVec.getLsbD_zeroExtend
-attribute [bitvec_rules] BitVec.getMsbD_zeroExtend_add
-attribute [bitvec_rules] BitVec.getLsbD_truncate
-attribute [bitvec_rules] BitVec.zeroExtend_zeroExtend_of_le
-attribute [bitvec_rules] BitVec.truncate_truncate_of_le
-attribute [bitvec_rules] BitVec.truncate_cast
+
+/-! ### setWidth / truncate / zeroExtend -/
+
+-- We adopt `setWidth` as the simp normal form
+attribute [bitvec_rules] BitVec.truncate_eq_setWidth
+attribute [bitvec_rules] BitVec.zeroExtend_eq_setWidth
+
+attribute [bitvec_rules] BitVec.toNat_setWidth'
+attribute [bitvec_rules] BitVec.setWidth_zero
+attribute [bitvec_rules] BitVec.getLsbD_setWidth'
+attribute [bitvec_rules] BitVec.getLsbD_setWidth
+attribute [bitvec_rules] BitVec.getMsbD_setWidth'
+attribute [bitvec_rules] BitVec.getMsbD_setWidth_add
+attribute [bitvec_rules] BitVec.setWidth_setWidth_of_le
+attribute [bitvec_rules] BitVec.setWidth_cast
+
 attribute [bitvec_rules] BitVec.extractLsb_ofFin
 attribute [bitvec_rules] BitVec.extractLsb_ofNat
 attribute [bitvec_rules] BitVec.extractLsb'_toNat
@@ -72,21 +75,21 @@ attribute [bitvec_rules] BitVec.toFin_or
 attribute [bitvec_rules] BitVec.getLsbD_or
 attribute [bitvec_rules] BitVec.getMsbD_or
 attribute [bitvec_rules] BitVec.msb_or
-attribute [bitvec_rules] BitVec.truncate_or
+attribute [bitvec_rules] BitVec.setWidth_or
 attribute [bitvec_rules] BitVec.toNat_and
 attribute [bitvec_rules] BitVec.toFin_and
 attribute [bitvec_rules] BitVec.getLsbD_and
 attribute [bitvec_rules] BitVec.getMsbD_and
 attribute [bitvec_rules] BitVec.msb_and
-attribute [bitvec_rules] BitVec.truncate_and
+attribute [bitvec_rules] BitVec.setWidth_and
 attribute [bitvec_rules] BitVec.toNat_xor
 attribute [bitvec_rules] BitVec.toFin_xor
 attribute [bitvec_rules] BitVec.getLsbD_xor
-attribute [bitvec_rules] BitVec.truncate_xor
+attribute [bitvec_rules] BitVec.setWidth_xor
 -- attribute [bitvec_rules] BitVec.toNat_not
 attribute [bitvec_rules] BitVec.toFin_not
 attribute [bitvec_rules] BitVec.getLsbD_not
-attribute [bitvec_rules] BitVec.truncate_not
+attribute [bitvec_rules] BitVec.setWidth_not
 attribute [bitvec_rules] BitVec.not_cast
 attribute [bitvec_rules] BitVec.and_cast
 attribute [bitvec_rules] BitVec.or_cast
@@ -103,8 +106,8 @@ attribute [bitvec_rules] BitVec.getLsbD_ushiftRight
 attribute [bitvec_rules] BitVec.toNat_append
 attribute [bitvec_rules] BitVec.getLsbD_append
 attribute [bitvec_rules] BitVec.getMsbD_append
-attribute [bitvec_rules] BitVec.truncate_append
-attribute [bitvec_rules] BitVec.truncate_cons
+attribute [bitvec_rules] BitVec.setWidth_append
+attribute [bitvec_rules] BitVec.setWidth_cons
 attribute [bitvec_rules] BitVec.not_append
 attribute [bitvec_rules] BitVec.and_append
 attribute [bitvec_rules] BitVec.or_append
@@ -162,7 +165,9 @@ attribute [bitvec_rules] BitVec.ofBool_true
 attribute [bitvec_rules] BitVec.ofBool_false
 attribute [bitvec_rules] BitVec.ofNat_eq_ofNat
 attribute [bitvec_rules] BitVec.zero_eq
-attribute [bitvec_rules] BitVec.truncate_eq_zeroExtend
+attribute [bitvec_rules] BitVec.zero_or
+attribute [bitvec_rules] BitVec.or_zero
+attribute [bitvec_rules] BitVec.or_self
 
 attribute [bitvec_rules] BitVec.add_sub_cancel
 attribute [bitvec_rules] BitVec.sub_add_cancel
@@ -215,11 +220,11 @@ attribute [bitvec_rules] BitVec.reduceULT
 attribute [bitvec_rules] BitVec.reduceULE
 attribute [bitvec_rules] BitVec.reduceSLT
 attribute [bitvec_rules] BitVec.reduceSLE
-attribute [bitvec_rules] BitVec.reduceZeroExtend'
+attribute [bitvec_rules] BitVec.reduceSetWidth'
 attribute [bitvec_rules] BitVec.reduceShiftLeftZeroExtend
 attribute [bitvec_rules] BitVec.reduceExtracLsb'
 attribute [bitvec_rules] BitVec.reduceReplicate
-attribute [bitvec_rules] BitVec.reduceZeroExtend
+attribute [bitvec_rules] BitVec.reduceSetWidth
 attribute [bitvec_rules] BitVec.reduceSignExtend
 attribute [bitvec_rules] BitVec.reduceAllOnes
 attribute [bitvec_rules] BitVec.reduceBitVecOfFin
@@ -293,6 +298,9 @@ abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
 abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
   BitVec.extractLsb' i 1 x
 
+/-- `partInstall start len val x` returns a bitvector where bits
+- `start` to `start+len` are equal to `val`, and
+- all other bits are equal to the respective bit in `x` -/
 abbrev partInstall (start len : Nat) (val : BitVec len) (x : BitVec n): BitVec n :=
   let mask := allOnes len
   let val_aligned := (zeroExtend n val) <<< start
@@ -457,9 +465,6 @@ theorem toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
 
 ---------------------------- Comparison Lemmas -----------------------
 
-@[simp] protected theorem not_lt {n : Nat} {a b : BitVec n} : ¬ a < b ↔ b ≤ a := by
-  exact Fin.not_lt ..
-
 theorem ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by
   simp_all only [BitVec.le_def, BitVec.lt_def]
   omega
@@ -499,53 +504,30 @@ protected theorem zero_le_sub (x y : BitVec n) :
   refine (BitVec.nat_bitvec_le (0#n) (x - y)).mp ?a
   simp only [toNat_ofNat, Nat.zero_mod, toNat_sub, Nat.zero_le]
 
------------------------------ Logical  Lemmas ------------------------
-
-@[bitvec_rules]
-protected theorem zero_or (x : BitVec n) : 0#n ||| x = x := by
-  unfold HOr.hOr instHOrOfOrOp OrOp.or instOrOp BitVec.or
-  simp only [toNat_ofNat, Nat.zero_mod, Nat.zero_or]
-  congr
-
-@[bitvec_rules]
-protected theorem or_zero (x : BitVec n) : x ||| 0#n = x := by
-  rw [BitVec.or_comm]
-  rw [BitVec.zero_or]
-  done
-
-@[bitvec_rules]
-protected theorem or_self (x : BitVec n) :
-  x ||| x = x := by
-  refine eq_of_toNat_eq ?_
-  rw [BitVec.toNat_or]
-  apply Nat.eq_of_testBit_eq
-  simp only [Nat.testBit_or, Bool.or_self, implies_true]
-  done
-
 --------------------- ZeroExtend/Append/Extract  Lemmas ----------------
 
 @[bitvec_rules]
-theorem zeroExtend_zero_width : (zeroExtend 0 x) = 0#0 := by
-  unfold zeroExtend
+theorem setWidth_zero_width : (setWidth 0 x) = 0#0 := by
+  unfold setWidth
   split <;> simp [bitvec_zero_is_unique]
 
 -- During symbolic simulation, we often encounter an `if` in the first argument
--- of `zeroExtend` (e.g., `read_gpr` reads a specified `width` of the register,
+-- of `setWidth` (e.g., `read_gpr` reads a specified `width` of the register,
 -- which is often computed by checking whether the `instruction.sf` bit is 0 or
--- 1). I've found the rules `zeroExtend_if_true` and `zeroExtend_if_false` to be
--- helpful to reduce such occurrences of `zeroExtend` terms.
+-- 1). I've found the rules `setWidth_if_true` and `setWidth_if_false` to be
+-- helpful to reduce such occurrences of `setWidth` terms.
 
 @[bitvec_rules]
-theorem zeroExtend_if_true [Decidable p] (x : BitVec n)
+theorem setWidth_if_true [Decidable p] (x : BitVec n)
   (h_eq : a = (if p then a else b)) :
-  (zeroExtend (if p then a else b) x) = BitVec.cast h_eq (zeroExtend a x) := by
-  simp only [toNat_eq, toNat_truncate, ← h_eq, toNat_cast]
+  (setWidth (if p then a else b) x) = BitVec.cast h_eq (setWidth a x) := by
+  simp only [toNat_eq, toNat_setWidth, ← h_eq, toNat_cast]
 
 @[bitvec_rules]
-theorem zeroExtend_if_false [Decidable p] (x : BitVec n)
+theorem setWidth_if_false [Decidable p] (x : BitVec n)
   (h_eq : b = (if p then a else b)) :
-  (zeroExtend (if p then a else b) x) = BitVec.cast h_eq (zeroExtend b x) := by
-  simp only [toNat_eq, toNat_truncate, ← h_eq, toNat_cast]
+  (setWidth (if p then a else b) x) = BitVec.cast h_eq (setWidth b x) := by
+  simp only [toNat_eq, toNat_setWidth, ← h_eq, toNat_cast]
 
 theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
   BitVec.extractLsb (n - 1) 0 x = BitVec.cast h x := by
@@ -553,14 +535,15 @@ theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
   ext1
   simp [←h]
 
+@[simp, bitvec_rules]
 theorem extractLsb'_eq (x : BitVec n) :
-  BitVec.extractLsb' 0 n x = x := by
+    BitVec.extractLsb' 0 n x = x := by
   unfold extractLsb'
-  simp only [Nat.shiftRight_zero, ofNat_toNat, zeroExtend_eq]
+  simp only [Nat.shiftRight_zero, ofNat_toNat, setWidth_eq]
 
 @[bitvec_rules]
-protected theorem extractLsb'_of_zeroExtend (x : BitVec n) (h : j ≤ i) :
-    extractLsb' 0 j (zeroExtend i x) = zeroExtend j x := by
+protected theorem extractLsb'_of_setWidth (x : BitVec n) (h : j ≤ i) :
+    extractLsb' 0 j (setWidth i x) = setWidth j x := by
   apply BitVec.eq_of_getLsbD_eq
   intro k
   have q : k < i := by omega
@@ -640,13 +623,13 @@ theorem append_of_extract_general_nat (high low n vn : Nat) (h : vn < 2 ^ n) :
 
 theorem append_of_extract (n : Nat) (v : BitVec n)
   (high0 : high = n - low) (h : high + low = n) :
-  BitVec.cast h (zeroExtend high (v >>> low) ++ extractLsb' 0 low v) = v := by
+  BitVec.cast h (setWidth high (v >>> low) ++ extractLsb' 0 low v) = v := by
   ext
   subst high
   have vlt := v.isLt
   have := append_of_extract_general_nat (n - low) low n (BitVec.toNat v) vlt
   have low_le : low ≤ n := by omega
-  simp_all [toNat_zeroExtend, Nat.sub_add_cancel, low_le]
+  simp_all [toNat_setWidth, Nat.sub_add_cancel, low_le]
   rw [Nat.mod_eq_of_lt (b := 2 ^ n)] at this
   · rw [this]
   · rw [Nat.shiftRight_eq_div_pow]
@@ -655,13 +638,13 @@ theorem append_of_extract (n : Nat) (v : BitVec n)
 
 @[bitvec_rules]
 theorem append_of_extract_general (v : BitVec n) :
-  (zeroExtend high (v >>> low)) ++ extractLsb' 0 low v =
+  (setWidth high (v >>> low)) ++ extractLsb' 0 low v =
   extractLsb' 0 (high + low) v := by
   ext
   have := append_of_extract_general_nat high low n (BitVec.toNat v)
   have h_vlt := v.isLt; simp_all only [Nat.sub_zero]
   simp only [h_vlt, forall_prop_of_true] at this
-  simp_all [toNat_zeroExtend, Nat.sub_add_cancel]
+  simp_all [toNat_setWidth, Nat.sub_add_cancel]
   rw [Nat.mod_eq_of_lt (b := 2 ^ n)] at this
   · rw [this]
   · rw [Nat.shiftRight_eq_div_pow]
@@ -684,9 +667,9 @@ theorem leftshift_n_or_mod_2n :
     simp [h₀]
 
 @[bitvec_rules]
-protected theorem truncate_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitVec n) :
-  truncate n (x ++ y) = y := by
-  simp only [truncate_append, Nat.le_refl, ↓reduceDIte, zeroExtend_eq]
+protected theorem setWidth_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitVec n) :
+  setWidth n (x ++ y) = y := by
+  simp only [setWidth_append, Nat.le_refl, ↓reduceDIte, setWidth_eq]
 
 ---------------------------- Shift Lemmas ---------------------------
 
@@ -1101,20 +1084,13 @@ theorem BitVec.ofBool_getLsbD (a : BitVec w) (i : Nat) :
   intro ⟨0, _⟩
   simp
 
-/-- If multiplication does not overflow,
-then `(x * y).toNat` equals `x.toNat * y.toNat` -/
-theorem toNat_mul_of_lt {w} {x y : BitVec w} (h : x.toNat * y.toNat < 2^w) :
-    (x * y).toNat = x.toNat * y.toNat := by
-  rw [BitVec.toNat_mul, Nat.mod_eq_of_lt h]
-
 /-- If subtraction does not overflow,
 then `(x - y).toNat` equals `x.toNat - y.toNat` -/
-theorem toNat_sub_of_lt {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
+@[deprecated toNat_sub_of_le]
+theorem toNat_sub_of_lt' {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
     (y - x).toNat = y.toNat - x.toNat := by
-  rw [BitVec.toNat_sub,
-    show (2^w - x.toNat + y.toNat) = 2^w + (y.toNat - x.toNat) by omega,
-    Nat.add_mod, Nat.mod_self, Nat.zero_add, Nat.mod_mod,
-    Nat.mod_eq_of_lt (by omega)]
+  apply toNat_sub_of_le
+  bv_omega
 
 /-- `x.toNat * z.toNat ≤ k` if `z ≤ y` and `x.toNat * y.toNat ≤ k` -/
 theorem toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)

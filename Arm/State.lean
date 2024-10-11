@@ -343,7 +343,7 @@ These mnemonics make it much easier to read and write theorems about assembly pr
 
 @[state_simp_rules] abbrev ArmState.x0 (s : ArmState) : BitVec 64 := r (StateField.GPR 0) s
 @[state_simp_rules] abbrev ArmState.w0 (s : ArmState) : BitVec 32 :=
-  (r (StateField.GPR 0) s).zeroExtend 32
+  (r (StateField.GPR 0) s).setWidth 32
 
 @[state_simp_rules] abbrev ArmState.x1 (s : ArmState) : BitVec 64 := r (StateField.GPR 1) s
 
@@ -395,18 +395,18 @@ def w (fld : StateField) (v : (state_value fld)) (s : ArmState) : ArmState :=
   | ERR    => write_base_error v s
 
 @[state_simp_rules]
-theorem zeroExtend_eq_of_r_gpr :
-  zeroExtend 64 (r (StateField.GPR i) s) = (r (StateField.GPR i) s) := by
+theorem setWidth_eq_of_r_gpr :
+    setWidth 64 (r (StateField.GPR i) s) = (r (StateField.GPR i) s) := by
   simp only [bitvec_rules]
 
 @[state_simp_rules]
-theorem zeroExtend_eq_of_r_sfp :
-  zeroExtend 128 (r (StateField.SFP i) s) = (r (StateField.SFP i) s) := by
+theorem setWidth_eq_of_r_sfp :
+    setWidth 128 (r (StateField.SFP i) s) = (r (StateField.SFP i) s) := by
   simp only [bitvec_rules]
 
 @[state_simp_rules]
-theorem zeroExtend_eq_of_r_pc :
-  zeroExtend 64 (r (StateField.PC) s) = (r (StateField.PC) s) := by
+theorem setWidth_eq_of_r_pc :
+  setWidth 64 (r (StateField.PC) s) = (r (StateField.PC) s) := by
   simp only [bitvec_rules]
 
 @[state_simp_rules]
@@ -479,7 +479,7 @@ theorem w_program : (w fld v s).program = s.program := by
 def read_gpr (width : Nat) (idx : BitVec 5) (s : ArmState)
   : BitVec width :=
     let val := r (StateField.GPR idx) s
-    BitVec.zeroExtend width val
+    BitVec.setWidth width val
 
 -- Use read_gpr_zr when register 31 is mapped to the zero register ZR,
 -- instead of the default (Stack pointer).
@@ -497,7 +497,7 @@ def read_gpr_zr (width : Nat) (idx : BitVec 5) (s : ArmState)
 @[state_simp_rules]
 def write_gpr (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
   : ArmState :=
-    let val := BitVec.zeroExtend 64 val
+    let val := BitVec.setWidth 64 val
     w (StateField.GPR idx) val s
 
 -- Use write_gpr_zr when register 31 is mapped to the zero register
@@ -514,19 +514,19 @@ def write_gpr_zr (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState)
 -- (see simp?).
 example (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState) :
   read_gpr n idx (write_gpr n idx val s) =
-  BitVec.zeroExtend n (BitVec.zeroExtend 64 val) := by
+  BitVec.setWidth n (BitVec.setWidth 64 val) := by
   simp [state_simp_rules, minimal_theory]
 
 @[state_simp_rules]
 def read_sfp (width : Nat) (idx : BitVec 5) (s : ArmState) : BitVec width :=
   let val := r (StateField.SFP idx) s
-  BitVec.zeroExtend width val
+  BitVec.setWidth width val
 
 -- Write `val` to the `idx`-th SFP, zeroing the upper bits, if
 -- applicable.
 @[state_simp_rules]
 def write_sfp (n : Nat) (idx : BitVec 5) (val : BitVec n) (s : ArmState) : ArmState :=
-   let val := BitVec.zeroExtend 128 val
+   let val := BitVec.setWidth 128 val
    w (StateField.SFP idx) val s
 
 @[state_simp_rules]
@@ -679,7 +679,7 @@ def write_mem_bytes (n : Nat) (addr : BitVec 64) (val : BitVec (n * 8)) (s : Arm
   | n' + 1 =>
     let byte := BitVec.extractLsb' 0 8 val
     let s := write_mem addr byte s
-    let val_rest := BitVec.zeroExtend (n' * 8) (val >>> 8)
+    let val_rest := BitVec.setWidth (n' * 8) (val >>> 8)
     write_mem_bytes n' (addr + 1#64) val_rest s
 
 
@@ -972,7 +972,7 @@ def write_bytes (n : Nat) (addr : BitVec 64)
   | n' + 1 =>
     let byte := BitVec.extractLsb' 0 8 val
     let m := m.write addr byte
-    let val_rest := BitVec.zeroExtend (n' * 8) (val >>> 8)
+    let val_rest := BitVec.setWidth (n' * 8) (val >>> 8)
     m.write_bytes n' (addr + 1#64) val_rest
 
 /-- Writing zero bytes does not change memory. -/
@@ -998,7 +998,7 @@ theorem write_bytes_succ {mem : Memory} :
     mem.write_bytes (n + 1) addr val =
     let byte := BitVec.extractLsb' 0 8 val
     let mem := mem.write addr byte
-    let val_rest := BitVec.zeroExtend (n * 8) (val >>> 8)
+    let val_rest := BitVec.setWidth (n * 8) (val >>> 8)
     mem.write_bytes n (addr + 1#64) val_rest := rfl
 
 theorem write_bytes_eq_of_le  {mem : Memory} {ix base : BitVec 64}
@@ -1039,13 +1039,13 @@ theorem write_bytes_eq_of_ge {mem : Memory} {ix base : BitVec 64}
         (by simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega)]
       simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.reduceMod]; omega
 
-theorem extractLsByte_zeroExtend_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i > 0):
-    (BitVec.zeroExtend (n * 8) (data >>> 8)).extractLsByte (i - 1) = data.extractLsByte i := by
+theorem extractLsByte_setWidth_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i > 0):
+    (BitVec.setWidth (n * 8) (data >>> 8)).extractLsByte (i - 1) = data.extractLsByte i := by
   rcases i with rfl | i
   · simp at hi
   · apply BitVec.eq_of_getLsbD_eq
     intros j
-    simp only [Nat.add_one_sub_one, BitVec.getLsbD_extractLsByte, BitVec.getLsbD_zeroExtend,
+    simp only [Nat.add_one_sub_one, BitVec.getLsbD_extractLsByte, BitVec.getLsbD_setWidth,
       BitVec.getLsbD_ushiftRight]
     by_cases hj : (j : Nat) ≤ 7
     · simp only [hj, decide_True, Bool.true_and]
@@ -1094,7 +1094,7 @@ theorem write_bytes_eq_extractLsByte {ix base : BitVec 64} {m : Memory}
       rw [show (ix - base).toNat = ix.toNat - base.toNat by bv_omega]
       rw [Nat.sub_add_eq,
         show ix.toNat - base.toNat - 1 = (ix.toNat - base.toNat) - 1 by omega]
-      apply extractLsByte_zeroExtend_shiftLeft
+      apply extractLsByte_setWidth_shiftLeft
       omega
 
 /--

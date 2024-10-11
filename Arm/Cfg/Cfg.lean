@@ -217,7 +217,8 @@ protected def addToCfg (address : BitVec 64) (program : Program) (cfg : Cfg)
 -- will map this theorem to BitVecs (using lemmas like
 -- BitVec.fin_bitvec_lt) in create'.
 private theorem termination_lemma (i j max : Fin n) (h : n > 0)
-  (h0 : i < max) (h1 : j <= max - i) (h2 : ((Fin.ofNat' 0 h) : Fin n) < j) :
+  (h0 : i < max) (h1 : j <= max - i)
+  (h2 : ((@Fin.ofNat' n ⟨by omega⟩ 0) : Fin n) < j) :
   (max - (i + j)) < (max - i) := by
   -- Our strategy is to convert this proof obligation in terms of Nat,
   -- which is made possible by h0 and h1 hypotheses above.
@@ -273,7 +274,7 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
                    (by decide)
                    (by simp_all! only [BitVec.not_lt, BitVec.fin_bitvec_lt, not_false_eq_true, BitVec.lt_of_le_ne, h₁])
                    (by rw [← BitVec.toFin_sub]; exact h₂)
-                   (by simp_arith)
+                   (by simp_arith [Fin.ofNat'])
            simp [BitVec.fin_bitvec_le, BitVec.fin_bitvec_lt] at *
            exact this
          Cfg.create' (address + 4#64) max_address program cfg
