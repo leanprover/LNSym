@@ -705,10 +705,9 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
   simp only [minimal_theory, bitvec_rules]
   unfold shift_right_common_aux
   simp only [minimal_theory, bitvec_rules]
-  simp only [-- -extractLsb_toNat,
-             state_simp_rules,
+  simp only [state_simp_rules,
              minimal_theory,
-             -- FIXME: simply using bitvec_rules will expand out extractLsb and truncate
+             -- FIXME: simply using bitvec_rules will expand out setWidth
              -- bitvec_rules,
              BitVec.cast_eq,
              Nat.shiftRight_zero,
@@ -801,10 +800,9 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
   simp only [minimal_theory, bitvec_rules]
   unfold shift_right_common_aux
   simp only [minimal_theory, bitvec_rules]
-  simp only [-- -extractLsb_toNat,
-             state_simp_rules,
+  simp only [state_simp_rules,
              minimal_theory,
-             -- FIXME: simply using bitvec_rules will expand out extractLsb and truncate
+             -- FIXME: simply using bitvec_rules will expand out setWidth
              -- bitvec_rules,
              BitVec.cast_eq,
              Nat.shiftRight_zero,

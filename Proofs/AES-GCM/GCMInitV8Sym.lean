@@ -16,7 +16,6 @@ set_option bv.ac_nf false
 abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 
-set_option debug.byAsSorry true in
 set_option maxRecDepth 1000000 in
 -- set_option profiler true in
 theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
@@ -37,7 +36,7 @@ theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 500000 in
--- set_option sat.timeout 120 in
+set_option sat.timeout 120 in
 -- set_option pp.deepTerms true in
 -- set_option pp.maxSteps 10000 in
 set_option trace.profiler true in
