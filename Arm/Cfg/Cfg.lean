@@ -118,7 +118,7 @@ executed after the loop terminates will also be a member of `to_insts`
 of type `Seq`.
 -/
 private def loop_detected (from_inst : InstType) (to_insts : List InstType) :
-  Except String (Option LoopInfo) :=
+  Except Format (Option LoopInfo) :=
   let check := List.find?
                (fun x => compare x from_inst == .lt)
                to_insts
