@@ -11,7 +11,7 @@ open BitVec
 
 /--
 Conditions under which a branch is taken; this is a function that
-takes a state as input, and returns a boolean.
+takes a state as input, and returns whether the branch was taken.
 -/
 abbrev CondHoldsFn := ArmState → Bool
 
