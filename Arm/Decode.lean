@@ -14,6 +14,8 @@ import Arm.Decode.DPSFP
 section Decode
 
 open BitVec
+open Std
+open Std.Format
 
 -- We do not tag any of the decode functions (e.g., decode_raw_inst or
 -- its callees) with the `simp` attribute because we always expect
@@ -47,6 +49,9 @@ inductive RegType where
   | SFP : BitVec 5 → RegType
 deriving Repr, DecidableEq
 
+instance : ToFormat RegType where format r := toString (repr r)
+instance : ToFormat (Array RegType) where format r := toString (repr r)
+
 def decode_data_proc_imm (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
   open DataProcImmInst in
@@ -67,13 +72,13 @@ def decode_data_proc_imm (i : BitVec 32) : Option ArmInst :=
 Return the indices of all the GPR/SFP registers that may be modified by the
 DPI instruction `i`.
 -/
-def DPI.mayModifyRegs (i : BitVec 32) : Except String (List RegType) :=
+def DPI.mayModifyRegs (i : BitVec 32) : Except Format (List RegType) :=
   if let some _ := decode_data_proc_imm i then
     -- The 5 LSBs of all DPI instructions give the index of the Rd register.
     .ok [(.GPR (extractLsb' 0 5 i))]
   else
     .error
-      "Instruction 0x{i.toHex} is not of class Data Processing (Immediate)."
+      f!"Instruction 0x{i.toHex} is not of class Data Processing (Immediate)."
 
 def decode_branch (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
@@ -95,13 +100,13 @@ def decode_branch (i : BitVec 32) : Option ArmInst :=
 Return the indices of all the GPR/SFP registers that may be modified by the
 BR instruction `i`.
 -/
-def BR.mayModifiedRegs (i : BitVec 32) : Except String (List RegType) :=
+def BR.mayModifiedRegs (i : BitVec 32) : Except Format (List RegType) :=
   if let some _ := decode_branch i then
     -- None of the branch instructions modify any GPR or SFP registers.
     .ok []
   else
     .error
-      "Instruction 0x{i.toHex} is not of class Branch Processing."
+      f!"Instruction 0x{i.toHex} is not of class Branch Processing."
 
 def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
@@ -127,13 +132,13 @@ def decode_data_proc_reg (i : BitVec 32) : Option ArmInst :=
 Return the indices of all the GPR/SFP registers that may be modified by the
 DPR instruction `i`.
 -/
-def DPR.MayModifyRegs (i : BitVec 32) : Except String (List RegType) :=
+def DPR.MayModifyRegs (i : BitVec 32) : Except Format (List RegType) :=
   if let some _ := decode_data_proc_reg i then
     -- The 5 LSBs of all DPR instructions give the index of the Rd register.
     .ok [(.GPR (extractLsb' 0 5 i))]
   else
     .error
-      "Instruction 0x{i.toHex} is not of class Data Processing (Register)."
+      f!"Instruction 0x{i.toHex} is not of class Data Processing (Register)."
 
 def decode_data_proc_sfp (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
@@ -201,7 +206,7 @@ def DPSFP.isGPRdest (inst : ArmInst) : Bool :=
 Return the indices of all the GPR/SFP registers that may be modified by the
 DPSFP instruction `i`.
 -/
-def DPSFP.MayModifyRegs (i : BitVec 32) : Except String (List RegType) :=
+def DPSFP.MayModifyRegs (i : BitVec 32) : Except Format (List RegType) :=
   if let some arm_inst := decode_data_proc_sfp i then
     -- The 5 LSBs of all DPSFP instructions give the index of the Rd register.
     let is_gpr := DPSFP.isGPRdest arm_inst
@@ -209,7 +214,7 @@ def DPSFP.MayModifyRegs (i : BitVec 32) : Except String (List RegType) :=
     .ok [(if is_gpr then (.GPR idx) else (.SFP idx))]
   else
     .error
-      "Instruction 0x{i.toHex} is not of class Data Processing (SIMD&FP)."
+      f!"Instruction 0x{i.toHex} is not of class Data Processing (SIMD&FP)."
 
 def decode_ldst_inst (i : BitVec 32) : Option ArmInst :=
   open ArmInst in
@@ -248,7 +253,7 @@ def LDST.multiple_struct_rpt_selem (opcode : BitVec 4) : Nat × Nat :=
 Return the indices of all the GPR/SFP registers that may be modified by the LDST
 instruction `i`.
 -/
-def LDST.mayModifiedRegs (i : BitVec 32) : Except String (List RegType) :=
+def LDST.mayModifiedRegs (i : BitVec 32) : Except Format (List RegType) :=
   if let some arm_inst := decode_ldst_inst i then
     open ArmInst LDSTInst in
     match arm_inst with
@@ -304,7 +309,7 @@ def LDST.mayModifiedRegs (i : BitVec 32) : Except String (List RegType) :=
     | _ => .ok []
   else
     .error
-      "Instruction 0x{i.toHex} is not of class LDST."
+      f!"Instruction 0x{i.toHex} is not of class LDST."
 
 -- Decode a 32-bit instruction `i`.
 def decode_raw_inst (i : BitVec 32) : Option ArmInst :=
@@ -325,7 +330,7 @@ Return the indices of all the GPR/SFP registers that may be modified by the
 instruction `i`. Note that this is an (over)approximation. The use-case is to
 statically determine which register components can be affected by a program.
 -/
-def mayModifiedRegs (i : BitVec 32) : Except String (List RegType) :=
+def mayModifiedRegs (i : BitVec 32) : Except Format (List RegType) :=
   open ArmInst in
   match_bv i with
   | [op0:1, _x:2, op1:4, _y:25] =>

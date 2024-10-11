@@ -8,6 +8,8 @@ import Arm.Exec
 namespace Cfg
 
 open BitVec
+open Std
+open Std.Format
 
 /--
 Conditions under which a branch is taken; this is a function that
@@ -42,6 +44,7 @@ instance : Repr InstType where
       | InstType.Ret pc  => "<Ret>" ++ repr pc
 
 instance : ToString InstType where toString i := toString (repr i)
+instance : ToFormat InstType where format i := toString (repr i)
 
 def InstType.pc (x : InstType) : BitVec 64 :=
   match x with
@@ -106,6 +109,10 @@ structure Cfg where
 deriving Repr
 
 instance : ToString Cfg where toString cfg := toString (repr cfg)
+instance : ToFormat Cfg where format cfg := toString (repr cfg)
+
+instance : Inhabited Cfg where
+  default := { start_address := 0#64 }
 
 /--
 We can detect a loop if we find an entry where some `to_pc` is
@@ -133,7 +140,7 @@ private def loop_detected (from_inst : InstType) (to_insts : List InstType) :
       pure (some { guard := from_inst, target := to_inst, next := next[0]'h' })
     else
       .error
-        s!"We expected exactly one Seq instruction in the control-flow graph \
+        f!"We expected exactly one Seq instruction in the control-flow graph \
         for this entry. Instead, we found {next.length}."
 
 private def addToLoopsInfo (entry : Option LoopInfo) (loops_info : LoopsInfo) : LoopsInfo :=
@@ -144,7 +151,7 @@ private def addToLoopsInfo (entry : Option LoopInfo) (loops_info : LoopsInfo) : 
     Array.push loops_info (index, loop_info)
 
 private def addEntry (from_inst : InstType) (to_insts : List InstType)
-                     (mod_regs : List RegType) (cfg : Cfg) : Except String Cfg := do
+                     (mod_regs : List RegType) (cfg : Cfg) : Except Format Cfg := do
   -- We crawl through the program in a linear manner, so by
   -- construction, we should not add a previously-added InstType to
   -- the graph.
@@ -169,7 +176,7 @@ private def addEntry (from_inst : InstType) (to_insts : List InstType)
   .error
     f!"[ForwardGraph] Implementation Error: graph already contains \
     an entry with PC {InstType.pc from_inst}! \
-    Here is the graph: ${Format.indentD cfg.graph}."
+    Here is the graph: ${Format.indentD <| repr cfg.graph}."
   where mod_regs_go (mod_regs : List RegType) (all : Array RegType) : Array RegType :=
     match mod_regs with
     | [] => all
@@ -184,7 +191,7 @@ outputs: `haltp` : `Bool` -- whether the program halts
          `cfg` : `Cfg` -- the updated control-flow graph
 -/
 protected def addArmInstToCfg (pc : BitVec 64) (raw_inst : BitVec 32)
-   (arm_inst : ArmInst) (cfg : Cfg) : Except String (Bool × Cfg) := do
+   (arm_inst : ArmInst) (cfg : Cfg) : Except Format (Bool × Cfg) := do
    let default_to_pc ← pure (pc + 4#64)
    -- variable pc_inst: the type of instruction InstType: Seq, BrOrg, BrTgt, Ret
    -- variable to_insts: an over-approximation of possible next pcs,
@@ -231,15 +238,15 @@ protected def addArmInstToCfg (pc : BitVec 64) (raw_inst : BitVec 32)
    pure (haltp, new_cfg)
 
 protected def addToCfg (address : BitVec 64) (program : Program) (cfg : Cfg)
-  : Except String (Bool × Cfg) :=
+  : Except Format (Bool × Cfg) :=
   let maybe_raw_inst := program.find? address
   match maybe_raw_inst with
-  | none => .error s!"No instruction found at address {address}!"
+  | none => .error f!"No instruction found at address {address}!"
   | some raw_inst =>
     let maybe_arm_inst := decode_raw_inst raw_inst
     match maybe_arm_inst with
     | none =>
-      .error s!"Instruction {raw_inst} at {address} could not be decoded!"
+      .error f!"Instruction {raw_inst} at {address} could not be decoded!"
     | some arm_inst =>
       Cfg.addArmInstToCfg address raw_inst arm_inst cfg
 
@@ -295,10 +302,10 @@ Create a `Cfg` structure for `program`, beginning at `start_address` until
 `end_address`.
 -/
 protected def create' (start_address end_address : BitVec 64)
-                      (program : Program) : Except String Cfg :=
+                      (program : Program) : Except Format Cfg :=
   go start_address end_address program { start_address }
   where go (address max_address : BitVec 64)
-           (program : Program) (cfg : Cfg) : Except String Cfg := do
+           (program : Program) (cfg : Cfg) : Except Format Cfg := do
   if h₀ : max_address < address then
     pure cfg
   else
@@ -322,7 +329,7 @@ protected def create' (start_address end_address : BitVec 64)
          go (address + 4#64) max_address program cfg
     else
         .error
-               s!"We expect Arm instructions to be 32-bits wide; i.e., each \
+               f!"We expect Arm instructions to be 32-bits wide; i.e., each \
                 program address should be 4-apart from its successor. \
                 This does not seem to be the case with this program for the \
                 successor of address {address}. Note that the highest \
@@ -332,13 +339,13 @@ protected def create' (start_address end_address : BitVec 64)
 /--
 Create a `Cfg` structure for the program `program`.
 -/
-protected def create (program : Program) : Except String Cfg :=
+protected def create (program : Program) : Except Format Cfg :=
   let maybe_start_address := program.min?
   let maybe_max_address := program.max?
   match maybe_start_address, maybe_max_address with
   | some start_address, some max_address =>
     Cfg.create' start_address max_address program
   | _, _ =>
-    .error s!"Could not determine the start/stop address for the program!"
+    .error f!"Could not determine the start/stop address for the program!"
 
 end Cfg

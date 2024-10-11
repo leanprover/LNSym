@@ -16,7 +16,7 @@ open BitVec
 -- We get an over-approximation of the GPR/SFP registers that may be modified in
 -- a loop iteration.
 /--
-info: Except.ok #[RegType.GPR 0x01#5, RegType.GPR 0x02#5, RegType.GPR 0x03#5, RegType.GPR 0x04#5, RegType.SFP 0x00#5,
+info: #[RegType.GPR 0x01#5, RegType.GPR 0x02#5, RegType.GPR 0x03#5, RegType.GPR 0x04#5, RegType.SFP 0x00#5,
   RegType.SFP 0x01#5, RegType.SFP 0x02#5, RegType.SFP 0x03#5, RegType.SFP 0x04#5, RegType.SFP 0x05#5,
   RegType.SFP 0x06#5, RegType.SFP 0x07#5, RegType.SFP 0x10#5, RegType.SFP 0x11#5, RegType.SFP 0x12#5,
   RegType.SFP 0x13#5, RegType.SFP 0x14#5, RegType.SFP 0x15#5, RegType.SFP 0x16#5, RegType.SFP 0x17#5,
@@ -24,10 +24,10 @@ info: Except.ok #[RegType.GPR 0x01#5, RegType.GPR 0x02#5, RegType.GPR 0x03#5, Re
   RegType.SFP 0x1d#5]
 -/
 #guard_msgs in
-#eval do let cfg ← Cfg.create' 0x126500#64 0x126c90#64 SHA512.program; pure cfg.maybe_modified_regs
+#eval ((Cfg.create' 0x126500#64 0x126c90#64 SHA512.program).toOption).get!.maybe_modified_regs
 
 /--
-info: Except.ok #[(0,
+info: ok: #[(0,
    { guard := <BrOrg>0x0000000000126c90#64,
      target := <BrTgt>0x0000000000126500#64,
      next := <Seq>0x0000000000126c94#64 })]

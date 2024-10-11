@@ -83,8 +83,8 @@ private theorem extractLsb'_high_64_from_zeroExtend_128_or (x y : BitVec 64) :
 theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let elements := 2
   let esize := 64
-  let inner_sum := (binary_vector_op_aux 0 elements esize BitVec.add c d (BitVec.zero 128))
-  let outer_sum := (binary_vector_op_aux 0 elements esize BitVec.add inner_sum e (BitVec.zero 128))
+  let inner_sum := (binary_vector_op_aux 0 elements esize BitVec.add c d 0#128)
+  let outer_sum := (binary_vector_op_aux 0 elements esize BitVec.add inner_sum e 0#128)
   let a0 := extractLsb'  0 64 a
   let a1 := extractLsb' 64 64 a
   let b0 := extractLsb'  0 64 b
@@ -200,12 +200,12 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   let d1 := extractLsb' 64 64 d
   let e0 := extractLsb'  0 64 e
   let e1 := extractLsb' 64 64 e
-  let inner_sum := binary_vector_op_aux 0 2 64 BitVec.add d e (BitVec.zero 128)
+  let inner_sum := binary_vector_op_aux 0 2 64 BitVec.add d e 0#128
   let concat := inner_sum ++ inner_sum
   let operand := extractLsb' 64 128 concat
   let hi64_spec := compression_update_t1 b1 a0 a1 c1 d0 e0
   let lo64_spec := compression_update_t1 (b0 + hi64_spec) b1 a0 c0 d1 e1
-  sha512h a b (binary_vector_op_aux 0 2 64 BitVec.add c operand (BitVec.zero 128)) =
+  sha512h a b (binary_vector_op_aux 0 2 64 BitVec.add c operand 0#128) =
   hi64_spec ++ lo64_spec := by
   repeat (unfold binary_vector_op_aux; simp)
   repeat (unfold BitVec.partInstall; simp)
