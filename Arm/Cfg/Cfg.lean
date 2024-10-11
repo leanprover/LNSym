@@ -167,9 +167,9 @@ private def addEntry (from_inst : InstType) (to_insts : List InstType)
                     maybe_modified_regs := maybe_modified_regs }
   else
   .error
-    s!"[ForwardGraph] Implementation Error: graph already contains \
+    f!"[ForwardGraph] Implementation Error: graph already contains \
     an entry with PC {InstType.pc from_inst}! \
-    Here is the graph: ${cfg.graph}."
+    Here is the graph: ${Format.indentD cfg.graph}."
   where mod_regs_go (mod_regs : List RegType) (all : Array RegType) : Array RegType :=
     match mod_regs with
     | [] => all
