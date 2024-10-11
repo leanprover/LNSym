@@ -232,14 +232,34 @@ theorem BitVec.cast_heq_iff (x : BitVec n) (y : BitVec m) (h : n = n') :
     HEq (x.cast h) y ↔ HEq x y := by
   cases h; simp
 
-theorem BitVec.extractLsb'_append_right (x : BitVec n) (y : BitVec m)
-    (h : start + len ≤ m) :
+theorem BitVec.extractLsb'_append_right_of_le (h : start + len ≤ m)
+    (x : BitVec n) (y : BitVec m) :
     (x ++ y).extractLsb' start len = y.extractLsb' start len := by
-  have len'_eq : min len (m - start) = len := Nat.min_eq_left (by omega)
+  have len'_eq : min len (m - start) = len := by omega
   simp only [extractLsb'_append]
   apply cast_eq_of_heq
   rw [len'_eq, Nat.sub_self]
   simp only [zero_width_append, heq_eq_eq, cast_heq_iff]
+
+@[simp]
+theorem BitVec.extractLsb'_append_right (x : BitVec n) (y : BitVec m) :
+    (x ++ y).extractLsb' 0 m = y := by
+  rw [extractLsb'_append_right_of_le (by omega), extractLsb'_eq]
+
+@[simp]
+theorem BitVec.extractLsb'_append_left_of_le (h : m ≤ start)
+    (x : BitVec n) (y : BitVec m) :
+    (x ++ y).extractLsb' start len = x.extractLsb' (start - m) len := by
+  have len'_eq : min len (m - start) = m - start := by omega
+  simp only [extractLsb'_append]
+  apply cast_eq_of_heq
+  rw [len'_eq, show m - start = 0 by omega]
+  simp only [append_zero_width, heq_eq_eq, cast_heq_iff, Nat.sub_zero]
+
+@[simp]
+theorem BitVec.extractLsb'_append_left (x : BitVec n) (y : BitVec m) :
+    (x ++ y).extractLsb' m n = x := by
+  rw [extractLsb'_append_left_of_le (by omega), Nat.sub_self, extractLsb'_eq]
 
 @[simp]
 theorem BitVec.extractLsb'_extractLsb'_of_le {w : Nat} (start₁ len₁ start₂ len₂)
@@ -254,40 +274,101 @@ theorem BitVec.extractLsb'_extractLsb'_of_le {w : Nat} (start₁ len₁ start₂
     show start₁ + (start₂ + i.val) = start₁ + start₂ + i.val by ac_rfl]
   omega
 
-  -- apply eq_of_toNat_eq
-  -- simp only [extractLsb', toNat_ofNat, setWidth, setWidth']
+theorem binary_vector_op_aux_of_lt {n} {e elems} (h : e < elems) (esize op)
+    (x y result : BitVec n) :
+    binary_vector_op_aux e elems esize op x y result
+    = let element1 := elem_get x e esize
+      let element2 := elem_get y e esize
+      let elem_result := op element1 element2
+      let result := elem_set result e esize elem_result
+      binary_vector_op_aux (e + 1) elems esize op x y result := by
+  conv => { lhs; unfold binary_vector_op_aux }
+  have : ¬(elems ≤ e) := by omega
+  simp only [this, ↓reduceIte]
 
+theorem binary_vector_op_aux_of_not_lt {n} {e elems} (h : ¬(e < elems))
+    (esize op) (x y result : BitVec n) :
+    binary_vector_op_aux e elems esize op x y result = result := by
+  unfold binary_vector_op_aux
+  simp only [ite_eq_left_iff, Nat.not_le, h, false_implies]
 
+-- theorem Nat.sub_lt_iff_lt_add (x y z : Nat) :
+--     x - y < z ↔ x < y + z := by
+
+theorem BitVec.getLsbD_eq_false_of_le {w} (x : BitVec w) {i : Nat} (h : w ≤ i) :
+    x.getLsbD i = false := by
+  exact getLsbD_ge x i h
+
+theorem partInstall_partInstall (x : BitVec n) :
+    partInstall (start + len₁) len₂ val₂ (partInstall start len₁ val₁ x)
+    = (partInstall start _ (val₂ ++ val₁) x).cast (by omega) := by
+  apply BitVec.eq_of_getLsbD_eq
+  intro i
+  simp only [partInstall, truncate_eq_setWidth, getLsbD_or, getLsbD_and,
+    getLsbD_not, Fin.is_lt, decide_True, getLsbD_shiftLeft, Bool.true_and,
+    getLsbD_setWidth, getLsbD_allOnes, Bool.not_and, Bool.not_not,
+    getLsbD_cast, BitVec.getLsbD_append]
+  simp only [
+    show ∀ m, i.val - m < n by omega,
+    decide_True, Bool.not_true, Bool.false_or, Bool.true_and]
+  by_cases h₁ : i < start
+  · simp [h₁, show i < start + len₁ by omega]
+  · simp only [h₁, decide_False, Bool.false_or, Bool.not_false, Bool.true_and,
+      show i < start + len₁ ↔ i - start < len₁ by omega]
+    by_cases h₂ : i - start < len₁
+    · simp [h₂, show ↑i - start < len₂ + len₁ by omega]
+    · rw [BitVec.getLsbD_ge val₁ _ (by omega)]
+      simp [h₂, Nat.sub_add_eq,
+        show i - start < len₂ + len₁ ↔ i - start - len₁ < len₂ by omega]
+
+/-- `partInstall`ing at bit `0` a value `x` of the same width as the original
+bitvector `y` returns exactly the value `x` -/
+@[simp]
+theorem partInstall_eq (x y : BitVec n) :
+    partInstall 0 n x y = x := by
+  simp [partInstall]
+
+-- set_option maxHeartbeats 0 in
 -- This lemma takes 2min with bv_decide and the generated LRAT
 -- file is ~120MB. As with sha512h_rule_1 above, we prefer to just simplify and
 -- normalize here instead of doing bit-blasting.
 theorem sha512h_rule_2 (a b c d e : BitVec 128) :
-  let a0 := extractLsb'  0 64 a
-  let a1 := extractLsb' 64 64 a
-  let b0 := extractLsb'  0 64 b
-  let b1 := extractLsb' 64 64 b
-  let c0 := extractLsb'  0 64 c
-  let c1 := extractLsb' 64 64 c
-  let d0 := extractLsb'  0 64 d
-  let d1 := extractLsb' 64 64 d
-  let e0 := extractLsb'  0 64 e
-  let e1 := extractLsb' 64 64 e
-  let inner_sum := binary_vector_op_aux 0 2 64 BitVec.add d e (BitVec.zero 128)
-  let concat := inner_sum ++ inner_sum
-  let operand := extractLsb' 64 128 concat
-  let hi64_spec := compression_update_t1 b1 a0 a1 c1 d0 e0
-  let lo64_spec := compression_update_t1 (b0 + hi64_spec) b1 a0 c0 d1 e1
-  sha512h a b (binary_vector_op_aux 0 2 64 BitVec.add c operand (BitVec.zero 128)) =
-  hi64_spec ++ lo64_spec := by
+    let a0 := extractLsb'  0 64 a
+    let a1 := extractLsb' 64 64 a
+    let b0 := extractLsb'  0 64 b
+    let b1 := extractLsb' 64 64 b
+    let c0 := extractLsb'  0 64 c
+    let c1 := extractLsb' 64 64 c
+    let d0 := extractLsb'  0 64 d
+    let d1 := extractLsb' 64 64 d
+    let e0 := extractLsb'  0 64 e
+    let e1 := extractLsb' 64 64 e
+    let inner_sum := binary_vector_op_aux 0 2 64 BitVec.add d e (BitVec.zero 128)
+    let concat := inner_sum ++ inner_sum
+    let operand := extractLsb' 64 128 concat
+    let hi64_spec := compression_update_t1 b1 a0 a1 c1 d0 e0
+    let lo64_spec := compression_update_t1 (b0 + hi64_spec) b1 a0 c0 d1 e1
+    sha512h a b (binary_vector_op_aux 0 2 64 BitVec.add c operand (BitVec.zero 128))
+    = hi64_spec ++ lo64_spec := by
+  simp only
   repeat (
-    unfold binary_vector_op_aux;
-    simp only [Nat.reduceLeDiff, ↓reduceDIte, Nat.reduceAdd, add_eq, zero_eq]
+    repeat rw [binary_vector_op_aux_of_lt (by omega)]
+    rw [binary_vector_op_aux_of_not_lt (by omega)]
   )
-  unfold sha512h compression_update_t1 elem_set elem_get partInstall sigma_big_1 ch ror
-  simp only [Nat.reduceAdd, Nat.reduceSub, Nat.reduceMul, Nat.sub_zero, reduceAllOnes,
-    reduceSetWidth, Nat.zero_mul, reduceHShiftLeft, reduceNot, reduceAnd, Nat.one_mul,
-    BitVec.cast_eq]
-  simp only [shiftLeft_zero_eq, BitVec.zero_or, and_nop_lemma]
+  simp only [zero_eq, Nat.reduceAdd, add_eq, Nat.zero_add]
+  simp only [elem_set, Nat.one_mul, elem_get, Nat.zero_mul, Nat.reduceAdd,
+    Nat.le_refl, extractLsb'_extractLsb'_of_le, Nat.zero_add, Nat.reduceLeDiff,
+    Nat.add_zero]
+  rw [extractLsb'_append_left_of_le (by omega), Nat.sub_self,
+    partInstall_partInstall, partInstall_partInstall]
+  simp only [Nat.reduceAdd, BitVec.cast_eq, partInstall_eq]
+
+  simp only [sha512h, compression_update_t1, elem_set, elem_get, partInstall, sigma_big_1, ch, ror]
+  simp only [Nat.reduceAdd, Nat.zero_add, zero_eq, reduceAllOnes, truncate_eq_setWidth,
+    reduceSetWidth, Nat.zero_mul, shiftLeft_zero_eq, reduceNot, zero_and, Nat.reduceLeDiff,
+    extractLsb'_extractLsb'_of_le, Nat.add_zero, add_eq, zero_or, Nat.one_mul, reduceHShiftLeft,
+    Nat.le_refl]
+
   generalize extractLsb'  0 64 a = a_lo
   generalize extractLsb' 64 64 a = a_hi
   generalize extractLsb'  0 64 b = b_lo
@@ -298,16 +379,15 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   generalize extractLsb' 64 64 d = d_hi
   generalize extractLsb'  0 64 e = e_lo
   generalize extractLsb' 64 64 e = e_hi
-  clear a b c d e
-  simp only [truncate_eq_setWidth, reduceSetWidth, reduceNot, zero_and, zero_or,
-    reduceHShiftLeft]
-
-  simp only [
-    show 18446744073709551615#128 = (18446744073709551615#64).setWidth 128 by rfl,
-    ← BitVec.setWidth_and]
-  simp only [extractLsb'_high_64_from_setWidth_128_or, extractLsb'_low_64_from_setWidth_128_or]
-  simp only [sha512h_rule_2_helper_1, sha512h_rule_2_helper_2]
   generalize (b_hi.rotateRight 14 ^^^ b_hi.rotateRight 18 ^^^ b_hi.rotateRight 41) = aux1
+  clear a b c d e
+
+  rw [BitVec.extractLsb'_append_left]
+  rw [BitVec.extractLsb'_append_right]
+  rw [BitVec.extractLsb'_append_right]
+  rw [BitVec.extractLsb'_append_right_of_le (by omega)]
+  rw [BitVec.extractLsb'_append_left]
+
   ac_rfl
 
 end sha512_block_armv8_rules

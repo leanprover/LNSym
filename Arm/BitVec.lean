@@ -298,6 +298,9 @@ abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
 abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
   BitVec.extractLsb' i 1 x
 
+/-- `partInstall start len val x` returns a bitvector where bits
+- `start` to `start+len` are equal to `val`, and
+- all other bits are equal to the respective bit in `x` -/
 abbrev partInstall (start len : Nat) (val : BitVec len) (x : BitVec n): BitVec n :=
   let mask := allOnes len
   let val_aligned := (zeroExtend n val) <<< start
@@ -532,8 +535,9 @@ theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
   ext1
   simp [←h]
 
+@[simp, bitvec_rules]
 theorem extractLsb'_eq (x : BitVec n) :
-  BitVec.extractLsb' 0 n x = x := by
+    BitVec.extractLsb' 0 n x = x := by
   unfold extractLsb'
   simp only [Nat.shiftRight_zero, ofNat_toNat, setWidth_eq]
 
