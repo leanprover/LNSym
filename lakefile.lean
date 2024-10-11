@@ -56,4 +56,3 @@ lean_exe «lnsym» where
 
 require ELFSage from git "https://github.com/draperlaboratory/ELFSage.git" @ "main"
 require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "main"
-require batteries from git "https://github.com/leanprover-community/batteries" @ "main"
