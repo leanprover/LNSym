@@ -173,6 +173,7 @@ info: 'MaxTandem.program.stepi_0x894_cut' depends on axioms: [propext, Classical
 #guard_msgs in #print axioms program.stepi_0x894_cut
 
 -- 2/15: str  w0, [sp, #12]  ; sp[12] = w0_a
+set_option trace.simp_mem.info true in
 theorem program.stepi_0x898_cut (s sn : ArmState)
   (h_program : s.program = program)
   (h_pc : r StateField.PC s = 0x898#64)

@@ -621,17 +621,23 @@ end Hypotheses
 
 section Simplify
 
-def rewriteWithEquality (rw : Expr) (msg : MessageData) : TacticM Unit := do
+structure SimplifyResult where
+  eNew : Expr
+  eqProof : Expr
+deriving Inhabited
+
+/-- Rewrite expression `e` with rewrite `rw` -/
+def rewriteWithEquality (rw : Expr) (e : Expr) (msg : MessageData) : TacticM SimplifyResult := do
   TacticM.withTraceNode' msg do
     withMainContext do
-      TacticM.traceLargeMsg m!"rewrite" m!"{← inferType rw}"
+      -- TacticM.traceLargeMsg m!"rewrite" m!"{← inferType rw}"
       let goal ← getMainGoal
-      let result ← goal.rewrite (← getMainTarget) rw
-      let mvarId' ← (← getMainGoal).replaceTargetEq result.eNew result.eqProof
-      trace[simp_mem.info] "{checkEmoji} rewritten goal {mvarId'}"
-      unless result.mvarIds == [] do
-        throwError m!"{crossEmoji} internal error: expected rewrite to produce no side conditions. Produced {result.mvarIds}"
-      replaceMainGoal [mvarId']
+      let result ← goal.rewrite e rw
+      -- let mvarId' ← (← getMainGoal).replaceTargetEq result.eNew result.eqProof
+      trace[simp_mem.info] "{checkEmoji} rewritten goal {e}"
+      check result.eNew
+      check result.eqProof
+      return { eNew := result.eNew, eqProof := result.eqProof }
 
 /--
 info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat}
@@ -644,7 +650,8 @@ info: Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' {x : BitVec 6
 using `Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'`. -/
 def MemSeparateProof.rewriteReadOfSeparatedWrite
     (er : ReadBytesExpr) (ew : WriteBytesExpr)
-    (separate : MemSeparateProof { sa := er.span, sb := ew.span }) : TacticM Unit := do
+    (separate : MemSeparateProof { sa := er.span, sb := ew.span })
+    (e : Expr) : TacticM SimplifyResult := do
   let call :=
     mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate' [])
       #[er.span.base, er.span.n,
@@ -652,7 +659,7 @@ def MemSeparateProof.rewriteReadOfSeparatedWrite
         ew.mem,
         separate.h,
         ew.val]
-  rewriteWithEquality call m!"rewriting read({er})⟂write({ew})"
+  rewriteWithEquality call e m!"rewriting read({er})⟂write({ew})"
 
 /--
 info: Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' {bn : Nat} {b : BitVec 64} {val : BitVec (bn * 8)}
@@ -665,7 +672,8 @@ def MemSubsetProof.rewriteReadOfSubsetRead
     (er : ReadBytesExpr)
     (hread : ReadBytesEqProof)
     (hsubset : MemSubsetProof { sa := er.span, sb := hread.read.span })
-  : TacticM Unit := do
+    (e : Expr)
+  : TacticM SimplifyResult := do
   let call := mkAppN (Expr.const ``Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' [])
     #[hread.read.span.n, hread.read.span.base,
       hread.val,
@@ -673,7 +681,7 @@ def MemSubsetProof.rewriteReadOfSubsetRead
       er.mem,
       hread.h,
       hsubset.h]
-  rewriteWithEquality call m!"rewriting read({er})⊆read({hread.read})"
+  rewriteWithEquality call e m!"rewriting read({er})⊆read({hread.read})"
 
 /--
 info: Memory.read_bytes_write_bytes_eq_of_mem_subset' {x : BitVec 64} {xn : Nat} {y : BitVec 64} {yn : Nat} {mem : Memory}
@@ -684,15 +692,16 @@ info: Memory.read_bytes_write_bytes_eq_of_mem_subset' {x : BitVec 64} {xn : Nat}
 
 def MemSubsetProof.rewriteReadOfSubsetWrite
     (er : ReadBytesExpr) (ew : WriteBytesExpr)
-    (hsubset : MemSubsetProof { sa := er.span, sb := ew.span }) :
-    TacticM Unit := do
+    (hsubset : MemSubsetProof { sa := er.span, sb := ew.span }) 
+    (e : Expr) :
+    TacticM SimplifyResult := do
   let call := mkAppN (Expr.const ``Memory.read_bytes_write_bytes_eq_of_mem_subset' [])
     #[er.span.base, er.span.n,
       ew.span.base, ew.span.n,
       ew.mem,
       hsubset.h,
       ew.val]
-  rewriteWithEquality call m!"rewriting read({er})⊆write({ew})"
+  rewriteWithEquality call e m!"rewriting read({er})⊆write({ew})"
 
 end Simplify
 

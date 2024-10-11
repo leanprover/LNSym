@@ -14,6 +14,9 @@ initialize Lean.registerTraceClass `simp_mem
 /-- Provides extremely verbose tracing for the `simp_mem` tactic. -/
 initialize Lean.registerTraceClass `simp_mem.info
 
+/-- Provides even more verbose tracing for the `simp_mem` tactic. -/
+initialize Lean.registerTraceClass `simp_mem.expr_walk_trace
+
 /-- Provides extremely verbose tracing for the `simp_mem` tactic. -/
 initialize Lean.registerTraceClass `Tactic.address_normalization
 
