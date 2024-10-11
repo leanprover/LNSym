@@ -61,13 +61,12 @@ theorem Memory.read_write_bytes_different
   induction n generalizing mem addr1 addr2
   case zero => simp only [write_bytes]
   case succ n ih =>
-    rw [write_bytes, ih ?h_sep]
-    case h_sep =>
-      show mem_separate addr1 addr1 (addr2 + 1#64)
-                        (addr2 + 1#64 + BitVec.ofNat 64 (n - 1)) = true
+    have h_sep : mem_separate addr1 addr1 (addr2 + 1#64)
+                        (addr2 + 1#64 + BitVec.ofNat 64 (n - 1)) := by
       sorry
-    rw [Memory.read_write_different]
-    sorry
+    have h_neq : addr1 ≠ addr2 :=
+      mem_separate_starting_addresses_neq h
+    rw [write_bytes, ih h_sep, Memory.read_write_different h_neq]
 
 theorem read_mem_of_write_mem_bytes_different (hn1 : n <= 2^64)
     (h : mem_separate addr1 addr1 addr2 (addr2 + (BitVec.ofNat 64 (n - 1)))) :
