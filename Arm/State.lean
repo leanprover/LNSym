@@ -844,6 +844,8 @@ def read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) :=
     have h : n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
     BitVec.cast h (rest ++ byte)
 
+-- TODO: we should drop the `State.` namespace here,
+--       this namespace is used nowhere else
 @[memory_rules]
 theorem State.read_mem_bytes_eq_mem_read_bytes (s : ArmState) :
     read_mem_bytes n addr s = s.mem.read_bytes n addr := by
@@ -1141,11 +1143,6 @@ by_cases h : ix < base
   by_cases h₂ : base.toNat + n ≤ ix.toNat
   · simp only [h₂, ↓reduceIte]
   · simp only [h₂, ↓reduceIte, BitVec.getLsbD_extractLsByte]
-
-@[memory_rules]
-theorem Memory.read_bytes_write_bytes (m : Memory) :
-    Memory.read_bytes n addr (m.write_bytes n addr val) = val := by
-  sorry
 
 end Memory
 
