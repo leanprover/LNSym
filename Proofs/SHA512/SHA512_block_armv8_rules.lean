@@ -233,9 +233,6 @@ theorem binary_vector_op_aux_of_not_lt {n} {e elems} (h : ¬(e < elems))
   unfold binary_vector_op_aux
   simp only [ite_eq_left_iff, Nat.not_le, h, false_implies]
 
--- theorem Nat.sub_lt_iff_lt_add (x y z : Nat) :
---     x - y < z ↔ x < y + z := by
-
 theorem BitVec.getLsbD_eq_false_of_le {w} (x : BitVec w) {i : Nat} (h : w ≤ i) :
     x.getLsbD i = false := by
   exact getLsbD_ge x i h
