@@ -62,16 +62,13 @@ def init (cfg : Config) : MetaM Context := do
   return {cfg, bvToNatSimpCtx, bvToNatSimprocs}
 end Context
 
-abbrev MemOmegaM := (ReaderT Context TacticM)
+abbrev MemOmegaM := (ReaderT Context MetaM)
 
 namespace MemOmegaM
-
-  def run (ctx : Context) (x : MemOmegaM α) : TacticM α := ReaderT.run x ctx
-
+  def run (ctx : Context) (x : MemOmegaM α) : MetaM α := ReaderT.run x ctx
 end MemOmegaM
 
-def memOmegaTac : MemOmegaM Unit := do
-  let g ← getMainGoal
+def memOmega (g : MVarId) : MemOmegaM Unit := do
   g.withContext do
     /- We need to explode all pairwise separate hyps -/
     let rawHyps ← getLocalHyps
@@ -85,21 +82,19 @@ def memOmegaTac : MemOmegaM Unit := do
     hyps := hyps.filter (!·.isPairwiseSeparate || isPairwiseEnabled)
 
     -- used specialized procedure that doesn't unfold everything for the easy case.
-    if ← closeMemSideCondition (← getMainGoal) (← readThe Context).bvToNatSimpCtx (← readThe Context).bvToNatSimprocs hyps then
+    if ← closeMemSideCondition g (← readThe Context).bvToNatSimpCtx (← readThe Context).bvToNatSimprocs hyps then
       return ()
     else
       -- in the bad case, just rip through everything.
-      -- let _ ← Hypothesis.addOmegaFactsOfHyps (hyps.toList.filter (fun h => h.isPairwiseSeparate)) #[]
-      let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
+      let (_, g) ← Hypothesis.addOmegaFactsOfHyps g hyps.toList #[]
 
       TacticM.withTraceNode' m!"Reducion to omega" do
         try
-          TacticM.traceLargeMsg m!"goal (Note: can be large)"  m!"{← getMainGoal}"
-          omega (← readThe Context).bvToNatSimpCtx (← readThe Context).bvToNatSimprocs
+          TacticM.traceLargeMsg m!"goal (Note: can be large)"  m!"{g}"
+          omega g (← readThe Context).bvToNatSimpCtx (← readThe Context).bvToNatSimprocs
           trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
         catch e =>
           trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
-
 
 /--
 Allow elaboration of `MemOmegaConfig` arguments to tactics.
@@ -124,14 +119,16 @@ syntax (name := mem_omega_bang) "mem_omega!" (Lean.Parser.Tactic.config)? : tact
 def evalMemOmega : Tactic := fun
   | `(tactic| mem_omega $[$cfg]?) => do
     let cfg ← elabMemOmegaConfig (mkOptionalNode cfg)
-    memOmegaTac.run (← Context.init cfg)
+    liftMetaFinishingTactic fun g => do
+      memOmega g |>.run (← Context.init cfg)
   | _ => throwUnsupportedSyntax
 
 @[tactic mem_omega_bang]
 def evalMemOmegaBang : Tactic := fun
   | `(tactic| mem_omega! $[$cfg]?) => do
     let cfg ← elabMemOmegaConfig (mkOptionalNode cfg)
-    memOmegaTac.run (← Context.init cfg.mkBang)
+    liftMetaFinishingTactic fun g => do
+      memOmega g |>.run (← Context.init cfg.mkBang)
   | _ => throwUnsupportedSyntax
 
 end MemOmega

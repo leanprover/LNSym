@@ -18,9 +18,11 @@ open Lean Elab Meta Tactic Omega
 
 namespace BvOmegaBench
 
-
--- Adapted mkSimpContext:
--- from https://github.com/leanprover/lean4/blob/master/src/Lean/Elab/Tactic/Simp.lean#L287
+/-
+Make the `SimpContext` that corresponds to using `bv_toNat` 
+Adapted mkSimpContext:
+from https://github.com/leanprover/lean4/blob/master/src/Lean/Elab/Tactic/Simp.lean#L287
+-/
 def bvOmegaSimpCtx : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
   let mut simprocs := #[]
   let mut simpTheorems := #[]
@@ -47,14 +49,13 @@ Code adapted from:
 - https://github.com/leanprover/lean4/blob/master/src/Lean/Elab/Tactic/Simp.lean#L406
 - https://github.com/leanprover/lean4/blob/master/src/Lean/Elab/Tactic/Omega/Frontend.lean#L685
 -/
-def run (g : MVarId) : MetaM Unit := do
+def run (g : MVarId)  (bvToNatSimpCtx : Simp.Context) (bvToNatSimprocs : Array Simp.Simprocs) : MetaM Unit := do
   let minMs ← getBvOmegaBenchMinMs
   let goalStr ← ppGoal g
   let startTime ← IO.monoMsNow
   let filePath ← getBvOmegaBenchFilePath
   try
       g.withContext do
-        let (bvToNatSimpCtx, bvToNatSimprocs) ← bvOmegaSimpCtx
         let nonDepHyps ← g.getNondepPropHyps
         let mut g := g
 
@@ -101,6 +102,11 @@ def run (g : MVarId) : MetaM Unit := do
           h.putStrLn s!"enderror"
     throw e
 
+/-- Build the default simp context (bv_toNat) and run omega -/
+def runWithDefaultSimpContext (g : MVarId) : MetaM Unit := do
+  let (bvToNatSimpCtx, bvToNatSimprocs) ← bvOmegaSimpCtx
+  run g bvToNatSimpCtx bvToNatSimprocs
+
 end BvOmegaBench
 
 syntax (name := bvOmegaBenchTac) "bv_omega_bench" : tactic
@@ -109,5 +115,5 @@ syntax (name := bvOmegaBenchTac) "bv_omega_bench" : tactic
 def bvOmegaBenchImpl : Tactic
 | `(tactic| bv_omega_bench) =>
     liftMetaFinishingTactic fun g => do
-      BvOmegaBench.run g
+      BvOmegaBench.runWithDefaultSimpContext g
 | _ => throwUnsupportedSyntax
