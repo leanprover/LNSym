@@ -7,10 +7,11 @@ import Arm.BitVec
 import Proofs.«AES-GCM».GCMInitV8Pre
 import Tactics.Sym
 import Tactics.Aggregate
-import Tactics.ExtractGoal
 import Specs.GCMV8
 
 namespace GCMInitV8Program
+
+set_option bv.ac_nf false
 
 abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
@@ -36,10 +37,11 @@ theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
 
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 500000 in
-set_option sat.timeout 120 in
-set_option pp.deepTerms true in
-set_option pp.maxSteps 10000 in
--- set_option linter.unusedVariables false in
+-- set_option sat.timeout 120 in
+-- set_option pp.deepTerms true in
+-- set_option pp.maxSteps 10000 in
+set_option trace.profiler true in
+set_option linter.unusedVariables false in
 -- set_option profiler true in
 theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_init_v8_program)
@@ -113,6 +115,4 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       Nat.zero_mod, Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul,
       Nat.reduceSub, BitVec.reduceMul, BitVec.reduceXOr, BitVec.mul_one, Nat.add_one_sub_one,
       BitVec.one_mul]
-    extract_goal
-    sorry
-    -- bv_decide
+    bv_decide

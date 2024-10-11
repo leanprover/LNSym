@@ -688,13 +688,14 @@ theorem shift_le (x : Nat) (shift :Nat) :
   simp only [Nat.shiftRight_eq_div_pow]
   exact Nat.div_le_self x (2 ^ shift)
 
+set_option bv.ac_nf false
+
 @[state_simp_rules]
 theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
   (shift : Nat) (result : BitVec 128):
   shift_right_common_aux 0
     {esize := 64, elements := 2, shift := shift,
-     unsigned := true, round := false, accumulate := false,
-     h := (by omega)}
+     unsigned := true, round := false, accumulate := false}
     operand 0#128 result =
   (ushiftRight (extractLsb' 64 64 operand) shift)
     ++ (ushiftRight (extractLsb' 0 64 operand) shift) := by
@@ -740,7 +741,7 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
   have h0 : ∀ (z : BitVec 64), extractLsb' 0 64 ((zeroExtend 65 z).ushiftRight shift)
     = z.ushiftRight shift := by
     intro z
-    simp only [ushiftRight, toNat_truncate]
+    simp only [ushiftRight, toNat_setWidth]
     have h1: z.toNat % 2 ^ 65 = z.toNat := by omega
     simp only [h1]
     simp only [Std.Tactic.BVDecide.Normalize.BitVec.ofNatLt_reduce]
@@ -784,8 +785,7 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
   (shift : Nat) (result : BitVec 128):
   shift_right_common_aux 0
     { esize := 32, elements := 4, shift := shift,
-      unsigned := false, round := false, accumulate := false,
-      h := (by omega) }
+      unsigned := false, round := false, accumulate := false}
       operand 0#128 result =
   (sshiftRight (extractLsb' 96 32 operand) shift)
     ++ (sshiftRight (extractLsb' 64 32 operand) shift)
@@ -896,8 +896,7 @@ theorem shift_left_common_aux_64_2 (operand : BitVec 128)
   (result : BitVec 128):
   shift_left_common_aux 0
     {esize := 64, elements := 2, shift := shift,
-     unsigned := unsigned, round := round, accumulate := accumulate,
-     h := (by omega)}
+     unsigned := unsigned, round := round, accumulate := accumulate}
     operand result =
   (extractLsb' 64 64 operand <<< shift)
     ++ (extractLsb' 0 64 operand <<< shift) := by
