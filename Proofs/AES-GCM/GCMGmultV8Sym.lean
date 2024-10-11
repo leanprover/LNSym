@@ -99,6 +99,7 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
   -- stop
   -- Split conjunction
   repeat' apply And.intro
+  · simp_mem; rfl
   · simp only [List.mem_cons, List.mem_singleton, not_or, and_imp]
     sym_aggregate
   · intro n addr h_separate
