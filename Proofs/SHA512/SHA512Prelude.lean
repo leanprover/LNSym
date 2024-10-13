@@ -141,9 +141,8 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   -- cse (config := { processHyps := .allHyps })
   simp only [SHA512.prelude, bitvec_rules, minimal_theory]
   -- Opening up `prelude`:
-  -- (FIXME @alex) Why does `s16.program = program` remain even after aggregation?
   sym_aggregate
-  simp only [h_s16_program, ←add_eq_sub_16, minimal_theory]
+  simp only [←add_eq_sub_16, minimal_theory]
   -- The following discharges
   --  InputBase + 0x40#64 + 0x40#64 =
   --  InputBase + 0x80#64
