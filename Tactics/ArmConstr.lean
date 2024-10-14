@@ -26,7 +26,9 @@ abbrev StateVar := Nat
   `BitVec` operators here.
 -/
 inductive GPRVal where
+  -- A variable in the context.
   | var (i : Nat)
+  -- A read from a previous state.
   | r_gpr (i : BitVec 5)
   deriving DecidableEq, Repr, Inhabited
 
@@ -39,18 +41,15 @@ position of a variable in the context becomes variable name (see, e.g.,
 `StateVar`, which is a `Nat`).
 -/
 structure Context where
-  state : StateContext
-  gpr : GPRValContext
+  Γs : StateContext
+  Γgpr : GPRValContext
   deriving Repr, Inhabited
 
 /--
 Look up variable `v` in the `StateContext`.
 -/
 def StateVar.denote (ctx : StateContext) (v : StateVar) : ArmState :=
-  match ctx, v with
-  | [],      _   => ArmState.default
-  | s :: _,  0   => s
-  | _ :: ss, i + 1 => denote ss i
+  ctx.getD v ArmState.default
 
 /--
 Denote `GPRVal v`.
@@ -58,16 +57,10 @@ Denote `GPRVal v`.
 If `v` is a variable then look it up in the `GPRValContext`. Else if `v` is
 `r_gpr i`, then look up the `i`th register in `prev_s`.
 -/
-def GPRVal.denote (ctx : GPRValContext) (v : GPRVal) (prev_s : ArmState)
-  : BitVec 64 :=
+def GPRVal.denote (ctx : GPRValContext) (v : GPRVal) (prev_s : ArmState) : BitVec 64 :=
   match v with
-  | var i => go_var ctx i
+  | var i => ctx.getD i 0
   | r_gpr i => r (.GPR i) prev_s
-  where go_var (ctx : GPRValContext) (v : Nat) : BitVec 64 :=
-    match ctx, v with
-    | [],      _   => 0#64
-    | v0 :: _,  0   => v0
-    | _ :: vs, i + 1 => go_var vs i
 
 /--
 Datastructure that characterizes all the updates that can be made to an
@@ -82,16 +75,24 @@ inductive Update where
 /--
 Do updates `x` and `y` refer to the same state component?
 -/
-def Update.regEq (x y : Update) : Bool :=
+def Update.regEq (x y : Update) : Prop :=
   match x, y with
-  | w_gpr i _, w_gpr j _ => i == j
+  | w_gpr i _, w_gpr j _ => i = j
+
+instance : Decidable (Update.regEq x y) := by
+  simp [Update.regEq]
+  infer_instance
 
 /--
 Is the register index of update `x` less than that of `y`?
 -/
-def Update.regIndexLt (x y : Update) : Bool :=
+def Update.regIndexLt (x y : Update) : Prop :=
   match x, y with
   | w_gpr i _, w_gpr j _ => i < j
+
+instance : Decidable (Update.regIndexLt x y) := by
+  simp [Update.regIndexLt]
+  infer_instance
 
 /--
 Datastructure to represent expressions characterizing the following state
@@ -113,25 +114,25 @@ Map updates `us` to state `prev_state` to an `ArmState`.
 def Expr.writes.denote (ctx : Context) (us : List Update) (prev_state : StateVar)
   : ArmState :=
   match us with
-  | [] => StateVar.denote ctx.state prev_state
+  | [] => StateVar.denote ctx.Γs prev_state
   | Update.w_gpr i v :: rest =>
     w (.GPR i)
-      (GPRVal.denote ctx.gpr v (StateVar.denote ctx.state prev_state))
+      (GPRVal.denote ctx.Γgpr v (StateVar.denote ctx.Γs prev_state))
       (Expr.writes.denote ctx rest prev_state)
 
 /--
 Denote an `Expr e` to a `Prop` corresponding to `curr_state = writes[prev_state]`.
 -/
 def Expr.denote (ctx : Context) (e : Expr) : Prop :=
-  StateVar.denote ctx.state e.curr_state =
+  StateVar.denote ctx.Γs e.curr_state =
   Expr.writes.denote ctx e.writes e.prev_state
 
 /--
 Return a `Prop` corresponding to `e1 = e2`.
 -/
 def Expr.denote_eq (ctx : Context) (e1 e2 : Expr) : Prop :=
-  StateVar.denote ctx.state e1.prev_state = StateVar.denote ctx.state e2.prev_state ∧
-  StateVar.denote ctx.state e1.curr_state = StateVar.denote ctx.state e2.curr_state ∧
+  StateVar.denote ctx.Γs e1.prev_state = StateVar.denote ctx.Γs e2.prev_state ∧
+  StateVar.denote ctx.Γs e1.curr_state = StateVar.denote ctx.Γs e2.curr_state ∧
   Expr.denote ctx e1 ∧
   Expr.denote ctx e2
 
@@ -141,9 +142,7 @@ abbrev Exprs := List Expr
 Denote each expression in `es` using `Expr.denote`.
 -/
 def Exprs.denote (ctx : Context) (es : Exprs) : Prop :=
-  match es with
-  | [] => True
-  | u :: rest => Expr.denote ctx u ∧ Exprs.denote ctx rest
+  es.foldl (init := True) (fun p e => p ∧ e.denote ctx)
 
 def Expr.default : Expr :=
   { prev_state := 0, curr_state := 0, writes := [] }
@@ -286,8 +285,8 @@ theorem completely_shadowed_updates
     s2 = xxxx : Prop
   -/
   s2 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 s0) := by
-  have := (Expr.eq_true_of_isValid { state := [s0, s1, s2],
-                                     gpr := [x0, x1] }
+  have := (Expr.eq_true_of_isValid { Γs := [s0, s1, s2],
+                                     Γgpr := [x0, x1] }
           -- init
           { prev_state := 0, curr_state := 0, writes := []}
           -- final
@@ -295,8 +294,8 @@ theorem completely_shadowed_updates
           -- updates
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] } ]
-            (Eq.refl true))
-  simp only [Exprs.denote, and_true, and_imp] at this
+            (by decide))
+  simp only [Exprs.denote, List.foldl, true_and, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
 
@@ -317,8 +316,8 @@ theorem partially_shadowed_and_new_updates
   -/
   (h_s2 : s2 = w (.GPR 1#5) x1 (w (.GPR 3#5) x3 s1)) :
   s2 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 (w (.GPR 3#5) x3 s0)) := by
-  have := (Expr.eq_true_of_isValid { state := [s0, s1, s2],
-                                     gpr := [x0, old_x1, x1, x3] }
+  have := (Expr.eq_true_of_isValid { Γs := [s0, s1, s2],
+                                     Γgpr := [x0, old_x1, x1, x3] }
           -- init
           { prev_state := 0, curr_state := 0, writes := []}
           -- final
@@ -327,7 +326,7 @@ theorem partially_shadowed_and_new_updates
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 1#5 (.var 2), w_gpr 3#5 (.var 3)] } ]
             (Eq.refl true))
-  simp only [Exprs.denote, and_true, and_imp] at this
+  simp only [Exprs.denote, List.foldl_cons, true_and, List.foldl_nil, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
 
@@ -351,8 +350,8 @@ theorem read_from_prev_update_test1
   (h_s1 : s1 = w (.GPR 0#5) x0 (w (.GPR 1#5) old_x1 s0))
   (h_s2 : s2 = w (.GPR 1#5) x1 (w (.GPR 3#5) (r (.GPR 1#5) s1) s1)) :
   s2 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 (w (.GPR 3#5) old_x1 s0)) := by
-  have := (Expr.eq_true_of_isValid { state := [s0, s1, s2],
-                                     gpr := [x0, old_x1, x1] }
+  have := (Expr.eq_true_of_isValid { Γs := [s0, s1, s2],
+                                     Γgpr := [x0, old_x1, x1] }
           -- init
           { prev_state := 0, curr_state := 0, writes := []}
           -- final
@@ -362,7 +361,8 @@ theorem read_from_prev_update_test1
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 1#5 (.var 2), w_gpr 3#5 (.r_gpr 1)] } ]
             (Eq.refl true))
-  simp only [Exprs.denote, and_true, and_imp] at this
+  simp only [Exprs.denote, BitVec.ofNat_eq_ofNat, List.foldl_cons, true_and, List.foldl_nil,
+    and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
 
@@ -372,8 +372,8 @@ theorem read_from_prev_update_test2 (s0 s1 s2 : ArmState)
   (h_s1 : s1 = w (.GPR 0#5) x0 (w (.GPR 1#5) old_x1 s0))
   (h_s2 : s2 = w (.GPR 1#5) x1 (w (.GPR 3#5) (r (.GPR 5#5) s1) s1)) :
   s2 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 (w (.GPR 3#5) (r (.GPR 5#5) s0) s0)) := by
-  have := (Expr.eq_true_of_isValid { state := [s0, s1, s2],
-                                     gpr := [x0, old_x1, x1] }
+  have := (Expr.eq_true_of_isValid { Γs := [s0, s1, s2],
+                                     Γgpr := [x0, old_x1, x1] }
           -- init
           { prev_state := 0, curr_state := 0, writes := []}
           -- final
@@ -385,7 +385,7 @@ theorem read_from_prev_update_test2 (s0 s1 s2 : ArmState)
             { prev_state := 1, curr_state := 2,
               writes := [w_gpr 1#5 (.var 2), w_gpr 3#5 (.r_gpr 5#5)] } ]
             (Eq.refl true))
-  simp only [Exprs.denote, and_true, and_imp] at this
+  simp only [Exprs.denote, List.foldl, true_and, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
 
