@@ -3,8 +3,8 @@ Copyright (c) 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author(s): Yan Peng
 -/
-import Arm.BitVec
 import Arm.Exec
+import Arm.Cfg.Cfg
 
 namespace GCMGmultV8Program
 
@@ -49,5 +49,13 @@ def gcm_gmult_v8_program : Program :=
     (0x7d8864#64, 0x4c007c00#32),        -- st1     {v0.2d}, [x0]
     (0x7d8868#64, 0xd65f03c0#32)         -- ret
   ]
+
+-- Statically obtain all the GPR/SFP registers that may be affected by this program.
+/--
+info: #[RegType.SFP 0x00#5, RegType.SFP 0x01#5, RegType.SFP 0x02#5, RegType.SFP 0x03#5, RegType.SFP 0x11#5,
+  RegType.SFP 0x12#5, RegType.SFP 0x13#5, RegType.SFP 0x14#5]
+-/
+#guard_msgs in
+#eval ((Cfg.create gcm_gmult_v8_program).toOption).get!.maybe_modified_regs
 
 end GCMGmultV8Program

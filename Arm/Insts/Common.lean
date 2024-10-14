@@ -102,6 +102,7 @@ Return `true` iff `cond` currently holds
 Ref.:
 https://developer.arm.com/documentation/ddi0602/2024-06/Shared-Pseudocode/shared-functions-system?lang=en#impl-shared.ConditionHolds.1
 -/
+@[state_simp_rules]
 def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   open PFlag in
   let N := read_flag N s

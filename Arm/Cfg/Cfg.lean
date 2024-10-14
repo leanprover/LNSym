@@ -8,14 +8,20 @@ import Arm.Exec
 namespace Cfg
 
 open BitVec
+open Std
+open Std.Format
 
-/-- Conditions under which a branch is taken; this is a function that
-takes a state as input, and returns a boolean. -/
+/--
+Conditions under which a branch is taken; this is a function that
+takes a state as input, and returns whether the branch was taken.
+-/
 abbrev CondHoldsFn := ArmState → Bool
 
-/-- The general type of an instruction: for control-flow analysis, we
+/--
+The general type of an instruction: for control-flow analysis, we
 only care about how an instruction affects the program's control
-flow. -/
+flow.
+-/
 inductive InstType where
   -- Seq: Instruction at address pc after which control falls through
   -- to the next one, in program order (i.e., at pc + 4).
@@ -38,6 +44,7 @@ instance : Repr InstType where
       | InstType.Ret pc  => "<Ret>" ++ repr pc
 
 instance : ToString InstType where toString i := toString (repr i)
+instance : ToFormat InstType where format i := toString (repr i)
 
 def InstType.pc (x : InstType) : BitVec 64 :=
   match x with
@@ -66,11 +73,13 @@ def InstType.pc_and_type_equal (x y : InstType) : Bool :=
 /-- An entry in the forward control-flow graph. -/
 abbrev F_CFGentry := InstType × List InstType
 
-/-- A forward control-flow graph maps an instruction (in its InstType
+/--
+A forward control-flow graph maps an instruction (in its InstType
 form) to all possible next instructions (in their InstTypes forms).
 
 An edge from `from_pc` to `to_pc` means that control may transfer from
-the former to the latter in one instruction step. -/
+the former to the latter in one instruction step.
+-/
 def ForwardGraph := Array F_CFGentry deriving Repr
 
 instance : ToString ForwardGraph where toString fg := toString (repr fg)
@@ -88,25 +97,35 @@ deriving Repr
 
 instance : ToString LoopsInfo where toString li := toString (repr li)
 
-/-- CFG collects all the control-flow information gleaned from the
-program during static analysis. -/
+/--
+CFG collects all the control-flow information gleaned from the
+program during static analysis.
+-/
 structure Cfg where
-  start_address : BitVec 64
-  graph         : ForwardGraph  := #[]
-  loops_info    : LoopsInfo := #[]
+  start_address       : BitVec 64
+  graph               : ForwardGraph  := #[]
+  loops_info          : LoopsInfo := #[]
+  maybe_modified_regs : Array RegType := #[]
 deriving Repr
 
 instance : ToString Cfg where toString cfg := toString (repr cfg)
+instance : ToFormat Cfg where format cfg := toString (repr cfg)
 
-/-- We can detect a loop if we find an entry where some `to_pc` is
+instance : Inhabited Cfg where
+  default := { start_address := 0#64 }
+
+/--
+We can detect a loop if we find an entry where some `to_pc` is
 less than its corresponding `from_pc`, i.e., there is a back-jump from
 `from_pc` to `to_pc`.
 
 In that case, `to_pc` has the loop target instruction and `from_pc`
 has the loop guard instruction. The first instruction that will be
 executed after the loop terminates will also be a member of `to_insts`
-of type `Seq`. -/
-private def loop_detected (from_inst : InstType) (to_insts : List InstType) : IO (Option LoopInfo) :=
+of type `Seq`.
+-/
+private def loop_detected (from_inst : InstType) (to_insts : List InstType) :
+  Except Format (Option LoopInfo) :=
   let check := List.find?
                (fun x => compare x from_inst == .lt)
                to_insts
@@ -120,9 +139,9 @@ private def loop_detected (from_inst : InstType) (to_insts : List InstType) : IO
       have h' : next.length > 0 := by simp_all
       pure (some { guard := from_inst, target := to_inst, next := next[0]'h' })
     else
-      throw (IO.userError
-       ("We expected exactly one Seq instruction in the control-flow graph for this entry. " ++
-        "Instead, we found {next.length}."))
+      .error
+        f!"We expected exactly one Seq instruction in the control-flow graph \
+        for this entry. Instead, we found {next.length}."
 
 private def addToLoopsInfo (entry : Option LoopInfo) (loops_info : LoopsInfo) : LoopsInfo :=
   match entry with
@@ -132,7 +151,7 @@ private def addToLoopsInfo (entry : Option LoopInfo) (loops_info : LoopsInfo) : 
     Array.push loops_info (index, loop_info)
 
 private def addEntry (from_inst : InstType) (to_insts : List InstType)
-  (cfg : Cfg) : IO Cfg := do
+                     (mod_regs : List RegType) (cfg : Cfg) : Except Format Cfg := do
   -- We crawl through the program in a linear manner, so by
   -- construction, we should not add a previously-added InstType to
   -- the graph.
@@ -141,20 +160,38 @@ private def addEntry (from_inst : InstType) (to_insts : List InstType)
     let maybe_loop_info ← loop_detected from_inst to_insts
     let new_loops_info := addToLoopsInfo maybe_loop_info cfg.loops_info
     let new_graph := Array.push cfg.graph (from_inst, to_insts)
-    pure { cfg with graph := new_graph, loops_info := new_loops_info }
+    let maybe_modified_regs :=
+      -- Would've been nice to be able to deduplicate and sort at the same time...
+      Array.insertionSort (mod_regs_go mod_regs cfg.maybe_modified_regs)
+                          (fun r1 r2 =>
+                            match r1, r2 with
+                            | .GPR i, .GPR j => i ≤ j
+                            | .GPR _, .SFP _ => true
+                            | .SFP i, .SFP j => i ≤ j
+                            | .SFP _, .GPR _ => false)
+    pure { cfg with graph := new_graph,
+                    loops_info := new_loops_info,
+                    maybe_modified_regs := maybe_modified_regs }
   else
-  throw (IO.userError
-         ("[ForwardGraph] Implementation Error: graph already contains " ++
-          "an entry with PC {InstType.pc from_inst}! Here is the graph: ${cfg.graph}."))
-
--- This function adds information for an Arm instruction into Cfg
--- Inputs: pc -- current program counter
---         arm_inst -- current Arm instruction
---         cfg -- the control-flow graph
--- outputs: haltp : Bool -- whether the program halts
---          cfg : Cfg -- the updated control-flow graph
-protected def addArmInstToCfg (pc : BitVec 64) (arm_inst : ArmInst) (cfg : Cfg)
-   : IO (Bool × Cfg) := do
+  .error
+    f!"[ForwardGraph] Implementation Error: graph already contains \
+    an entry with PC {InstType.pc from_inst}! \
+    Here is the graph: ${Format.indentD <| repr cfg.graph}."
+  where mod_regs_go (mod_regs : List RegType) (all : Array RegType) : Array RegType :=
+    match mod_regs with
+    | [] => all
+    | m :: ms => if m ∈ all then mod_regs_go ms all
+                 else mod_regs_go ms (all.push m)
+/--
+This function adds information for an Arm instruction into Cfg
+Inputs: `pc` -- current program counter
+        `arm_inst` -- current Arm instruction
+        `cfg` -- the control-flow graph
+outputs: `haltp` : `Bool` -- whether the program halts
+         `cfg` : `Cfg` -- the updated control-flow graph
+-/
+protected def addArmInstToCfg (pc : BitVec 64) (raw_inst : BitVec 32)
+   (arm_inst : ArmInst) (cfg : Cfg) : Except Format (Bool × Cfg) := do
    let default_to_pc ← pure (pc + 4#64)
    -- variable pc_inst: the type of instruction InstType: Seq, BrOrg, BrTgt, Ret
    -- variable to_insts: an over-approximation of possible next pcs,
@@ -164,7 +201,7 @@ protected def addArmInstToCfg (pc : BitVec 64) (arm_inst : ArmInst) (cfg : Cfg)
    open InstType ArmInst in
    match arm_inst with
    | DPI _ | DPR _ | LDST _ | DPSFP _ =>
-   (false, Seq pc, [Seq default_to_pc])
+    (false, Seq pc, [Seq default_to_pc])
    | BR i =>
      open BranchInst in
      match i with
@@ -173,7 +210,7 @@ protected def addArmInstToCfg (pc : BitVec 64) (arm_inst : ArmInst) (cfg : Cfg)
         let (condition_holds : CondHoldsFn) :=
             (fun state => BR.Compare_branch_inst.condition_holds inst state)
         (false, BrOrg pc condition_holds,
-         [Seq default_to_pc, BrTgt branch_taken_pc condition_holds])
+                [Seq default_to_pc, BrTgt branch_taken_pc condition_holds])
       | Uncond_branch_imm inst => -- B, BL
         let branch_taken_pc := BR.Uncond_branch_imm_inst.branch_taken_pc inst pc
         -- These are unconditional branch instructions; we do not add
@@ -182,9 +219,9 @@ protected def addArmInstToCfg (pc : BitVec 64) (arm_inst : ArmInst) (cfg : Cfg)
       | Uncond_branch_reg _ => -- RET
         -- (FIXME) Extend CFG analysis when instructions other than
         -- RET are implemented.
-
+        --
         -- (FIXME) The to_inst for RET can be the value in the GPR
-        -- indexed by inst.Rn, but we can figure that value out only
+        -- indexed by `inst.Rn`, but we can figure that value out only
         -- after symbolic simulation.
         (true, Ret pc, [Ret pc])
       | Cond_branch_imm inst =>
@@ -196,26 +233,29 @@ protected def addArmInstToCfg (pc : BitVec 64) (arm_inst : ArmInst) (cfg : Cfg)
       -- Currently only consider NOP
       | Hints _ =>
         (false, Seq pc, [Seq default_to_pc])
-   let new_cfg ← addEntry pc_inst to_insts cfg
+   do let maybe_modified_regs ← mayModifiedRegs raw_inst
+   let new_cfg ← addEntry pc_inst to_insts maybe_modified_regs cfg
    pure (haltp, new_cfg)
 
 protected def addToCfg (address : BitVec 64) (program : Program) (cfg : Cfg)
-  : IO (Bool × Cfg) :=
+  : Except Format (Bool × Cfg) :=
   let maybe_raw_inst := program.find? address
   match maybe_raw_inst with
-  | none => throw (IO.userError s!"No instruction found at address {address}!")
+  | none => .error f!"No instruction found at address {address}!"
   | some raw_inst =>
     let maybe_arm_inst := decode_raw_inst raw_inst
     match maybe_arm_inst with
-    | none => throw (IO.userError
-              s!"Instruction {raw_inst} at address {address} could not be decoded!")
+    | none =>
+      .error f!"Instruction {raw_inst} at {address} could not be decoded!"
     | some arm_inst =>
-      Cfg.addArmInstToCfg address arm_inst cfg
+      Cfg.addArmInstToCfg address raw_inst arm_inst cfg
 
--- Termination argument for the create' function below. This theorem
--- is in terms of Fin so that we can take advantage of Fin lemmas. We
--- will map this theorem to BitVecs (using lemmas like
--- BitVec.fin_bitvec_lt) in create'.
+/-
+Termination argument for the `create'` function below. This theorem
+is in terms of `Fin` so that we can take advantage of `Fin` lemmas. We
+will map this theorem to `BitVecs` (using lemmas like
+`BitVec.fin_bitvec_lt`) in `create'`.
+-/
 private theorem termination_lemma (i j max : Fin n) (h : n > 0)
   (h0 : i < max) (h1 : j <= max - i)
   (h2 : ((@Fin.ofNat' n ⟨by omega⟩ 0) : Fin n) < j) :
@@ -258,8 +298,15 @@ private theorem termination_lemma (i j max : Fin n) (h : n > 0)
   exact Nat.sub_lt_self h2 h1'
   done
 
-private def create' (address : BitVec 64) (max_address : BitVec 64)
-  (program : Program) (cfg : Cfg)  : IO Cfg := do
+/--
+Create a `Cfg` structure for `program`, beginning at `start_address` until
+`end_address`.
+-/
+protected def create' (start_address end_address : BitVec 64)
+                      (program : Program) : Except Format Cfg :=
+  go start_address end_address program { start_address }
+  where go (address max_address : BitVec 64)
+           (program : Program) (cfg : Cfg) : Except Format Cfg := do
   if h₀ : max_address < address then
     pure cfg
   else
@@ -272,28 +319,34 @@ private def create' (address : BitVec 64) (max_address : BitVec 64)
          have ?term_lemma : (max_address - (address + 4#64)).toNat < (max_address - address).toNat := by
            have := termination_lemma address.toFin (4#64).toFin max_address.toFin
                    (by decide)
-                   (by simp_all! only [BitVec.not_lt, BitVec.fin_bitvec_lt, not_false_eq_true, BitVec.lt_of_le_ne, h₁])
+                   (by simp_all! only [BitVec.not_lt,
+                                       BitVec.fin_bitvec_lt,
+                                       not_false_eq_true,
+                                       BitVec.lt_of_le_ne, h₁])
                    (by rw [← BitVec.toFin_sub]; exact h₂)
                    (by simp_arith [Fin.ofNat'])
            simp [BitVec.fin_bitvec_le, BitVec.fin_bitvec_lt] at *
            exact this
-         Cfg.create' (address + 4#64) max_address program cfg
+         go (address + 4#64) max_address program cfg
     else
-        throw (IO.userError
-               ("We expect Arm instructions to be 32-bits wide; i.e., each " ++
-                "program address should be 4-apart from its successor. " ++
-                "This does not seem to be the case with this program for the " ++
-                s!"successor of address {address}. Note that the highest " ++
-                s!"address is {max_address}."))
+        .error
+               f!"We expect Arm instructions to be 32-bits wide; i.e., each \
+                program address should be 4-apart from its successor. \
+                This does not seem to be the case with this program for the \
+                successor of address {address}. Note that the highest \
+                address is {max_address}."
   termination_by (max_address - address).toNat
 
-protected def create (program : Program) : IO Cfg :=
+/--
+Create a `Cfg` structure for the program `program`.
+-/
+protected def create (program : Program) : Except Format Cfg :=
   let maybe_start_address := program.min?
   let maybe_max_address := program.max?
   match maybe_start_address, maybe_max_address with
   | some start_address, some max_address =>
-    Cfg.create' start_address max_address program { start_address }
+    Cfg.create' start_address max_address program
   | _, _ =>
-    throw (IO.userError s!"Could not determine the start/stop address for the program!")
+    .error f!"Could not determine the start/stop address for the program!"
 
 end Cfg
