@@ -631,6 +631,79 @@ theorem test_30_steps (s0 : ArmState)
   exact this (Eq.refl s0) h_step_1 h_step_2 h_step_3 h_step_4 h_step_5 h_step_6 h_step_7 h_step_8 h_step_9 h_step_10 h_step_11 h_step_12 h_step_13 h_step_14 h_step_15 h_step_16 h_step_17 h_step_18 h_step_19 h_step_20 h_step_21 h_step_22 h_step_23 h_step_24 h_step_25 h_step_26 h_step_27 h_step_28 h_step_29 h_step_30
   done
 
+open Expr Update in
+#eval Expr.aggregate
+      { prev_state := 0, curr_state := 0, writes := []}
+      [  { curr_state := 1, prev_state := 0, writes := [w_gpr 13#5 (.var 1), w_gpr 14#5 (.var 0), ] },
+   { curr_state := 2, prev_state := 1, writes := [w_gpr 11#5 (.var 2), ] },
+   { curr_state := 3, prev_state := 2, writes := [w_gpr 11#5 (.var 5), w_gpr 12#5 (.var 4), w_gpr 13#5 (.var 3), ] },
+   { curr_state := 4, prev_state := 3, writes := [w_gpr 10#5 (.var 10), w_gpr 11#5 (.var 9), w_gpr 12#5 (.var 8), w_gpr 13#5 (.var 7), w_gpr 14#5 (.var 6), ] },
+   { curr_state := 5, prev_state := 4, writes := [w_gpr 21#5 (.var 14), w_gpr 22#5 (.var 13), w_gpr 23#5 (.var 12), w_gpr 24#5 (.var 11), ] },
+   { curr_state := 6, prev_state := 5, writes := [w_gpr 2#5 (.var 19), w_gpr 3#5 (.var 18), w_gpr 4#5 (.var 17), w_gpr 5#5 (.var 16), w_gpr 6#5 (.var 15), ] },
+   { curr_state := 7, prev_state := 6, writes := [w_gpr 28#5 (.var 22), w_gpr 29#5 (.var 21), w_gpr 30#5 (.var 20), ] },
+   { curr_state := 8, prev_state := 7, writes := [w_gpr 21#5 (.var 27), w_gpr 22#5 (.var 26), w_gpr 23#5 (.var 25), w_gpr 24#5 (.var 24), w_gpr 25#5 (.var 23), ] },
+   { curr_state := 9, prev_state := 8, writes := [w_gpr 29#5 (.var 28), ] },
+   { curr_state := 10, prev_state := 9, writes := [w_gpr 29#5 (.var 29), ] },
+ ]
+
+#time
+open Expr Update in
+theorem test_10_steps (s0 : ArmState)
+  (h_step_1 : s1 = (w (.GPR 13#5) val1 (w (.GPR 14#5) val0 s0)))
+  (h_step_2 : s2 = (w (.GPR 11#5) val2 s1))
+  (h_step_3 : s3 = (w (.GPR 11#5) val5 (w (.GPR 12#5) val4 (w (.GPR 13#5) val3 s2))))
+  (h_step_4 : s4 = (w (.GPR 10#5) val10 (w (.GPR 11#5) val9 (w (.GPR 12#5) val8 (w (.GPR 13#5) val7 (w (.GPR 14#5) val6 s3))))))
+  (h_step_5 : s5 = (w (.GPR 21#5) val14 (w (.GPR 22#5) val13 (w (.GPR 23#5) val12 (w (.GPR 24#5) val11 s4)))))
+  (h_step_6 : s6 = (w (.GPR 2#5) val19 (w (.GPR 3#5) val18 (w (.GPR 4#5) val17 (w (.GPR 5#5) val16 (w (.GPR 6#5) val15 s5))))))
+  (h_step_7 : s7 = (w (.GPR 28#5) val22 (w (.GPR 29#5) val21 (w (.GPR 30#5) val20 s6))))
+  (h_step_8 : s8 = (w (.GPR 21#5) val27 (w (.GPR 22#5) val26 (w (.GPR 23#5) val25 (w (.GPR 24#5) val24 (w (.GPR 25#5) val23 s7))))))
+  (h_step_9 : s9 = (w (.GPR 29#5) val28 s8))
+  (h_step_10 : s10 = (w (.GPR 29#5) val29 s9))
+  :
+  s10 = (w (.GPR  0x02#5) val19 (w (.GPR  0x03#5) val18 (w (.GPR  0x04#5) val17 (w (.GPR  0x05#5) val16 (w (.GPR  0x06#5) val15 (w (.GPR  0x0a#5) val10 (w (.GPR  0x0b#5) val9 (w (.GPR  0x0c#5) val8 (w (.GPR  0x0d#5) val7 (w (.GPR  0x0e#5) val6 (w (.GPR  0x15#5) val27 (w (.GPR  0x16#5) val26 (w (.GPR  0x17#5) val25 (w (.GPR  0x18#5) val24 (w (.GPR  0x19#5) val23 (w (.GPR  0x1c#5) val22 (w (.GPR  0x1d#5) val29 (w (.GPR  0x1e#5) val20 s0)))))))))))))))))) := by
+    have := (Expr.eq_true_of_isValid
+            -- Context
+            { state := [s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10],
+               gpr := [val0, val1, val2, val3, val4, val5, val6, val7, val8, val9, val10, val11, val12, val13, val14, val15, val16, val17, val18, val19, val20, val21, val22, val23, val24, val25, val26, val27, val28, val29] }
+            -- init
+            { curr_state := 0, prev_state := 0, writes := [] }
+            -- final
+            { curr_state := 10,
+              prev_state := 0,
+              writes := [ArmConstr.Update.w_gpr 0x02#5 (ArmConstr.GPRVal.var 19),
+                         ArmConstr.Update.w_gpr 0x03#5 (ArmConstr.GPRVal.var 18),
+                         ArmConstr.Update.w_gpr 0x04#5 (ArmConstr.GPRVal.var 17),
+                         ArmConstr.Update.w_gpr 0x05#5 (ArmConstr.GPRVal.var 16),
+                         ArmConstr.Update.w_gpr 0x06#5 (ArmConstr.GPRVal.var 15),
+                         ArmConstr.Update.w_gpr 0x0a#5 (ArmConstr.GPRVal.var 10),
+                         ArmConstr.Update.w_gpr 0x0b#5 (ArmConstr.GPRVal.var 9),
+                         ArmConstr.Update.w_gpr 0x0c#5 (ArmConstr.GPRVal.var 8),
+                         ArmConstr.Update.w_gpr 0x0d#5 (ArmConstr.GPRVal.var 7),
+                         ArmConstr.Update.w_gpr 0x0e#5 (ArmConstr.GPRVal.var 6),
+                         ArmConstr.Update.w_gpr 0x15#5 (ArmConstr.GPRVal.var 27),
+                         ArmConstr.Update.w_gpr 0x16#5 (ArmConstr.GPRVal.var 26),
+                         ArmConstr.Update.w_gpr 0x17#5 (ArmConstr.GPRVal.var 25),
+                         ArmConstr.Update.w_gpr 0x18#5 (ArmConstr.GPRVal.var 24),
+                         ArmConstr.Update.w_gpr 0x19#5 (ArmConstr.GPRVal.var 23),
+                         ArmConstr.Update.w_gpr 0x1c#5 (ArmConstr.GPRVal.var 22),
+                         ArmConstr.Update.w_gpr 0x1d#5 (ArmConstr.GPRVal.var 29),
+                         ArmConstr.Update.w_gpr 0x1e#5 (ArmConstr.GPRVal.var 20)] }
+            -- updates
+            [  { curr_state := 1, prev_state := 0, writes := [w_gpr 13#5 (.var 1), w_gpr 14#5 (.var 0), ] },
+               { curr_state := 2, prev_state := 1, writes := [w_gpr 11#5 (.var 2), ] },
+               { curr_state := 3, prev_state := 2, writes := [w_gpr 11#5 (.var 5), w_gpr 12#5 (.var 4), w_gpr 13#5 (.var 3), ] },
+               { curr_state := 4, prev_state := 3, writes := [w_gpr 10#5 (.var 10), w_gpr 11#5 (.var 9), w_gpr 12#5 (.var 8), w_gpr 13#5 (.var 7), w_gpr 14#5 (.var 6), ] },
+               { curr_state := 5, prev_state := 4, writes := [w_gpr 21#5 (.var 14), w_gpr 22#5 (.var 13), w_gpr 23#5 (.var 12), w_gpr 24#5 (.var 11), ] },
+               { curr_state := 6, prev_state := 5, writes := [w_gpr 2#5 (.var 19), w_gpr 3#5 (.var 18), w_gpr 4#5 (.var 17), w_gpr 5#5 (.var 16), w_gpr 6#5 (.var 15), ] },
+               { curr_state := 7, prev_state := 6, writes := [w_gpr 28#5 (.var 22), w_gpr 29#5 (.var 21), w_gpr 30#5 (.var 20), ] },
+               { curr_state := 8, prev_state := 7, writes := [w_gpr 21#5 (.var 27), w_gpr 22#5 (.var 26), w_gpr 23#5 (.var 25), w_gpr 24#5 (.var 24), w_gpr 25#5 (.var 23), ] },
+               { curr_state := 9, prev_state := 8, writes := [w_gpr 29#5 (.var 28), ] },
+               { curr_state := 10, prev_state := 9, writes := [w_gpr 29#5 (.var 29), ] },
+             ]
+            (by native_decide))
+    simp only [Exprs.denote, and_true, and_imp] at this
+    exact this (Eq.refl s0) h_step_1 h_step_2 h_step_3 h_step_4 h_step_5 h_step_6 h_step_7 h_step_8 h_step_9 h_step_10]
+    done
 
 
 end ArmConstr
