@@ -71,7 +71,9 @@ theorem Memory.read_write_bytes_different (hn1 : n ≤ 2^64)
       have h_sep : mem_separate addr1 addr1 (addr2 + 1#64)
                                 (addr2 + 1#64 + BitVec.ofNat 64 n) := by
         unfold mem_separate mem_overlap at h ⊢
-        simp [BitVec.ofNat_add] at h ⊢
+        simp only [BitVec.sub_self, ofNat_add, Bool.or_self_right, Bool.not_or,
+          Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true,
+          decide_eq_false_iff_not, BitVec.not_le] at h ⊢
         generalize hn' : BitVec.ofNat 64 n = n' at *
         have : n' ≠ -1 := by bv_omega
         clear hn1 ih
@@ -83,29 +85,9 @@ theorem Memory.read_write_bytes_different (hn1 : n ≤ 2^64)
 theorem read_mem_of_write_mem_bytes_different (hn1 : n ≤ 2^64)
     (h : mem_separate addr1 addr1 addr2 (addr2 + (BitVec.ofNat 64 (n - 1)))) :
     read_mem addr1 (write_mem_bytes n addr2 v s) = read_mem addr1 s := by
-  by_cases hn0 : n = 0
-  case pos => -- n = 0
-    subst n; simp only [write_mem_bytes]
-  case neg => -- n ≠ 0
-    have hn0' : 0 < n := by omega
-    induction n, hn0' using Nat.le_induction generalizing addr2 s
-    case base =>
-      have h' : addr1 ≠ addr2 := by apply mem_separate_starting_addresses_neq h
-      simp only [write_mem_bytes]
-      apply read_mem_of_write_mem_different h'
-    case succ =>
-      have h' : addr1 ≠ addr2 := by refine mem_separate_starting_addresses_neq h
-      rename_i m hn n_ih
-      simp_all only [Nat.succ_sub_succ_eq_sub, Nat.sub_zero,
-                     Nat.succ_ne_zero, not_false_eq_true, ne_eq,
-                     write_mem_bytes, Nat.add_eq, Nat.add_zero]
-      rw [n_ih]
-      · rw [read_mem_of_write_mem_different h']
-      · omega
-      · rw [addr_add_one_add_m_sub_one m addr2 hn hn1]
-        rw [mem_separate_preserved_second_start_addr_add_one hn hn1 h]
-      · omega
-  done
+  simp only [ArmState.read_mem_eq_mem_read,
+    Memory.write_mem_bytes_eq_mem_write_bytes]
+  exact Memory.read_write_bytes_different hn1 h
 
 theorem append_byte_of_extract_rest_same_cast (n : Nat) (v : BitVec ((n + 1) * 8))
   (hn0 : Nat.succ 0 ≤ n)
