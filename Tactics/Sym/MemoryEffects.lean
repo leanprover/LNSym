@@ -79,14 +79,16 @@ def updateWrite (eff : MemoryEffects) (currentState : Expr)
 so that `s` is the new `currentState` -/
 def adjustCurrentStateWithEq (eff : MemoryEffects) (eq : Expr) :
     MetaM MemoryEffects := do
-  let proof ← rewriteType eff.proof eq
-  /- ^^ This looks scary, since it can rewrite the left-hand-side of the proof
-    if `memoryEffect` is the same as `currentState` (which would be bad!).
-    However, this cannot ever happen in LNSym: every instruction has to modify
-    either the PC or the error field, neither of which is incorporated into
-    the `memoryEffect` and thus, `memoryEffect` never coincides with
-    `currentState` (assuming we're dealing with instruction semantics, as we
-    currently do!). -/
+  let memoryMotive : Expr ←
+    withLocalDeclD `s mkArmState <| fun s =>
+    withLocalDeclD `n (mkConst ``Nat) <| fun n =>
+    withLocalDeclD `addr (mkApp (mkConst ``BitVec) (toExpr 64)) <| fun addr => do
+      let lhs := mkReadMemBytes n addr s
+      let rhs := mkReadMemBytes n addr eff.effects
+      let eq := mkEqBitVec (mkNatMul n (toExpr 8)) lhs rhs
+      let eq ← mkForallFVars #[n, addr] eq
+      mkLambdaFVars #[s] eq
+  let proof ← mkEqNDRec memoryMotive eff.proof eq
   return { eff with proof }
 
 /-- Convert a `MemoryEffects` into a `MessageData` for logging. -/
