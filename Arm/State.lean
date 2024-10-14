@@ -844,8 +844,9 @@ def read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) :=
     have h : n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
     BitVec.cast h (rest ++ byte)
 
--- TODO: we should drop the `State.` namespace here,
---       this namespace is used nowhere else
+-- TODO (@bollu): we should drop the `State` namespace here, given that
+--  this namespace is used nowhere else. Also, `ArmState.read_mem_eq_mem_read`
+--  should probably live under the `Memory` namespace.
 @[memory_rules]
 theorem State.read_mem_bytes_eq_mem_read_bytes (s : ArmState) :
     read_mem_bytes n addr s = s.mem.read_bytes n addr := by
