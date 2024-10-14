@@ -18,6 +18,7 @@ import Lean
 import Lean.Meta.Tactic.Rewrite
 import Lean.Meta.Tactic.Rewrites
 import Lean.Elab.Tactic.Conv
+import Lean.Elab.Tactic.Simp
 import Lean.Elab.Tactic.Conv.Basic
 import Tactics.Simp
 import Tactics.BvOmegaBench
@@ -26,6 +27,22 @@ import Arm.Memory.Common
 open Lean Meta Elab Tactic Memory
 
 namespace MemOmega
+
+/--
+A user given hypothesis for mem_omega, which we process as either a hypothesis (FVarId),
+or a term that is added into the user's context.
+-/
+inductive UserHyp
+| hyp : FVarId → UserHyp
+| expr : Expr → UserHyp
+
+
+namespace UserHyp
+  def toExpr : UserHyp → Expr
+  | .hyp fvarId => Expr.fvar fvarId
+  | .expr e => e
+end UserHyp
+
 
 structure Config where
   /--
@@ -42,6 +59,11 @@ def Config.mkBang (c : Config) : Config :=
 structure Context where
   /-- User configurable options for `simp_mem`. -/
   cfg : Config
+  /--
+  If we are using `mem_omega only [...]`, then we will have `some` plus the hyps.
+  If we are using `mem_omega`, then we will get `none`.
+  -/
+  userHyps? : Option (Array UserHyp)
   /-- Cache of `bv_toNat` simp context. -/
   bvToNatSimpCtx : Simp.Context
   /-- Cache of `bv_toNat` simprocs. -/
@@ -50,7 +72,7 @@ structure Context where
 
 namespace Context
 
-def init (cfg : Config) : MetaM Context := do
+def init (cfg : Config) (userHyps? : Option (Array UserHyp)) : MetaM Context := do
   let (bvToNatSimpCtx, bvToNatSimprocs) ←
     LNSymSimpContext
       (config := {failIfUnchanged := false})
@@ -59,7 +81,7 @@ def init (cfg : Config) : MetaM Context := do
       -- (thms := #[``mem_legal'.iff_omega, ``mem_subset'.iff_omega, ``mem_separate'.iff_omega])
       (simp_attrs := #[`bv_toNat])
       (useDefaultSimprocs := false)
-  return {cfg, bvToNatSimpCtx, bvToNatSimprocs}
+  return {cfg, bvToNatSimpCtx, bvToNatSimprocs, userHyps? }
 end Context
 
 abbrev MemOmegaM := (ReaderT Context MetaM)
@@ -68,7 +90,30 @@ namespace MemOmegaM
   def run (ctx : Context) (x : MemOmegaM α) : MetaM α := ReaderT.run x ctx
 end MemOmegaM
 
-def memOmega (g : MVarId) : MemOmegaM Unit := do
+/--
+Given the user hypotheses, build a more focusedd MVarId that contains only those hypotheses.
+This makes `omega` focus only on those hypotheses, since omega by default crawls the entire goal state.
+
+This is arguably a workaround to having to plumb the hypotheses through the full layers of code, but it works,
+and should be a cheap solution.
+-/
+def mkGoalWithOnlyUserHyps (g : MVarId) (userHyps? : Option (Array UserHyp)) : MetaM <| MVarId :=
+  match userHyps? with
+  | none => pure g
+  | some userHyps => do
+    g.withContext do 
+      let mut keepHyps : Std.HashSet FVarId := ∅
+      for h in userHyps do
+        if let .hyp fvar := h then 
+          keepHyps := keepHyps.insert fvar
+      let hyps ← g.getNondepPropHyps
+      let mut g := g
+      for h in hyps do
+        if !keepHyps.contains h then
+          g ← g.clear h
+      return g
+
+def memOmega' (g : MVarId) : MemOmegaM Unit := do
   g.withContext do
     /- We need to explode all pairwise separate hyps -/
     let rawHyps ← getLocalHyps
@@ -96,28 +141,99 @@ def memOmega (g : MVarId) : MemOmegaM Unit := do
         catch e =>
           trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
 
+def memOmega (g : MVarId) : MemOmegaM Unit := do
+    let g ← mkGoalWithOnlyUserHyps g (← readThe Context).userHyps? 
+    g.withContext do
+      let rawHyps ← getLocalHyps
+      let mut hyps := #[]
+      -- extract out structed values for all hyps.
+      for h in rawHyps do
+        hyps ← hypothesisOfExpr h hyps
+
+      -- only enable pairwise constraints if it is enabled.
+      let isPairwiseEnabled := (← readThe Context).cfg.explodePairwiseSeparate
+      hyps := hyps.filter (!·.isPairwiseSeparate || isPairwiseEnabled)
+
+      -- used specialized procedure that doesn't unfold everything for the easy case.
+      if ← closeMemSideCondition g (← readThe Context).bvToNatSimpCtx (← readThe Context).bvToNatSimprocs hyps then
+        return ()
+      else
+        -- in the bad case, just rip through everything.
+        let (_, g) ← Hypothesis.addOmegaFactsOfHyps g hyps.toList #[]
+
+        TacticM.withTraceNode' m!"Reducion to omega" do
+          try
+            TacticM.traceLargeMsg m!"goal (Note: can be large)"  m!"{g}"
+            omega g (← readThe Context).bvToNatSimpCtx (← readThe Context).bvToNatSimprocs
+            trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
+          catch e =>
+            trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+
+-- syntax memOmegaRule := term
+
 /--
 Allow elaboration of `MemOmegaConfig` arguments to tactics.
 -/
 declare_config_elab elabMemOmegaConfig MemOmega.Config
 
+syntax memOmegaWith := &"with" "[" withoutPosition(term,*,?) "]"
+
 /--
-Implement the `mem_omega` tactic, which unfolds information about memory
-in terms of
+Implement the `mem_omega` tactic, which unfolds information about memory and then closes the goal state using `omega`.
 -/
-syntax (name := mem_omega) "mem_omega" (Lean.Parser.Tactic.config)? : tactic
+syntax (name := mem_omega) "mem_omega" (Lean.Parser.Tactic.config)? (memOmegaWith)?  : tactic
 
 /--
 Implement the `mem_omega` tactic frontend.
 -/
-syntax (name := mem_omega_bang) "mem_omega!" (Lean.Parser.Tactic.config)? : tactic
+syntax (name := mem_omega_bang) "mem_omega!" (memOmegaWith)?  : tactic
 
+-- /-- Since we have
+-- syntax memOmegaRule := term
+-- 
+-- it is safe to coerce a UserHyp into a `term`.
+-- -/
+-- def UserHyp.toTermSyntax (t : TSyntax ``MemOmega.memOmegaRule) : TSyntax `term :=
+--   TSyntax.mk t.raw
+  
+
+  
+/--
+build a `UserHyp` from the raw syntax.
+This supports using fars, using CDot notation to partially apply theorems, and to use terms.
+
+Adapted from Lean.Elab.Tactic.Rw.WithRWRulesSeq, Lean.Elab.Tactic.Simp.resolveSimpIdTheorem, Lean.Elab.Tactic.Simp.addSimpTheorem
+-/
+def UserHyp.ofSyntax (t : TSyntax `term) : TacticM UserHyp := do
+  -- See if we can interpret `id` as a hypothesis first.
+  if let .some fvarId ← optional <| getFVarId t then
+    return .hyp fvarId
+  else if let some e ← Term.elabCDotFunctionAlias? t then
+    return .expr e
+  else 
+    let e ← Term.elabTerm t none
+    Term.synthesizeSyntheticMVars (postpone := .no) (ignoreStuckTC := true)
+    let e ← instantiateMVars e
+    let e := e.eta
+    if e.hasMVar then
+      throwErrorAt t "found metavariables when elaborating rule, giving up."
+    return .expr e
+
+
+-- Adapted from WithRWRulesSeq.
+def elabMemOmegaWith : TSyntax ``MemOmega.memOmegaWith → TacticM (Array UserHyp) 
+| `(memOmegaWith| with [ $[ $rules],* ]) =>  do
+    rules.mapM UserHyp.ofSyntax
+| _ => throwUnsupportedSyntax
+
+open Lean.Parser.Tactic in
 @[tactic mem_omega]
-def evalMemOmega : Tactic := fun
-  | `(tactic| mem_omega $[$cfg]?) => do
+def evalMemOmega : Tactic := fun 
+  | `(tactic| mem_omega $[$cfg:config]? $[$v:memOmegaWith]?) => do
     let cfg ← elabMemOmegaConfig (mkOptionalNode cfg)
+    let memOmegaRules? := ← v.mapM elabMemOmegaWith
     liftMetaFinishingTactic fun g => do
-      memOmega g |>.run (← Context.init cfg)
+      memOmega g |>.run (← Context.init cfg memOmegaRules?)
   | _ => throwUnsupportedSyntax
 
 @[tactic mem_omega_bang]
@@ -125,7 +241,7 @@ def evalMemOmegaBang : Tactic := fun
   | `(tactic| mem_omega! $[$cfg]?) => do
     let cfg ← elabMemOmegaConfig (mkOptionalNode cfg)
     liftMetaFinishingTactic fun g => do
-      memOmega g |>.run (← Context.init cfg.mkBang)
+      memOmega g |>.run (← Context.init cfg.mkBang .none)
   | _ => throwUnsupportedSyntax
 
 end MemOmega

@@ -24,6 +24,8 @@ import Tactics.Simp
 import Tactics.BvOmegaBench
 import Arm.Memory.Common
 import Arm.Memory.MemOmega
+import Lean.Elab.Tactic.Location
+import Init.Tactics
 
 open Lean Meta Elab Tactic Memory
 
@@ -382,10 +384,53 @@ Allow elaboration of `SimpMemConfig` arguments to tactics.
 -/
 declare_config_elab elabSimpMemConfig SeparateAutomation.SimpMemConfig
 
-/--
-Implement the simp_mem tactic frontend.
+
+/-
+This allows users to supply a list of hypotheses that simp_mem should use.
+Modeled after `rwRule`.
 -/
-syntax (name := simp_mem) "simp_mem" (Lean.Parser.Tactic.config)? : tactic
+syntax simpMemRule := term
+
+/-
+The kind of simplification that must be performed. If we are told
+that we must simplify a separation, a subset, or a read of a write,
+we perform this kind of simplification.
+-/
+syntax simpMemSimplificationKind := "⟂" <|> "⊂w" <|> "⊂r" (term)?
+
+
+open Lean.Parser.Tactic in
+/--
+The simp_mem tactic allows simplifying expressions of the form `Memory.read_bytes rbase rn (mem')`.
+`simp_mem` attempts to discover the result of the expression by various heuristics,
+which can be controlled by the end user:
+
+- (a) If `mem' = Memory.write_bytes wbase wn mem` and we know that `(rbase, rn) ⟂ (wbase, wn)`, then we simplify to `mem.read (rbase, rn)`.
+- (b) If `mem' = Memory.write_bytes wbase wn wval mem` and we kow that `(rbase, rn) ⊆ (wbase, wn)`, then we simplify to `wval.extract (rbase, rn) (wbase, wn)`.
+- (c) If we have a hypothesis `hr' : mem'.read_bytes  rbase' rn' = rval`, and we know that `(rbase, rn) ⊆ (rbase', rn')`, then we simplify to `rval.extract (rbase, rn) (rbase', rn')`.
+
+These simplifications are performed by reducing the problem to a problem that can be solved by a decision procedure (`omega`) to establish
+which hypotheses are at play. `simp_mem` can be controlled along multiple axes:
+
+1. The hypotheses that `simp_mem` will pass along to the decision procedure to discover overlapping reads (like `hr'`),
+   and hypotheses to establish memory (non-)interference, such as `(rbase, rn) ⟂ (wbase, wn)`.
+  + simp_mem using []: try to perform the rewrite using no hypotheses.
+  + simp_mem using [h₁, h₂]: try to perform the rewrite using h₁, h₂, as hypotheses.
+
+2. The kind of rewrite that simp_mem should apply. By default, it explores all possible choices, which might be expensive due to repeated calls to the decision
+   procedure. The user can describe which of (a), (b), (c) above happen:
+   + `simp_mem ⟂` : Only simplify when read is disjoint from write.
+   + `simp_mem ⊂w` : Only simplify when read overlaps the write.
+   + `simp_mem ⊂r hr` : Simplify when read overlaps with a known read `hr : mem.read_bytes baseaddr' n' = val`.
+                        This is useful for static information such as lookup tables that are at a fixed location and never modified.
+   + `simp_mem ⊂r` : Simplify when read overlaps with known read from hypothesis list.
+
+3. The targets where the rewrite must be applied. (This needs some thought: does this even make sense?)
+   + `simp_mem at ⊢`
+   + `simp_mem at h₁, h₂, ⊢`
+
+-/
+syntax (name := simp_mem) "simp_mem" (Lean.Parser.Tactic.config)? (simpMemSimplificationKind)? ("using" "[" withoutPosition(simpMemRule,*,?) "]")? (location)? : tactic
 
 @[tactic simp_mem]
 def evalSimpMem : Tactic := fun
