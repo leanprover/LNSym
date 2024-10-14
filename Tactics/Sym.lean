@@ -15,7 +15,7 @@ open Lean
 open Lean.Meta Lean.Elab.Tactic
 
 open AxEffects SymContext
-open Sym (withTraceNode withVerboseTraceNode)
+open Sym (withTraceNode withInfoTraceNode)
 
 /-- A wrapper around `evalTactic` that traces the passed tactic script,
 executes those tactics, and then traces the new goal state -/
@@ -52,7 +52,7 @@ to add a new local hypothesis in terms of `w` and `write_mem`
 -/
 def stepiTac (stepiEq : Expr) (hStep : Name) : SymReaderM Unit := fun ctx =>
   withMainContext' <|
-  withVerboseTraceNode m!"stepiTac: {stepiEq}" (tag := "stepiTac") <| do
+  withInfoTraceNode m!"stepiTac: {stepiEq}" (tag := "stepiTac") <| do
     let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
     --  ^^ The PC in hex
     let stepLemma := Name.str ctx.program s!"stepi_eq_0x{pc}"
@@ -185,7 +185,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
     eff ← eff.withField (← c.effects.getField .ERR).proof
 
     if let some hSp := c.effects.stackAlignmentProof? then
-      withVerboseTraceNode m!"discharging side conditions" <| do
+      withInfoTraceNode m!"discharging side conditions" <| do
         for subGoal in eff.sideConditions do
           trace[Tactic.sym] "attempting to discharge side-condition:\n  {subGoal}"
           let subGoal? ← do
@@ -239,7 +239,7 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
   let stateNumber ← getCurrentStateNumber
   withTraceNode m!"(sym1): simulating step {stateNumber}" (tag:="sym1") <|
   withMainContext' do
-    withVerboseTraceNode "verbose context" (tag := "infoDump") <| do
+    withInfoTraceNode "verbose context" (tag := "infoDump") <| do
       traceSymContext
       trace[Tactic.sym] "Goal state:\n {← getMainGoal}"
 
@@ -300,7 +300,7 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
 - log a warning and return `m`, if `runSteps? = some m` and `m < n`, or
 - return `n` unchanged, otherwise  -/
 def ensureAtMostRunSteps (n : Nat) : SymM Nat := do
-  withVerboseTraceNode "" (tag := "ensureAtMostRunSteps") <| do
+  withInfoTraceNode "" (tag := "ensureAtMostRunSteps") <| do
     let ctx ← getThe SymContext
     match ctx.runSteps? with
     | none => pure n
@@ -319,7 +319,7 @@ def ensureAtMostRunSteps (n : Nat) : SymM Nat := do
 and throw a user-friendly error, pointing to `#genStepEqTheorems`,
 if it does not. -/
 def assertStepTheoremsGenerated : SymM Unit :=
-  withVerboseTraceNode "" (tag := "assertStepTheoremsGenerated") <| do
+  withInfoTraceNode "" (tag := "assertStepTheoremsGenerated") <| do
     let c ← getThe SymContext
     let pc := c.pc.toHexWithoutLeadingZeroes
     if !c.programInfo.instructions.contains c.pc then
