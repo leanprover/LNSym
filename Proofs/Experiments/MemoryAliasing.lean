@@ -130,6 +130,7 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
   simp_mem /- Need better address normalization. -/
   trace_state
 
+#time
 /--
 Check that we can close address relationship goals that require
 us to exploit memory separateness properties.
@@ -138,7 +139,132 @@ theorem mem_separate_9  (h : mem_separate' a 100 b 100)
   (hab : a < b) : a + 50 ≤ b := by
   mem_omega
 
+set_option linter.all false in
+#time theorem mem_separate_10  (h : mem_separate' a 100 b 100)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (hab : a < b) : a + 50 ≤ b := by
+  mem_omega
+
+set_option linter.all false in
+#time theorem mem_separate_11  (h : mem_separate' a 100 b 100)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (hab : a < b) : a + 50 ≤ b := by
+  mem_omega with [h, hab]
+
+
 end MemSeparate
+
+
+section HypothesisSelectors
+
+set_option linter.all false in
+set_option trace.simp_mem.info true in
+/--
+info: [simp_mem.info] ⚙️ Processing 'a' : 'Nat'
+[simp_mem.info] ⚙️ Processing 'h'' : 'a ≤ 100'
+[simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
+[simp_mem.info] Adding omega facts from hypotheses
+[simp_mem.info] Reducion to omega
+  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+    [simp_mem.info] a : Nat
+        h' : a ≤ 100
+        hab : a ≤ a + 1
+        ⊢ a ≤ a + 1
+  [simp_mem.info] ✅️ `omega` succeeded.
+-/
+#guard_msgs in example (h' : a ≤ 100)
+  (hab : a ≤ a + 1) : a ≤ a + 1 := by
+  mem_omega  -- by default, process all hyps
+
+/--
+info: [simp_mem.info] ⚙️ Processing 'a' : 'Nat'
+[simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
+[simp_mem.info] Adding omega facts from hypotheses
+[simp_mem.info] Reducion to omega
+  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+    [simp_mem.info] a : Nat
+        hab : a ≤ a + 1
+        ⊢ a ≤ a + 1
+  [simp_mem.info] ✅️ `omega` succeeded.
+-/
+#guard_msgs in
+set_option trace.simp_mem.info true in
+example (h' : a ≤ 100) (hab : a ≤ a + 1) : a ≤ a + 1 := by
+  mem_omega with [hab, h', -h'] -- correctly exclude h', so processing should not mention h'.
+
+
+/--
+warning: unused variable `hab`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+---
+info: [simp_mem.info] ⚙️ Processing 'a' : 'Nat'
+[simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
+[simp_mem.info] Adding omega facts from hypotheses
+[simp_mem.info] Reducion to omega
+  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+    [simp_mem.info] a : Nat
+        hab : a ≤ a + 1
+        ⊢ a ≤ a + 1
+  [simp_mem.info] ✅️ `omega` succeeded.
+-/
+#guard_msgs in
+set_option trace.simp_mem.info true in
+example (h' : a ≤ 100) (hab : a ≤ a + 1) : a ≤ a + 1 := by
+  mem_omega with [*, -h'] -- correctly exclude h' and include hab, so processing should not mention h'.
+
+
+end HypothesisSelectors
 
 
 theorem mem_automation_test_1
