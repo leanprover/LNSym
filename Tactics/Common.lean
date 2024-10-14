@@ -280,6 +280,27 @@ def Lean.Expr.eqReadField? (e : Expr) : Option (Expr × Expr × Expr) := do
 /-- Return the expression for `Memory` -/
 def mkMemory : Expr := mkConst ``Memory
 
+/-- Return `ArmState.program <state> = <program>` -/
+def mkEqProgram (state program : Expr) : Expr :=
+  mkApp3 (.const ``Eq [1]) (mkConst ``Program)
+    (mkApp (mkConst ``ArmState.program) state)
+    program
+
+/-- Return `x = y`, given expressions `x, y : BitVec <n>` -/
+def mkEqBitVec (n x y : Expr) : Expr :=
+  let ty := mkApp (mkConst ``BitVec) n
+  mkApp3 (.const ``Eq [1]) ty x y
+
+/-- Return `read_mem_bytes <n> <addr> <state>` -/
+def mkReadMemBytes (n addr state : Expr) : Expr :=
+  mkApp3 (mkConst ``read_mem_bytes) n addr state
+
+/-- Return `read_mem_bytes <n> <addr> <state> = <value>`, given expressions
+`n : Nat`, `addr : BitVec 64`, `state : ArmState` and `value : BitVec (n*8)` -/
+def mkEqReadMemBytes (n addr state value : Expr) : Expr :=
+  let n8 := mkNatMul n (toExpr 8)
+  mkEqBitVec n8 (mkReadMemBytes n addr state) value
+
 /-! ## Expr Helpers -/
 
 /-- Throw an error if `e` is not of type `expectedType` -/

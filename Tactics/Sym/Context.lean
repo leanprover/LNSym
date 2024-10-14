@@ -333,12 +333,14 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
   searchLCtxForOnce (h_program_type currentState program)
     (whenNotFound := throwNotFound)
     (whenFound := fun decl _ => do
+      let program ← instantiateMVars program
       -- Register the program proof
       modifyThe AxEffects ({· with
+        program
         programProof := decl.toExpr
       })
       -- Assert that `program` is a(n application of a) constant
-      let program := (← instantiateMVars program).getAppFn
+      let program := program.getAppFn
       let .const program _ := program
         | throwError "Expected a constant, found:\n\t{program}"
       -- Retrieve the programInfo from the environment
