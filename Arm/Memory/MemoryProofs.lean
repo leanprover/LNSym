@@ -733,7 +733,7 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_helper2
       simp_all only [l1, decide_True, Bool.true_and, Nat.add_mod_mod]
       rw [read_mem_bytes_of_write_mem_bytes_subset_helper1] <;> assumption
   case neg =>
-    simp only [h₀, BitVec.bitvec_to_nat_of_nat, BitVec.toNat_append, Nat.testBit_or]
+    simp only [h₀, BitVec.toNat_ofNat, BitVec.toNat_append, Nat.testBit_or]
     simp only [Nat.testBit_shiftLeft, Nat.testBit_mod_two_pow]
     by_cases h₁ : (i < 8)
     case pos => -- (i < 8)
@@ -925,7 +925,7 @@ private theorem write_mem_bytes_irrelevant_helper (h : n * 8 + 8 = (n + 1) * 8) 
     ((BitVec.cast h (read_mem_bytes n (addr + 1#64) s ++ read_mem addr s)) >>> 8)) =
   read_mem_bytes n (addr + 1#64) s := by
   ext
-  simp [ushiftRight, ShiftRight.shiftRight, BitVec.bitvec_to_nat_of_nat]
+  simp [ushiftRight, ShiftRight.shiftRight, BitVec.toNat_ofNat]
   have h_x_size := (read_mem_bytes n (addr + 1#64) s).isLt
   have h_y_size := (read_mem addr s).isLt
   generalize h_x : (BitVec.toNat (read_mem_bytes n (addr + 1#64) s)) = x

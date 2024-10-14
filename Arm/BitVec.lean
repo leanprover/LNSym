@@ -1,10 +1,10 @@
 /-
 Copyright (c) 2023 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
-Author(s): Shilpi Goel, Siddharth Bhat
+Author(s): Shilpi Goel, Siddharth Bhat, Alex Keizer
 -/
 
--- Kitchen sink file for bitvector theorems
+/- Kitchen sink file for bitvector theorems -/
 
 ----------------------------------------------------------------------
 
@@ -13,6 +13,23 @@ import Arm.Attr
 namespace BitVec
 
 open BitVec
+
+attribute [local ext] BitVec
+/--
+info: BitVec.ext_iff {w : Nat} {x y : BitVec w} : x = y ↔ x.toFin = y.toFin
+-/
+#guard_msgs in
+#check BitVec.ext_iff
+
+def unsigned_compare (a b : BitVec n) : Ordering :=
+  if BitVec.ult a b then .lt else if a = b then .eq else .gt
+
+instance : Ord (BitVec n) where
+  -- Unsigned comparison
+  compare := unsigned_compare
+
+instance {w} : Hashable (BitVec w) where
+  hash x := hash x.toNat
 
 -- Adding some useful simp lemmas to `bitvec_rules`: we do not include
 -- `bv_toNat` lemmas here.
@@ -232,7 +249,7 @@ attribute [bitvec_rules] BitVec.reduceBitVecToFin
 attribute [bitvec_rules] BitVec.reduceShiftLeftShiftLeft
 attribute [bitvec_rules] BitVec.reduceShiftRightShiftRight
 
--- BitVec->Nat Simproc rules
+-- BitVec/Nat Simproc rules
 attribute [bitvec_rules] BitVec.reduceToNat
 attribute [bitvec_rules] Nat.reduceAdd
 attribute [bitvec_rules] Nat.reduceMul
@@ -251,7 +268,6 @@ attribute [bitvec_rules] Nat.reduceBneDiff
 attribute [bitvec_rules] Nat.reduceLTLE
 attribute [bitvec_rules] Nat.reduceLeDiff
 attribute [bitvec_rules] Nat.reduceSubDiff
-attribute [bitvec_rules] BitVec.toNat_ofNat
 
 -- This might be a neccesary evil: it introduces a modulus,
 -- but it's also really useful.
@@ -267,36 +283,18 @@ attribute [bitvec_rules] Fin.isValue -- To normalize Fin literals
 attribute [bitvec_rules] BitVec.val_toFin
 
 ----------------------------------------------------------------------
--- Some BitVec definitions
+/-! # `BitVec` definitions used in LNSym -/
 
-/-- Flatten a list of bitvectors into one bitvector. -/
-protected def flatten {n : Nat} (xs : List (BitVec n)) : BitVec (n * xs.length) :=
-  match xs with
-  | [] => 0#0
-  | x :: rest =>
-    have h : n + n * List.length rest = n * List.length (x :: rest) := by
-      simp [List.length_cons, Nat.mul_one, Nat.mul_add, Nat.succ_eq_one_add]
-      omega
-    BitVec.cast h (x ++ (BitVec.flatten rest))
+/-- Get the width of a bitvector. -/
+protected def width (_ : BitVec n) : Nat := n
 
-/-- Generate a random bitvector of width n. The range of the values
-can also be specified using lo and hi arguments, which default to 0
-and 2^n - 1 (inclusive), respectively. -/
-protected def rand (n : Nat) (lo := 0) (hi := 2^n - 1) : IO (BitVec n) := do
-  pure (BitVec.ofNat n (← IO.rand lo hi))
+/-- Convert a bitvector into its hex representation, without leading zeroes.
 
-def unsigned_compare (a b : BitVec n) : Ordering :=
-  if BitVec.ult a b then .lt else if a = b then .eq else .gt
+See `BitVec.toHex` if you do want the leading zeroes.
 
-@[bitvec_rules]
-abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
-  rotateRight x r
-
-/-- Return the `i`-th least significant bit (or `0` if `i >= w`) of
-    the `n`-bit bitvector `x`. -/
-@[bitvec_rules]
-abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
-  BitVec.extractLsb' i 1 x
+NOTE: returns only the digits, without a `0x` prefix -/
+def toHexWithoutLeadingZeroes {w} (x : BitVec w) : String :=
+  (Nat.toDigits 16 x.toNat).asString
 
 /-- `partInstall start len val x` returns a bitvector where bits
 - `start` to `start+len` are equal to `val`, and
@@ -310,13 +308,74 @@ abbrev partInstall (start len : Nat) (val : BitVec len) (x : BitVec n): BitVec n
 
 example : (partInstall 0 4 0xC#4 0xAB0D#16 = 0xAB0C#16) := rfl
 
-def flattenTR {n : Nat} (xs : List (BitVec n)) (i : Nat)
+@[bitvec_rules]
+theorem partInstall_partInstall (x : BitVec n) :
+    partInstall (start + len₁) len₂ val₂ (partInstall start len₁ val₁ x)
+    = (partInstall start _ (val₂ ++ val₁) x).cast (by omega) := by
+  apply BitVec.eq_of_getLsbD_eq
+  intro i
+  simp only [partInstall, truncate_eq_setWidth, getLsbD_or, getLsbD_and,
+    getLsbD_not, Fin.is_lt, decide_True, getLsbD_shiftLeft, Bool.true_and,
+    getLsbD_setWidth, getLsbD_allOnes, Bool.not_and, Bool.not_not,
+    getLsbD_cast, BitVec.getLsbD_append]
+  simp only [
+    show ∀ m, i.val - m < n by omega,
+    decide_True, Bool.not_true, Bool.false_or, Bool.true_and]
+  by_cases h₁ : i < start
+  · simp [h₁, show i < start + len₁ by omega]
+  · simp only [h₁, decide_False, Bool.false_or, Bool.not_false, Bool.true_and,
+      show i < start + len₁ ↔ i - start < len₁ by omega]
+    by_cases h₂ : i - start < len₁
+    · simp [h₂, show ↑i - start < len₂ + len₁ by omega]
+    · rw [BitVec.getLsbD_ge val₁ _ (by omega)]
+      simp [h₂, Nat.sub_add_eq,
+        show i - start < len₂ + len₁ ↔ i - start - len₁ < len₂ by omega]
+
+/-- `partInstall`ing at bit `0` a value `x` of the same width as the original
+bitvector `y` returns exactly the value `x` -/
+@[bitvec_rules]
+theorem partInstall_eq (x y : BitVec n) :
+    partInstall 0 n x y = x := by
+  simp [partInstall]
+
+/-- Flatten a list of bitvectors into one bitvector. -/
+protected def flatten {n : Nat} (xs : List (BitVec n)) : BitVec (n * xs.length) :=
+  match xs with
+  | [] => 0#0
+  | x :: rest =>
+    have h : n + n * List.length rest = n * List.length (x :: rest) := by
+      simp [List.length_cons, Nat.mul_one, Nat.mul_add, Nat.succ_eq_one_add]
+      omega
+    BitVec.cast h (x ++ (BitVec.flatten rest))
+
+/-- Tail-recursive version of `BitVec.flatten`. -/
+protected def flattenTR {n : Nat} (xs : List (BitVec n)) (i : Nat)
   (acc : BitVec len) (H : n > 0) : BitVec len :=
   match xs with
   | [] => acc
   | x :: rest =>
     let new_acc := (BitVec.partInstall (i * n) n x acc)
-    flattenTR rest (i + 1) new_acc H
+    BitVec.flattenTR rest (i + 1) new_acc H
+
+/--
+Generate a random bitvector of width n. The range of the values
+can also be specified using lo and hi arguments, which default to 0
+and 2^n - 1 (inclusive), respectively.
+-/
+protected def rand (n : Nat) (lo := 0) (hi := 2^n - 1) : IO (BitVec n) := do
+  pure (BitVec.ofNat n (← IO.rand lo hi))
+
+@[bitvec_rules]
+abbrev ror (x : BitVec n) (r : Nat) : BitVec n :=
+  rotateRight x r
+
+/--
+Return the `i`-th least significant bit (or `0` if `i >= w`) of
+the `n`-bit bitvector `x`.
+-/
+@[bitvec_rules]
+abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
+  BitVec.extractLsb' i 1 x
 
 /-- Reverse bits of a bit-vector. -/
 def reverse (x : BitVec n) : BitVec n :=
@@ -331,7 +390,7 @@ def reverse (x : BitVec n) : BitVec n :=
 
 example : reverse 0b11101#5 = 0b10111#5 := rfl
 
-/-- Split a bit-vector into sub vectors of size e. -/
+/-- Split a bit-vector `x` into sub-vectors, each of size `e`. -/
 def split (x : BitVec n) (e : Nat) (h : 0 < e): List (BitVec e) :=
   let rec splitTR (x : BitVec n) (e : Nat) (h : 0 < e)
     (i : Nat) (acc : List (BitVec e)) : List (BitVec e) :=
@@ -352,36 +411,7 @@ def revflat (x : List (BitVec n)) : BitVec (n * x.length) :=
     simp only [List.length_reverse]
   BitVec.cast h $ BitVec.flatten (List.reverse x)
 
-/-- Get the width of a bitvector. -/
-protected def width (_ : BitVec n) : Nat := n
-
-/-- Convert a bitvector into its hex representation, without leading zeroes.
-
-See `BitVec.toHex` if you do want the leading zeroes.
-
-NOTE: returns only the digits, without a `0x` prefix -/
-def toHexWithoutLeadingZeroes {w} (x : BitVec w) : String :=
-  (Nat.toDigits 16 x.toNat).asString
-
 ----------------------------------------------------------------------
-
-attribute [ext] BitVec
-
-instance : Ord (BitVec n) where
-  -- Unsigned comparison
-  compare := unsigned_compare
-
-instance {w} : Hashable (BitVec w) where
-  hash x := hash x.toNat
-
--- Making sure that the following are decidable.
-example : 5#4 = 5#4 := by decide
-example : ¬ 4#4 = 5#4 := by decide
-example : 3#4 < 4#4 := by decide
-example : 3#4 <= 4#4 := by decide
-example : 4#4 >= 4#4 := by decide
-example : 5#4 >= 4#4 := by decide
-
 -------------------------- Fin and BitVec Lemmas ---------------------
 
 @[ext] protected theorem extensionality_fin (idx1 idx2 : BitVec n)
@@ -425,14 +455,6 @@ theorem fin_bitvec_le (x y : BitVec n) :
 
 -------------------------- Nat and BitVec Lemmas ---------------------
 
-theorem bitvec_to_nat_of_nat :
-  (BitVec.toNat (BitVec.ofNat n x)) = x % 2^n := by
-  simp [toNat_ofNat]
-
-theorem bitvec_of_nat_to_nat (n : Nat) (x : BitVec n) :
-   (BitVec.ofNat n (BitVec.toNat x)) = x := by
-   simp [ofNat_toNat]
-
 @[ext] protected theorem extensionality_nat (idx1 idx2 : BitVec n)
     (h0 : idx1.toNat = idx2.toNat) :
     idx1 = idx2 := by
@@ -457,11 +479,9 @@ theorem nat_bitvec_sub (x y : BitVec n) :
   have : (x - y).toNat = ((2^n - y.toNat) + x.toNat) % 2^n := rfl
   rw [this, Nat.add_comm]
 
-
 theorem toNat_ofNat_lt {n w₁ : Nat} (hn : n < 2^w₁) :
     (BitVec.ofNat w₁ n).toNat = n := by
   simp only [toNat_ofNat, Nat.mod_eq_of_lt hn]
-
 
 ---------------------------- Comparison Lemmas -----------------------
 
@@ -492,7 +512,7 @@ protected theorem val_nat_le (x y n : Nat)
   (h0 : x <= y) (h1 : x < 2^n) (h2 : y < 2^n) :
   BitVec.ofNat n x <= BitVec.ofNat n y := by
   rw [BitVec.le_iff_val_le_val]
-  simp [bitvec_to_nat_of_nat]
+  simp [toNat_ofNat]
   rw [Nat.mod_eq_of_lt h1]
   rw [Nat.mod_eq_of_lt h2]
   trivial
@@ -529,6 +549,26 @@ theorem setWidth_if_false [Decidable p] (x : BitVec n)
   (setWidth (if p then a else b) x) = BitVec.cast h_eq (setWidth b x) := by
   simp only [toNat_eq, toNat_setWidth, ← h_eq, toNat_cast]
 
+-- TODO: upstream?
+@[bitvec_rules]
+theorem setWidth_append_right (x : BitVec n) (y : BitVec m) :
+    BitVec.setWidth m (x ++ y) = y := by
+  apply eq_of_toNat_eq
+  simp only [toNat_setWidth, toNat_append]
+  rw [← Nat.and_pow_two_sub_one_eq_mod, Nat.and_distrib_right]
+  suffices x.toNat <<< m &&& 2 ^ m - 1 = 0
+    by simp [this]
+  apply Nat.eq_of_testBit_eq
+  intro i
+  simp only [Nat.and_pow_two_sub_one_eq_mod, Nat.testBit_mod_two_pow, Nat.testBit_shiftLeft,
+    ge_iff_le, Nat.zero_testBit, Bool.and_eq_false_imp, decide_eq_true_eq]
+  omega
+
+@[bitvec_rules]
+protected theorem setWidth_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitVec n) :
+  setWidth n (x ++ y) = y := by
+  simp only [setWidth_append, Nat.le_refl, ↓reduceDIte, setWidth_eq]
+
 theorem extractLsb_eq (x : BitVec n) (h : n = n - 1 + 1) :
   BitVec.extractLsb (n - 1) 0 x = BitVec.cast h x := by
   unfold extractLsb extractLsb'
@@ -541,6 +581,21 @@ theorem extractLsb'_eq (x : BitVec n) :
   unfold extractLsb'
   simp only [Nat.shiftRight_zero, ofNat_toNat, setWidth_eq]
 
+-- TODO: upstream
+theorem extractLsb'_or (x y : BitVec w₁) (n : Nat) :
+    (x ||| y).extractLsb' lo n = (x.extractLsb' lo n ||| y.extractLsb' lo n) := by
+  apply BitVec.eq_of_getLsbD_eq
+  simp only [getLsbD_extract, getLsbD_or]
+  intros i
+  simp only [getLsbD_extractLsb', Fin.is_lt, decide_True, getLsbD_or, Bool.true_and]
+
+-- TODO: upstream
+protected theorem extractLsb'_ofNat (x n : Nat) (l lo : Nat) :
+    extractLsb' lo l (BitVec.ofNat n x) = .ofNat l ((x % 2^n) >>> lo) := by
+  apply eq_of_getLsbD_eq
+  intro ⟨i, _lt⟩
+  simp [BitVec.ofNat]
+
 @[bitvec_rules]
 protected theorem extractLsb'_of_setWidth (x : BitVec n) (h : j ≤ i) :
     extractLsb' 0 j (setWidth i x) = setWidth j x := by
@@ -548,6 +603,79 @@ protected theorem extractLsb'_of_setWidth (x : BitVec n) (h : j ≤ i) :
   intro k
   have q : k < i := by omega
   by_cases h : decide (k ≤ j) <;> simp [q, h]
+
+theorem BitVec.extractLsb'_append (x : BitVec n) (y : BitVec m) :
+    (x ++ y).extractLsb' start len
+    = let len' := min len (m - start)
+      (x.extractLsb' (start - m) (len - len')
+        ++ y.extractLsb' start len'
+        ).cast (by omega) := by
+  apply eq_of_getLsbD_eq
+  intro i
+  simp [getLsbD_append]
+  by_cases h₁ : m - start ≥ len
+  · have len'_eq : min len (m - start) = len := Nat.min_eq_left h₁
+    have : start + i.val < m := by omega
+    simp [len'_eq, this]
+  · have len'_eq : min len (m - start) = m - start :=
+      Nat.min_eq_right (by omega)
+    simp only [len'_eq]
+    by_cases h₂ : start + i.val < m
+    · have h₃ : ↑i < m - start := by omega
+      simp [h₂, h₃]
+    · have h₃ : ¬(↑i < m - start) := by omega
+      have h₄ : ↑i - (m - start) < len - (m - start) := by omega
+      have h₅ : start - m + (↑i - (m - start)) = start + ↑i - m := by omega
+      simp [h₂, h₃, h₄, h₅]
+
+theorem BitVec.cast_eq_of_heq (x : BitVec n) (y : BitVec m) (h : n = m) :
+    HEq x y → x.cast h = y := by
+  cases h; simp
+
+theorem BitVec.cast_heq_iff (x : BitVec n) (y : BitVec m) (h : n = n') :
+    HEq (x.cast h) y ↔ HEq x y := by
+  cases h; simp
+
+theorem BitVec.extractLsb'_append_right_of_le (h : start + len ≤ m)
+    (x : BitVec n) (y : BitVec m) :
+    (x ++ y).extractLsb' start len = y.extractLsb' start len := by
+  have len'_eq : min len (m - start) = len := by omega
+  simp only [extractLsb'_append]
+  apply cast_eq_of_heq
+  rw [len'_eq, Nat.sub_self]
+  simp only [zero_width_append, heq_eq_eq, cast_heq_iff]
+
+@[bitvec_rules]
+theorem BitVec.extractLsb'_append_right (x : BitVec n) (y : BitVec m) :
+    (x ++ y).extractLsb' 0 m = y := by
+  rw [extractLsb'_append_right_of_le (by omega), extractLsb'_eq]
+
+@[simp]
+theorem BitVec.extractLsb'_append_left_of_le (h : m ≤ start)
+    (x : BitVec n) (y : BitVec m) :
+    (x ++ y).extractLsb' start len = x.extractLsb' (start - m) len := by
+  have len'_eq : min len (m - start) = m - start := by omega
+  simp only [extractLsb'_append]
+  apply cast_eq_of_heq
+  rw [len'_eq, show m - start = 0 by omega]
+  simp only [append_zero_width, heq_eq_eq, cast_heq_iff, Nat.sub_zero]
+
+@[bitvec_rules]
+theorem BitVec.extractLsb'_append_left (x : BitVec n) (y : BitVec m) :
+    (x ++ y).extractLsb' m n = x := by
+  rw [extractLsb'_append_left_of_le (by omega), Nat.sub_self, extractLsb'_eq]
+
+theorem BitVec.extractLsb'_extractLsb'_of_le {w : Nat} (start₁ len₁ start₂ len₂)
+    (h : start₂ + len₂ ≤ len₁)
+    (x : BitVec w) :
+    (x.extractLsb' start₁ len₁).extractLsb' start₂ len₂
+    = x.extractLsb' (start₁ + start₂) len₂ := by
+  apply eq_of_getLsbD_eq
+  intro i
+  simp only [getLsbD_extractLsb', Fin.is_lt, decide_True, Bool.true_and,
+    Bool.and_iff_right_iff_imp, decide_eq_true_eq,
+    show start₁ + (start₂ + i.val) = start₁ + start₂ + i.val by ac_rfl]
+  omega
 
 @[bitvec_rules, simp]
 theorem zero_append {w} (x : BitVec 0) (y : BitVec w) :
@@ -666,11 +794,6 @@ theorem leftshift_n_or_mod_2n :
   case neg =>
     simp [h₀]
 
-@[bitvec_rules]
-protected theorem setWidth_to_lsb_of_append (m n : Nat) (x : BitVec m) (y : BitVec n) :
-  setWidth n (x ++ y) = y := by
-  simp only [setWidth_append, Nat.le_refl, ↓reduceDIte, setWidth_eq]
-
 ---------------------------- Shift Lemmas ---------------------------
 
 @[bitvec_rules]
@@ -688,8 +811,270 @@ theorem neg_eq_sub_zero (x : BitVec w₁) : - x = 0 - x := by
 
 ----------------------------------------------------------------------
 
-/- Bitvector pattern component syntax category, originally written by
-Leonardo de Moura. -/
+/-! ### Equation Lemmas -/
+
+theorem gt_def {x y : BitVec w} : (x > y) = (x.toNat > y.toNat) := rfl
+theorem ge_def {x y : BitVec w} : (x ≥ y) = (x.toNat ≥ y.toNat) := rfl
+
+theorem neq_of_toNat_neq {x y : BitVec w} (hx : x.toNat ≠ y.toNat) : x ≠ y := by
+  intros h
+  simp [h] at hx
+
+/-! ### (Non) Overflow Rewriting Lemmas
+
+@bollu: To be upstreamed.
+-/
+
+private theorem Nat.sub_add_eq_add_sub_of_le_of_le {a b c : Nat} (hab : b ≤ a) (hbc : b ≤ c) :
+    a - b + c = a + (c - b) := by
+  omega
+
+/- TODO: upstream. -/
+theorem toNat_sub_eq_toNat_sub_toNat_of_le {x y : BitVec w} (h : y ≤ x) :
+    (x - y).toNat = x.toNat - y.toNat := by
+  simp only [toNat_sub]
+  rw [BitVec.le_def] at h
+  by_cases h' : x.toNat = y.toNat
+  · rw [h', Nat.sub_self]
+    rw [Nat.sub_add_cancel (by omega), Nat.mod_self]
+  · rw [Nat.sub_add_eq_add_sub_of_le_of_le (by omega) (by omega), Nat.add_mod,
+      Nat.mod_self, Nat.zero_add, Nat.mod_mod, Nat.mod_eq_of_lt (by omega)]
+
+/- Subtracting bitvectors when there is overflow. -/
+theorem toNat_sub_eq_two_pow_sub_add_of_lt
+    {a b : BitVec w₁} (hab : a.toNat < b.toNat) : (a - b).toNat = 2^w₁ - b.toNat + a.toNat := by
+  simp only [toNat_sub]
+  rw [Nat.mod_eq_of_lt (by omega)]
+
+theorem neq_of_lt {x y : BitVec w₁} (h : x < y) : x ≠ y := by
+  rintro rfl
+  simp [BitVec.lt_def] at h
+
+theorem neq_of_gt {x y : BitVec w₁} (h : x > y) : x ≠ y := by
+  rintro rfl
+  simp [BitVec.lt_def] at h
+
+
+/-- adding bitvectors when there is no overflow. -/
+theorem toNat_add_eq_toNat_add_toNat {x y : BitVec w} (h : x.toNat + y.toNat < 2^w) :
+    (x + y).toNat = x.toNat + y.toNat := by
+  rw [BitVec.toNat_add, Nat.mod_eq_of_lt h]
+
+theorem le_add_self_of_lt (a b : BitVec w₁) (hab : a.toNat + b.toNat < 2^w₁) :
+   a ≤ a + b := by
+  rw [BitVec.le_def]
+  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+  omega
+
+theorem add_sub_cancel_left {a b : BitVec w₁}
+    (hab : a.toNat + b.toNat < 2^w₁) : (a + b) - a = b := by
+  apply BitVec.eq_of_toNat_eq
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le]
+  · rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+    omega
+  · apply BitVec.le_add_self_of_lt
+    omega
+
+theorem le_add_iff_sub_le {a b c : BitVec w₁}
+   (hac : c ≤ a) (hbc : b.toNat + c.toNat < 2^w₁) :
+    (a ≤ b + c) ↔ (a - c ≤ b) := by
+  simp_all only [BitVec.le_def]
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+  omega
+
+theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
+    (hbc : c ≤ b) : (a - c ≤ b - c) ↔ a ≤ b := by
+  simp_all only [BitVec.le_def]
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
+  omega
+
+/-! ### Least Significant Byte -/
+
+/--
+Definition to extract the `n`th least significant *Byte* from a bitvector.
+TODO: this should be named `getLsByte`, or `getLsbByte` (Shilpi prefers this).
+-/
+def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
+  val.extractLsb' (n * 8) 8
+
+theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
+    val.extractLsByte n = val.extractLsb' (n * 8) 8 := rfl
+
+-- TODO: upstream
+theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
+    (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
+  apply BitVec.eq_of_getLsbD_eq
+  simp only [getLsbD_extract, getLsbD_or]
+  intros i
+  by_cases h : (i : Nat) ≤ n - lo
+  · simp only [h, decide_True, Bool.true_and]
+  · simp only [h, decide_False, Bool.false_and, Bool.or_self]
+
+theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
+  simp only [extractLsByte, BitVec.extractLsb'_ofNat, Nat.zero_mod, Nat.zero_shiftRight, cast_ofNat]
+
+theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
+  x.extractLsByte a = 0#8 := by
+  apply BitVec.eq_of_getLsbD_eq
+  intros i
+  simp only [getLsbD_zero, extractLsByte_def,
+    getLsbD_cast, getLsbD_extract, Bool.and_eq_false_imp, decide_eq_true_eq]
+  simp only [getLsbD_extractLsb', Fin.is_lt, decide_True, Bool.true_and]
+  apply BitVec.getLsbD_ge
+  omega
+
+@[bitvec_rules]
+theorem getLsbD_extractLsByte (val : BitVec w₁) :
+    ((BitVec.extractLsByte val n).getLsbD i) =
+    (decide (i ≤ 7) && val.getLsbD (n * 8 + i)) := by
+  simp only [extractLsByte, getLsbD_cast, getLsbD_extract]
+  simp only [getLsbD_extractLsb']
+  generalize val.getLsbD (n * 8 + i) = x
+  by_cases h : i < 8
+  · simp only [show (i : Nat) ≤ 7 by omega, decide_True, Bool.true_and,
+    Bool.and_iff_right_iff_imp, decide_eq_true_eq, h]
+  · simp only [show ¬(i : Nat) ≤ 7 by omega, decide_False, Bool.false_and,
+    Bool.and_eq_false_imp, decide_eq_true_eq, h]
+
+theorem BitVec.getLsbD_eq_false_of_le {w} (x : BitVec w) {i : Nat} (h : w ≤ i) :
+    x.getLsbD i = false := by
+  exact getLsbD_ge x i h
+
+/--
+Two bitvectors of length `n*8` are equal if all their bytes are equal.
+This theorem can be strengthened to take `(i : Fin n)`.
+-/
+theorem eq_of_extractLsByte_eq (x y : BitVec (n * 8))
+    (h : ∀ (i : Nat), x.extractLsByte i = y.extractLsByte i) : x = y := by
+  apply eq_of_getLsbD_eq
+  intros j
+  obtain ⟨j, hj⟩ := j
+  specialize h (j / 8)
+  have hx := x.getLsbD_extractLsByte (n := j / 8) (i := j % 8)
+  have hy := y.getLsbD_extractLsByte (n := j / 8) (i := j % 8)
+  simp only [show j % 8 ≤ 7 by omega, decide_True, Bool.true_and] at hx hy
+  simp only [show j / 8 * 8 + j % 8 = j by omega] at hx hy
+  simp only [← hx, ← hy, h]
+
+/-! ### Least Significant Byte range -/
+
+/-- Get `n` least significant bytes of `val`, starting from index `base`.
+@bollu: it's not clear if the definition for n=0 is desirable.
+-/
+def extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
+  extractLsb' (base * 8) (n * 8) val
+
+@[bitvec_rules]
+theorem getLsbD_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
+    (BitVec.extractLsBytes val base n).getLsbD i =
+      ((decide (i < n * 8) &&
+      val.getLsbD (base * 8 + i))) := by
+  rcases n with rfl | n
+  · simp only [Nat.reduceMul, Nat.zero_le, getLsbD_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
+    Nat.add_zero, Bool.false_and]
+    simp only [show ¬i < 0 by omega, decide_False, Bool.false_and]
+  · simp only [extractLsBytes, getLsbD_cast, getLsbD_extract, Nat.zero_lt_succ, decide_True,
+    Bool.true_and]
+    by_cases h : i < (n + 1) * 8
+    · simp only [getLsbD_extractLsb', h, decide_True, Bool.true_and]
+    · simp only [getLsbD_extractLsb', h, decide_False, Bool.false_and]
+
+theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
+    (BitVec.extractLsBytes val base n).extractLsByte i =
+    if (i < n) then val.extractLsByte (base + i) else (0#8) := by
+  apply BitVec.eq_of_getLsbD_eq
+  simp only [getLsbD_extractLsByte, getLsbD_extractLsBytes]
+  intros j
+  simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
+  by_cases hn : i < n
+  · simp only [hn, ↓reduceIte, getLsbD_extractLsByte,
+      show (j : Nat) ≤ 7 by omega]
+    by_cases h : (i * 8 + (j : Nat) < n * 8)
+    · simp only [h, decide_True, Bool.true_and]
+      congr 1
+      omega
+    · simp only [h, decide_False, Bool.false_and, decide_True, Bool.true_and, Bool.false_eq]
+      apply BitVec.getLsbD_ge
+      omega
+  · simp only [hn, ↓reduceIte, getLsbD_zero, Bool.and_eq_false_imp, decide_eq_true_eq]
+    omega
+
+/-- Extracting out bytes from the zero bitvector is equal to the zero bitvector. -/
+@[bitvec_rules]
+theorem extractLsBytes_zero {w : Nat} (base : Nat) :
+    (0#w).extractLsBytes base n = 0#(n*8) := by
+  apply BitVec.eq_of_getLsbD_eq
+  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, getLsbD_zero, Bool.and_false,
+    implies_true]
+
+/-- Extracting out all the bytes is equal to the bitvector.
+The constraint on the width being `n * 8` is written as
+an arbitrary `m` with a hypothesis `hm : m = n * 8`.
+This is known in some circles as `fording`. See [1]
+
+[1] https://personal.cis.strath.ac.uk/conor.mcbride/levitation.pdf
+-/
+@[bitvec_rules]
+theorem extractLsBytes_eq_self {n : Nat} {m : Nat}
+    (hm : m = n * 8 := by omega)
+    (x : BitVec (no_index m)) :
+    x.extractLsBytes 0 n = x.cast hm := by
+  apply BitVec.eq_of_getLsbD_eq
+  intros i
+  simp only [getLsbD_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero]
+  simp [show (i : Nat) ≤ n * 8 - 1 by omega]
+
+theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
+  x.extractLsBytes a n = 0#(n*8) := by
+  apply BitVec.eq_of_getLsbD_eq
+  intros i
+  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, Bool.true_and, getLsbD_zero]
+  apply BitVec.getLsbD_ge
+  omega
+
+/-- TODO: upstream -/
+theorem not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
+  simp only [BitVec.slt, BitVec.sle]
+  by_cases h : a.toInt < b.toInt
+  · simp [h]
+    exact Int.not_le.mpr h
+  · simp [h]
+    exact Int.not_lt.mp h
+
+/-- If subtraction does not overflow,
+then `(x - y).toNat` equals `x.toNat - y.toNat` -/
+@[deprecated toNat_sub_of_le]
+theorem toNat_sub_of_lt' {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
+    (y - x).toNat = y.toNat - x.toNat := by
+  apply toNat_sub_of_le
+  bv_omega
+
+/-- `x.toNat * z.toNat ≤ k` if `z ≤ y` and `x.toNat * y.toNat ≤ k` -/
+theorem toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
+    (hxy : x.toNat * y.toNat ≤ k)
+    (hyz : z ≤ y) :
+    x.toNat * z.toNat ≤ k := by
+  apply Nat.le_trans (m := x.toNat * y.toNat)
+  · apply Nat.mul_le_mul_left
+    bv_omega
+  · exact hxy
+
+
+/-! ## Length one bitvector lemmas -/
+
+theorem eq_one_iff_neq_zero {a : BitVec 1} : a ≠ 0#1 ↔ a = 1#1 := by bv_omega
+
+theorem eq_zero_iff_neq_one {a : BitVec 1} : a ≠ 1#1 ↔ a = 0#1 := by bv_omega
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
+
+/--
+Bitvector pattern component syntax category, originally written by
+Leonardo de Moura.
+-/
 declare_syntax_cat bvpat_comp
 syntax num : bvpat_comp
 syntax ident ":" num : bvpat_comp
@@ -832,287 +1217,12 @@ macro_rules
 
 -- #print test2
 
-/-! ### Equation Lemmas -/
-
-theorem gt_def {x y : BitVec w} : (x > y) = (x.toNat > y.toNat) := rfl
-theorem ge_def {x y : BitVec w} : (x ≥ y) = (x.toNat ≥ y.toNat) := rfl
-
-theorem neq_of_toNat_neq {x y : BitVec w} (hx : x.toNat ≠ y.toNat) : x ≠ y := by
-  intros h
-  simp [h] at hx
-
-/-! ### (Non) Overflow Rewriting Lemmas
-
-@bollu: To be upstreamed.
--/
-
-private theorem Nat.sub_add_eq_add_sub_of_le_of_le {a b c : Nat} (hab : b ≤ a) (hbc : b ≤ c) :
-    a - b + c = a + (c - b) := by
-  omega
-
-/- TODO: upstream. -/
-theorem toNat_sub_eq_toNat_sub_toNat_of_le {x y : BitVec w} (h : y ≤ x) :
-    (x - y).toNat = x.toNat - y.toNat := by
-  simp only [toNat_sub]
-  rw [BitVec.le_def] at h
-  by_cases h' : x.toNat = y.toNat
-  · rw [h', Nat.sub_self]
-    rw [Nat.sub_add_cancel (by omega), Nat.mod_self]
-  · rw [Nat.sub_add_eq_add_sub_of_le_of_le (by omega) (by omega), Nat.add_mod,
-      Nat.mod_self, Nat.zero_add, Nat.mod_mod, Nat.mod_eq_of_lt (by omega)]
-
-/- Subtracting bitvectors when there is overflow. -/
-theorem toNat_sub_eq_two_pow_sub_add_of_lt
-    {a b : BitVec w₁} (hab : a.toNat < b.toNat) : (a - b).toNat = 2^w₁ - b.toNat + a.toNat := by
-  simp only [toNat_sub]
-  rw [Nat.mod_eq_of_lt (by omega)]
-
-theorem neq_of_lt {x y : BitVec w₁} (h : x < y) : x ≠ y := by
-  rintro rfl
-  simp [BitVec.lt_def] at h
-
-theorem neq_of_gt {x y : BitVec w₁} (h : x > y) : x ≠ y := by
-  rintro rfl
-  simp [BitVec.lt_def] at h
-
-
-/-- adding bitvectors when there is no overflow. -/
-theorem toNat_add_eq_toNat_add_toNat {x y : BitVec w} (h : x.toNat + y.toNat < 2^w) :
-    (x + y).toNat = x.toNat + y.toNat := by
-  rw [BitVec.toNat_add, Nat.mod_eq_of_lt h]
-
-theorem le_add_self_of_lt (a b : BitVec w₁) (hab : a.toNat + b.toNat < 2^w₁) :
-   a ≤ a + b := by
-  rw [BitVec.le_def]
-  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-  omega
-
-theorem add_sub_cancel_left {a b : BitVec w₁}
-    (hab : a.toNat + b.toNat < 2^w₁) : (a + b) - a = b := by
-  apply BitVec.eq_of_toNat_eq
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le]
-  · rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-    omega
-  · apply BitVec.le_add_self_of_lt
-    omega
-
-theorem le_add_iff_sub_le {a b c : BitVec w₁}
-   (hac : c ≤ a) (hbc : b.toNat + c.toNat < 2^w₁) :
-    (a ≤ b + c) ↔ (a - c ≤ b) := by
-  simp_all only [BitVec.le_def]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-  omega
-
-theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
-    (hbc : c ≤ b) : (a - c ≤ b - c) ↔ a ≤ b := by
-  simp_all only [BitVec.le_def]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  omega
-
-/-! ### Least Significant Byte -/
-
-/--
-Definition to extract the `n`th least significant *Byte* from a bitvector.
-TODO: this should be named `getLsByte`, or `getLsbByte` (Shilpi prefers this).
--/
-def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
-  val.extractLsb' (n * 8) 8
-
-theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
-    val.extractLsByte n = val.extractLsb' (n * 8) 8 := rfl
-
--- TODO: upstream
-theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
-    (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
-  apply BitVec.eq_of_getLsbD_eq
-  simp only [getLsbD_extract, getLsbD_or]
-  intros i
-  by_cases h : (i : Nat) ≤ n - lo
-  · simp only [h, decide_True, Bool.true_and]
-  · simp only [h, decide_False, Bool.false_and, Bool.or_self]
-
--- TODO: upstream
-theorem extractLsb'_or (x y : BitVec w₁) (n : Nat) :
-    (x ||| y).extractLsb' lo n = (x.extractLsb' lo n ||| y.extractLsb' lo n) := by
-  apply BitVec.eq_of_getLsbD_eq
-  simp only [getLsbD_extract, getLsbD_or]
-  intros i
-  simp only [getLsbD_extractLsb', Fin.is_lt, decide_True, getLsbD_or, Bool.true_and]
-
--- TODO: upstream
-protected theorem extractLsb'_ofNat (x n : Nat) (l lo : Nat) :
-    extractLsb' lo l (BitVec.ofNat n x) = .ofNat l ((x % 2^n) >>> lo) := by
-  apply eq_of_getLsbD_eq
-  intro ⟨i, _lt⟩
-  simp [BitVec.ofNat]
-
-theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
-  simp only [extractLsByte, BitVec.extractLsb'_ofNat, Nat.zero_mod, Nat.zero_shiftRight, cast_ofNat]
-
-theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
-  x.extractLsByte a = 0#8 := by
-  apply BitVec.eq_of_getLsbD_eq
-  intros i
-  simp only [getLsbD_zero, extractLsByte_def,
-    getLsbD_cast, getLsbD_extract, Bool.and_eq_false_imp, decide_eq_true_eq]
-  simp only [getLsbD_extractLsb', Fin.is_lt, decide_True, Bool.true_and]
-  apply BitVec.getLsbD_ge
-  omega
-
-@[bitvec_rules]
-theorem getLsbD_extractLsByte (val : BitVec w₁) :
-    ((BitVec.extractLsByte val n).getLsbD i) =
-    (decide (i ≤ 7) && val.getLsbD (n * 8 + i)) := by
-  simp only [extractLsByte, getLsbD_cast, getLsbD_extract]
-  simp only [getLsbD_extractLsb']
-  generalize val.getLsbD (n * 8 + i) = x
-  by_cases h : i < 8
-  · simp only [show (i : Nat) ≤ 7 by omega, decide_True, Bool.true_and,
-    Bool.and_iff_right_iff_imp, decide_eq_true_eq, h]
-  · simp only [show ¬(i : Nat) ≤ 7 by omega, decide_False, Bool.false_and,
-    Bool.and_eq_false_imp, decide_eq_true_eq, h]
-
-/--
-Two bitvectors of length `n*8` are equal if all their bytes are equal.
-This theorem can be strengthened to take `(i : Fin n)`.
--/
-theorem eq_of_extractLsByte_eq (x y : BitVec (n * 8))
-    (h : ∀ (i : Nat), x.extractLsByte i = y.extractLsByte i) : x = y := by
-  apply eq_of_getLsbD_eq
-  intros j
-  obtain ⟨j, hj⟩ := j
-  specialize h (j / 8)
-  have hx := x.getLsbD_extractLsByte (n := j / 8) (i := j % 8)
-  have hy := y.getLsbD_extractLsByte (n := j / 8) (i := j % 8)
-  simp only [show j % 8 ≤ 7 by omega, decide_True, Bool.true_and] at hx hy
-  simp only [show j / 8 * 8 + j % 8 = j by omega] at hx hy
-  simp only [← hx, ← hy, h]
-
-/-! ### Least Significant Byte range -/
-
-/-- Get `n` least significant bytes of `val`, starting from index `base`.
-@bollu: it's not clear if the definition for n=0 is desirable.
--/
-def extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) : BitVec (n * 8) :=
-  extractLsb' (base * 8) (n * 8) val
-
-@[bitvec_rules]
-theorem getLsbD_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
-    (BitVec.extractLsBytes val base n).getLsbD i =
-      ((decide (i < n * 8) &&
-      val.getLsbD (base * 8 + i))) := by
-  rcases n with rfl | n
-  · simp only [Nat.reduceMul, Nat.zero_le, getLsbD_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
-    Nat.add_zero, Bool.false_and]
-    simp only [show ¬i < 0 by omega, decide_False, Bool.false_and]
-  · simp only [extractLsBytes, getLsbD_cast, getLsbD_extract, Nat.zero_lt_succ, decide_True,
-    Bool.true_and]
-    by_cases h : i < (n + 1) * 8
-    · simp only [getLsbD_extractLsb', h, decide_True, Bool.true_and]
-    · simp only [getLsbD_extractLsb', h, decide_False, Bool.false_and]
-
-theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
-    (BitVec.extractLsBytes val base n).extractLsByte i =
-    if (i < n) then val.extractLsByte (base + i) else (0#8) := by
-  apply BitVec.eq_of_getLsbD_eq
-  simp only [getLsbD_extractLsByte, getLsbD_extractLsBytes]
-  intros j
-  simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
-  by_cases hn : i < n
-  · simp only [hn, ↓reduceIte, getLsbD_extractLsByte,
-      show (j : Nat) ≤ 7 by omega]
-    by_cases h : (i * 8 + (j : Nat) < n * 8)
-    · simp only [h, decide_True, Bool.true_and]
-      congr 1
-      omega
-    · simp only [h, decide_False, Bool.false_and, decide_True, Bool.true_and, Bool.false_eq]
-      apply BitVec.getLsbD_ge
-      omega
-  · simp only [hn, ↓reduceIte, getLsbD_zero, Bool.and_eq_false_imp, decide_eq_true_eq]
-    omega
-
-/-- Extracting out bytes from the zero bitvector is equal to the zero bitvector. -/
-@[bitvec_rules]
-theorem extractLsBytes_zero {w : Nat} (base : Nat) :
-    (0#w).extractLsBytes base n = 0#(n*8) := by
-  apply BitVec.eq_of_getLsbD_eq
-  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, getLsbD_zero, Bool.and_false,
-    implies_true]
-
-/-- Extracting out all the bytes is equal to the bitvector.
-The constraint on the width being `n * 8` is written as
-an arbitrary `m` with a hypothesis `hm : m = n * 8`.
-This is known in some circles as `fording`. See [1]
-
-[1] https://personal.cis.strath.ac.uk/conor.mcbride/levitation.pdf
--/
-@[bitvec_rules]
-theorem extractLsBytes_eq_self {n : Nat} {m : Nat}
-    (hm : m = n * 8 := by omega)
-    (x : BitVec (no_index m)) :
-    x.extractLsBytes 0 n = x.cast hm := by
-  apply BitVec.eq_of_getLsbD_eq
-  intros i
-  simp only [getLsbD_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero]
-  simp [show (i : Nat) ≤ n * 8 - 1 by omega]
-
-theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
-  x.extractLsBytes a n = 0#(n*8) := by
-  apply BitVec.eq_of_getLsbD_eq
-  intros i
-  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, Bool.true_and, getLsbD_zero]
-  apply BitVec.getLsbD_ge
-  omega
-
-/-- TODO: upstream -/
-theorem not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
-  simp only [BitVec.slt, BitVec.sle]
-  by_cases h : a.toInt < b.toInt
-  · simp [h]
-    exact Int.not_le.mpr h
-  · simp [h]
-    exact Int.not_lt.mp h
-
--- TODO: delete once https://github.com/leanprover/lean4/pull/5375/files
---       is merged
-@[bv_normalize]
-theorem BitVec.ofBool_getLsbD (a : BitVec w) (i : Nat) :
-    BitVec.ofBool (a.getLsbD i) = a.extractLsb' i 1 := by
-  apply BitVec.eq_of_getLsbD_eq
-  intro ⟨0, _⟩
-  simp
-
-/-- If subtraction does not overflow,
-then `(x - y).toNat` equals `x.toNat - y.toNat` -/
-@[deprecated toNat_sub_of_le]
-theorem toNat_sub_of_lt' {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
-    (y - x).toNat = y.toNat - x.toNat := by
-  apply toNat_sub_of_le
-  bv_omega
-
-/-- `x.toNat * z.toNat ≤ k` if `z ≤ y` and `x.toNat * y.toNat ≤ k` -/
-theorem toNat_mul_toNat_le_of_le_of_le {w} (x y z : BitVec w)
-    (hxy : x.toNat * y.toNat ≤ k)
-    (hyz : z ≤ y) :
-    x.toNat * z.toNat ≤ k := by
-  apply Nat.le_trans (m := x.toNat * y.toNat)
-  · apply Nat.mul_le_mul_left
-    bv_omega
-  · exact hxy
-
-
-/-! ## Length one bitvector lemmas -/
-
-theorem eq_one_iff_neq_zero {a : BitVec 1} : a ≠ 0#1 ↔ a = 1#1 := by bv_omega
-
-theorem eq_zero_iff_neq_one {a : BitVec 1} : a ≠ 1#1 ↔ a = 0#1 := by bv_omega
-
-/-! ## `Quote` instance -/
-
+/-- `Quote` instance for `BitVec` -/
 instance (w : Nat) : Quote (BitVec w) `term where
   quote x :=
     Syntax.mkCApp ``BitVec.ofNat #[quote w, quote x.toNat]
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 end BitVec

@@ -24,7 +24,7 @@ theorem n_minus_1_lt_2_64_1 (n : Nat)
   (h1 : Nat.succ 0 ≤ n) (h2 : n < 2 ^ 64) :
   (BitVec.ofNat 64 (n - 1)) < (BitVec.ofNat 64 (2^64 - 1)) := by
   refine BitVec.val_bitvec_lt.mp ?a
-  simp [BitVec.bitvec_to_nat_of_nat]
+  simp [BitVec.toNat_ofNat]
   have : n - 1 < 2 ^ 64 := by omega
   simp_all [Nat.mod_eq_of_lt]
   exact Nat.sub_lt_left_of_lt_add h1 h2
@@ -175,7 +175,7 @@ theorem first_addresses_add_one_preserves_subset_same_addr
       rw [h3]
       apply first_addresses_add_one_preserves_subset_same_addr_helper
       rw [←BitVec.val_bitvec_lt]
-      simp [BitVec.bitvec_to_nat_of_nat]
+      simp [BitVec.toNat_ofNat]
       simp_all [Nat.mod_eq_of_lt]
     case inr =>
       rename_i h3
@@ -183,18 +183,18 @@ theorem first_addresses_add_one_preserves_subset_same_addr
       rw [BitVec.add_sub_self_left_64] at h3_0
       rw [BitVec.add_sub_self_left_64] at h3_0
       rw [←BitVec.nat_bitvec_le] at h3_0
-      simp_all [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt]
+      simp_all [BitVec.toNat_ofNat, Nat.mod_eq_of_lt]
       apply (BitVec.nat_bitvec_le ((BitVec.ofNat 64 m) - 1#64) ((BitVec.ofNat 64 n) - 1#64)).mp
       rw [nat_bitvec_sub1]; rw [nat_bitvec_sub1]
-      simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt]
+      simp [BitVec.toNat_ofNat, Nat.mod_eq_of_lt]
       · rw [Nat.mod_eq_of_lt h1u]
         rw [Nat.mod_eq_of_lt h2u]
         rw [Nat.mod_eq_of_lt (by omega)]
         rw [Nat.mod_eq_of_lt (by omega)]
         exact Nat.sub_le_sub_right h3_0 1
-      · simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt, h2u]
+      · simp [BitVec.toNat_ofNat, Nat.mod_eq_of_lt, h2u]
         exact h2l
-      · simp [BitVec.bitvec_to_nat_of_nat, Nat.mod_eq_of_lt, h1u]
+      · simp [BitVec.toNat_ofNat, Nat.mod_eq_of_lt, h1u]
         exact h1l
   case right =>
     rw [BitVec.add_sub_add_left]
