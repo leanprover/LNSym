@@ -25,12 +25,17 @@ def polynomial_mult_aux (i : Nat) (result : BitVec (m+n))
     result
   else
     let new_res := if lsb op1 i = 1 then result ^^^ (op2 <<< i) else result
-    have h : m - (i + 1) < m - i := by omega
+    -- We replace `if` below by bitvec operations.
+    -- have h : (1 * (m + n)) = m + n := by simp only [Nat.one_mul]
+    -- let test := (replicate (m+n) (lsb op1 i)).cast h
+    -- let then_branch := test &&& (result ^^^ (op2 <<< i))
+    -- let else_branch := ~~~test &&& result
+    -- let new_res := then_branch ||| else_branch
     polynomial_mult_aux (i+1) new_res op1 op2
   termination_by (m - i)
 
 def polynomial_mult (op1 : BitVec m) (op2 : BitVec n) : BitVec (m+n) :=
-  let result := BitVec.zero (m+n)
+  let result := 0#(m+n)
   let extended_op2 := zeroExtend (m+n) op2
   polynomial_mult_aux 0 result op1 extended_op2
 

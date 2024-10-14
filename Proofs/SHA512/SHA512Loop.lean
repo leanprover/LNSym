@@ -142,6 +142,33 @@ def loop_post_2 (PC N SP CtxBase InputBase : BitVec 64)
   r (.SFP 25#5) sf =
     read_mem_bytes 16 (KtblAddr + 0x10#64) si
 
+theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
+  x.extractLsBytes a n = 0#(n*8) := by
+  apply BitVec.eq_of_getLsbD_eq
+  intros i
+  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, Bool.true_and, getLsbD_zero]
+  apply BitVec.getLsbD_ge
+  omega
+
+theorem extractLsBytes_of_read_bytes_le (n m : Nat)
+    (h_legal : mem_legal' addr n)
+    (h_m_le_n : m ≤ n) :
+    (Memory.read_bytes n addr mem).extractLsBytes 0 m =
+    Memory.read_bytes m addr mem := by
+    apply BitVec.eq_of_getLsbD_eq; intro i
+    simp only [extractLsBytes, bitvec_rules]
+    simp only [getLsbD_extractLsb', minimal_theory, Fin.isLt]
+    have h_n_upper : n ≤ 2^64 := by
+      simp only [mem_legal', Nat.reducePow] at h_legal; omega
+    have h_m_upper : m ≤ 2^64 := by
+      simp [mem_legal'] at h_legal; omega
+    have h_i_upper : i < m * 8 := Fin.isLt i
+    have h_i_upper2 : i < n * 8 := by omega
+    have h_lhs := @Memory.getLsbD_read_bytes n i addr mem h_n_upper
+    have h_rhs := @Memory.getLsbD_read_bytes m i addr mem h_m_upper
+    simp_all only
+    done
+
 /--
 info: #[RegType.SFP 0x03#5, RegType.SFP 0x04#5, RegType.SFP 0x05#5, RegType.SFP 0x06#5, RegType.SFP 0x07#5,
   RegType.SFP 0x10#5, RegType.SFP 0x18#5, RegType.SFP 0x19#5]
@@ -161,23 +188,24 @@ theorem sha512_block_armv8_loop_2 (sprev si sf : ArmState)
   simp at h_si_prelude ⊢
   obtain ⟨h_si_num_blocks, h_si_program, h_si_pc, h_si_err,
           h_si_sp_aligned, h_si_input_base, h_si_ctx_base,
-          h_si_sp, h_si_ktbl, h_si_input,
-          h_si_separate, h_si_ktbl_base,
+          h_si_sp, h_si_ktbl, keep_h_si_input,
+          keep_h_si_separate, h_si_ktbl_base,
           _h_si_q0, _h_si_q1, _h_si_q2, _h_si_q3,
           h_si_16, h_si_17, h_si_18, h_si_19,
           h_si_20, h_si_21, h_si_22, h_si_23, h_si_zf⟩ := h_si_prelude
   simp only [input_addr, ctx_addr] at *
-  simp only [BitVec.reduceToNat, Nat.reduceMul] at h_si_input
+  simp only [BitVec.reduceToNat, Nat.reduceMul] at keep_h_si_input
   simp only [loop_post_2]
   -- Symbolic Simulation
   sym_n 12
   -- Epilogue
   simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *
   simp only [memory_rules] at *
-  simp at h_si_separate
-  simp only [h_si_ktbl, h_si_separate, minimal_theory]
+  simp at keep_h_si_separate
+  simp only [h_si_ktbl, keep_h_si_separate, minimal_theory]
   have h_si_input_1 : (Memory.read_bytes 16 InputBase sprev.mem) =
                       (Memory.read_bytes 16 InputBase si.mem) := by
+    clear_named [h_s, h_run, step, _h]
     -- simp_mem (config := {useOmegaToClose := true})
     rw [@Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
         128 InputBase (Memory.read_bytes 128 InputBase sprev.mem)]
