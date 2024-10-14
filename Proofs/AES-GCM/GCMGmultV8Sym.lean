@@ -157,7 +157,7 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
                BitVec.partInstall]
     -- (FIXME @bollu) cse leaves the goal unchanged here, quietly, likely due to
     -- subexpressions occurring in dep. contexts. Maybe a message here would be helpful.
-    generalize h_Xi_rev : rev_vector 128 64 8 Xi _ _ _ _ _ = Xi_rev
+    generalize h_Xi_rev : DPSFP.vrev128_64_8 Xi = Xi_rev
     -- Simplifying the RHS
     simp only [←h_HTable, GCMV8.GCMGmultV8_alt,
                GCMV8.lo, GCMV8.hi,
