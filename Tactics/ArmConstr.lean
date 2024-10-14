@@ -178,7 +178,7 @@ def Update.resolveRead (es : List Update) (u : Update) : Update :=
       if i == gpr_idx then v else go gpr_idx rest
 
 /--
-Resolve any reads in
+Resolve any reads in each of `us` by looking them up in `es`.
 -/
 def Update.resolveReads (es us : List Update) : List Update :=
   match us with
@@ -255,7 +255,7 @@ info: { curr_state := 2,
                        w_gpr 2#5 (.var 2)] }
         ]
 
-/-- Does aggregating `updates` yield `final`? -/
+/-- Does aggregating `updates` over `init` yield `final`? -/
 def Expr.isAggregated (init : Expr) (updates : Exprs) (final : Expr) : Bool :=
   final == aggregate init updates
 
