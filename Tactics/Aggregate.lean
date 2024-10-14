@@ -106,6 +106,15 @@ elab "sym_aggregate" simpConfig?:(config)? loc?:(location)? : tactic => withMain
           (expectedType := do
             let state ← mkFreshExprMVar mkArmState
             return mkApp (mkConst ``CheckSPAlignment) state)
+        -- `?state.program = ?program`
+        searchLCtxFor (whenFound := whenFound)
+          (expectedType := do
+            let mkProgramTy := mkConst ``Program
+            let state ← mkFreshExprMVar mkArmState
+            let program ← mkFreshExprMVar mkProgramTy
+            return mkApp3 (.const ``Eq [1]) mkProgramTy
+              (mkApp (mkConst ``ArmState.program) state)
+              program)
 
     let loc := (loc?.map expandLocation).getD (.targets #[] true)
     aggregate axHyps loc simpConfig?
