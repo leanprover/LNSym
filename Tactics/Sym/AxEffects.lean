@@ -14,7 +14,7 @@ import Tactics.Sym.MemoryEffects
 import Std.Data.HashMap
 
 open Lean Meta
-open Sym (withTraceNode withVerboseTraceNode)
+open Sym (withTraceNode withInfoTraceNode)
 
 /-- A reflected `ArmState` field, see `AxEffects.fields` for more context -/
 structure AxEffects.FieldEffect where
@@ -431,7 +431,7 @@ private def assertIsDefEq (e expected : Expr) : MetaM Unit := do
 
 /-- Given an expression `e : ArmState`,
 which is a sequence of `w`/`write_mem`s to `eff.currentState`,
-return an `AxEffects` where `e` is the new `currentState`. 
+return an `AxEffects` where `e` is the new `currentState`.
 
 See also `updateWithExpr`, which is a wrapper around `updateWithExprAux` which adds a top-level trace node.
 -/
