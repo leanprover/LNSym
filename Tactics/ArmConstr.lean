@@ -180,11 +180,7 @@ def Update.resolveRead (es : List Update) (u : Update) : Update :=
 /--
 Resolve any reads in each of `us` by looking them up in `es`.
 -/
-def Update.resolveReads (es us : List Update) : List Update :=
-  match us with
-  | [] => []
-  | u :: rest =>
-    (Update.resolveRead es u) :: resolveReads es rest
+def Update.resolveReads (es us : List Update) : List Update := us.map (Update.resolveRead es)
 
 /--
 Aggregate `e` and `u`, assuming `u` follows `e`.
