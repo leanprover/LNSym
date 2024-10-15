@@ -30,6 +30,8 @@ def aggregate (axHyps : Array LocalDecl) (location : Location)
 
     let config := simpConfig?.getD aggregate.defaultSimpConfig
     let (ctx, simprocs) ← LNSymSimpContext
+        -- https://github.com/leanprover/lean4/blob/94b1e512da9df1394350ab81a28deca934271f65/src/Lean/Meta/DiscrTree.lean#L371
+        -- refines the discrimination tree to also index applied functions. 
         (noIndexAtArgs := false)
         (config := config)
         (decls := axHyps)

@@ -95,8 +95,6 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
   simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *
   simp only [memory_rules] at *
   sym_aggregate
-
-  -- stop
   -- Split conjunction
   repeat' apply And.intro
   · simp_mem; rfl
