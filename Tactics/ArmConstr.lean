@@ -78,6 +78,8 @@ inductive Update where
   -- TODO: Other state components.
   deriving DecidableEq, Repr, Inhabited
 
+abbrev Updates := List Update
+
 /--
 Do updates `x` and `y` refer to the same state component?
 -/
@@ -111,13 +113,13 @@ curr_state = writes[prev_state]
 structure Expr where
    curr_state : StateVar
    prev_state : StateVar
-   writes : List Update -- Sorted by the state components.
+   writes : Updates -- Sorted by the state components.
 deriving DecidableEq, Repr, Inhabited
 
 /--
 Map updates `us` to state `prev_state` to an `ArmState`.
 -/
-def Expr.writes.denote (ctx : Context) (us : List Update) (prev_state : StateVar)
+def Expr.writes.denote (ctx : Context) (us : Updates) (prev_state : StateVar)
   : ArmState :=
   match us with
   | [] => StateVar.denote ctx.state prev_state
@@ -156,7 +158,7 @@ def Exprs.denote (ctx : Context) (es : Exprs) : Prop :=
 def Expr.default : Expr :=
   { prev_state := 0, curr_state := 0, writes := [] }
 
-def Update.insertSorted (es : List Update) (u : Update) : List Update :=
+def Update.insertSorted (es : Updates) (u : Update) : Updates :=
   match es with
   | [] => [u]
   | e :: rest =>
@@ -173,13 +175,13 @@ def Update.insertSorted (es : List Update) (u : Update) : List Update :=
 /--
 Resolve any reads in `u` by looking it up in `es`.
 -/
-def Update.resolveRead (es : List Update) (u : Update) : Update :=
+def Update.resolveRead (es : Updates) (u : Update) : Update :=
   match u with
   | .w_gpr _ (.var _) => u
   | .w_gpr i (.r_gpr gpr_idx) =>
     let ans := go gpr_idx es
     .w_gpr i ans
-  where go (gpr_idx : BitVec 5) (es : List Update) : GPRVal :=
+  where go (gpr_idx : BitVec 5) (es : Updates) : GPRVal :=
     match es with
     | [] => .r_gpr gpr_idx
     | (.w_gpr i v) :: rest =>
@@ -188,7 +190,7 @@ def Update.resolveRead (es : List Update) (u : Update) : Update :=
 /--
 Resolve any reads in each of `us` by looking them up in `es`.
 -/
-def Update.resolveReads (es us : List Update) : List Update :=
+def Update.resolveReads (es us : Updates) : Updates :=
   us.map (Update.resolveRead es)
 
 /--
@@ -205,7 +207,7 @@ def Expr.aggregate1 (e u : Expr) : Expr :=
     -- StateUpdate here.
     -- TODO: We should probably throw an error here.
     e
- where go (es us : List Update) : List Update :=
+ where go (es us : Updates) : Updates :=
   match es, us with
   | [], us => us
   | es, [] => es
@@ -303,7 +305,7 @@ theorem completely_shadowed_updates
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] } ]
             (Eq.refl true))
-  simp only [Exprs.denote, List.foldl, true_and, and_imp] at this
+  simp only [Exprs.denote, List.foldl, true_and, and_true, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
 
@@ -334,7 +336,7 @@ theorem partially_shadowed_and_new_updates
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 1#5 (.var 2), w_gpr 3#5 (.var 3)] } ]
             (Eq.refl true))
-  simp only [Exprs.denote, List.foldl_cons, true_and, List.foldl_nil, and_imp] at this
+  simp only [Exprs.denote, List.foldl_cons, and_true, true_and, List.foldl_nil, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
 
@@ -369,7 +371,7 @@ theorem read_from_prev_update_test1
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 1#5 (.var 2), w_gpr 3#5 (.r_gpr 1)] } ]
             (Eq.refl true))
-  simp only [Exprs.denote, List.foldl_cons, true_and, List.foldl_nil,
+  simp only [Exprs.denote, List.foldl_cons, and_true, true_and, List.foldl_nil,
     and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
@@ -393,7 +395,7 @@ theorem read_from_prev_update_test2 (s0 s1 s2 : ArmState)
             { prev_state := 1, curr_state := 2,
               writes := [w_gpr 1#5 (.var 2), w_gpr 3#5 (.r_gpr 5#5)] } ]
             (Eq.refl true))
-  simp only [Exprs.denote, List.foldl, true_and, and_imp] at this
+  simp only [Exprs.denote, List.foldl, true_and, and_true, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
 
@@ -706,7 +708,7 @@ theorem test_10_steps (s0 : ArmState)
              ]
             (by native_decide))
     simp only [Exprs.denote, and_true, and_imp] at this
-    exact this (Eq.refl s0) h_step_1 h_step_2 h_step_3 h_step_4 h_step_5 h_step_6 h_step_7 h_step_8 h_step_9 h_step_10]
+    exact this (Eq.refl s0) h_step_1 h_step_2 h_step_3 h_step_4 h_step_5 h_step_6 h_step_7 h_step_8 h_step_9 h_step_10
     done
 
 
