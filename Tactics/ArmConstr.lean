@@ -293,14 +293,16 @@ theorem Expr.eq_true_of_isValid (ctx : Context) (init final : Expr) (updates : E
 
 -- Tests
 
--- set_option trace.Meta.synthInstance true in
--- open Expr Update in
--- theorem foo :  Expr.isAggregated
-    -- { curr_state := 0, prev_state := 0, writes := [] }
-      -- [{ curr_state := 1, prev_state := 0, writes := [w_gpr (0#5) (GPRVal.var 0), w_gpr (1#5) (GPRVal.var 1)] },
-        -- { curr_state := 2, prev_state := 1, writes := [w_gpr (0#5) (GPRVal.var 0), w_gpr (1#5) (GPRVal.var 1)] }]
-      -- { curr_state := 2, prev_state := 0, writes := [w_gpr (0#5) (GPRVal.var 0), w_gpr (1#5) (GPRVal.var 1)] } := by
-      -- decide
+open Expr Update in
+example :  Expr.isAggregated
+    { curr_state := 0, prev_state := 0, writes := [] }
+      [{ curr_state := 1, prev_state := 0, writes := [w_gpr (0#5) (GPRVal.var 0), w_gpr (1#5) (GPRVal.var 1)] },
+        { curr_state := 2, prev_state := 1, writes := [w_gpr (0#5) (GPRVal.var 0), w_gpr (1#5) (GPRVal.var 1)] }]
+      { curr_state := 2, prev_state := 0, writes := [w_gpr (0#5) (GPRVal.var 0), w_gpr (1#5) (GPRVal.var 1)] } := by
+      -- List.mergeSort, using in Expr.aggregate1, is irreducible, which
+      -- causes reduction to get stuck. We use `with_unfolding_all` below to
+      -- workaround that problem. We can also use `native_decide` here.
+      with_unfolding_all decide
 
 #time
 -- set_option trace.Meta.synthInstance true in
@@ -330,17 +332,10 @@ theorem completely_shadowed_updates
           -- updates
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] } ]
-          -- (FIXME) `by decide` or `Eq.refl true` fails below.
             (by native_decide))
   simp only [Exprs.denote, List.foldl, true_and, and_true, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
-
-open Expr Update in
-#eval Expr.aggregate
-        { prev_state := 0, curr_state := 0, writes := []}
-        [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
-          { prev_state := 1, curr_state := 2, writes := [w_gpr 3#5 (.var 3), w_gpr 1#5 (.var 2)] } ]
 
 open Expr Update in
 theorem partially_shadowed_and_new_updates
