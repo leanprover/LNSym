@@ -47,8 +47,8 @@ position of a variable in the context becomes variable name (see, e.g.,
 `StateVar`, which is a `Nat`).
 -/
 structure Context where
-  Γs : StateContext
-  Γgpr : GPRValContext
+  state : StateContext
+  gpr : GPRValContext
   deriving Repr, Inhabited
 
 /--
@@ -120,25 +120,25 @@ Map updates `us` to state `prev_state` to an `ArmState`.
 def Expr.writes.denote (ctx : Context) (us : List Update) (prev_state : StateVar)
   : ArmState :=
   match us with
-  | [] => StateVar.denote ctx.Γs prev_state
+  | [] => StateVar.denote ctx.state prev_state
   | Update.w_gpr i v :: rest =>
     w (.GPR i)
-      (GPRVal.denote ctx.Γgpr v (StateVar.denote ctx.Γs prev_state))
+      (GPRVal.denote ctx.gpr v (StateVar.denote ctx.state prev_state))
       (Expr.writes.denote ctx rest prev_state)
 
 /--
 Denote an `Expr e` to a `Prop` corresponding to `curr_state = writes[prev_state]`.
 -/
 def Expr.denote (ctx : Context) (e : Expr) : Prop :=
-  StateVar.denote ctx.Γs e.curr_state =
+  StateVar.denote ctx.state e.curr_state =
   Expr.writes.denote ctx e.writes e.prev_state
 
 /--
 Return a `Prop` corresponding to `e1 = e2`.
 -/
 def Expr.denote_eq (ctx : Context) (e1 e2 : Expr) : Prop :=
-  StateVar.denote ctx.Γs e1.prev_state = StateVar.denote ctx.Γs e2.prev_state ∧
-  StateVar.denote ctx.Γs e1.curr_state = StateVar.denote ctx.Γs e2.curr_state ∧
+  StateVar.denote ctx.state e1.prev_state = StateVar.denote ctx.state e2.prev_state ∧
+  StateVar.denote ctx.state e1.curr_state = StateVar.denote ctx.state e2.curr_state ∧
   Expr.denote ctx e1 ∧
   Expr.denote ctx e2
 
@@ -148,7 +148,10 @@ abbrev Exprs := List Expr
 Denote each expression in `es` using `Expr.denote`.
 -/
 def Exprs.denote (ctx : Context) (es : Exprs) : Prop :=
-  es.foldl (init := True) (fun p e => p ∧ e.denote ctx)
+  -- es.foldl (init := True) (fun p e => p ∧ e.denote ctx)
+  match es with
+  | [] => True
+  | u :: rest => Expr.denote ctx u ∧ Exprs.denote ctx rest
 
 def Expr.default : Expr :=
   { prev_state := 0, curr_state := 0, writes := [] }
@@ -261,7 +264,8 @@ info: { curr_state := 2,
 def Expr.isAggregated (init : Expr) (updates : Exprs) (final : Expr) : Bool :=
   final == aggregate init updates
 
-/-- TODO: we're probably missing a well-formedness hyp. about the `ctx` here. -/
+/-- TODO: we're probably missing well-formedness hyps. about the `ctx` and/or
+  `updates` here. -/
 theorem Expr.eq_true_of_isValid (ctx : Context) (init final : Expr) (updates : Exprs) :
   (Expr.isAggregated init updates final) →
   Expr.denote ctx init ∧ Exprs.denote ctx updates → (Expr.denote ctx final) := by
@@ -289,8 +293,8 @@ theorem completely_shadowed_updates
     s2 = xxxx : Prop
   -/
   s2 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 s0) := by
-  have := (Expr.eq_true_of_isValid { Γs := [s0, s1, s2],
-                                     Γgpr := [x0, x1] }
+  have := (Expr.eq_true_of_isValid { state := [s0, s1, s2],
+                                     gpr := [x0, x1] }
           -- init
           { prev_state := 0, curr_state := 0, writes := []}
           -- final
@@ -298,7 +302,7 @@ theorem completely_shadowed_updates
           -- updates
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] } ]
-            (by decide))
+            (Eq.refl true))
   simp only [Exprs.denote, List.foldl, true_and, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
@@ -320,8 +324,8 @@ theorem partially_shadowed_and_new_updates
   -/
   (h_s2 : s2 = w (.GPR 1#5) x1 (w (.GPR 3#5) x3 s1)) :
   s2 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 (w (.GPR 3#5) x3 s0)) := by
-  have := (Expr.eq_true_of_isValid { Γs := [s0, s1, s2],
-                                     Γgpr := [x0, old_x1, x1, x3] }
+  have := (Expr.eq_true_of_isValid { state := [s0, s1, s2],
+                                     gpr := [x0, old_x1, x1, x3] }
           -- init
           { prev_state := 0, curr_state := 0, writes := []}
           -- final
@@ -354,8 +358,8 @@ theorem read_from_prev_update_test1
   (h_s1 : s1 = w (.GPR 0#5) x0 (w (.GPR 1#5) old_x1 s0))
   (h_s2 : s2 = w (.GPR 1#5) x1 (w (.GPR 3#5) (r (.GPR 1#5) s1) s1)) :
   s2 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 (w (.GPR 3#5) old_x1 s0)) := by
-  have := (Expr.eq_true_of_isValid { Γs := [s0, s1, s2],
-                                     Γgpr := [x0, old_x1, x1] }
+  have := (Expr.eq_true_of_isValid { state := [s0, s1, s2],
+                                     gpr := [x0, old_x1, x1] }
           -- init
           { prev_state := 0, curr_state := 0, writes := []}
           -- final
@@ -365,7 +369,7 @@ theorem read_from_prev_update_test1
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 1#5 (.var 2), w_gpr 3#5 (.r_gpr 1)] } ]
             (Eq.refl true))
-  simp only [Exprs.denote, BitVec.ofNat_eq_ofNat, List.foldl_cons, true_and, List.foldl_nil,
+  simp only [Exprs.denote, List.foldl_cons, true_and, List.foldl_nil,
     and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
@@ -376,8 +380,8 @@ theorem read_from_prev_update_test2 (s0 s1 s2 : ArmState)
   (h_s1 : s1 = w (.GPR 0#5) x0 (w (.GPR 1#5) old_x1 s0))
   (h_s2 : s2 = w (.GPR 1#5) x1 (w (.GPR 3#5) (r (.GPR 5#5) s1) s1)) :
   s2 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 (w (.GPR 3#5) (r (.GPR 5#5) s0) s0)) := by
-  have := (Expr.eq_true_of_isValid { Γs := [s0, s1, s2],
-                                     Γgpr := [x0, old_x1, x1] }
+  have := (Expr.eq_true_of_isValid { state := [s0, s1, s2],
+                                     gpr := [x0, old_x1, x1] }
           -- init
           { prev_state := 0, curr_state := 0, writes := []}
           -- final
