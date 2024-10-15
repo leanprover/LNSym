@@ -49,42 +49,41 @@ Code adapted from:
 - https://github.com/leanprover/lean4/blob/master/src/Lean/Elab/Tactic/Simp.lean#L406
 - https://github.com/leanprover/lean4/blob/master/src/Lean/Elab/Tactic/Omega/Frontend.lean#L685
 -/
-def run (g : MVarId)  (bvToNatSimpCtx : Simp.Context) (bvToNatSimprocs : Array Simp.Simprocs) : MetaM Unit := do
+def run (g : MVarId) (hyps : Array Expr) (bvToNatSimpCtx : Simp.Context) (bvToNatSimprocs : Array Simp.Simprocs) : MetaM Unit := do
   let minMs ← getBvOmegaBenchMinMs
   let goalStr ← ppGoal g
   let startTime ← IO.monoMsNow
   let filePath ← getBvOmegaBenchFilePath
+  let mut g := g
+  let mut hypFVars : Array FVarId := hyps.filterMap (fun e => if e.isFVar then some e.fvarId! else none)
   try
-      g.withContext do
-        let nonDepHyps ← g.getNondepPropHyps
-        let mut g := g
-
-        try
-          let (result?, _stats) ← 
-            simpGoal g bvToNatSimpCtx bvToNatSimprocs
-              (simplifyTarget := true) (discharge? := .none) nonDepHyps
-          let .some (_, g') := result? | return ()
-          g := g'
-        catch e => 
-          trace[simp_mem.info] "in BvOmega, ran `simp only [bv_toNat]` and got error: {indentD e.toMessageData}"
-          throw e
-
-        g.withContext do 
-          let some g ← g.falseOrByContra | return ()
-          g.withContext do
-            let hyps := (← getLocalHyps).toList
-            omega hyps g {}
-            let endTime ← IO.monoMsNow
-            let delta := endTime - startTime
-            if (← getBvOmegaBenchIsEnabled) && delta ≥ minMs then 
-              IO.FS.withFile filePath IO.FS.Mode.append fun h => do
-                  h.putStrLn "\n---\n"
-                  h.putStrLn s!"goal"
-                  h.putStrLn goalStr.pretty
-                  h.putStrLn s!"endgoal"
-                  h.putStrLn s!"time"
-                  h.putStrLn s!"{delta}"
-                  h.putStrLn s!"endtime"
+     /- Wow, this is gross. I need to filter out the fvars, and keep track of which ones I use for simplification. -/
+     try
+       let (result?, _stats) ← g.withContext <| simpGoal g bvToNatSimpCtx bvToNatSimprocs (simplifyTarget := true) (discharge? := .none) hypFVars
+       let .some (hypFVars', g') := result? | return ()
+       g := g'
+       let hypsOldRetained ← g.withContext <| pure (← getLCtx).getFVarIds
+       let hypsOldRetained := hypsOldRetained.filter (fun fvar => hypFVars.contains fvar)
+       -- hypFVars := hypFVars'
+     catch e => 
+       trace[simp_mem.info] "in BvOmega, ran `simp only [bv_toNat]` and got error: {indentD e.toMessageData}"
+       throw e
+     let some g' ← g.withContext <| g.falseOrByContra | return ()
+     g := g'
+     g.withContext do
+       -- omega (hypExprs ++ hypFVars.map (Expr.fvar)).toList g {}
+       omega (← getLocalHyps).toList g {}
+       let endTime ← IO.monoMsNow
+       let delta := endTime - startTime
+       if (← getBvOmegaBenchIsEnabled) && delta ≥ minMs then 
+         IO.FS.withFile filePath IO.FS.Mode.append fun h => do
+           h.putStrLn "\n---\n"
+           h.putStrLn s!"goal"
+           h.putStrLn goalStr.pretty
+           h.putStrLn s!"endgoal"
+           h.putStrLn s!"time"
+           h.putStrLn s!"{delta}"
+           h.putStrLn s!"endtime"
   catch e =>
     let endTime ← IO.monoMsNow
     let delta := endTime - startTime
@@ -105,7 +104,8 @@ def run (g : MVarId)  (bvToNatSimpCtx : Simp.Context) (bvToNatSimprocs : Array S
 /-- Build the default simp context (bv_toNat) and run omega -/
 def runWithDefaultSimpContext (g : MVarId) : MetaM Unit := do
   let (bvToNatSimpCtx, bvToNatSimprocs) ← bvOmegaSimpCtx
-  run g bvToNatSimpCtx bvToNatSimprocs
+  g.withContext do
+    run g ((← g.getNondepPropHyps).map Expr.fvar) bvToNatSimpCtx bvToNatSimprocs
 
 end BvOmegaBench
 

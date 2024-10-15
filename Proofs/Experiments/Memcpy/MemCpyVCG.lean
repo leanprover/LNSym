@@ -442,7 +442,6 @@ section PartialCorrectness
 -- set_option skip_proof.skip true in
 -- set_option trace.profiler true in
 -- set_option profiler true in
-#time set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -466,21 +465,11 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
     Memory.read_bytes n addr s0.mem := by
-  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by 
-    mem_omega with [h_assert_1, h_pre_1]
-  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-  · rw [h_assert_6]
-    skip_proof mem_omega with [h_assert_1, h_pre_1, hsep]
-  · -- @bollu: TODO: figure out why this is so slow!/
-    apply mem_separate'.symm
-    apply mem_separate'.of_subset'_of_subset' hsep
-    · apply mem_subset'.of_omega
-      skip_proof refine ⟨?_, ?_, ?_, ?_⟩
-      · mem_omega with [h_si_x0_nonzero, h_assert_1, h_pre_1] -- TODO: add support for patterns like *, -<hyp1>, ... -<hypN>
-      · mem_omega with [h_si_x0_nonzero, h_assert_1, h_pre_1]
-      · mem_omega with [h_si_x0_nonzero, h_assert_1, h_pre_1]
-      · mem_omega with [h_si_x0_nonzero, h_assert_1, h_pre_1] -- , hsep] -- adding `hsep` makes this way slower.
-    · apply mem_subset'_refl hsep.hb
+  conv =>
+    lhs
+    simp_mem sep with [h_si_x0_nonzero, h_assert_1, h_pre_1, h_assert_1, hsep]
+  rw [h_assert_6]
+  mem_omega with [hsep, h_pre_1, h_assert_1, h_assert_4]
 
 -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
