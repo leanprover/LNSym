@@ -100,30 +100,12 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     -- (FIXME) This will be tackled by `sym_aggregate` when `sym_n` and `simp_mem`
     -- are merged.
     simp only [*]
-    /-
-    (FIXME @bollu) `simp_mem; rfl` creates a malformed proof here. The tactic produces
-    no goals, but we get the following error message:
-
-    application type mismatch
-    Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
-      (Eq.mp (congrArg (Eq HTable) (Memory.State.read_mem_bytes_eq_mem_read_bytes s0))
-        (Eq.mp (congrArg (fun x => HTable = read_mem_bytes 256 x s0) zeroExtend_eq_of_r_gpr) h_HTable))
-    argument has type
-      HTable = Memory.read_bytes 256 (r (StateField.GPR 1#5) s0) s0.mem
-    but function has type
-      Memory.read_bytes 256 (r (StateField.GPR 1#5) s0) s0.mem = HTable →
-      mem_subset' (r (StateField.GPR 1#5) s0) 256 (r (StateField.GPR 1#5) s0) 256 →
-        Memory.read_bytes 256 (r (StateField.GPR 1#5) s0) s0.mem =
-          HTable.extractLsBytes (BitVec.toNat (r (StateField.GPR 1#5) s0) - BitVec.toNat (r (StateField.GPR 1#5) s0)) 256
-
-    simp_mem; rfl
-    -/
-    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
     simp_mem
+    rfl
   · simp only [List.mem_cons, List.mem_singleton, not_or, and_imp]
     sym_aggregate
   · intro n addr h_separate
-    simp_mem (config := { useOmegaToClose := false })
+    simp_mem
     -- Aggregate the memory (non)effects.
     simp only [*]
   · clear_named [h_s, stepi_]
@@ -135,7 +117,14 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
       rw [@Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
            32 (r (StateField.GPR 1#5) s0) HTable (r (StateField.GPR 1#5) s0) 16 _ h_HTable.symm]
       · simp only [Nat.reduceMul, BitVec.extractLsBytes, Nat.sub_self, Nat.zero_mul]
-      · simp_mem
+      · mem_omega!
+        -- have := h_mem_sep.get 0 1
+        -- simp at this
+        -- rw [mem_separate'.iff_omega] at this
+        -- mem_omega!
+        -- mem_omega!
+        -- simp_all
+
     have h_HTable_high :
       (Memory.read_bytes 16 (r (StateField.GPR 1#5) s0 + 16#64) s0.mem) = HTable.extractLsb' 128 128 := by
       -- (FIXME @bollu) use `simp_mem` instead of the rw below.
