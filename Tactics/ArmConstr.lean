@@ -87,25 +87,29 @@ def Update.regEq (x y : Update) : Prop :=
   match x, y with
   | w_gpr i _, w_gpr j _ => i = j
 
-instance : Decidable (Update.regEq x y) := by
-  simp [Update.regEq]
-  infer_instance
+instance : Decidable (Update.regEq x y) :=
+  inferInstanceAs (Decidable <|
+    match x, y with
+    | .w_gpr i _, .w_gpr j _ => i = j)
 
 /--
 Is the register index of update `x` less than that of `y`?
 -/
-def Update.regIndexLt (x y : Update) : Prop :=
+def Update.regIndexLt (x y : Update) : Bool :=
   match x, y with
   | w_gpr i _, w_gpr j _ => i < j
 
-instance : Decidable (Update.regIndexLt x y) := by
-  simp [Update.regIndexLt]
-  infer_instance
+-- instance : Decidable (Update.regIndexLt x y) :=
+  -- inferInstanceAs (Decidable <|
+    -- match x, y with
+    -- | Update.w_gpr i _, Update.w_gpr j _ => i < j)
+--
+-- def Update.regIndexLtBool (x y : Update) : Bool :=
+  -- decide (x.regIndexLt y)
 
 /--
 Datastructure to represent expressions characterizing the following state
-update. Note that we ensure, by construction, that the `writes` are sorted by
-the state components.
+update.
 ```
 curr_state = writes[prev_state]
 ```
@@ -113,7 +117,7 @@ curr_state = writes[prev_state]
 structure Expr where
    curr_state : StateVar
    prev_state : StateVar
-   writes : Updates -- Sorted by the state components.
+   writes : Updates
 deriving DecidableEq, Repr, Inhabited
 
 /--
@@ -173,7 +177,8 @@ def Update.insertSorted (es : Updates) (u : Update) : Updates :=
       e :: (insertSorted rest u)
 
 /--
-Resolve any reads in `u` by looking it up in `es`.
+Resolve any reads in `u` by looking it up in `es`. Note that `es` is expected to
+be sorted.
 -/
 def Update.resolveRead (es : Updates) (u : Update) : Update :=
   match u with
@@ -188,7 +193,8 @@ def Update.resolveRead (es : Updates) (u : Update) : Update :=
       if i == gpr_idx then v else go gpr_idx rest
 
 /--
-Resolve any reads in each of `us` by looking them up in `es`.
+Resolve any reads in each of `us` by looking them up in `es`, which is expected
+to be sorted.
 -/
 def Update.resolveReads (es us : Updates) : Updates :=
   us.map (Update.resolveRead es)
@@ -198,10 +204,11 @@ Aggregate `e` and `u`, assuming `u` follows `e`.
 -/
 def Expr.aggregate1 (e u : Expr) : Expr :=
   if e.curr_state == u.prev_state then
-    let u_resolved_writes := Update.resolveReads e.writes u.writes
+    let e_sorted_writes := List.mergeSort e.writes Update.regIndexLt
+    let u_resolved_writes := Update.resolveReads e_sorted_writes u.writes
     { prev_state := e.prev_state,
       curr_state := u.curr_state,
-      writes := go e.writes u_resolved_writes }
+      writes := go e_sorted_writes u_resolved_writes }
   else
     -- We cannot aggregate two non-consecutive states, so we return the original
     -- StateUpdate here.
@@ -229,7 +236,7 @@ open Expr Update in
           writes := [w_gpr 0#5 (.var 1), w_gpr 1#5 (.var 3)] }
         { prev_state := 1,
           curr_state := 2,
-          writes := [w_gpr 1#5 (.var 1), w_gpr 2#5 (.r_gpr 1)] }
+          writes := [w_gpr 2#5 (.r_gpr 1), w_gpr 1#5 (.var 1)] }
 
 /--
 Aggregate `es` onto `init`.
@@ -266,6 +273,15 @@ info: { curr_state := 2,
 def Expr.isAggregated (init : Expr) (updates : Exprs) (final : Expr) : Bool :=
   final == aggregate init updates
 
+--
+-- #check decidable_of_decidable_of_iff
+
+-- Hint: Reduction got stuck on '▸' (Eq.rec), which suggests that one of the
+-- 'Decidable' instances is defined using tactics such as 'rw' or 'simp'. To
+-- avoid tactics, make use of functions such as 'inferInstanceAs' or
+-- 'decidable_of_decidable_of_iff' to alter a proposition.
+
+
 /-- TODO: we're probably missing well-formedness hyps. about the `ctx` and/or
   `updates` here. -/
 theorem Expr.eq_true_of_isValid (ctx : Context) (init final : Expr) (updates : Exprs) :
@@ -277,7 +293,17 @@ theorem Expr.eq_true_of_isValid (ctx : Context) (init final : Expr) (updates : E
 
 -- Tests
 
+-- set_option trace.Meta.synthInstance true in
+-- open Expr Update in
+-- theorem foo :  Expr.isAggregated
+    -- { curr_state := 0, prev_state := 0, writes := [] }
+      -- [{ curr_state := 1, prev_state := 0, writes := [w_gpr (0#5) (GPRVal.var 0), w_gpr (1#5) (GPRVal.var 1)] },
+        -- { curr_state := 2, prev_state := 1, writes := [w_gpr (0#5) (GPRVal.var 0), w_gpr (1#5) (GPRVal.var 1)] }]
+      -- { curr_state := 2, prev_state := 0, writes := [w_gpr (0#5) (GPRVal.var 0), w_gpr (1#5) (GPRVal.var 1)] } := by
+      -- decide
+
 #time
+-- set_option trace.Meta.synthInstance true in
 open Expr Update in
 theorem completely_shadowed_updates
   (h_s1 : s1 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 s0))
@@ -304,15 +330,23 @@ theorem completely_shadowed_updates
           -- updates
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] } ]
-            (Eq.refl true))
+          -- (FIXME) `by decide` or `Eq.refl true` fails below.
+            (by native_decide))
   simp only [Exprs.denote, List.foldl, true_and, and_true, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
 
 open Expr Update in
+#eval Expr.aggregate
+        { prev_state := 0, curr_state := 0, writes := []}
+        [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
+          { prev_state := 1, curr_state := 2, writes := [w_gpr 3#5 (.var 3), w_gpr 1#5 (.var 2)] } ]
+
+open Expr Update in
 theorem partially_shadowed_and_new_updates
   (h_s1 : s1 = w (.GPR 0#5) x0 (w (.GPR 1#5) old_x1 s0))
   /-
+  (NOTE) No
   (NOTE) if any instructions updates are not sorted, as is the case in `h_s2`
   below, then we run into a problem because the writes in `Expr` are sorted.
   `(h_s2 : s2 = w (.GPR 3#5) x3 (w (.GPR 1#5) x1 s1))`
@@ -324,7 +358,8 @@ theorem partially_shadowed_and_new_updates
   Therefore, for convenience, we ought to enforce that instruction updates like
   `h_s2` are sorted in the preprocessing step.
   -/
-  (h_s2 : s2 = w (.GPR 1#5) x1 (w (.GPR 3#5) x3 s1)) :
+  -- (h_s2 : s2 = w (.GPR 1#5) x1 (w (.GPR 3#5) x3 s1)) :
+  (h_s2 : s2 = w (.GPR 3#5) x3 (w (.GPR 1#5) x1 s1)) :
   s2 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 (w (.GPR 3#5) x3 s0)) := by
   have := (Expr.eq_true_of_isValid { state := [s0, s1, s2],
                                      gpr := [x0, old_x1, x1, x3] }
@@ -334,8 +369,8 @@ theorem partially_shadowed_and_new_updates
           { prev_state := 0, curr_state := 2, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 2), w_gpr 3#5 (.var 3)] }
           -- updates
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
-            { prev_state := 1, curr_state := 2, writes := [w_gpr 1#5 (.var 2), w_gpr 3#5 (.var 3)] } ]
-            (Eq.refl true))
+            { prev_state := 1, curr_state := 2, writes := [w_gpr 3#5 (.var 3), w_gpr 1#5 (.var 2)] } ]
+            (by native_decide))
   simp only [Exprs.denote, List.foldl_cons, and_true, true_and, List.foldl_nil, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
@@ -370,7 +405,7 @@ theorem read_from_prev_update_test1
           -- updates
           [ { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2, writes := [w_gpr 1#5 (.var 2), w_gpr 3#5 (.r_gpr 1)] } ]
-            (Eq.refl true))
+            (by native_decide))
   simp only [Exprs.denote, List.foldl_cons, and_true, true_and, List.foldl_nil,
     and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
@@ -394,7 +429,7 @@ theorem read_from_prev_update_test2 (s0 s1 s2 : ArmState)
               writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] },
             { prev_state := 1, curr_state := 2,
               writes := [w_gpr 1#5 (.var 2), w_gpr 3#5 (.r_gpr 5#5)] } ]
-            (Eq.refl true))
+            (by native_decide))
   simp only [Exprs.denote, List.foldl, true_and, and_true, and_imp] at this
   exact this (Eq.refl s0) h_s1 h_s2
   done
