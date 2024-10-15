@@ -13,7 +13,7 @@ namespace ArmStateNotation
 /-! We build a notation for `read_mem_bytes $n $base $s` as `$s[$base, $n]` -/
 @[inherit_doc read_mem_bytes]
 syntax:max term noWs "[" withoutPosition(term)  ","  withoutPosition(term) noWs "]" : term
-macro_rules | `($s[$base,$n]) => `(read_mem_bytes $n $base $s)
+macro_rules | `($s[$base,$n]) => `(Memory.read_bytes $n $base (ArmState.mem $s))
 
 
 /-! Notation to specify the frame condition for non-memory state components. E.g.,
