@@ -110,36 +110,8 @@ def mkGoalWithOnlyUserHyps (g : MVarId) (userHyps? : Option (Array UserHyp)) : M
       let mut g := g
       for h in hyps do
         if !keepHyps.contains h then
-          g ← g.clear h
+          g ← g.withContext <| g.clear h
       return g
-
-def memOmega' (g : MVarId) : MemOmegaM Unit := do
-  g.withContext do
-    /- We need to explode all pairwise separate hyps -/
-    let rawHyps ← getLocalHyps
-    let mut hyps := #[]
-    -- extract out structed values for all hyps.
-    for h in rawHyps do
-      hyps ← hypothesisOfExpr h hyps
-
-    -- only enable pairwise constraints if it is enabled.
-    let isPairwiseEnabled := (← readThe Context).cfg.explodePairwiseSeparate
-    hyps := hyps.filter (!·.isPairwiseSeparate || isPairwiseEnabled)
-
-    -- used specialized procedure that doesn't unfold everything for the easy case.
-    if ← closeMemSideCondition g (← readThe Context).bvToNatSimpCtx (← readThe Context).bvToNatSimprocs hyps then
-      return ()
-    else
-      -- in the bad case, just rip through everything.
-      let (_, g) ← Hypothesis.addOmegaFactsOfHyps g hyps.toList #[]
-
-      TacticM.withTraceNode' m!"Reducion to omega" do
-        try
-          TacticM.traceLargeMsg m!"goal (Note: can be large)"  m!"{g}"
-          omega g (← readThe Context).bvToNatSimpCtx (← readThe Context).bvToNatSimprocs
-          trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
-        catch e =>
-          trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
 
 def memOmega (g : MVarId) : MemOmegaM Unit := do
     let g ← mkGoalWithOnlyUserHyps g (← readThe Context).userHyps? 
@@ -168,6 +140,7 @@ def memOmega (g : MVarId) : MemOmegaM Unit := do
             trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
           catch e =>
             trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
+            throw e
 
 -- syntax memOmegaRule := term
 
