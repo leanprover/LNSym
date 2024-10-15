@@ -10,7 +10,7 @@ import Arm.Memory.Separate
 
 namespace ArmStateNotation
 
-/-! We build a notation for `read_mem_bytes $n $base $s` as `$s[$base, $n]` -/
+/-! We build a notation for `$s.mem.read_bytes $n $base $s` as `$s[$base, $n]` -/
 @[inherit_doc read_mem_bytes]
 syntax:max term noWs "[" withoutPosition(term)  ","  withoutPosition(term) noWs "]" : term
 macro_rules | `($s[$base,$n]) => `(Memory.read_bytes $n $base (ArmState.mem $s))
