@@ -16,7 +16,7 @@ set_option bv.ac_nf false
 abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 
-set_option maxRecDepth 1000000 in
+set_option maxRecDepth 8000 in
 -- set_option profiler true in
 theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_init_v8_program)
@@ -39,8 +39,8 @@ set_option maxHeartbeats 500000 in
 set_option sat.timeout 120 in
 -- set_option pp.deepTerms true in
 -- set_option pp.maxSteps 10000 in
-set_option trace.profiler true in
-set_option linter.unusedVariables false in
+-- set_option trace.profiler true in
+-- set_option linter.unusedVariables false in
 -- set_option profiler true in
 theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_init_v8_program)
@@ -93,12 +93,13 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   --    unable to be reflected
   sym_n 152
   simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
+  apply And.intro  
+  · bv_decide
+  · sorry
   -- [Shilpi] Commenting out the following because the CI fails with 
   -- "INTERNAL PANIC: out of memory"
   /-
-  apply And.intro  
-  · bv_decide
-  · simp only
+    simp only
     [shift_left_common_aux_64_2
     , shift_right_common_aux_64_2_tff
     , shift_right_common_aux_32_4_fff
@@ -120,4 +121,4 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     -- bv_check "GCMInitV8Sym.lean-GCMInitV8Program.gcm_init_v8_program_correct-117-4.lrat"
     -- TODO: proof works in vscode but timeout in the CI -- need to investigate further
     -/
-    sorry
+
