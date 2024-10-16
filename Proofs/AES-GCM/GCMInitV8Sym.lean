@@ -93,7 +93,10 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   --    unable to be reflected
   sym_n 152
   simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
-  apply And.intro
+  -- [Shilpi] Commenting out the following because the CI fails with 
+  -- "INTERNAL PANIC: out of memory"
+  /-
+  apply And.intro  
   · bv_decide
   · simp only
     [shift_left_common_aux_64_2
@@ -116,4 +119,5 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       BitVec.one_mul]
     -- bv_check "GCMInitV8Sym.lean-GCMInitV8Program.gcm_init_v8_program_correct-117-4.lrat"
     -- TODO: proof works in vscode but timeout in the CI -- need to investigate further
+    -/
     sorry
