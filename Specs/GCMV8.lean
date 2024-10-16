@@ -42,12 +42,11 @@ def pmult (x: BitVec (m + 1)) (y : BitVec (n + 1)) : BitVec (m + n + 1) :=
     | j + 1 =>
       let acc := acc <<< 1
       let tmp := if getMsbD y (n + 1 - i)
-                 then (BitVec.zero n) ++ x
-                 else BitVec.zero (n + (m + 1))
-      have h : m + n + 1 = n + (m + 1) := by omega
-      let acc := (BitVec.cast h acc) ^^^ tmp
-      pmultTR x y j (BitVec.cast h.symm acc)
-  pmultTR x y (n + 1) (BitVec.zero (m + n + 1))
+                 then partInstall 0 (m + 1) x 0#(m + n + 1)
+                 else 0#(m + n + 1)
+      let acc := acc ^^^ tmp
+      pmultTR x y j acc
+  pmultTR x y (n + 1) 0#(m + n + 1)
 
 example: pmult 0b1101#4 0b10#2 = 0b11010#5 := rfl
 

@@ -75,6 +75,18 @@ theorem container_size_dvd_datasize (x : BitVec 2) (q : BitVec 1) :
     repeat trivial
     done
 
+/--
+Vector instruction `REV64` that reverses the order of 1-byte elements in each
+64-bit slice of the 128-bit input.
+
+Ref.:
+https://developer.arm.com/documentation/ddi0602/2024-06/SIMD-FP-Instructions/REV64--Reverse-elements-in-64-bit-doublew
+-/
+def vrev128_64_8 (x : BitVec 128) : BitVec 128 :=
+  rev_vector 128 64 8 x
+    (by decide) (by decide) (by decide)
+    (by decide) (by decide)
+
 @[state_simp_rules]
 def exec_advanced_simd_two_reg_misc
   (inst : Advanced_simd_two_reg_misc_cls) (s : ArmState) : ArmState :=
@@ -100,12 +112,20 @@ def exec_advanced_simd_two_reg_misc
     have h4 : container_size <= datasize := by
       refine Nat.le_of_dvd ?h h2; simp [datasize]; split <;> trivial
     let operand := read_sfp datasize inst.Rn s
-    let result :=
-      match inst.U, inst.opcode with
-      | 0#1, 0b00000#5    -- REV64
+    let result : Option (BitVec datasize) :=
+      -- (FIXME) Define wrappers around `rev_vector` (like
+      -- `vrev128_64_8`) to see cleaner terms during proofs.
+        match inst.U, inst.opcode with
+      | 0#1, 0b00000#5 => -- REV64
+        if h_vrev128_64_8 : datasize = 128 ∧ container_size = 64 ∧ esize = 8 then
+            have h_datasize : datasize = 128 := by simp_all only
+            some ((vrev128_64_8 (operand.cast h_datasize)).cast h_datasize.symm)
+          else
+            some (rev_vector datasize container_size esize operand
+                  h3 h0' h4 h1 h2)
       | 0#1, 0b00001#5    -- REV16
       | 1#1, 0b00000#5 => -- REV32
-        some (rev_vector datasize container_size esize operand
+          some (rev_vector datasize container_size esize operand
                h3 h0' h4 h1 h2)
       | _, _ => none
     -- State Updates
