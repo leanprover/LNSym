@@ -50,19 +50,24 @@ def pmult (x: BitVec (m + 1)) (y : BitVec (n + 1)) : BitVec (m + n + 1) :=
 
 example: pmult 0b1101#4 0b10#2 = 0b11010#5 := rfl
 
-/-- Degree of x. -/
-private def degree (x : BitVec n) : Nat :=
-  let rec degreeTR (x : BitVec n) (n : Nat) : Nat :=
+/-- Degree of x. Defined using non-ite statements. -/
+def degree (x : BitVec n) : Nat :=
+  let rec degreeTR (x : BitVec n) (n : Nat) (i : Nat) (acc : Nat) : Nat :=
     match n with
-    | 0 => 0
+    | 0 => acc
     | m + 1 =>
-      if getLsbD x n then n else degreeTR x m
-  degreeTR x (n - 1)
-example: GCMV8.degree 0b0101#4 = 2 := rfl
+    let is_one := extractLsb' 0 1 (x &&& 1)
+    degreeTR (x >>> 1) m (i + 1) (acc + is_one.toNat * (i - acc))
+  degreeTR x n 0 0
 
-/-- Subtract x from y if y's x-degree-th bit is 1. -/
-private def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
-  if getLsbD y (GCMV8.degree x) then y ^^^ x else y
+example: GCMV8.degree 0b0101#4 = 2 := rfl
+example: GCMV8.degree 0b1101#4 = 3 := rfl
+
+/-- Subtract x from y if y's x-degree-th bit is 1.
+    Defined using non-ite statements. -/
+def reduce (x : BitVec n) (y : BitVec n) : BitVec n :=
+  let is_one := (y >>> (GCMV8.degree x)) &&& 1
+  y ^^^ (is_one * x)
 
 /-- Performs division of polynomials over GF(2). -/
 def pdiv (x: BitVec n) (y : BitVec m): BitVec n :=
@@ -83,16 +88,16 @@ example : pdiv 0b1101#4 0b10#2 = 0b110#4 := rfl
 example : pdiv 0x1a#5 0b10#2 = 0b1101#5 := rfl
 example : pdiv 0b1#1 0b10#2 = 0b0#1 := rfl
 
-/-- Performs modulus of polynomials over GF(2). -/
+/-- Performs modulus of polynomials over GF(2).
+    Defined using non-ite statements.-/
 def pmod (x : BitVec n) (y : BitVec (m + 1)) (H : 0 < m) : BitVec m :=
   let rec pmodTR (x : BitVec n) (y : BitVec (m + 1)) (p : BitVec (m + 1))
     (i : Nat) (r : BitVec m) (H : 0 < m) : BitVec m :=
     match i with
     | 0 => r
     | j + 1 =>
-      let xi := getLsbD x (n - i)
-      let tmp :=
-        if xi then extractLsb' 0 m p else BitVec.zero m
+      let is_one := extractLsb' 0 m ((x >>> (n - i)) &&& 1)
+      let tmp := is_one * extractLsb' 0 m p
       let r := r ^^^ tmp
       pmodTR x y (GCMV8.reduce y (p <<< 1)) j r H
   if y = 0 then 0 else pmodTR x y (GCMV8.reduce y 1) n (BitVec.zero m) H
@@ -127,7 +132,7 @@ def refpoly : BitVec 129 := 0x1C2000000000000000000000000000001#129
   See Remark 5 in paper
     "A New Interpretation for the GHASH Authenticator of AES-GCM"
 -/
-private def gcm_init_H (H : BitVec 128) : BitVec 128 :=
+def gcm_init_H (H : BitVec 128) : BitVec 128 :=
   pmod (H ++ 0b0#1) refpoly (by omega)
 
 def gcm_polyval_mul (x : BitVec 128) (y : BitVec 128) : BitVec 256 :=
@@ -219,7 +224,7 @@ example : GCMGmultV8 0x1099f4b39468565ccdd297a9df145877#128
     0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ] := rfl
 
 
-private def gcm_ghash_block (H : BitVec 128) (Xi : BitVec 128)
+def gcm_ghash_block (H : BitVec 128) (Xi : BitVec 128)
   (inp : BitVec 128) : BitVec 128 :=
   let H := (lo H) ++ (hi H)
   GCMV8.gcm_polyval H (Xi ^^^ inp)
