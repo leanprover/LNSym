@@ -47,15 +47,15 @@ structure SymContext where
   If `runSteps?` is `some n`, where `n` is a meta-level `Nat`,
   then we expect that `<runSteps>` in type of `h_run` is the literal `n`.
   Otherwise, if `runSteps?` is `none`,
-  then `<runSteps>` is allowed to be anything, even a symbolic value.
+  then `<runSteps>` is allowed to be anything, including a symbolic value.
 
   See also `SymContext.h_run` -/
   runSteps? : Option Nat
-  /-- `h_run` is a local hypothesis of the form
-    `finalState = run <runSteps> state`
+  /-- `hRun` is an expression of type
+    `<finalState> = run <runSteps> state`
 
   See also `SymContext.runSteps?` -/
-  h_run : Name
+  hRun : Expr
   /-- `programInfo` is the relevant cached `ProgramInfo` -/
   programInfo : ProgramInfo
 
@@ -164,19 +164,33 @@ def findFromUserName (name : Name) : MetaM LocalDecl :=
       | throwError "Unknown local variable `{name}`"
     return decl
 
-/-- Find the local declaration that corresponds to `c.h_run`,
-or throw an error if no local variable of that name exists -/
-def hRunDecl : MetaM LocalDecl := do
-  findFromUserName c.h_run
-
 section MonadicGetters
 variable {m} [Monad m] [MonadReaderOf SymContext m]
 
 def getCurrentStateNumber : m Nat := do return (← read).currentStateNumber
 
-/-- Return the name of the hypothesis
-  `h_run : <finalState> = run <runSteps> <initialState>` -/
-def getHRunName : m Name := do return (← read).h_run
+/-- Return an expression of type
+  `<finalState> = run <runSteps> <initialState>` -/
+def getHRun : m Expr := do return (← read).hRun
+
+/-- Return the `Name` of a variable of type
+  `<finalState> = run <runSteps> <initialState>`
+
+This will return the name of `hRun`, if its an fvar.
+Otherwise, add a new variable to the local context, and return the new name.
+Note that `hRun` is not modified in either case. -/
+def getHRunName [MonadLiftT TacticM m] [MonadLiftT MetaM m] [MonadError m]
+    [MonadLCtx m] :
+    m Name := do
+  let hRun ← getHRun
+  if let Expr.fvar id := hRun then
+    let some decl := (← getLCtx).find? id
+      | throwError "Unknown fvar {Expr.fvar id}"
+    return decl.userName
+  else
+    let ⟨_id, goal⟩ ← (← getMainGoal).note `h_run hRun none
+    replaceMainGoal [goal]
+    return `h_run
 
 /-- Retrieve the name for the next state
 
@@ -196,11 +210,9 @@ end
 /-- Convert a `SymContext` to `MessageData` for tracing.
 This is not a `ToMessageData` instance because we need access to `MetaM` -/
 def toMessageData (c : SymContext) : MetaM MessageData := do
-  let h_run ← userNameToMessageData c.h_run
-
   return m!"\{ finalState := {c.finalState},
   runSteps? := {c.runSteps?},
-  h_run := {h_run},
+  hRun := {c.hRun},
   program := {c.program},
   pc := {c.pc},
   state_prefix := {c.state_prefix},
@@ -253,7 +265,7 @@ private def initial (state : Expr) : MetaM SymContext := do
   return {
     finalState
     runSteps? := none
-    h_run := `dummyValue
+    hRun := ← mkFreshExprMVar none
     programInfo := {
       name := `dummyValue
       instructions := ∅
@@ -322,7 +334,7 @@ protected def searchFor : SearchLCtxForM SymM Unit := do
       (from {hRun.toExpr} : {hRun.type})"
 
   modifyThe SymContext ({ · with
-    h_run := hRun.userName
+    hRun := hRun.toExpr
     finalState := ←instantiateMVars c.finalState
     runSteps?
   })
