@@ -21,9 +21,8 @@ structure MemoryEffects where
   effects : Expr
   /-- An expression that contains the proof of:
     ```lean
-    ∀ n addr,
-      read_mem_bytes n addr <currentState>
-      = read_mem_bytes n addr <all memory effects so far, e.g. (write_mem_bytes n addr val s₀)>
+    <currentState>.mem
+    = <all memory effects so far, e.g. (write_mem_bytes n addr val s₀)>.mem
     ``` -/
   proof : Expr
 deriving Repr
@@ -44,13 +43,8 @@ initial `state` -/
 def initial (state : Expr) : MemoryEffects where
   effects := state
   proof :=
-    -- `fun n addr => rfl`
-    mkLambda `n .default (mkConst ``Nat) <|
-      let bv64 := mkApp (mkConst ``BitVec) (toExpr 64)
-      mkLambda `addr .default bv64 <|
-        mkApp2 (.const ``Eq.refl [1])
-          (mkApp (mkConst ``BitVec) <| mkNatMul (.bvar 1) (toExpr 8))
-          (mkApp3 (mkConst ``read_mem_bytes) (.bvar 1) (.bvar 0) state)
+    -- `rfl`
+    mkEqReflMemory (mkApp (mkConst ``ArmState.mem) state)
 
 /-- Update the memory effects with a memory write -/
 def updateWriteMem (eff : MemoryEffects) (currentState : Expr)
@@ -58,8 +52,8 @@ def updateWriteMem (eff : MemoryEffects) (currentState : Expr)
     MetaM MemoryEffects := do
   let effects := mkApp4 (mkConst ``write_mem_bytes) n addr val eff.effects
   let proof :=
-    -- `read_mem_bytes_write_mem_bytes_of_read_mem_eq <memoryEffectProof> ...`
-    mkAppN (mkConst ``read_mem_bytes_write_mem_bytes_of_read_mem_eq)
+    -- `mem_write_mem_bytes_of_mem_eq <memoryEffectProof> ...`
+    mkAppN (mkConst ``mem_write_mem_bytes_of_mem_eq)
       #[currentState, eff.effects, eff.proof, n, addr, val]
   return { effects, proof }
 
@@ -70,8 +64,8 @@ we need to update proofs -/
 def updateWrite (eff : MemoryEffects) (currentState : Expr)
     (fld val : Expr) :
     MetaM MemoryEffects := do
-  let proof := -- `read_mem_bytes_w_of_read_mem_eq ...`
-    mkAppN (mkConst ``read_mem_bytes_w_of_read_mem_eq)
+  let proof := -- `mem_w_of_mem_eq ...`
+    mkAppN (mkConst ``mem_w_of_mem_eq)
       #[currentState, eff.effects, eff.proof, fld, val]
   return { eff with proof }
 

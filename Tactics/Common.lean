@@ -280,6 +280,10 @@ def Lean.Expr.eqReadField? (e : Expr) : Option (Expr × Expr × Expr) := do
 /-- Return the expression for `Memory` -/
 def mkMemory : Expr := mkConst ``Memory
 
+/-- Return a proof of type `x = x`, where `x : Memory` -/
+def mkEqReflMemory (x : Expr) : Expr :=
+  mkApp2 (.const ``Eq.refl [1]) mkMemory x
+
 /-! ## Expr Helpers -/
 
 /-- Throw an error if `e` is not of type `expectedType` -/
