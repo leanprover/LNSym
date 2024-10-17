@@ -30,6 +30,24 @@ def binary_vector_op_aux (e : Nat) (elems : Nat) (esize : Nat)
     binary_vector_op_aux (e + 1) elems esize op x y result
   termination_by (elems - e)
 
+theorem binary_vector_op_aux_of_lt {n} {e elems} (h : e < elems) (esize op)
+    (x y result : BitVec n) :
+    binary_vector_op_aux e elems esize op x y result
+    = let element1 := elem_get x e esize
+      let element2 := elem_get y e esize
+      let elem_result := op element1 element2
+      let result := elem_set result e esize elem_result
+      binary_vector_op_aux (e + 1) elems esize op x y result := by
+  conv => { lhs; unfold binary_vector_op_aux }
+  have : ¬(elems ≤ e) := by omega
+  simp only [this, ↓reduceIte]
+
+theorem binary_vector_op_aux_of_not_lt {n} {e elems} (h : ¬(e < elems))
+    (esize op) (x y result : BitVec n) :
+    binary_vector_op_aux e elems esize op x y result = result := by
+  unfold binary_vector_op_aux
+  simp only [ite_eq_left_iff, Nat.not_le, h, false_implies]
+
 /--
   Perform pairwise op on esize-bit slices of x and y
 -/
