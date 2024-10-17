@@ -118,7 +118,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       Nat.zero_mod, Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul,
       Nat.reduceSub, BitVec.reduceMul, BitVec.reduceXOr, BitVec.mul_one, Nat.add_one_sub_one,
       BitVec.one_mul]
-    -- bv_check "GCMInitV8Sym.lean-GCMInitV8Program.gcm_init_v8_program_correct-117-4.lrat"
+    -- bv_check "lrat_files/GCMInitV8Sym.lean-GCMInitV8Program.gcm_init_v8_program_correct-117-4.lrat"
     -- TODO: proof works in vscode but timeout in the CI -- need to investigate further
     -/
 

@@ -9,6 +9,7 @@ import Arm.Cfg.Cfg
 import Tests.«AES-GCM».GCMGhashV8Program
 import Tests.«AES-GCM».GCMGmultV8Program
 import Tests.«AES-GCM».GCMInitV8Program
+import Specs.GCMV8
 
 open BitVec
 
@@ -146,7 +147,7 @@ def X_before : List (BitVec 8) := List.get! X 0
 def flat_X_before := revflat X_before
 def X_after : List (BitVec 8) := List.get! X 1
 
-def gcm_gmult_final_state : ArmState :=
+def gcm_gmult_init_state : ArmState :=
   let init_gpr :=
     fun i =>
       match i with
@@ -164,12 +165,29 @@ def gcm_gmult_final_state : ArmState :=
   let s := write_mem_bytes 16 x_address flat_X_before s
   have h : 2048 = (128 * 16 / 8) * 8 := by decide
   let s := write_mem_bytes (128 * 16 / 8) Htable_address (BitVec.cast h (revflat Htable)) s
-  let final_state := run GCMGmultV8Program.gcm_gmult_v8_program.length s
-  final_state
+  s
+
+def gcm_gmult_final_state : ArmState :=
+  run GCMGmultV8Program.gcm_gmult_v8_program.length gcm_gmult_init_state
 
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address gcm_gmult_final_state
 
+example : (read_mem_bytes 16 Htable_address gcm_gmult_init_state)
+          = (extractLsb' 0 128 (BitVec.revflat Htable)) := by
+          native_decide
+
 example : final_hash = revflat X_after := by native_decide
+
+example : rev_elems 128 8
+            (GCMV8.GCMGmultV8_alt
+              (read_mem_bytes 16 Htable_address gcm_gmult_init_state)
+              (rev_elems 128 8
+                  (read_mem_bytes 16 x_address gcm_gmult_init_state)
+                  (by decide) (by decide)))
+            (by decide) (by decide) =
+          final_hash := by
+  native_decide
+
 example : read_err gcm_gmult_final_state = StateError.None := by native_decide
 
 end GCMGmultV8ProgramTest

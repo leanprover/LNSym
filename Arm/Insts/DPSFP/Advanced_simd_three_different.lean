@@ -34,6 +34,17 @@ def polynomial_mult_aux (i : Nat) (result : BitVec (m+n))
     polynomial_mult_aux (i+1) new_res op1 op2
   termination_by (m - i)
 
+/-
+Ref.:
+https://developer.arm.com/documentation/ddi0602/2024-09/Shared-Pseudocode/shared-functions-vector?lang=en#impl-shared.PolynomialMult.2
+bits(M+N) PolynomialMult(bits(M) op1, bits(N) op2)
+    result = Zeros(M+N);
+    extended_op2 = ZeroExtend(op2, M+N);
+    for i=0 to M-1
+        if op1<i> == '1' then
+            result = result EOR LSL(extended_op2, i);
+    return result;
+-/
 def polynomial_mult (op1 : BitVec m) (op2 : BitVec n) : BitVec (m+n) :=
   let result := 0#(m+n)
   let extended_op2 := zeroExtend (m+n) op2

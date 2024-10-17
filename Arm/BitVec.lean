@@ -581,6 +581,24 @@ theorem extractLsb'_eq (x : BitVec n) :
   unfold extractLsb'
   simp only [Nat.shiftRight_zero, ofNat_toNat, setWidth_eq]
 
+theorem extractLsb'_zero_extractLsb'_of_le (h : len1 ≤ len2) :
+  BitVec.extractLsb' 0 len1 (BitVec.extractLsb' start len2 x) =
+  BitVec.extractLsb' start len1 x := by
+  apply BitVec.eq_of_getLsbD_eq; intro i
+  simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
+             decide_True, Nat.zero_add, Bool.true_and,
+             Bool.and_iff_right_iff_imp, decide_eq_true_eq]
+  omega
+
+theorem extractLsb'_extractLsb'_zero_of_le (h : start + len1 ≤ len2):
+  BitVec.extractLsb' start len1 (BitVec.extractLsb' 0 len2 x) =
+  BitVec.extractLsb' start len1 x := by
+  apply BitVec.eq_of_getLsbD_eq; intro i
+  simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
+            decide_True, Nat.zero_add, Bool.true_and,
+            Bool.and_iff_right_iff_imp, decide_eq_true_eq]
+  omega
+
 -- TODO: upstream
 theorem extractLsb'_or (x y : BitVec w₁) (n : Nat) :
     (x ||| y).extractLsb' lo n = (x.extractLsb' lo n ||| y.extractLsb' lo n) := by
@@ -604,7 +622,7 @@ protected theorem extractLsb'_of_setWidth (x : BitVec n) (h : j ≤ i) :
   have q : k < i := by omega
   by_cases h : decide (k ≤ j) <;> simp [q, h]
 
-theorem BitVec.extractLsb'_append (x : BitVec n) (y : BitVec m) :
+theorem extractLsb'_append (x : BitVec n) (y : BitVec m) :
     (x ++ y).extractLsb' start len
     = let len' := min len (m - start)
       (x.extractLsb' (start - m) (len - len')
@@ -628,15 +646,15 @@ theorem BitVec.extractLsb'_append (x : BitVec n) (y : BitVec m) :
       have h₅ : start - m + (↑i - (m - start)) = start + ↑i - m := by omega
       simp [h₂, h₃, h₄, h₅]
 
-theorem BitVec.cast_eq_of_heq (x : BitVec n) (y : BitVec m) (h : n = m) :
+theorem cast_eq_of_heq (x : BitVec n) (y : BitVec m) (h : n = m) :
     HEq x y → x.cast h = y := by
   cases h; simp
 
-theorem BitVec.cast_heq_iff (x : BitVec n) (y : BitVec m) (h : n = n') :
+theorem cast_heq_iff (x : BitVec n) (y : BitVec m) (h : n = n') :
     HEq (x.cast h) y ↔ HEq x y := by
   cases h; simp
 
-theorem BitVec.extractLsb'_append_right_of_le (h : start + len ≤ m)
+theorem extractLsb'_append_right_of_le (h : start + len ≤ m)
     (x : BitVec n) (y : BitVec m) :
     (x ++ y).extractLsb' start len = y.extractLsb' start len := by
   have len'_eq : min len (m - start) = len := by omega
@@ -646,12 +664,12 @@ theorem BitVec.extractLsb'_append_right_of_le (h : start + len ≤ m)
   simp only [zero_width_append, heq_eq_eq, cast_heq_iff]
 
 @[bitvec_rules]
-theorem BitVec.extractLsb'_append_right (x : BitVec n) (y : BitVec m) :
+theorem extractLsb'_append_right (x : BitVec n) (y : BitVec m) :
     (x ++ y).extractLsb' 0 m = y := by
   rw [extractLsb'_append_right_of_le (by omega), extractLsb'_eq]
 
 @[simp]
-theorem BitVec.extractLsb'_append_left_of_le (h : m ≤ start)
+theorem extractLsb'_append_left_of_le (h : m ≤ start)
     (x : BitVec n) (y : BitVec m) :
     (x ++ y).extractLsb' start len = x.extractLsb' (start - m) len := by
   have len'_eq : min len (m - start) = m - start := by omega
@@ -661,11 +679,11 @@ theorem BitVec.extractLsb'_append_left_of_le (h : m ≤ start)
   simp only [append_zero_width, heq_eq_eq, cast_heq_iff, Nat.sub_zero]
 
 @[bitvec_rules]
-theorem BitVec.extractLsb'_append_left (x : BitVec n) (y : BitVec m) :
+theorem extractLsb'_append_left (x : BitVec n) (y : BitVec m) :
     (x ++ y).extractLsb' m n = x := by
   rw [extractLsb'_append_left_of_le (by omega), Nat.sub_self, extractLsb'_eq]
 
-theorem BitVec.extractLsb'_extractLsb'_of_le {w : Nat} (start₁ len₁ start₂ len₂)
+theorem extractLsb'_extractLsb'_of_le {w : Nat} (start₁ len₁ start₂ len₂)
     (h : start₂ + len₂ ≤ len₁)
     (x : BitVec w) :
     (x.extractLsb' start₁ len₁).extractLsb' start₂ len₂
