@@ -748,6 +748,12 @@ theorem read_mem_bytes_w_of_read_mem_eq
   simp only [read_mem_bytes_of_w, h]
 
 @[state_simp_rules]
+theorem mem_w_of_mem_eq {s₁ s₂ : ArmState} (h : s₁.mem = s₂.mem) (fld val) :
+    (w fld val s₁).mem = s₂.mem := by
+  unfold w;
+  cases fld <;> exact h
+
+@[state_simp_rules]
 theorem write_mem_bytes_program {n : Nat} (addr : BitVec 64) (bytes : BitVec (n * 8)):
     (write_mem_bytes n addr bytes s).program = s.program := by
   intros
@@ -838,6 +844,9 @@ def read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) :=
     have h : n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
     BitVec.cast h (rest ++ byte)
 
+-- TODO (@bollu): we should drop the `State` namespace here, given that
+--  this namespace is used nowhere else. Also, `ArmState.read_mem_eq_mem_read`
+--  should probably live under the `Memory` namespace.
 @[memory_rules]
 theorem State.read_mem_bytes_eq_mem_read_bytes (s : ArmState) :
     read_mem_bytes n addr s = s.mem.read_bytes n addr := by
@@ -1163,13 +1172,10 @@ theorem Memory.mem_eq_iff_read_mem_bytes_eq {s₁ s₂ : ArmState} :
   · intro h _ _; rw[h]
   · exact Memory.eq_of_read_mem_bytes_eq
 
-theorem read_mem_bytes_write_mem_bytes_of_read_mem_eq
-    (h : ∀ n addr, read_mem_bytes n addr s₁ = read_mem_bytes n addr s₂)
-    (n₂ addr₂ val n₁ addr₁) :
-    read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₁)
-    = read_mem_bytes n₁ addr₁ (write_mem_bytes n₂ addr₂ val s₂) := by
-  revert n₁ addr₁
-  simp only [← Memory.mem_eq_iff_read_mem_bytes_eq] at h ⊢
+theorem mem_write_mem_bytes_of_mem_eq
+    (h : s₁.mem = s₂.mem) (n addr val) :
+    (write_mem_bytes n addr val s₁).mem
+    = (write_mem_bytes n addr val s₂).mem := by
   simp only [memory_rules, h]
 
 /- Helper lemma for `state_eq_iff_components_eq` -/

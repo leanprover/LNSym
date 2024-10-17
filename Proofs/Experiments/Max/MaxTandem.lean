@@ -194,14 +194,17 @@ theorem program.stepi_0x898_cut (s sn : ArmState)
   simp only [minimal_theory] at this
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
-  simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
-    true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
-  simp only [memory_rules, state_simp_rules]
+  simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self,
+    not_false_eq_true, true_and, List.not_mem_nil, or_self, not_false_eq_true,
+    true_and]
+  simp only [Memory.write_mem_bytes_eq_mem_write_bytes]
   simp_mem
-  rfl
+  simp only [Nat.reduceMul, BitVec.toNat_add, BitVec.toNat_ofNat, Nat.reducePow,
+    Nat.reduceMod, Nat.sub_self, BitVec.extractLsBytes_eq_self, BitVec.cast_eq,
+    and_true]
 
 /--
-info: 'MaxTandem.program.stepi_0x898_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x898_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms program.stepi_0x898_cut
 
@@ -260,6 +263,7 @@ theorem program.stepi_0x8a0_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
+  simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
   done
 
 /--
@@ -289,6 +293,7 @@ theorem program.stepi_0x8a4_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
+  simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
 
 /--
 info: 'MaxTandem.program.stepi_0x8a4_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -403,6 +408,7 @@ theorem program.stepi_0x8b0_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true]
   simp only [List.not_mem_nil, or_self, not_false_eq_true]
+  simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes, and_true]
 
 /--
 info: 'MaxTandem.program.stepi_0x8b0_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -430,6 +436,8 @@ theorem program.stepi_0x8b4_cut (s sn : ArmState)
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
   simp only [not_false_eq_true]
+  simp only [Memory.write_mem_bytes_eq_mem_write_bytes, true_and]
+  rw [Memory.read_bytes_write_bytes_same (by omega)]
 
 /--
 info: 'MaxTandem.program.stepi_0x8b4_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
@@ -483,6 +491,7 @@ theorem program.stepi_0x8bc_cut (s sn : ArmState)
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, or_false, or_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
   simp only [not_false_eq_true]
+  simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes, and_self]
 
 /--
 info: 'MaxTandem.program.stepi_0x8bc_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -506,6 +515,8 @@ theorem program.stepi_0x8c0_cut (s sn : ArmState)
   have := program.stepi_eq_0x8c0 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  simp only [Memory.write_mem_bytes_eq_mem_write_bytes]
+  rw [Memory.read_bytes_write_bytes_same (by omega)]
   simp [pcs]
 
   /--
@@ -532,6 +543,7 @@ theorem program.stepi_0x8c4_cut (s sn : ArmState)
   have := program.stepi_eq_0x8c4 h_program h_pc h_err
   simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
+  simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
   simp [pcs]
 
 /--
@@ -632,7 +644,8 @@ theorem partial_correctness :
       replace h_s2_sp : s2.sp = (s0.sp - 32#64) := by simp_all
       replace h_s2_x0 : s2.x0 = s0.x0 := by simp_all
       replace h_s2_x1 : s2.x1 = s0.x1 := by simp_all
-      replace h_s2_read_sp12 : read_mem_bytes 4 (s2.sp + 12#64) s2 = BitVec.truncate 32 s0.x0 := by simp_all
+      replace h_s2_read_sp12 : s2.mem.read_bytes 4 (s2.sp + 12#64) = BitVec.truncate 32 s0.x0 := by
+        simp_all
       clear_named [h_s1]
 
       -- 3/15
@@ -645,8 +658,8 @@ theorem partial_correctness :
       replace _h_s3_x1 : s3.x1 = s0.x1 := by simp_all
       replace h_s3_sp : s3.sp = s0.sp - 32 := by simp_all
       /- TODO: this should be s0.x0-/
-      replace h_s3_read_sp12 : read_mem_bytes 4 (s3.sp + 12#64) s3 = BitVec.truncate 32 s0.x0 := by simp_all
-      replace _h_s3_read_sp8 : read_mem_bytes 4 (s3.sp + 8#64) s3 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace h_s3_read_sp12 : s3.mem.read_bytes 4 (s3.sp + 12#64) = BitVec.truncate 32 s0.x0 := by simp_all
+      replace _h_s3_read_sp8 : s3.mem.read_bytes 4 (s3.sp + 8#64) = BitVec.truncate 32 s0.x1 := by simp_all
       clear_named [h_s2]
 
       -- 4/15
@@ -659,8 +672,8 @@ theorem partial_correctness :
       replace _h_s4_x0 : s4.x0 = s0.x0 := by simp_all
       replace h_s4_x1 : s4.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
       replace h_s4_sp : s4.sp = s0.sp - 32 := by simp_all
-      replace h_s4_read_sp12 : read_mem_bytes 4 (s4.sp + 12#64) s4 = BitVec.truncate 32 s0.x0 := by simp_all
-      replace _h_s4_read_sp8 : read_mem_bytes 4 (s4.sp + 8#64) s4 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace h_s4_read_sp12 : s4.mem.read_bytes 4 (s4.sp + 12#64) = BitVec.truncate 32 s0.x0 := by simp_all
+      replace _h_s4_read_sp8 : s4.mem.read_bytes 4 (s4.sp + 8#64) = BitVec.truncate 32 s0.x1 := by simp_all
       clear_named [h_s3]
 
       -- 5/15
@@ -673,8 +686,8 @@ theorem partial_correctness :
       replace h_s5_x0 : s5.x0 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x1) := by simp_all
       replace h_s5_x1 : s5.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
       replace h_s5_sp : s5.sp = s0.sp - 32 := by simp_all
-      replace h_s5_read_sp12 : read_mem_bytes 4 (s5.sp + 12#64) s5 = BitVec.truncate 32 s0.x0 := by simp_all
-      replace _h_s5_read_sp8 : read_mem_bytes 4 (s5.sp + 8#64) s5 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace h_s5_read_sp12 : s5.mem.read_bytes 4 (s5.sp + 12#64) = BitVec.truncate 32 s0.x0 := by simp_all
+      replace _h_s5_read_sp8 : s5.mem.read_bytes 4 (s5.sp + 8#64) = BitVec.truncate 32 s0.x1 := by simp_all
       clear_named [h_s4]
 
       -- 6/15
@@ -687,8 +700,8 @@ theorem partial_correctness :
       replace h_s6_x0 : s6.x0 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x1) := by simp_all
       replace h_s6_x1 : s6.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
       replace h_s6_sp : s6.sp = s0.sp - 32 := by simp_all
-      replace h_s6_read_sp12 : read_mem_bytes 4 (s6.sp + 12#64) s6 = BitVec.truncate 32 s0.x0 := by simp_all
-      replace _h_s6_read_sp8 : read_mem_bytes 4 (s6.sp + 8#64) s6 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace h_s6_read_sp12 : s6.mem.read_bytes 4 (s6.sp + 12#64) = BitVec.truncate 32 s0.x0 := by simp_all
+      replace _h_s6_read_sp8 : s6.mem.read_bytes 4 (s6.sp + 8#64) = BitVec.truncate 32 s0.x1 := by simp_all
       replace h_s6_c : s6.C = (AddWithCarry (s0.x0.zeroExtend 32) (~~~s0.x1.zeroExtend 32) 1#1).snd.c := by simp_all
       replace h_s6_n : s6.N = (AddWithCarry (s0.x0.zeroExtend 32) (~~~s0.x1.zeroExtend 32) 1#1).snd.n := by simp_all
       replace h_s6_v : s6.V = (AddWithCarry (s0.x0.zeroExtend 32) (~~~s0.x1.zeroExtend 32) 1#1).snd.v := by simp_all
@@ -705,8 +718,8 @@ theorem partial_correctness :
       replace h_s7_x0 : s7.x0 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x1) := by simp_all
       replace h_s7_x1 : s7.x1 = BitVec.zeroExtend 64 (BitVec.truncate 32 s0.x0) := by simp_all
       replace h_s7_sp : s7.sp = s0.sp - 32 := by simp_all
-      replace h_s7_read_sp12 : read_mem_bytes 4 ((s0.sp - 32#64) + 12#64) s7 = BitVec.truncate 32 s0.x0 := by simp_all
-      replace h_s7_read_sp8 : read_mem_bytes 4 ((s0.sp - 32#64) + 8#64) s7 = BitVec.truncate 32 s0.x1 := by simp_all
+      replace h_s7_read_sp12 : s7.mem.read_bytes 4 ((s0.sp - 32#64) + 12#64) = BitVec.truncate 32 s0.x0 := by simp_all
+      replace h_s7_read_sp8 : s7.mem.read_bytes 4 ((s0.sp - 32#64) + 8#64) = BitVec.truncate 32 s0.x1 := by simp_all
       have h_s7_s6_c := h_s6_c
       have h_s7_s6_n := h_s6_n
       have h_s7_s6_v := h_s6_v
@@ -760,7 +773,7 @@ theorem partial_correctness :
       obtain ⟨h_s3_cut, h_s3_pc, h_s3_err, h_s3_program, h_s3_x0, h_s3_sp_28, h_s3_sp, h_s3_sp_aliged⟩ := h
       rw [Correctness.snd_cassert_of_not_cut h_s3_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next _ = run 1 _ by rfl]
-      replace h_s3_sp_28 : read_mem_bytes 4 (s3.sp + 28#64) s3 = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
+      replace h_s3_sp_28 : s3.mem.read_bytes 4 (s3.sp + 28#64) = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
       replace h_s3_sp : s3.sp = s0.sp - 32#64 := by simp_all
       clear_named [h_s2, h_s1]
 
@@ -770,7 +783,7 @@ theorem partial_correctness :
       rw [Correctness.snd_cassert_of_not_cut (si := s4) (by simp_all [Spec'.cut])];
       simp [show Sys.next _ = run 1 _ by rfl]
       have h_s4_sp : s4.sp = s0.sp - 32#64 := by simp_all
-      have h_s4_sp_28 : read_mem_bytes 4 (s4.sp + 28#64) s4 = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
+      have h_s4_sp_28 : s4.mem.read_bytes 4 (s4.sp + 28#64) = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
       clear_named [h_s3]
 
       -- 5/15
@@ -778,7 +791,7 @@ theorem partial_correctness :
       obtain h_s5 := program.stepi_0x8c4_cut s4 s5 (by simp_all) (by simp_all) (by simp_all) (by simp_all) (h_run.symm)
       rw [Correctness.snd_cassert_of_not_cut (si := s5) (by simp_all [Spec'.cut])];
       have h_s5_x0 : s5.x0 = BitVec.zeroExtend 64 (BitVec.zeroExtend 32 (spec s0.x0 s0.x1)) := by
-        simp only [show s5.x0 = BitVec.zeroExtend 64 (read_mem_bytes 4 (s5.sp + 28#64) s5) by simp_all]
+        simp only [show s5.x0 = BitVec.zeroExtend 64 (s5.mem.read_bytes 4 (s5.sp + 28#64)) by simp_all]
         simp only [Nat.reduceMul]
         /- Damn, that the rewrite system is not confluent really messes me up over here ;_;
         `simp` winds up rewriting `s5.sp` into `s4.sp` first because of the rule, and
@@ -786,10 +799,11 @@ theorem partial_correctness :
         One might say that this entire proof is stupid, but really, I 'just' want it to build an
         e-graph and figure it out.
          -/
-        have : (read_mem_bytes 4 (s5.sp + 28#64) s5) = read_mem_bytes 4 (s4.sp + 28#64) s4 := by
+        have : (s5.mem.read_bytes 4 (s5.sp + 28#64)) = read_mem_bytes 4 (s4.sp + 28#64) s4 := by
           obtain ⟨_, _, _, _, _, _, h, _⟩ := h_s5
           exact h
-        simp [this]
+        simp only [this, Memory.State.read_mem_bytes_eq_mem_read_bytes,
+          BitVec.truncate_eq_setWidth]
         rw [h_s4_sp_28]
       simp [show Sys.next _ = run 1 _ by rfl]
 
@@ -822,7 +836,7 @@ theorem partial_correctness :
       obtain ⟨h_s3_cut, h_s3_pc, h_s3_err, h_s3_program, h_s3_x0, h_s3_sp, h_s3_sp_aliged⟩ := h
       rw [Correctness.snd_cassert_of_not_cut h_s3_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next _ = run 1 _ by rfl]
-      replace h_s3_sp_28 : read_mem_bytes 4 (s3.sp + 28#64) s3 = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
+      replace h_s3_sp_28 : s3.mem.read_bytes 4 (s3.sp + 28#64) = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
       replace h_s3_sp : s3.sp = s0.sp - 32#64 := by simp_all
       clear_named [h_s2, h_s1]
 
@@ -832,7 +846,7 @@ theorem partial_correctness :
       rw [Correctness.snd_cassert_of_not_cut (si := s4) (by simp_all [Spec'.cut])];
       simp [show Sys.next _ = run 1 _ by rfl]
       have h_s4_sp : s4.sp = s0.sp - 32#64 := by simp_all
-      have h_s4_sp_28 : read_mem_bytes 4 (s4.sp + 28#64) s4 = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
+      have h_s4_sp_28 : s4.mem.read_bytes 4 (s4.sp + 28#64) = BitVec.zeroExtend 32 (spec s0.x0 s0.x1) := by simp_all
       clear_named [h_s3]
 
       -- 6/15
