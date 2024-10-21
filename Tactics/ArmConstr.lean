@@ -204,8 +204,10 @@ private theorem denote_writes_sorted_helper
 
 /--
 Sorting `Updates xs` using `Update.regIndexLe` is immaterial to their denotation
-over `StateVar s`.
-
+over `StateVar s`. This is because sorting preserves the order of shadowed
+updates in `xs`, which means that the most recent one appears first in the
+sorted list (see `w_of_w_shadow`); changing the order of independent updates
+does not affect the semantics (see, e.g., `w_of_w_gpr_commute`).
 -/
 @[local simp]
 theorem denote_writes_sorted :
@@ -262,8 +264,8 @@ def Expr.default : Expr :=
 /--
 Insert `u`, which comes after `es`, at an appropriate safe point in `es`.
 
-Note that `u` only changes `es` only if it shadows some update in it.
-Independent updates are unaffected.
+Note that `u` only changes `es` only if the former shadows some update in the
+latter. Independent updates are unaffected.
 -/
 def Update.insertSorted (es : Updates) (u : Update) : Updates :=
   match es with
@@ -373,10 +375,13 @@ def Expr.aggregate1 (e u : Expr) : Expr :=
     let u_resolved_writes := Update.resolveReads e_sorted_writes u.writes
     { prev_state := e.prev_state,
       curr_state := u.curr_state,
+      -- In principle, we can simply append `u_resolved_writes` to
+      -- `e_sorted_writes`. However, it is prudent to weed out shadowed updates
+      -- to keep the size of the update nest in check.
       writes := go e_sorted_writes u_resolved_writes }
   else
     -- We cannot aggregate two non-consecutive states, so we return the original
-    -- StateUpdate here.
+    -- Expr here.
     -- TODO: We should probably throw an error here.
     e
  where go (es us : Updates) : Updates :=
