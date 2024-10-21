@@ -52,7 +52,7 @@ def generate_theorem_statement(nsteps):
     return f"open Expr Update in \
              \ntheorem test_{nsteps}_steps (s0 : ArmState)\n{step_hyps}  :\
              \n  s{nsteps} = <xxxx> := by\
-             \n    have := (Expr.eq_true_of_isValid \
+             \n    have := (Expr.eq_true_of_denote \
              \n            -- Context \
              \n            {{ state := {state_vars}, \
              \n               gpr := {gpr_vars} }} \
@@ -82,4 +82,4 @@ def generate_theorem_statement(nsteps):
 #     
 
 val_count = 0
-print (generate_theorem_statement(10)) 
+print (generate_theorem_statement(40)) 
