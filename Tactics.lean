@@ -10,3 +10,4 @@ import «Tactics».StepThms
 import «Tactics».Rename
 import «Tactics».Name
 import «Tactics».ClearNamed
+import «Tactics».ArmConstr
