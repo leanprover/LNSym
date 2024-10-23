@@ -19,12 +19,12 @@ open Sym (withTraceNode withInfoTraceNode)
 
 /-- A wrapper around `evalTactic` that traces the passed tactic script,
 executes those tactics, and then traces the new goal state -/
-private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
+def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
   withTraceNode m!"running: {tactic}" <| do
     evalTactic tactic
     trace[Tactic.sym] "new goal state:\n{← getGoals}"
 
-private def Sym.traceHeartbeats (header : Option String := none) :=
+def Sym.traceHeartbeats (header : Option String := none) :=
   _root_.traceHeartbeats `Tactic.sym.heartbeats header
 open Sym (traceHeartbeats)
 
@@ -291,7 +291,7 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
       prepareForNextStep
 
       let goal ← getMainGoal
-      let goal ← goal.clear hStep.fvarId
+      -- let goal ← goal.clear hStep.fvarId
       replaceMainGoal [goal]
 
       traceHeartbeats

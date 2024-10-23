@@ -10,7 +10,9 @@ import Tactics.StepThms
 -- set_option trace.gen_step.debug.heartBeats true in
 -- set_option trace.gen_step.print_names true in
 set_option maxHeartbeats 2000000 in
+#time
 #genStepEqTheorems SHA512.program
+
 
 /--
 info: SHA512.program.stepi_eq_0x126c90 {s : ArmState} (h_program : s.program = SHA512.program)

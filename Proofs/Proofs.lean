@@ -8,7 +8,7 @@ import «Proofs».«SHA512».SHA512
 import Proofs.«AES-GCM».GCM
 import Proofs.Popcount32
 
-/- Experiments we use to test proof strategies and automation ideas. -/
+-- /- Experiments we use to test proof strategies and automation ideas. -/
 import Proofs.Experiments.Summary1
 import Proofs.Experiments.MemoryAliasing
 import Proofs.Experiments.SHA512MemoryAliasing
