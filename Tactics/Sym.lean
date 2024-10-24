@@ -166,7 +166,7 @@ def unfoldRun (whileTac : Unit → TacticM Unit) : SymReaderM Unit := do
 add the relevant hypotheses to the local context, and
 store an `AxEffects` object with the newly added variables in the monad state
 -/
-def explodeStep (hStep : Expr) : SymM Unit :=
+def explodeStep (hStep : Expr) (blockSize : Nat := 1) : SymM Unit :=
   withMainContext' <|
   withTraceNode m!"explodeStep {hStep}" (tag := "explodeStep") <| do
     let c ← getThe SymContext
@@ -197,7 +197,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
 
           if let some subGoal := subGoal? then
             trace[Tactic.sym] "subgoal got simplified to:\n{subGoal}"
-            subGoal.setTag (.mkSimple s!"h_{← getNextStateName}_sp_aligned")
+            subGoal.setTag (.mkSimple s!"h_{← getNextStateName blockSize}_sp_aligned")
             appendGoals [subGoal]
           else
             trace[Tactic.sym] "subgoal got closed by simplification"
@@ -210,7 +210,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
       if ←(getBoolOption `Tactic.sym.debug) then
         eff.validate
 
-      let eff ← eff.addHypothesesToLContext s!"h_{← getNextStateName}_"
+      let eff ← eff.addHypothesesToLContext s!"h_{← getNextStateName blockSize}_"
       withMainContext' <| do
         let simpThms ← eff.toSimpTheorems
         modifyThe SymContext (·.addSimpTheorems simpThms)

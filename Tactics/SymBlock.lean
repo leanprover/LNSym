@@ -62,22 +62,6 @@ def blockiTac (blockiEq : Expr) (hBlock : Name) : SymReaderM Unit := fun ctx =>
 
 end blockiTac
 
-def prepareForNextStep' (n : Nat) : SymM Unit := do
-  withInfoTraceNode "prepareForNextStep'" (tag := "prepareForNextStep'") <| do
-    let pc ← do
-      let { value, ..} ← AxEffects.getFieldM .PC
-      try
-        reflectBitVecLiteral 64 value
-      catch err =>
-        trace[Tactic.sym] "failed to reflect PC: {err.toMessageData}"
-        pure <| (← getThe SymContext).pc + 4
-
-    modifyThe SymContext (fun c => { c with
-      pc
-      runSteps?   := (· - n) <$> c.runSteps?
-      currentStateNumber := c.currentStateNumber + n
-    })
-
 /--
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
@@ -91,17 +75,17 @@ def sym_block1 (blockSize stepsLeft : Nat) : SymM Unit := do
   withMainContext' do
     withInfoTraceNode "verbose context" (tag := "infoDump") <| do
       traceSymContext
-      trace[Tactic.sym] "Goal state:\n {← getMainGoal}"
+      trace[Tactic.sym.info] "Goal state:\n {← getMainGoal}"
 
     let blocki_eq := Lean.mkIdent (.mkSimple s!"blocki_{← getCurrentStateName}")
-    let h_block   := Lean.mkIdent (.mkSimple s!"h_block_{stateNumber + blockSize - 1}")
+    let h_block   := Lean.mkIdent (.mkSimple s!"h_block_{stateNumber + blockSize}")
 
     -- unfoldRun (fun _ => evalTacticAndTrace whileTac)
 
     -- Add new state to local context
     withTraceNode "initNextBlock" (tag := "initNextBlock") <| do
       let hRunId      := mkIdent <|← getHRunName
-      let nextStateId := mkIdent <|← getNextStateName
+      let nextStateId := mkIdent <|← getNextStateName blockSize
       let block_size : TSyntax `num := quote blockSize
       let steps_left : TSyntax `num := quote stepsLeft
       evalTacticAndTrace <|← `(tactic|
@@ -131,7 +115,7 @@ def sym_block1 (blockSize stepsLeft : Nat) : SymM Unit := do
             | throwError "internal error: simp closed goal unexpectedly"
           replaceMainGoal [goal]
       else
-        trace[Tactic.sym] "we have no relevant local hypotheses, \
+        trace[Tactic.sym.info] "we have no relevant local hypotheses, \
           skipping simplification step"
 
     -- Prepare `h_program`,`h_err`,`h_pc`, etc. for next state
@@ -139,18 +123,19 @@ def sym_block1 (blockSize stepsLeft : Nat) : SymM Unit := do
       let hBlock ← SymContext.findFromUserName h_block.getId
       -- ^^ we can't reuse `hBlock` from before, since its fvarId might've been
       --    changed by `simp`
-      explodeStep hBlock.toExpr
-      prepareForNextStep' blockSize
+      explodeStep hBlock.toExpr blockSize
+      prepareForNextStep blockSize
 
       let goal ← getMainGoal
       let goal ← goal.clear hBlock.fvarId
       replaceMainGoal [goal]
-
+      trace[Tactic.sym.info] "CurrentStateNumber: {← getCurrentStateNumber}"
+      trace[Tactic.sym.info] "CurrentState: {← getCurrentState}"
+      trace[Tactic.sym.info] "CurrentStateName: {← getCurrentStateName}"
       traceHeartbeats
 
 syntax sym_block_size := "(" "block_size" " := " num ")"
 
-/-
 open Elab.Term (elabTerm) in
 elab "sym_block" n:num block_size:(sym_block_size)? s:(sym_at)? : tactic => do
   traceHeartbeats "initial heartbeats"
@@ -158,82 +143,15 @@ elab "sym_block" n:num block_size:(sym_block_size)? s:(sym_at)? : tactic => do
   let s ← s.mapM fun
     | `(sym_at|at $s:ident) => pure s.getId
     | _ => Lean.Elab.throwUnsupportedSyntax
-  let block_size ← block_size.mapM fun
+  let block_size ← block_size.mapM (fun
   | `(sym_block_size|(block_size := $val)) => pure val.getNat
   |  _ => -- If no block size is specified, we step one instruction at a time.
-          pure 1
-
-  let c ← SymContext.fromMainContext s
-  let total_steps := c.runSteps?.get!
+          pure 1)
   let block_size := block_size.get!
-  -- let steps_to_simulate := n.getNat
-  -- let num_blocks := steps_to_simulate / block_size
-  -- let block_list := List.replicate num_blocks block_size
-  -- let block_list := if num_blocks * block_size = steps_to_simulate
-                    -- then block_list
-                    -- else block_list ++ [steps_to_simulate % block_size]
-
-  SymM.run' c <| withMainContext' <|  do
-    -- Check pre-conditions
-
-    withMainContext' <| do
-      -- The main loop
-      for i in List.range' (step := block_size) 0 n.getNat do
-        let steps_left := (total_steps - block_size - i)
-        sym_block1 block_size steps_left
-
-    traceHeartbeats "symbolic simulation total"
-    withCurrHeartbeats <|
-    withTraceNode "Post processing" (tag := "postProccessing") <| do
-      let c ← getThe SymContext
-      -- Check if we can substitute the final state
-      if c.runSteps? = some 0 then
-        let msg := do
-          let hRun ← userNameToMessageData c.h_run
-          pure m!"runSteps := 0, substituting along {hRun}"
-        withMainContext' <|
-        withTraceNode `Tactic.sym (fun _ => msg) <| do
-          let sfEq ← mkEq (← getCurrentState) c.finalState
-
-          let goal ← getMainGoal
-          trace[Tactic.sym] "original goal:\n{goal}"
-          let ⟨hEqId, goal⟩ ← do
-            let hRun ← SymContext.findFromUserName c.h_run
-            goal.note `this (← mkEqSymm hRun.toExpr) sfEq
-          goal.withContext <| do
-            trace[Tactic.sym] "added {← userNameToMessageData `this} of type \
-              {sfEq} in:\n{goal}"
-
-          let goal ← subst goal hEqId
-          trace[Tactic.sym] "performed subsitutition in:\n{goal}"
-          replaceMainGoal [goal]
-
-      -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
-      -- added while symbolically evaluating to `simp`
-      withMainContext' <|
-      withTraceNode m!"aggregating (non-)effects" (tag := "aggregateEffects") <| do
-        let goal? ← LNSymSimp (← getMainGoal) c.aggregateSimpCtx c.aggregateSimprocs
-        replaceMainGoal goal?.toList
-
-      traceHeartbeats "aggregation"
--/
-
-open Elab.Term (elabTerm) in
-elab "sym_block" n:num block_size:(sym_block_size)? s:(sym_at)? : tactic => do
-  traceHeartbeats "initial heartbeats"
-
-  let s ← s.mapM fun
-    | `(sym_at|at $s:ident) => pure s.getId
-    | _ => Lean.Elab.throwUnsupportedSyntax
-  let block_size ← block_size.mapM fun
-  | `(sym_block_size|(block_size := $val)) => pure val.getNat
-  |  _ => -- If no block size is specified, we step one instruction at a time.
-          pure 1
 
   let c ← SymContext.fromMainContext s
   -- TODO: Is this `get!` safe?
   let total_steps := c.runSteps?.get!
-  let block_size := block_size.get!
   -- The number of instructions, not blocks, the user asked to simulate.
   let sim_steps := n.getNat
   -- We compute the number of blocks to be simulated using a ceiling divide.
@@ -243,6 +161,8 @@ elab "sym_block" n:num block_size:(sym_block_size)? s:(sym_at)? : tactic => do
   SymM.run' c <| withMainContext' <|  do
     -- Check pre-conditions
     -- TODO
+    -- assertStepTheoremsGenerated
+    -- let n ← ensureAtMostRunSteps n.getNat
 
     withMainContext' <| do
       -- The main loop
@@ -265,16 +185,16 @@ elab "sym_block" n:num block_size:(sym_block_size)? s:(sym_at)? : tactic => do
           let sfEq ← mkEq (← getCurrentState) c.finalState
 
           let goal ← getMainGoal
-          trace[Tactic.sym] "original goal:\n{goal}"
+          trace[Tactic.sym.info] "original goal:\n{goal}"
           let ⟨hEqId, goal⟩ ← do
             let hRun ← SymContext.findFromUserName c.h_run
             goal.note `this (← mkEqSymm hRun.toExpr) sfEq
           goal.withContext <| do
-            trace[Tactic.sym] "added {← userNameToMessageData `this} of type \
+            trace[Tactic.sym.info] "added {← userNameToMessageData `this} of type \
               {sfEq} in:\n{goal}"
 
           let goal ← subst goal hEqId
-          trace[Tactic.sym] "performed subsitutition in:\n{goal}"
+          trace[Tactic.sym.info] "performed subsitutition in:\n{goal}"
           replaceMainGoal [goal]
 
       -- Rudimentary aggregation: we feed all the axiomatic effect hypotheses
