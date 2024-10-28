@@ -44,20 +44,20 @@ def exec_fmov_general
   let intsize := 32 <<< inst.sf.toNat
   let decode_fltsize := if inst.ftype = 0b10#2 then 64 else (8 <<< (inst.ftype ^^^ 0b10#2).toNat)
   match (extractLsb' 1 2 inst.opcode) ++ inst.rmode with
-  | 1100 =>  -- FMOV
+  | 0b1100 =>  -- FMOV
     if decode_fltsize ≠ 16 ∧ decode_fltsize ≠ intsize then
       write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
     else
-      let op := if lsb inst.opcode 0 = 1
+      let op := if lsb inst.opcode 0 = 1#1
                 then FPConvOp.FPConvOp_MOV_ItoF
                 else FPConvOp.FPConvOp_MOV_FtoI
       let part := 0
       fmov_general_aux intsize decode_fltsize op part inst s
-  | 1101 => -- FMOV D[1]
+  | 0b1101 => -- FMOV D[1]
     if intsize ≠ 64 ∨ inst.ftype ≠ 0b10#2 then
       write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
     else
-      let op := if lsb inst.opcode 0 = 1
+      let op := if lsb inst.opcode 0 = 1#1
                 then FPConvOp.FPConvOp_MOV_ItoF
                 else FPConvOp.FPConvOp_MOV_FtoI
       let part := 1

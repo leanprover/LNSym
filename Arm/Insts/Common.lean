@@ -65,9 +65,9 @@ def AddWithCarry (x : BitVec n) (y : BitVec n) (carry_in : BitVec 1) :
 @[bitvec_rules, state_simp_rules]
 theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 0#1).fst = x + y := by
-  simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
+  simp  [AddWithCarry, setWidth_eq, setWidth_zero, setWidth_zero]
   apply BitVec.eq_of_toNat_eq
-  simp only [toNat_truncate, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod]
+  simp only [toNat_setWidth, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod]
   have : 2^n < 2^(n + 1) := by
     refine Nat.pow_lt_pow_of_lt (by omega) (by omega)
   have : x.toNat + y.toNat < 2^(n + 1) := by omega
@@ -77,9 +77,9 @@ theorem fst_AddWithCarry_eq_add (x : BitVec n) (y : BitVec n) :
 @[bitvec_rules, state_simp_rules]
 theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
   (AddWithCarry x y 1#1).fst = x - ~~~y := by
-  simp  [AddWithCarry, zeroExtend_eq, zeroExtend_zero, zeroExtend_zero]
+  simp  [AddWithCarry, setWidth_eq, setWidth_zero, setWidth_zero]
   apply BitVec.eq_of_toNat_eq
-  simp only [toNat_truncate, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod, toNat_ofNat, Nat.pow_one,
+  simp only [toNat_setWidth, toNat_add, Nat.add_mod_mod, Nat.mod_add_mod, toNat_ofNat, Nat.pow_one,
     Nat.reduceMod, toNat_sub, toNat_not]
   simp only [show 2 ^ n - (2 ^ n - 1 - y.toNat) = 1 + y.toNat by omega]
   have : 2^n < 2^(n + 1) := by
@@ -91,10 +91,10 @@ theorem fst_AddWithCarry_eq_sub_neg (x : BitVec n) (y : BitVec n) :
 
 -- TODO: Is this rule helpful at all?
 @[bitvec_rules]
-theorem zeroExtend_eq_of_AddWithCarry :
-  zeroExtend n (AddWithCarry x y carry_in).fst =
+theorem setWidth_eq_of_AddWithCarry :
+  setWidth n (AddWithCarry x y carry_in).fst =
   (AddWithCarry x y carry_in).fst := by
-  simp only [zeroExtend_eq]
+  simp only [setWidth_eq]
 
 /--
 Return `true` iff `cond` currently holds
@@ -102,6 +102,7 @@ Return `true` iff `cond` currently holds
 Ref.:
 https://developer.arm.com/documentation/ddi0602/2024-06/Shared-Pseudocode/shared-functions-system?lang=en#impl-shared.ConditionHolds.1
 -/
+@[state_simp_rules]
 def ConditionHolds (cond : BitVec 4) (s : ArmState) : Bool :=
   open PFlag in
   let N := read_flag N s
@@ -199,7 +200,7 @@ theorem Aligned_BitVecAdd_64_4 {x : BitVec 64} {y : BitVec 64}
 
 theorem Aligned_AddWithCarry_64_4 (x : BitVec 64) (y : BitVec 64) (carry_in : BitVec 1)
   (x_aligned : Aligned x 4)
-  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb' 0 4 y) (zeroExtend 4 carry_in)) 4)
+  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb' 0 4 y) (setWidth 4 carry_in)) 4)
   : Aligned (AddWithCarry x y carry_in).fst 4 := by
   unfold AddWithCarry Aligned at *
   simp_all only [Nat.sub_zero, zero_eq, add_eq]
@@ -252,9 +253,9 @@ theorem CheckSPAlignment_write_mem_bytes_of :
 @[state_simp_rules]
 theorem CheckSPAlignment_AddWithCarry_64_4 (st : ArmState) (y : BitVec 64) (carry_in : BitVec 1)
   (x_aligned : CheckSPAlignment st)
-  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb' 0 4 y) (zeroExtend 4 carry_in)) 4)
+  (y_carry_in_aligned : Aligned (BitVec.add (extractLsb' 0 4 y) (setWidth 4 carry_in)) 4)
   : Aligned (AddWithCarry (r (StateField.GPR 31#5) st) y carry_in).fst 4 := by
-  simp_all only [CheckSPAlignment, read_gpr, zeroExtend_eq, Nat.sub_zero, add_eq,
+  simp_all only [CheckSPAlignment, read_gpr, setWidth_eq, Nat.sub_zero, add_eq,
     Aligned_AddWithCarry_64_4]
 
 @[state_simp_rules]
@@ -269,7 +270,7 @@ theorem CheckSPAlignment_of_r_sp_aligned {s : ArmState} {value}
     (h_eq : r (StateField.GPR 31#5) s = value)
     (h_aligned : Aligned value 4) :
     CheckSPAlignment s := by
-  simp only [CheckSPAlignment, read_gpr, h_eq, zeroExtend_eq, h_aligned]
+  simp only [CheckSPAlignment, read_gpr, h_eq, setWidth_eq, h_aligned]
 
 ----------------------------------------------------------------------
 
@@ -383,7 +384,7 @@ def invalid_bit_masks (immN : BitVec 1) (imms : BitVec 6) (immediate : Bool)
   else if len < 1 ∧ M < (1 <<< len) then
    true
   else
-    let levels := zeroExtend 6 (allOnes len)
+    let levels := setWidth 6 (allOnes len)
     if immediate ∧ (imms &&& levels = levels) then
       true
     else
@@ -408,9 +409,6 @@ dsimproc [state_simp_rules] reduceInvalidBitMasks (invalid_bit_masks _ _ _ _) :=
                     imm.expr.isTrue
                     M)
   else return .continue
-
-theorem Nat.lt_one_iff {n : Nat} : n < 1 ↔ n = 0 := by
-  omega
 
 theorem M_divisible_by_esize_of_valid_bit_masks (immN : BitVec 1) (imms : BitVec 6)
   (immediate : Bool) (M : Nat):
@@ -442,14 +440,14 @@ def decode_bit_masks (immN : BitVec 1) (imms immr : BitVec 6)
   if h0 : invalid_bit_masks immN imms immediate M then none
   else
     let len := Option.get! $ highest_set_bit $ immN ++ ~~~imms
-    let levels := zeroExtend 6 (allOnes len)
+    let levels := setWidth 6 (allOnes len)
     let s := imms &&& levels
     let r := immr &&& levels
     let diff := s - r
     let esize := 1 <<< len
     let d := extractLsb' 0 len diff
-    let welem := zeroExtend esize (allOnes (s.toNat + 1))
-    let telem := zeroExtend esize (allOnes (d.toNat + 1))
+    let welem := setWidth esize (allOnes (s.toNat + 1))
+    let telem := setWidth esize (allOnes (d.toNat + 1))
     let wmask := replicate (M/esize) $ rotateRight welem r.toNat
     let tmask := replicate (M/esize) telem
     have h : esize * (M / esize) = M := by
@@ -562,8 +560,8 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
   if h0 : n <= esize then
     x
   else
-    let element := BitVec.zeroExtend esize x
-    let rest_x := BitVec.zeroExtend (n - esize) (x >>> esize)
+    let element := BitVec.setWidth esize x
+    let rest_x := BitVec.setWidth (n - esize) (x >>> esize)
     have h1 : esize <= n := by
       simp at h0; exact Nat.le_of_lt h0; done
     have h2 : esize ∣ (n - esize) := by
@@ -598,10 +596,10 @@ def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
   if h0 : container_size = datasize then
     BitVec.cast h0 (rev_elems container_size esize (BitVec.cast h0.symm x) h₃ h₀)
   else
-    let container := BitVec.zeroExtend container_size x
+    let container := BitVec.setWidth container_size x
     let new_container := rev_elems container_size esize container h₃ h₀
     let new_datasize := datasize - container_size
-    let rest_x := BitVec.zeroExtend new_datasize (x >>> container_size)
+    let rest_x := BitVec.setWidth new_datasize (x >>> container_size)
     have h₄' : container_size ∣ new_datasize := by
       have h : container_size ∣ container_size := Nat.dvd_refl _
       exact Nat.dvd_sub h₂ h₄ h
@@ -669,7 +667,7 @@ def RShr (unsigned : Bool) (value : Int) (shift : Nat) (round : Bool)
 
 @[state_simp_rules]
 def Int_with_unsigned (unsigned : Bool) (value : BitVec n) : Int :=
-  if unsigned then value.toNat else value.toInt
+  if unsigned then Int.ofNat value.toNat else value.toInt
 
 def shift_right_common_aux
   (e : Nat) (info : ShiftInfo) (operand : BitVec datasize)
@@ -684,6 +682,191 @@ def shift_right_common_aux
     have _ : info.elements - (e + 1) < info.elements - e := by omega
     shift_right_common_aux (e + 1) info operand operand2 result
   termination_by (info.elements - e)
+
+-- FIXME: should this be upstreamed?
+theorem shift_le (x : Nat) (shift :Nat) :
+  x >>> shift ≤ x := by
+  simp only [Nat.shiftRight_eq_div_pow]
+  exact Nat.div_le_self x (2 ^ shift)
+
+set_option bv.ac_nf false
+
+@[state_simp_rules]
+theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
+  (shift : Nat) (result : BitVec 128):
+  shift_right_common_aux 0
+    {esize := 64, elements := 2, shift := shift,
+     unsigned := true, round := false, accumulate := false}
+    operand 0#128 result =
+  (ushiftRight (extractLsb' 64 64 operand) shift)
+    ++ (ushiftRight (extractLsb' 0 64 operand) shift) := by
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  simp only [state_simp_rules,
+             minimal_theory,
+             -- FIXME: simply using bitvec_rules will expand out setWidth
+             -- bitvec_rules,
+             BitVec.cast_eq,
+             Nat.shiftRight_zero,
+             Nat.zero_shiftRight,
+             Nat.reduceMul,
+             Nat.reduceAdd,
+             Nat.add_one_sub_one,
+             Nat.sub_zero,
+             reduceAllOnes,
+             reduceZeroExtend,
+             Nat.zero_mul,
+             shiftLeft_zero_eq,
+             reduceNot,
+             BitVec.extractLsb_ofNat,
+             Nat.reducePow,
+             Nat.zero_mod,
+             Int.ofNat_emod,
+             Int.Nat.cast_ofNat_Int,
+             BitVec.zero_add,
+             Nat.reduceSub,
+             Nat.one_mul,
+             reduceHShiftLeft,
+             -- FIXME: should partInstall be state_simp_rules?
+             partInstall,
+             -- Eliminating casting functions
+             Int.ofNat_eq_coe, ofInt_natCast, ofNat_toNat
+    ]
+  generalize (extractLsb' 64 64 operand) = x
+  generalize (extractLsb' 0 64 operand) = y
+  have h0 : ∀ (z : BitVec 64), extractLsb' 0 64 ((zeroExtend 65 z).ushiftRight shift)
+    = z.ushiftRight shift := by
+    intro z
+    simp only [ushiftRight, toNat_setWidth]
+    have h1: z.toNat % 2 ^ 65 = z.toNat := by omega
+    simp only [h1]
+    simp only [Std.Tactic.BVDecide.Normalize.BitVec.ofNatLt_reduce]
+    simp only [Nat.sub_zero, Nat.reduceAdd, BitVec.extractLsb'_ofNat, Nat.shiftRight_zero]
+    have h2 : z.toNat >>> shift % 2 ^ 65 = z.toNat >>> shift := by
+      refine Nat.mod_eq_of_lt ?h3
+      have h4 : z.toNat >>> shift ≤ z.toNat := by exact shift_le z.toNat shift
+      omega
+    simp only [h2]
+  simp only [h0]
+  clear h0
+  generalize x.ushiftRight shift = p
+  generalize y.ushiftRight shift = q
+  -- FIXME: This proof can be simplified once bv_decide supports shift
+  -- operations with variable offsets
+  bv_decide
+
+-- FIXME: where to put this?
+theorem ofInt_eq_signExtend (x : BitVec 32) :
+  BitVec.ofInt 33 x.toInt = signExtend 33 x := by
+  exact rfl
+
+-- FIXME: where to put this?
+theorem msb_signExtend (x : BitVec n) (hw: n < n'):
+      (signExtend n' x).msb = x.msb := by
+  rcases n' with rfl | n'
+  · simp only [show n = 0 by omega,
+               msb_eq_getLsbD_last, Nat.zero_sub, Nat.le_refl,
+               getLsbD_ge]
+  · simp only [msb_eq_getLsbD_last, Nat.add_one_sub_one,
+               getLsbD_signExtend, Nat.lt_add_one,
+               decide_True, Bool.true_and, ite_eq_right_iff]
+    by_cases h : n' < n
+    · rcases n with rfl | n
+      · simp
+      · simp only [h, Nat.add_one_sub_one, true_implies]
+        omega
+    · simp [h]
+
+theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
+  (shift : Nat) (result : BitVec 128):
+  shift_right_common_aux 0
+    { esize := 32, elements := 4, shift := shift,
+      unsigned := false, round := false, accumulate := false}
+      operand 0#128 result =
+  (sshiftRight (extractLsb' 96 32 operand) shift)
+    ++ (sshiftRight (extractLsb' 64 32 operand) shift)
+    ++ (sshiftRight (extractLsb' 32 32 operand) shift)
+    ++ (sshiftRight (extractLsb' 0 32 operand) shift) := by
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  unfold shift_right_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  simp only [state_simp_rules,
+             minimal_theory,
+             -- FIXME: simply using bitvec_rules will expand out setWidth
+             -- bitvec_rules,
+             BitVec.cast_eq,
+             Nat.shiftRight_zero,
+             Nat.zero_shiftRight,
+             Nat.reduceMul,
+             Nat.reduceAdd,
+             Nat.add_one_sub_one,
+             Nat.sub_zero,
+             reduceAllOnes,
+             reduceZeroExtend,
+             Nat.zero_mul,
+             shiftLeft_zero_eq,
+             reduceNot,
+             BitVec.extractLsb_ofNat,
+             Nat.reducePow,
+             Nat.zero_mod,
+             Int.ofNat_emod,
+             Int.Nat.cast_ofNat_Int,
+             BitVec.zero_add,
+             Nat.reduceSub,
+             Nat.one_mul,
+             reduceHShiftLeft,
+             partInstall,
+             -- Eliminating casting functions
+             ofInt_eq_signExtend
+    ]
+  generalize extractLsb' 0 32 operand = a
+  generalize extractLsb' 32 32 operand = b
+  generalize extractLsb' 64 32 operand = c
+  generalize extractLsb' 96 32 operand = d
+  have h : ∀ (x : BitVec 32),
+    extractLsb' 0 32 ((signExtend 33 x).sshiftRight shift)
+    = x.sshiftRight shift := by
+    intros x
+    apply eq_of_getLsbD_eq; intros i; simp at i
+    simp only [getLsbD_sshiftRight]
+    simp only [Nat.sub_zero, Nat.reduceAdd, getLsbD_extractLsb', Nat.zero_add,
+               getLsbD_sshiftRight, getLsbD_signExtend]
+    simp only [show (i : Nat) < 32 by omega,
+               decide_True, Bool.true_and]
+    simp only [show ¬33 ≤ (i : Nat) by omega,
+               decide_False, Bool.not_false, Bool.true_and]
+    simp only [show ¬32 ≤ (i : Nat) by omega,
+               decide_False, Bool.not_false, Bool.true_and]
+    by_cases h : shift + (i : Nat) < 32
+    · simp only [h, reduceIte]
+      simp only [show shift + (i : Nat) < 33 by omega,
+                 ↓reduceIte, decide_True, Bool.true_and]
+    · simp only [h, reduceIte]
+      have icases : shift + (i : Nat) = 32 ∨ 32 < shift + (i : Nat) := by omega
+      rcases icases with (h' | h')
+      · simp only [h', Nat.lt_add_one, ↓reduceIte, decide_True, Bool.true_and]
+      · simp only [show ¬(shift + (i : Nat) < 33) by omega, ↓reduceIte]
+        apply msb_signExtend; trivial
+  simp only [h]
+  clear h
+  generalize a.sshiftRight shift = a
+  generalize b.sshiftRight shift = b
+  generalize c.sshiftRight shift = c
+  generalize d.sshiftRight shift = d
+  -- FIXME: This proof can be simplified once bv_decide supports shift
+  -- operations with variable offsets
+  bv_decide
 
 @[state_simp_rules]
 def shift_right_common
@@ -706,6 +889,24 @@ def shift_left_common_aux
     have _ : info.elements - (e + 1) < info.elements - e := by omega
     shift_left_common_aux (e + 1) info operand result
   termination_by (info.elements - e)
+
+theorem shift_left_common_aux_64_2 (operand : BitVec 128)
+  (shift : Nat) (unsigned: Bool) (round : Bool) (accumulate : Bool)
+  (result : BitVec 128):
+  shift_left_common_aux 0
+    {esize := 64, elements := 2, shift := shift,
+     unsigned := unsigned, round := round, accumulate := accumulate}
+    operand result =
+  (extractLsb' 64 64 operand <<< shift)
+    ++ (extractLsb' 0 64 operand <<< shift) := by
+  unfold shift_left_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  unfold shift_left_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  unfold shift_left_common_aux
+  simp only [minimal_theory, bitvec_rules]
+  simp only [state_simp_rules, minimal_theory, bitvec_rules, partInstall]
+  bv_decide
 
 @[state_simp_rules]
 def shift_left_common

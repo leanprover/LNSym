@@ -38,15 +38,7 @@ def ld1_st1_operation (wback : Bool) (inst : Multiple_struct_inst_fields)
   let t2 := t + 1
   let t3 := t + 2
   let t4 := t + 3
-  let (rpt, selem) :=
-  match inst.opcode with
-    | 0b0000#4 => (1, 4) -- LD/ST4: 4 registers
-    | 0b0010#4 => (4, 1) -- LD/ST1: 4 registers
-    | 0b0100#4 => (1, 3) -- LD/ST3: 3 registers
-    | 0b0110#4 => (3, 1) -- LD/ST1: 3 registers
-    | 0b0111#4 => (1, 1) -- LD/ST1: 1 register
-    | 0b1000#4 => (1, 2) -- LD/ST2: 2 registers
-    | _        => (2, 1) -- LD/ST1: 2 registers (opcode: 0b1010#4)
+  let (rpt, selem) := multiple_struct_rpt_selem inst.opcode
   if inst.size = 0b11#2 && datasize = 64 && selem ≠ 1 then
     write_err (StateError.Illegal s!"Illegal instruction {inst_str} encountered!") s
   else

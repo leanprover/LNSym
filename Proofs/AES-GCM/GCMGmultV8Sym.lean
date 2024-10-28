@@ -12,39 +12,139 @@ import Tactics.CSE
 import Tactics.ClearNamed
 import Arm.Memory.SeparateAutomation
 import Arm.Syntax
+import Correctness.ArmSpec
 
 namespace GCMGmultV8Program
 open ArmStateNotation
 
 #genStepEqTheorems gcm_gmult_v8_program
 
+/-
+theorem vrev128_64_8_in_terms_of_rev_elems (x : BitVec 128) :
+DPSFP.vrev128_64_8 x =
+rev_elems 128 8 ((BitVec.setWidth 64 x) ++ (BitVec.setWidth 64 (x >>> 64))) _p1 _p2 := by
+simp only [DPSFP.vrev128_64_8]
+unfold rev_vector
+simp (config := {decide := true}) only [bitvec_rules, minimal_theory]
+unfold rev_vector
+simp (config := {decide := true}) only [bitvec_rules, minimal_theory]
+rw [rev_elems_64_8_append_eq_rev_elems_128_8]
+done
+-/
+
+theorem vrev128_64_8_in_terms_of_rev_elems (x : BitVec 128) :
+DPSFP.vrev128_64_8 x =
+-- rev_elems 64 8 (BitVec.setWidth 64 (x >>> 64)) _p1 _p2 ++
+-- rev_elems 64 8 (BitVec.setWidth 64 x) _p3 _p4  := by
+rev_elems 64 8 (BitVec.extractLsb' 64 64 x) _p1 _p2 ++
+rev_elems 64 8 (BitVec.extractLsb' 0 64 x) _p3 _p4  := by
+simp only [DPSFP.vrev128_64_8]
+unfold rev_vector
+simp (config := {decide := true}) only [bitvec_rules, minimal_theory]
+unfold rev_vector
+simp (config := {decide := true}) only [bitvec_rules, minimal_theory]
+exact rfl
+done
+
+-- (TODO) Should we simply replace one function by the other here?
+theorem gcm_polyval_mul_eq_polynomial_mult {x y : BitVec 128} :
+  GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by
+  sorry
+
+theorem eq_of_rev_elems_eq (x y : BitVec 128) (h : x = y) :
+  (rev_elems 128 8 x _p1 _p2 = rev_elems 128 8 y _p1 _p2) := by
+  congr
+
+theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
+  DPSFP.pmull_op 0 64 1 x y 0#128 =
+  DPSFP.polynomial_mult x y := by
+  unfold DPSFP.pmull_op
+  simp (config := {ground := true}) only [minimal_theory]
+  unfold DPSFP.pmull_op
+  simp (config := {ground := true}) only [minimal_theory]
+  simp only [state_simp_rules, bitvec_rules]
+  done
+
+theorem rev_elems_128_8_eq_rev_elems_64_8_extractLsb' (x : BitVec 128) :
+  rev_elems 128 8 x _p1 _p2 =
+  rev_elems 64 8 (BitVec.extractLsb' 0 64 x) _p3 _p4 ++ rev_elems 64 8 (BitVec.extractLsb' 64 64 x) _p5 _p6 := by
+  repeat unfold rev_elems
+  simp (config := {decide := true, ground := true}) only [minimal_theory, BitVec.cast_eq]
+  bv_check
+    "lrat_files/GCMGmultV8Sym.lean-GCMGmultV8Program.rev_elems_128_8_eq_rev_elems_64_8_extractLsb'-51-2.lrat"
+  done
+
+theorem rev_elems_64_8_append_eq_rev_elems_128_8 (x y : BitVec 64) :
+  rev_elems 64 8 x _p1 _p2 ++ rev_elems 64 8 y _p3 _p4 =
+  rev_elems 128 8 (y ++ x) _p5 _p6 := by
+  repeat unfold rev_elems
+  simp (config := {decide := true, ground := true}) only [minimal_theory, BitVec.cast_eq]
+  bv_check
+    "lrat_files/GCMGmultV8Sym.lean-GCMGmultV8Program.rev_elems_64_8_append_eq_rev_elems_128_8-60-2.lrat"
+  done
+
 private theorem lsb_from_extractLsb'_of_append_self (x : BitVec 128) :
   BitVec.extractLsb' 64 64 (BitVec.extractLsb' 64 128 (x ++ x)) =
   BitVec.extractLsb' 0 64 x := by
-  bv_decide
+  rw [BitVec.extractLsb'_append]
+  simp_all (config := {ground := true}) only [bitvec_rules]
+  congr
 
 private theorem msb_from_extractLsb'_of_append_self (x : BitVec 128) :
   BitVec.extractLsb' 0 64 (BitVec.extractLsb' 64 128 (x ++ x)) =
   BitVec.extractLsb' 64 64 x := by
+  rw [BitVec.extractLsb'_append]
+  simp_all (config := {ground := true}) only [bitvec_rules]
+  congr
+
+private theorem zeroExtend_allOnes_lsh_64 :
+  ~~~(BitVec.zeroExtend 128 (BitVec.allOnes 64) <<< 64)
+    = 0x0000000000000000ffffffffffffffff#128 := by
+    decide
+
+private theorem zeroExtend_allOnes_lsh_0 :
+  ~~~(BitVec.zeroExtend 128 (BitVec.allOnes 64) <<< 0) =
+  0xffffffffffffffff0000000000000000#128 := by
+  decide
+
+private theorem BitVec.extractLsb'_64_128_of_appends (x y w z : BitVec 64) :
+  BitVec.extractLsb' 64 128 (x ++ y ++ (w ++ z)) =
+  y ++ w := by
   bv_decide
 
-theorem extractLsb'_zero_extractLsb'_of_le (h : len1 ≤ len2) :
-  BitVec.extractLsb' 0 len1 (BitVec.extractLsb' start len2 x) =
-  BitVec.extractLsb' start len1 x := by
-  apply BitVec.eq_of_getLsbD_eq; intro i
-  simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
-             decide_True, Nat.zero_add, Bool.true_and,
-             Bool.and_iff_right_iff_imp, decide_eq_true_eq]
-  omega
+private theorem BitVec.and_high_to_extractLsb'_concat (x : BitVec 128) :
+  x &&& 0xffffffffffffffff0000000000000000#128 = (BitVec.extractLsb' 64 64 x) ++ 0#64 := by
+  bv_decide
 
-theorem extractLsb'_extractLsb'_zero_of_le (h : start + len1 ≤ len2):
-  BitVec.extractLsb' start len1 (BitVec.extractLsb' 0 len2 x) =
-  BitVec.extractLsb' start len1 x := by
-  apply BitVec.eq_of_getLsbD_eq; intro i
-  simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
-            decide_True, Nat.zero_add, Bool.true_and,
-            Bool.and_iff_right_iff_imp, decide_eq_true_eq]
-  omega
+theorem BitVec.extractLsb'_append_eq (x : BitVec (n + n)) :
+  BitVec.extractLsb' n n x ++ BitVec.extractLsb' 0 n x = x := by
+  have h1 := @BitVec.append_of_extract_general (n + n) n n x
+  simp only [Nat.reduceAdd, BitVec.extractLsb'_eq] at h1
+  have h3 : BitVec.setWidth n (x >>> n) = BitVec.extractLsb' n n x := by
+    apply BitVec.eq_of_getLsbD_eq; intro i
+    simp only [BitVec.getLsbD_setWidth, Fin.is_lt, decide_True, BitVec.getLsbD_ushiftRight,
+      Bool.true_and, BitVec.getLsbD_extractLsb']
+  simp_all only
+
+
+/-
+(TODO) Need a lemma like the following, which breaks up a polynomial
+multiplication into four constituent ones, for normalization.
+-/
+example :
+  let p := 0b11#2
+  let q := 0b10#2
+  let w := 0b01#2
+  let z := 0b01#2
+  (DPSFP.polynomial_mult
+        (p ++ q)
+        (w ++ z))
+  =
+  ((DPSFP.polynomial_mult p w) ++ 0#4) ^^^
+  (0#4 ++ (DPSFP.polynomial_mult q z)) ^^^
+  (0#2 ++ (DPSFP.polynomial_mult p z) ++ 0#2) ^^^
+  (0#2 ++ (DPSFP.polynomial_mult q w) ++ 0#2) := by native_decide
+
 
 set_option pp.deepTerms false in
 set_option pp.deepTerms.threshold 50 in
@@ -82,13 +182,19 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
                           (sf, s0) ∧
     -- Memory frame condition.
     MEM_UNCHANGED_EXCEPT [(r (.GPR 0) s0, 16)] (sf, s0) ∧
-    sf[r (.GPR 0) s0, 16] = GCMV8.GCMGmultV8_alt (HTable.extractLsb' 0 128) Xi := by
+    sf[r (.GPR 0) s0, 16] =
+    rev_elems 128 8
+            (GCMV8.GCMGmultV8_alt
+              (HTable.extractLsb' 0 128)
+              (rev_elems 128 8 Xi (by decide) (by decide)))
+            (by decide) (by decide) := by
   -- Prelude
   simp_all only [state_simp_rules, -h_run]
   simp only [Nat.reduceMul] at Xi HTable
   simp (config := {ground := true}) only at h_s0_pc
   -- ^^ Still needed, because `gcm_gmult_v8_program.min` is somehow
   --    unable to be reflected
+
   sym_n 27
   -- Epilogue
   simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *
@@ -96,30 +202,7 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
   sym_aggregate
   -- Split conjunction
   repeat' apply And.intro
-  · -- Aggregate the memory (non)effects.
-    -- (FIXME) This will be tackled by `sym_aggregate` when `sym_n` and `simp_mem`
-    -- are merged.
-    simp only [*]
-    /-
-    (FIXME @bollu) `simp_mem; rfl` creates a malformed proof here. The tactic produces
-    no goals, but we get the following error message:
-
-    application type mismatch
-    Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
-      (Eq.mp (congrArg (Eq HTable) (Memory.State.read_mem_bytes_eq_mem_read_bytes s0))
-        (Eq.mp (congrArg (fun x => HTable = read_mem_bytes 256 x s0) zeroExtend_eq_of_r_gpr) h_HTable))
-    argument has type
-      HTable = Memory.read_bytes 256 (r (StateField.GPR 1#5) s0) s0.mem
-    but function has type
-      Memory.read_bytes 256 (r (StateField.GPR 1#5) s0) s0.mem = HTable →
-      mem_subset' (r (StateField.GPR 1#5) s0) 256 (r (StateField.GPR 1#5) s0) 256 →
-        Memory.read_bytes 256 (r (StateField.GPR 1#5) s0) s0.mem =
-          HTable.extractLsBytes (BitVec.toNat (r (StateField.GPR 1#5) s0) - BitVec.toNat (r (StateField.GPR 1#5) s0)) 256
-
-    simp_mem; rfl
-    -/
-    rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-    simp_mem
+  · simp_mem; rfl
   · simp only [List.mem_cons, List.mem_singleton, not_or, and_imp]
     sym_aggregate
   · intro n addr h_separate
@@ -143,6 +226,7 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
           32 (r (StateField.GPR 1#5) s0) HTable (r (StateField.GPR 1#5) s0 + 16#64) 16 _ h_HTable.symm]
       repeat sorry
     simp only [h_HTable_high, h_HTable_low, ←h_Xi]
+    clear h_mem_sep h_run
     /-
     simp/ground below to reduce
     (BitVec.extractLsb' 0 64
@@ -157,13 +241,49 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
                BitVec.partInstall]
     -- (FIXME @bollu) cse leaves the goal unchanged here, quietly, likely due to
     -- subexpressions occurring in dep. contexts. Maybe a message here would be helpful.
-    generalize h_Xi_rev : rev_vector 128 64 8 Xi _ _ _ _ _ = Xi_rev
+    generalize h_Xi_rev : DPSFP.vrev128_64_8 Xi = Xi_rev
+    rw [@vrev128_64_8_in_terms_of_rev_elems (by decide) (by decide) (by decide) (by decide)] at h_Xi_rev
+    generalize h_Xi_upper_rev : rev_elems 64 8 (BitVec.extractLsb' 64 64 Xi) (by decide) (by decide) = Xi_upper_rev
+    generalize h_Xi_lower_rev : rev_elems 64 8 (BitVec.extractLsb' 0 64 Xi) (by decide) (by decide) = Xi_lower_rev
     -- Simplifying the RHS
-    simp only [←h_HTable, GCMV8.GCMGmultV8_alt,
+    simp only [GCMV8.GCMGmultV8_alt,
                GCMV8.lo, GCMV8.hi,
-               GCMV8.gcm_polyval]
-    repeat rw [extractLsb'_zero_extractLsb'_of_le (by decide)]
-    repeat rw [extractLsb'_extractLsb'_zero_of_le (by decide)]
+               GCMV8.gcm_polyval,
+               ←h_HTable, ←h_Xi_rev, h_Xi_lower_rev, h_Xi_upper_rev]
+    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq, gcm_polyval_mul_eq_polynomial_mult]
+    simp only [zeroExtend_allOnes_lsh_64, zeroExtend_allOnes_lsh_0]
+    rw [BitVec.extractLsb'_64_128_of_appends]
+    rw [BitVec.xor_append]
+    repeat rw [BitVec.extractLsb'_append_right]
+    repeat rw [BitVec.extractLsb'_append_left]
+    repeat rw [BitVec.extractLsb'_zero_extractLsb'_of_le (by decide)]
+    repeat rw [BitVec.extractLsb'_extractLsb'_zero_of_le (by decide)]
+    rw [BitVec.and_high_to_extractLsb'_concat]
+    generalize h_HTable_upper : (BitVec.extractLsb' 64 64 HTable) = HTable_upper
+    generalize h_HTable_lower : (BitVec.extractLsb' 0 64 HTable) = HTable_lower
+    generalize h_term_u0u1 : (DPSFP.polynomial_mult HTable_upper Xi_upper_rev) = u0u1 at *
+    generalize h_term_l0l1 : (DPSFP.polynomial_mult HTable_lower Xi_lower_rev) = l0l1 at *
+    generalize h_term_1 : (DPSFP.polynomial_mult (BitVec.extractLsb' 128 64 HTable) (Xi_lower_rev ^^^ Xi_upper_rev) ^^^
+                        BitVec.extractLsb' 64 128 (l0l1 ++ u0u1) ^^^
+                      (u0u1 ^^^ l0l1)) = term_1
+    generalize h_term_2 : ((term_1 &&& 0xffffffffffffffff#128 ||| BitVec.zeroExtend 128 (BitVec.setWidth 64 u0u1) <<< 64) ^^^
+                  DPSFP.polynomial_mult (BitVec.extractLsb' 0 64 u0u1) 0xc200000000000000#64)
+                  = term_2
+    generalize h_term_3 : (BitVec.extractLsb' 64 128 (term_2 ++ term_2) ^^^
+            (BitVec.extractLsb' 64 64 l0l1 ++ 0x0#64 |||
+              BitVec.zeroExtend 128 (BitVec.extractLsb' 64 64 term_1) <<< 0))
+              = term_3
+    rw [@vrev128_64_8_in_terms_of_rev_elems (by decide) (by decide) (by decide) (by decide)]
+    rw [BitVec.extractLsb'_64_128_of_appends]
+    rw [@rev_elems_64_8_append_eq_rev_elems_128_8 _ _ (by decide) (by decide) (by decide) (by decide)]
+    apply eq_of_rev_elems_eq
+    rw [@rev_elems_128_8_eq_rev_elems_64_8_extractLsb' _ (by decide) (by decide) (by decide) (by decide) (by decide)]
+    rw [h_Xi_upper_rev, h_Xi_lower_rev]
+    rw [BitVec.extractLsb'_append_eq]
+    simp [GCMV8.gcm_polyval_red]
+    -- have h_reduce : (GCMV8.reduce 0x100000000000000000000000000000087#129 0x1#129) = 1#129 := by native_decide
+    -- simp [GCMV8.gcm_polyval_red, GCMV8.irrepoly, GCMV8.pmod, h_reduce]
+    -- repeat (unfold GCMV8.pmod.pmodTR; simp)
 
     sorry
   done

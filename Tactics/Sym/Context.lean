@@ -34,7 +34,7 @@ and is likely to be deprecated and removed in the near future. -/
 
 open Lean Meta Elab.Tactic
 open BitVec
-open Sym (withTraceNode withVerboseTraceNode)
+open Sym (withTraceNode withInfoTraceNode)
 
 /-- A `SymContext` collects the names of various variables/hypotheses in
 the local context required for symbolic evaluation -/
@@ -159,7 +159,7 @@ def program : Name := c.programInfo.name
 /-- Find the local declaration that corresponds to a given name,
 or throw an error if no local variable of that name exists -/
 def findFromUserName (name : Name) : MetaM LocalDecl :=
-  withVerboseTraceNode m!"[findFromUserName] {name}" <| do
+  withInfoTraceNode m!"[findFromUserName] {name}" <| do
     let some decl := (← getLCtx).findFromUserName? name
       | throwError "Unknown local variable `{name}`"
     return decl
@@ -240,7 +240,9 @@ private def initial (state : Expr) : MetaM SymContext := do
   let finalState ← mkFreshExprMVar mkArmState
   /- Get the default simp lemmas & simprocs for aggregation -/
   let (aggregateSimpCtx, aggregateSimprocs) ←
-    LNSymSimpContext (config := {decide := true, failIfUnchanged := false})
+    LNSymSimpContext
+      (config := {decide := true, failIfUnchanged := false})
+      (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules, `memory_rules])
   let aggregateSimpCtx := { aggregateSimpCtx with
     -- Create a new discrtree for effect hypotheses to be added to.
     -- TODO(@alexkeizer): I put this here, since the previous version kept
@@ -461,7 +463,7 @@ evaluation:
   * the `currentStateNumber` is incremented
 -/
 def prepareForNextStep : SymM Unit := do
-  withVerboseTraceNode "prepareForNextStep" (tag := "prepareForNextStep") <| do
+  withInfoTraceNode "prepareForNextStep" (tag := "prepareForNextStep") <| do
     let pc ← do
       let { value, ..} ← AxEffects.getFieldM .PC
       try
