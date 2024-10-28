@@ -15,17 +15,19 @@ variable {α : Type} {m : Type → Type} [Monad m] [MonadTrace m] [MonadLiftT IO
   [MonadRef m] [AddMessageContext m] [MonadOptions m] {ε : Type}
   [MonadAlwaysExcept ε m] [MonadLiftT BaseIO m]
 
+/-- Add a trace node with the `Tactic.sym` trace class -/
 def withTraceNode (msg : MessageData) (k : m α)
     (collapsed : Bool := true)
     (tag : String := "")
     : m α := do
   Lean.withTraceNode `Tactic.sym (fun _ => pure msg) k collapsed tag
 
-def withVerboseTraceNode (msg : MessageData) (k : m α)
+/-- Add a trace node with the `Tactic.sym.info` trace class -/
+def withInfoTraceNode (msg : MessageData) (k : m α)
     (collapsed : Bool := true)
     (tag : String := "")
     : m α := do
-  Lean.withTraceNode `Tactic.sym.verbose (fun _ => pure msg) k collapsed tag
+  Lean.withTraceNode `Tactic.sym.info (fun _ => pure msg) k collapsed tag
 
 /-- Create a trace note that folds `header` with `(NOTE: can be large)`,
 and prints `msg` under such a trace node.

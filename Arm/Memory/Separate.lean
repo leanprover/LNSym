@@ -368,26 +368,32 @@ theorem mem_separate'_comm (h : mem_separate' a an b bn) :
   omega
 
 /-#
-This is a theorem we ought to prove, which establishes the equivalence
-between the old and new defintions of 'mem_separate'.
-However, the proof is finicky, and so we leave it commented for now.
+This theorem establishes the equivalence between the old and new definitions of 'mem_separate'.
 -/
-/-
-theorem mem_separate_of_mem_separate' (h : mem_separate' a an b bn)
-    (ha' : a' = a + (BitVec.ofNat w₁ (an - 1) ) (hb' : b' = b + (BitVec.ofNat w₁ (bn - 1)))
-    (hlegala : mem_legal a an) (hlegalb: mem_legal b bn) :
-    mem_separate a a' b b' := by
-  simp [mem_separate]
-  simp [mem_overlap]
+theorem mem_separate_of_mem_separate' (a b : BitVec 64)
+    (an bn : Nat)
+    (han : an > 0) (hbn : bn > 0)
+    (h : mem_separate' a an b bn) :
+    mem_separate a (a + an - 1) b (b + bn - 1) := by
+  simp only [mem_separate, BitVec.natCast_eq_ofNat, BitVec.ofNat_eq_ofNat,
+    Bool.not_eq_eq_eq_not, Bool.not_true]
+  simp only [mem_overlap, Bool.or_eq_false_iff, decide_eq_false_iff_not]
   obtain ⟨ha, hb, hsep⟩ := h
-  simp [mem_legal'] at ha hb
-  subst ha'
-  subst hb'
-  apply Classical.byContradiction
-  intro hcontra
-  · sorry
-  · sorry
--/
+  simp only [mem_legal', Nat.reducePow] at ha hb
+
+  obtain ⟨an, rfl⟩ : ∃ an' : BitVec 64, an = an'.toNat :=
+    have han_lt : an < 2^64 := by omega
+    ⟨BitVec.ofNatLt _ han_lt, rfl⟩
+  obtain ⟨bn, rfl⟩ : ∃ bn' : BitVec 64, bn = bn'.toNat :=
+    have han_lt : bn < 2^64 := by omega
+    ⟨BitVec.ofNatLt _ han_lt, rfl⟩
+  change an > 0 at han
+  change bn > 0 at hbn
+  simp only [BitVec.ofNat_toNat, BitVec.setWidth_eq, BitVec.not_le]
+  apply And.intro
+  · bv_omega
+  · rw [show ∀ {x y}, b + x - y - b = x - y by bv_omega]
+    bv_omega
 
 /-- `mem_subset' a an b bn` witnesses that `[a..a+an)` is a subset of `[b..b+bn)`.
 In prose, we may notate this as `[a..an) ≤ [b..bn)`.

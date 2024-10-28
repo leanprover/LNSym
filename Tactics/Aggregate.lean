@@ -30,6 +30,9 @@ def aggregate (axHyps : Array LocalDecl) (location : Location)
 
     let config := simpConfig?.getD aggregate.defaultSimpConfig
     let (ctx, simprocs) ← LNSymSimpContext
+        -- https://github.com/leanprover/lean4/blob/94b1e512da9df1394350ab81a28deca934271f65/src/Lean/Meta/DiscrTree.lean#L371
+        -- refines the discrimination tree to also index applied functions. 
+        (noIndexAtArgs := false)
         (config := config)
         (decls := axHyps)
 
@@ -106,6 +109,15 @@ elab "sym_aggregate" simpConfig?:(config)? loc?:(location)? : tactic => withMain
           (expectedType := do
             let state ← mkFreshExprMVar mkArmState
             return mkApp (mkConst ``CheckSPAlignment) state)
+        -- `?state.program = ?program`
+        searchLCtxFor (whenFound := whenFound)
+          (expectedType := do
+            let mkProgramTy := mkConst ``Program
+            let state ← mkFreshExprMVar mkArmState
+            let program ← mkFreshExprMVar mkProgramTy
+            return mkApp3 (.const ``Eq [1]) mkProgramTy
+              (mkApp (mkConst ``ArmState.program) state)
+              program)
 
     let loc := (loc?.map expandLocation).getD (.targets #[] true)
     aggregate axHyps loc simpConfig?

@@ -270,8 +270,10 @@ theorem program.step_8e4_8e8_of_wellformed_of_stepped (scur snext : ArmState)
   have := program.stepi_eq_0x8e4 h_program h_pc h_err
   obtain ⟨h_step⟩ := hstep
   subst h_step
-  constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules]
-  · constructor <;> simp [*, state_simp_rules, minimal_theory]
+  constructor
+  <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules,
+        memory_rules]
+  · constructor <;> simp [*, state_simp_rules, minimal_theory, memory_rules]
 
 -- 3/7 (0x8e8#64, 0x3c810444#32),  /- str q4, [x2], #16        -/
 structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8ec : Prop where
@@ -546,7 +548,6 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
             rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega_bench)]
             rw [BitVec.toNat_mul_of_lt (by bv_omega_bench)]
             rw [BitVec.toNat_mul_of_lt (by bv_omega_bench)]
-            rw [BitVec.toNat_sub_of_lt (by bv_omega_bench)]
             bv_omega_bench
           }
   · intros n addr hsep
@@ -771,7 +772,7 @@ theorem partial_correctness :
         rw [step_8e4_8e8.h_q4]
         rw [h_si_x2]
         obtain ⟨h_assert_1, h_assert_2, h_assert_3, h_assert_4, h_assert_5, h_assert_6, h_assert_7⟩ := h_assert
-        simp only [memory_rules]
+        -- simp only [memory_rules]
         simp only [step_8f4_8e4.h_mem]
         simp only [step_8f4_8e4.h_x1]
         rw [h_si_x1]

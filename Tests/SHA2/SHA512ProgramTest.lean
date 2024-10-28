@@ -13,15 +13,27 @@ section SHA512ProgramTest
 
 open BitVec
 
+-- We get an over-approximation of the GPR/SFP registers that may be modified in
+-- a loop iteration.
 /--
-info: #[(0,
+info: Except.ok #[RegType.GPR 0x01#5, RegType.GPR 0x02#5, RegType.GPR 0x03#5, RegType.GPR 0x04#5, RegType.SFP 0x00#5,
+  RegType.SFP 0x01#5, RegType.SFP 0x02#5, RegType.SFP 0x03#5, RegType.SFP 0x04#5, RegType.SFP 0x05#5,
+  RegType.SFP 0x06#5, RegType.SFP 0x07#5, RegType.SFP 0x10#5, RegType.SFP 0x11#5, RegType.SFP 0x12#5,
+  RegType.SFP 0x13#5, RegType.SFP 0x14#5, RegType.SFP 0x15#5, RegType.SFP 0x16#5, RegType.SFP 0x17#5,
+  RegType.SFP 0x18#5, RegType.SFP 0x19#5, RegType.SFP 0x1a#5, RegType.SFP 0x1b#5, RegType.SFP 0x1c#5,
+  RegType.SFP 0x1d#5]
+-/
+#guard_msgs in
+#eval (do let cfg ← Cfg.create' 0x126500#64 0x126c90#64 SHA512.program; pure cfg.maybe_modified_regs).mapError toString
+
+/--
+info: ok: #[(0,
    { guard := <BrOrg>0x0000000000126c90#64,
      target := <BrTgt>0x0000000000126500#64,
      next := <Seq>0x0000000000126c94#64 })]
 -/
 #guard_msgs in
-#eval (do let cfg ← (Cfg.create SHA512.program)
-          IO.println s!"{cfg.loops_info}")
+#eval do let cfg ← Cfg.create SHA512.program; pure cfg.loops_info
 
 -- Initial hash value, with the most-significant word first.
 def SHA512_H0 : BitVec 512 :=

@@ -107,13 +107,16 @@ Allow elaboration of `MemOmegaConfig` arguments to tactics.
 declare_config_elab elabMemOmegaConfig MemOmega.Config
 
 /--
-Implement the `mem_omega` tactic, which unfolds information about memory
-in terms of
+The `mem_omega` tactic is a finishing tactic which is used to dispatch memory side conditions.
+Broadly, the algorithm works as follows:
+- It scans the set of hypotheses for `mem_separate`, `mem_subset`, and `mem_legal` hypotheses, and turns them into `omega` based information.
+- It calls `omega` as a finishing tactic to close the current goal state.
+- Cruicially, it **does not unfold** `pairwiseSeparate` constraints. We expect the user to do so. If they want `pairwiseSeparate` unfolded, then please use `mem_omega!`.
 -/
 syntax (name := mem_omega) "mem_omega" (Lean.Parser.Tactic.config)? : tactic
 
 /--
-Implement the `mem_omega` tactic frontend.
+The `mem_omega!` tactic is a finishing tactic, that is a more aggressive variant of `mem_omega`.
 -/
 syntax (name := mem_omega_bang) "mem_omega!" (Lean.Parser.Tactic.config)? : tactic
 
