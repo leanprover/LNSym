@@ -23,6 +23,7 @@ import Lean.Elab.Tactic.Conv.Basic
 import Tactics.Simp
 import Tactics.BvOmegaBench
 import Arm.Memory.Common
+import Arm.Memory.MemOmega
 
 open Lean Meta Elab Tactic Memory
 
@@ -107,18 +108,6 @@ structure SimpMemConfig where
   rewriteFuel : Nat := 1000
   /-- whether an error should be thrown if the tactic makes no progress. -/
   failIfUnchanged : Bool := true
-  /-- whether `simp_mem` should always try to use `omega` to close the goal,
-    even if goal state is not recognized as one of the blessed states.
-    This is useful when one is trying to establish some numerical invariant
-    about addresses based on knowledge of memory.
-    e.g.
-    ```
-    h : mem_separate' a 10 b 10
-    hab : a < b
-    ⊢ a + 5 < b
-    ```
-  -/
-  useOmegaToClose : Bool := false
 
 /-- Context for the `SimpMemM` monad, containing the user configurable options. -/
 structure Context where
@@ -290,48 +279,6 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Memory.Hypothesis) : 
 
 /--
 simplify the goal state, closing legality, subset, and separation goals,
-and simplifying all other expressions. return `true` if goal has been closed, and `false` otherwise.
--/
-partial def SimpMemM.closeGoal (g : MVarId) (hyps : Array Memory.Hypothesis) : SimpMemM Bool := do
-  SimpMemM.withContext g do
-    trace[simp_mem.info] "{processingEmoji} Matching on ⊢ {← g.getType}"
-    let gt ← g.getType
-    if let .some e := MemLegalProp.ofExpr? gt then
-      withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-        if let .some proof ← proveWithOmega? e (← getBvToNatSimpCtx) (← getBvToNatSimprocs) hyps then
-          g.assign proof.h
-    if let .some e := MemSubsetProp.ofExpr? gt then
-      withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-        if let .some proof ← proveWithOmega? e (← getBvToNatSimpCtx) (← getBvToNatSimprocs) hyps then
-          g.assign proof.h
-    if let .some e := MemSeparateProp.ofExpr? gt then
-      withTraceNode m!"Matched on ⊢ {e}. Proving..." do
-        if let .some proof ← proveWithOmega? e (← getBvToNatSimpCtx) (← getBvToNatSimprocs) hyps then
-          g.assign proof.h
-
-    if (← getConfig).useOmegaToClose then
-      withTraceNode m!"Unknown memory expression ⊢ {gt}. Trying reduction to omega (`config.useOmegaToClose = true`):" do
-        let oldGoals := (← getGoals)
-        try
-          let gproof ← mkFreshExprMVar (type? := gt)
-          setGoals (gproof.mvarId! :: (← getGoals))
-          SimpMemM.withMainContext do
-          let _ ← Hypothesis.addOmegaFactsOfHyps hyps.toList #[]
-          trace[simp_mem.info] m!"Executing `omega` to close {gt}"
-          SimpMemM.withTraceNode m!"goal (Note: can be large)" do
-            trace[simp_mem.info] "{← getMainGoal}"
-          omega (← getBvToNatSimpCtx) (← getBvToNatSimprocs)
-          trace[simp_mem.info] "{checkEmoji} `omega` succeeded."
-          g.assign gproof
-        catch e =>
-          trace[simp_mem.info]  "{crossEmoji} `omega` failed with error:\n{e.toMessageData}"
-          setGoals oldGoals
-  return ← g.isAssigned
-
-
-
-/--
-simplify the goal state, closing legality, subset, and separation goals,
 and simplifying all other expressions. Returns `true` if an improvement has been made
 in the current iteration.
 -/
@@ -360,10 +307,6 @@ partial def SimpMemM.simplifyLoop : SimpMemM Unit := do
     withTraceNode m!"Summary: Found {foundHyps.size} hypotheses" do
       for (i, h) in foundHyps.toList.enum do
         trace[simp_mem.info] m!"{i+1}) {h}"
-
-    if ← SimpMemM.closeGoal g foundHyps then
-      trace[simp_mem.info] "{checkEmoji} goal closed."
-      return ()
 
     -- goal was not closed, try and improve.
     let mut changedInAnyIter? := false

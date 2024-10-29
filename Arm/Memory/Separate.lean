@@ -230,12 +230,12 @@ theorem mem_legal'.omega_def (h : mem_legal' a n) : a.toNat + n ≤ 2^64 := h
 
 /-- The linear constraint is equivalent to `mem_legal'`. -/
 theorem mem_legal'.iff_omega (a : BitVec 64) (n : Nat) :
-    (a.toNat + n ≤ 2^64) ↔ mem_legal' a n := by
+    mem_legal' a n ↔ (a.toNat + n ≤ 2^64) := by
   constructor
   · intros h
-    apply mem_legal'.of_omega h
-  · intros h
     apply h.omega_def
+  · intros h
+    apply mem_legal'.of_omega h
 
 instance : Decidable (mem_legal' a n) :=
   if h : a.toNat + n ≤ 2^64 then
@@ -341,14 +341,15 @@ theorem mem_separate'.of_omega
 
 /-- The linear constraint is equivalent to `mem_separate'`. -/
 theorem mem_separate'.iff_omega (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
+    mem_separate' a an b bn ↔
     (a.toNat + an ≤ 2^64 ∧
     b.toNat + bn ≤ 2^64 ∧
-    (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn)) ↔ mem_separate' a an b bn := by
+    (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn)) := by
   constructor
   · intros h
-    apply mem_separate'.of_omega h
-  · intros h
     apply h.omega_def
+  · intros h
+    apply mem_separate'.of_omega h
 
 instance : Decidable (mem_separate' a an b bn) :=
   if h : (a.toNat + an ≤ 2^64 ∧ b.toNat + bn ≤ 2^64 ∧ (a.toNat + an ≤ b.toNat ∨ a.toNat ≥ b.toNat + bn)) then
@@ -430,15 +431,16 @@ constructor
 
 /-- The linear constraint is equivalent to `mem_subset'`. -/
 theorem mem_subset'.iff_omega (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :
+    mem_subset' a an b bn  ↔
     (a.toNat + an ≤ 2^64 ∧
     b.toNat + bn ≤ 2^64 ∧
     b.toNat ≤ a.toNat ∧
-    a.toNat + an ≤ b.toNat + bn) ↔ mem_subset' a an b bn := by
+    a.toNat + an ≤ b.toNat + bn) := by
   constructor
   · intros h
-    apply mem_subset'.of_omega h
-  · intros h
     apply h.omega_def
+  · intros h
+    apply mem_subset'.of_omega h
 
 instance : Decidable (mem_subset' a an b bn) :=
   if h : (a.toNat + an ≤ 2^64 ∧ b.toNat + bn ≤ 2^64 ∧ b.toNat ≤ a.toNat ∧ a.toNat + an ≤ b.toNat + bn) then
@@ -686,5 +688,22 @@ def Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
         · omega
         · simp only [List.get?_eq_getElem?, ha]
         · simp only [List.get?_eq_getElem?, hb]
+
+
+/--
+Convenient API to extract out a separate proof from a Memory.Region.pairwiseSeparate.
+Proof obligations are given by `decide` to allow the API to be used as follows:
+
+let h := mem.pairwiseSeparate [(a, na), (b, nb), (c, nc)]
+let h01 := h.get 0 1
+-/
+def Memory.Region.pairwiseSeparate.get
+    (h : Memory.Region.pairwiseSeparate mems)
+    (i j : Nat)
+    (hi : i < mems.length := by simp)
+    (hj : j < mems.length := by simp)
+    (hij : i ≠ j := by omega) :
+    mem_separate' mems[i].fst mems[i].snd mems[j].fst mems[j].snd := by
+  apply Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem h i j hij <;> simp
 
 end NewDefinitions

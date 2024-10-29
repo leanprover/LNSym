@@ -104,8 +104,7 @@ theorem popcount32_sym_meets_spec (s0 sf : ArmState)
   · -- Memory Frame Condition
     intro n addr h_separate
     simp only [memory_rules] at *
-    repeat (simp_mem (config := { useOmegaToClose := false }); sym_aggregate)
-
+    repeat (simp_mem; sym_aggregate)
   done
 
 /--
