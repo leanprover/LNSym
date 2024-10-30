@@ -17,7 +17,7 @@ import Arm.Memory.SeparateAutomation
 namespace MemLegal
 /-- Show reflexivity of legality. -/
 theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemLegal.legal_1' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms legal_1
@@ -27,28 +27,28 @@ end MemLegal
 namespace MemSubset
 /-- Reflexivity. -/
 theorem subset_1 (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSubset.subset_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms subset_1
 
 /-- Show that smaller subsets are also subsets. -/
 theorem subset_2 (l : mem_subset' a 16 b 16) : mem_subset' a 10 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSubset.subset_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms subset_2
 
 /-- Show that smaller subsets are also subsets, even when moving base pointer. -/
 theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSubset.subset_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms subset_3
 
 /-- Show that we can perform address arithmetic based on subset constraints. -/
 theorem subset_4 (l : mem_subset' a 16 b 16) : a = b := by
-  simp_mem (config := {useOmegaToClose := true})
+  mem_omega
 
 /-- Show that we can perform address arithmetic based on subset constraints.
 Only two configurations possible:
@@ -60,7 +60,7 @@ a0 a1 a2 ..
 b0 b1 b2 b3
 -/
 theorem subset_5 (l : mem_subset' a 3 b 4) : a ≤ b + 1 := by
-  simp_mem (config := {useOmegaToClose := true})
+  mem_omega
 
 end MemSubset
 
@@ -68,7 +68,7 @@ namespace MemSeparate
 
 /-- Reflexivity. -/
 theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_1
@@ -76,14 +76,14 @@ theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
 
 /-- Symmetry. -/
 theorem separate_2 (l : mem_separate' a 16 b 16) : mem_separate' b 16 a 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_2
 
 /-- Smaller subsets. -/
 theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_3
@@ -91,7 +91,7 @@ theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
 /-- sliding subset to the right. -/
 theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
     mem_separate' a 17 (b+1) 15 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_4
@@ -100,7 +100,7 @@ theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
 theorem separate_5 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
     mem_separate' a 16 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_5' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_5
@@ -109,7 +109,7 @@ theorem separate_5 {n : Nat} (hn : n ≠ 0)
 theorem separate_6 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
     mem_separate' a (n <<< 3 + 8) b (n <<< 4) := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_6
@@ -136,7 +136,7 @@ us to exploit memory separateness properties.
 -/
 theorem mem_separate_9  (h : mem_separate' a 100 b 100)
   (hab : a < b) : a + 50 ≤ b := by
-  simp_mem (config := {useOmegaToClose := true})
+  mem_omega
 
 end MemSeparate
 
@@ -374,7 +374,7 @@ proving generic properties about our definitions of `mem_legal'`,
 -/
 
 /-! ### mem_subset is a partial order. -/
-theorem mem_subset_refl (h : mem_legal' a an) : mem_subset' a an a an := by simp_mem
+theorem mem_subset_refl (h : mem_legal' a an) : mem_subset' a an a an := by mem_omega
 /-
 TODO(@bollu): In such a scenario, we should call `omega` directly on the goal,
 and see if it can solve it.
@@ -383,35 +383,41 @@ theorem mem_subset_asymm (h : mem_subset' a an b bn) (h' : mem_subset' b bn a an
   simp_mem
 -/
 theorem mem_subset_trans (h : mem_subset' a an b bn) (h' : mem_subset' b bn c cn) :
-  mem_subset' a an c cn := by simp_mem
+  mem_subset' a an c cn := by mem_omega
 
 /-! ### mem_separate relationship to arithmetic -/
 
-theorem mem_separate_comm (h : mem_separate' a an b bn) : mem_separate' b bn a an := by simp_mem
+theorem mem_separate_comm (h : mem_separate' a an b bn) : mem_separate' b bn a an := by mem_omega
 /-- if `[a..an)⟂[b..bn)`, then `[a+δ..an-δ)⟂[b..bn)`-/
 theorem mem_separate_of_lt_of_lt_sub (h : mem_separate' a an b bn) (hab : a < b)
-  (hδ : δ < b - a): mem_separate' (a + δ) (an - δ.toNat) b bn := by simp_mem
+  (hδ : δ < b - a): mem_separate' (a + δ) (an - δ.toNat) b bn := by mem_omega
 /-- If `[a..an)⟂[b..bn)`, and `a ≤ b`, then `[a'..an+(a-a'))⟂[b..bn)`.
 This lets us increase the size of the left memory region.
 -/
 theorem mem_separate_move_of_lt_of_le  (h : mem_separate' a an b bn)
   (hab : a < b)
-  (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a').toNat) b bn := by simp_mem
+  (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a').toNat) b bn := by mem_omega
 
 end MathProperties
-
 
 
 section PairwiseSeparate
   /- Check that a direct implication of the pairwise separation is proven. -/
   theorem pairwise_direct (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
     mem_separate' a 100 b 200 := by
-    simp_mem
+    mem_omega (config := {explodePairwiseSeparate := true})
+
+  /- Check that a direct implication of the pairwise separation is proven. -/
+  theorem pairwise_direct' (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
+    mem_separate' a 100 b 200 := by
+    mem_omega! -- use the notation to exploit every hypothesis.
 
   /- Check that a direct implication of the pairwise separation is proven. -/
   theorem pairwise_subset (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
     mem_separate' a 80 b 100 := by
-    simp_mem
+    have := h.get 0 1
+    simp at this
+    mem_omega -- intro useful hypothesis and use it.
 
 end PairwiseSeparate
 
@@ -425,7 +431,6 @@ error: unsolved goals
 ---
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
-[simp_mem.info] ⚙️ Matching on ⊢ False
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
@@ -443,7 +448,6 @@ error: ❌️ simp_mem failed to make any progress.
 ---
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
-[simp_mem.info] ⚙️ Matching on ⊢ False
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
