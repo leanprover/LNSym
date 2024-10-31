@@ -150,7 +150,16 @@ structure State where
   /-- Number of steps the tactic should spend performing subexpression elimination. -/
   currentEliminateFuel : Nat
 
+
 abbrev CSEM := StateRefT State (ReaderT CSEConfig TacticM)
+
+/- See https://github.com/leanprover/lean4/issues/5457 for why we need this workaround.  -/
+def CSEM.monadLog : MonadLog CSEM := inferInstance
+
+instance (priority := high) : MonadLog CSEM := CSEM.monadLog
+
+def CSEM.logInfo (msg : MessageData) : CSEM Unit := do 
+  @Lean.logInfo CSEM _ _ _ _ msg
 
 /-- Get the configuration. -/
 def getConfig : CSEM CSEConfig := read
@@ -361,6 +370,20 @@ def CSEM.generalize (arg : GeneralizeArg) : CSEM Bool := do
       traceLargeMsg m!"{bombEmoji} failed to generalize {hname}" m!"{e.toMessageData}"
       return false
 
+-- NOTE: this function takes a long time to typecheck.
+def CSEM.printProfitableExpressions (e2data : Std.HashMap Expr ExprData) (hinting : Bool) : CSEM Unit := do
+  -- This block seems to be very slow to elaborate. why?
+  withTraceNode m!"💸 CSE profitable (#expressions:{(e2data).size}):" do
+    let hintMsg : MessageData := MessageData.nil
+    let mut i : Nat := 1
+    /- sort to show most numerous first follows by smallest. -/
+    for (e, data) in e2data.toArray.qsort (fun kv kv' => kv.2.occs > kv'.2.occs) do
+      traceLargeMsg m!"{i}) {repr data}" m!"{e}"
+      i := i + 1
+      /- We're providing user hints, so we print the information about profitable expressions directly as a user message -/
+      if hinting then
+        logInfo m!"{i}) {toMessageData data} {e}"
+
 -- This function is very slow to elaborate, why?
 def CSEM.cseImpl (hinting : Bool) : CSEM Unit := do
   withMainContext do
@@ -382,17 +405,7 @@ def CSEM.cseImpl (hinting : Bool) : CSEM Unit := do
             e2data := e2data.insert e data
         return e2data
 
-    -- This block seems to be very slow to elaborate. why?
-    withTraceNode m!"💸 CSE profitable (#expressions:{(e2data).size}):" do
-      let hintMsg : MessageData := MessageData.nil
-      let mut i : Nat := 1
-      /- sort to show most numerous first follows by smallest. -/
-      for (e, data) in e2data.toArray.qsort (fun kv kv' => kv.2.occs > kv'.2.occs) do
-        traceLargeMsg m!"{i}) {repr data}" m!"{e}"
-        i := i + 1
-        /- We're providing user hints, so we print the information about profitable expressions directly as a user message -/
-        if hinting then
-          logInfo m!"{i}) {toMessageData data} {e}"
+    printProfitableExpressions e2data hinting
 
     withTraceNode m!"▶️ CSE rewriting (#expressions:{e2data.size}):" do
       let mut madeProgress := false
