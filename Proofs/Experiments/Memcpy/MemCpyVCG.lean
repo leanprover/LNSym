@@ -470,11 +470,11 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
   have h_upper_bound := hsep.hb.omega_def
   have h_upper_bound₂ := h_pre_1.hb.omega_def
   have h_upper_bound₃ := hsep.ha.omega_def
-  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by simp_mem (config := {useOmegaToClose := true})
+  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by mem_omega
   rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
   · rw [h_assert_6]
-    skip_proof simp_mem
-  · -- @bollu: TODO: figure out why this is so slow!
+    skip_proof mem_omega
+  · -- @bollu: TODO: figure out why this is so slow!/
     apply mem_separate'.symm
     apply mem_separate'.of_subset'_of_subset' hsep
     · apply mem_subset'.of_omega
@@ -518,9 +518,9 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
   apply And.intro
   · intros i hi
     have h_subset_2 : mem_subset' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat s0.x2 (s0.x0.toNat * 16) := by
-      skip_proof simp_mem
+      skip_proof mem_omega
     have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by
-      skip_proof simp_mem
+      skip_proof mem_omega
     have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by skip_proof bv_omega_bench
     have s2_sum_inbounds := h_pre_1.hb.omega_def
     have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega_bench
@@ -531,13 +531,13 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       · simp only [Nat.reduceMul, BitVec.toNat_add, BitVec.toNat_mul, BitVec.toNat_ofNat,
         Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
         BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
-        rw [h_assert_6 _ _ (by simp_mem)]
-      · skip_proof simp_mem
+        rw [h_assert_6 _ _ (by mem_omega)]
+      · skip_proof mem_omega
     · rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
       · apply h_assert_5 _ hi
       · constructor
-        · skip_proof simp_mem
-        · skip_proof simp_mem
+        · skip_proof mem_omega
+        · skip_proof mem_omega
         · left
           -- @bollu: TODO, see if `simp_mem` can figure this out given less aggressive
           -- proof states.
@@ -671,7 +671,7 @@ theorem partial_correctness :
             simp only [memory_rules] at h_si_read_sep
             rw [h_si_read_sep]
             rw [h_si_x0_eq_zero]
-            skip_proof simp_mem -- nice!
+            skip_proof mem_omega -- nice!
           · simp only [step.h_err, step.h_program, step.h_sp_aligned, and_self]
       · have step_8f4_8e4 :=
           program.step_8f4_8e4_of_wellformed_of_z_eq_0 si s1 si_well_formed

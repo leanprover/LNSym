@@ -215,7 +215,7 @@ theorem sha512_block_armv8_loop_2 (sprev si sf : ArmState)
       -- `(Memory.read_bytes 128 InputBase sprev.mem).extractLsBytes 0 16`
       sorry
     · rfl
-    · simp_mem
+    · mem_omega!
   have h_si_input_2 : Memory.read_bytes 16 (InputBase + 0x10#64) sprev.mem =
                       Memory.read_bytes 16 (InputBase + 0x10#64) si.mem := by
     sorry
