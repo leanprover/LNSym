@@ -191,6 +191,27 @@ def getConfig : SimpMemM SimpMemConfig := do
 /-- info: state_value (fld : StateField) : Type -/
 #guard_msgs in #check state_value
 
+
+def SimpMemM.findOverlappingReadHypAux (hyps : Array Memory.Hypothesis) (er : ReadBytesExpr)  (hReadEq : ReadBytesEqProof) :
+    SimpMemM <| Option (MemSubsetProof { sa := er.span, sb := hReadEq.read.span }) := do
+  withTraceNode m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? " do
+    -- the read we are analyzing should be a subset of the hypothesis
+    let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
+    let some hSubsetProof ← proveWithOmega? subset (← getBvToNatSimpCtx) (← getBvToNatSimprocs)  hyps
+      | return none
+    return some (hSubsetProof)
+
+def SimpMemM.findOverlappingReadHyp (hyps : Array Memory.Hypothesis) (er : ReadBytesExpr) :
+    SimpMemM <| Option (Σ (hread : ReadBytesEqProof),  MemSubsetProof { sa := er.span, sb := hread.read.span }) := do
+  for hyp in hyps do
+    let Hypothesis.read_eq hReadEq := hyp
+      | continue
+    let some subsetProof ← SimpMemM.findOverlappingReadHypAux hyps er hReadEq
+      | continue
+    return some ⟨hReadEq, subsetProof⟩
+  return none
+
+
 mutual
 
 /--
@@ -198,74 +219,76 @@ Pattern match for memory patterns, and simplify them.
 Close memory side conditions with `simplifyGoal`.
 Returns if progress was made.
 -/
-partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Memory.Hypothesis) : SimpMemM Unit := do
+partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Memory.Hypothesis) : SimpMemM (Option SimplifyResult) := do
   consumeRewriteFuel
   if ← outofRewriteFuel? then
     trace[simp_mem.info] "out of fuel for rewriting, stopping."
 
+  let e := e.consumeMData
+
   if e.isSort then
     trace[simp_mem.info] "skipping sort '{e}'."
 
-  if let .some er := ReadBytesExpr.ofExpr? e then
-    if let .some ew := WriteBytesExpr.ofExpr? er.mem then
-      trace[simp_mem.info] "{checkEmoji} Found read of write."
-      trace[simp_mem.info] "read: {er}"
-      trace[simp_mem.info] "write: {ew}"
-      trace[simp_mem.info] "{processingEmoji} read({er.span})⟂/⊆write({ew.span})"
+  let .some er := ReadBytesExpr.ofExpr? e
+    | SimpMemM.walkExpr e hyps
 
-      let separate := MemSeparateProp.mk er.span ew.span
-      let subset := MemSubsetProp.mk er.span ew.span
-      if let .some separateProof ← proveWithOmega? separate (← getBvToNatSimpCtx) (← getBvToNatSimprocs) hyps then do
-        trace[simp_mem.info] "{checkEmoji} {separate}"
-        MemSeparateProof.rewriteReadOfSeparatedWrite er ew separateProof
-        setChanged
-      else if let .some subsetProof ← proveWithOmega? subset (← getBvToNatSimpCtx) (← getBvToNatSimprocs) hyps then do
-        trace[simp_mem.info] "{checkEmoji} {subset}"
-        MemSubsetProof.rewriteReadOfSubsetWrite er ew subsetProof
-        setChanged
-      else
-        trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
+  if let .some ew := WriteBytesExpr.ofExpr? er.mem then
+    trace[simp_mem.info] "{checkEmoji} Found read of write."
+    trace[simp_mem.info] "read: {er}"
+    trace[simp_mem.info] "write: {ew}"
+    trace[simp_mem.info] "{processingEmoji} read({er.span})⟂/⊆write({ew.span})"
+
+    let separate := MemSeparateProp.mk er.span ew.span
+    let subset := MemSubsetProp.mk er.span ew.span
+    if let .some separateProof ← proveWithOmega? separate (← getBvToNatSimpCtx) (← getBvToNatSimprocs) hyps then do
+      trace[simp_mem.info] "{checkEmoji} {separate}"
+      let result ← MemSeparateProof.rewriteReadOfSeparatedWrite er ew separateProof e
+      setChanged
+      return result
+    else if let .some subsetProof ← proveWithOmega? subset (← getBvToNatSimpCtx) (← getBvToNatSimprocs) hyps then do
+      trace[simp_mem.info] "{checkEmoji} {subset}"
+      let result ← MemSubsetProof.rewriteReadOfSubsetWrite er ew subsetProof e
+      setChanged
+      return result
     else
-      -- read
-      trace[simp_mem.info] "{checkEmoji} Found read {er}."
-      -- TODO: we don't need a separate `subset` branch for the writes: instead, for the write,
-      -- we can add the theorem that `(write region).read = write val`.
-      -- Then this generic theory will take care of it.
-      withTraceNode m!"Searching for overlapping read {er.span}." do
-        for hyp in hyps do
-          if let Hypothesis.read_eq hReadEq := hyp then do
-            withTraceNode m!"{processingEmoji} ... ⊆ {hReadEq.read.span} ? " do
-              -- the read we are analyzing should be a subset of the hypothesis
-              let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
-              if let some hSubsetProof ← proveWithOmega? subset (← getBvToNatSimpCtx) (← getBvToNatSimprocs)  hyps then
-                trace[simp_mem.info] "{checkEmoji}  ... ⊆ {hReadEq.read.span}"
-                MemSubsetProof.rewriteReadOfSubsetRead er hReadEq hSubsetProof
-                setChanged
-              else
-                trace[simp_mem.info] "{crossEmoji}  ... ⊊ {hReadEq.read.span}"
+      trace[simp_mem.info] "{crossEmoji} Could not prove {er.span} ⟂/⊆ {ew.span}"
+      SimpMemM.walkExpr e hyps
   else
-    if e.isForall then
-      Lean.Meta.forallTelescope e fun xs b => do
-        for x in xs do
-          SimpMemM.simplifyExpr x hyps
-          -- we may have a hypothesis like
-          -- ∀ (x : read_mem (read_mem_bytes ...) ... = out).
-          -- we want to simplify the *type* of x.
-          SimpMemM.simplifyExpr (← inferType x) hyps
-          SimpMemM.simplifyExpr b hyps
-    else if e.isLambda then
-      Lean.Meta.lambdaTelescope e fun xs b => do
-        for x in xs do
-          SimpMemM.simplifyExpr x hyps
-          SimpMemM.simplifyExpr (← inferType x) hyps
-        SimpMemM.simplifyExpr b hyps
-    else
-      -- check if we have expressions.
-      match e with
-      | .app f x =>
-        SimpMemM.simplifyExpr f hyps
-        SimpMemM.simplifyExpr x hyps
-      | _ => return ()
+    -- read
+    trace[simp_mem.info] "{checkEmoji} Found read {er}."
+    -- TODO: we don't need a separate `subset` branch for the writes: instead, for the write,
+    -- we can add the theorem that `(write region).read = write val`.
+    -- Then this generic theory will take care of it.
+    withTraceNode m!"Searching for overlapping read {er.span}." do
+      let some ⟨hReadEq, hSubsetProof⟩ ← findOverlappingReadHyp hyps er
+        | SimpMemM.walkExpr e hyps
+      let out ← MemSubsetProof.rewriteReadOfSubsetRead er hReadEq hSubsetProof e
+      setChanged
+      return out
+
+partial def SimpMemM.walkExpr (e : Expr) (hyps : Array Memory.Hypothesis) : SimpMemM (Option SimplifyResult) := do
+  withTraceNode (traceClass := `simp_mem.expr_walk_trace) m!"🎯 {e} | kind:{Expr.ctorName e}" (collapsed := false) do
+  let e ← instantiateMVars e
+  match e.consumeMData with
+  | .app f x =>
+    let fResult ← SimpMemM.simplifyExpr f hyps
+    let xResult ← SimpMemM.simplifyExpr x hyps
+    -- return (← SimplifyResult.default e)
+    match (fResult, xResult) with
+    | (none, some xResult) =>
+        let outResult ← mkCongrArg f xResult.eqProof
+        return some ⟨e.updateApp! f xResult.eNew, outResult⟩
+    | (some fResult, none) =>
+        let outResult ← mkCongrFun fResult.eqProof x
+        return some ⟨e.updateApp! fResult.eNew x, outResult⟩
+    | (some fResult, some xResult) =>
+        let outResult ← mkCongr fResult.eqProof xResult.eqProof
+        return some ⟨e.updateApp! fResult.eNew xResult.eNew, outResult⟩
+    | _ => return none
+    -- let outResult ← mkCongr fResult.eqProof xResult.eqProof
+    -- -- | I think I see where the problem is. here, I should have updated with the other result.
+    -- return ⟨e.updateApp! f x, outResult⟩
+  | _ => return none
 
 
 /--
@@ -277,7 +300,13 @@ partial def SimpMemM.simplifyGoal (g : MVarId) (hyps : Array Memory.Hypothesis) 
   SimpMemM.withContext g do
     let gt ← g.getType
     withTraceNode m!"Simplifying goal." do
-        SimpMemM.simplifyExpr (← whnf gt) hyps
+        let some out ← SimpMemM.simplifyExpr gt hyps
+          | return ()
+        -- Note: this could impact performance, so delete this if it turns out to be a resource hog.
+        check out.eNew
+        check out.eqProof
+        let newGoal ←  (← getMainGoal).replaceTargetEq out.eNew out.eqProof
+        replaceMainGoal [newGoal]
 end
 
 /--
