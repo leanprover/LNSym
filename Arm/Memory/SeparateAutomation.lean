@@ -212,21 +212,6 @@ def SimpMemM.findOverlappingReadHyp (hyps : Array Memory.Hypothesis) (er : ReadB
   return none
 
 
-def Expr.kindStr (e : Expr) : String :=
-  match e with
-  | Expr.forallE .. => "forall"
-  | Expr.letE ..  => "let"
-  | Expr.const .. => "const"
-  | Expr.sort .. => "sort"
-  | Expr.lam .. => "lam"
-  | Expr.mdata .. => "mdata"
-  | Expr.proj .. => "proj"
-  | Expr.app .. => "app"
-  | Expr.mvar .. => "mvar"
-  | Expr.bvar .. => "bvar"
-  | Expr.fvar .. => "fvar"
-  | Expr.lit .. => "lit"
-
 mutual
 
 /--
@@ -282,7 +267,7 @@ partial def SimpMemM.simplifyExpr (e : Expr) (hyps : Array Memory.Hypothesis) : 
       return out
 
 partial def SimpMemM.walkExpr (e : Expr) (hyps : Array Memory.Hypothesis) : SimpMemM (Option SimplifyResult) := do
-  withTraceNode (traceClass := `simp_mem.expr_walk_trace) m!"🎯 {e} | kind:{Expr.kindStr e}" (collapsed := false) do
+  withTraceNode (traceClass := `simp_mem.expr_walk_trace) m!"🎯 {e} | kind:{Expr.ctorName e}" (collapsed := false) do
   let e ← instantiateMVars e
   match e.consumeMData with
   | .app f x =>
