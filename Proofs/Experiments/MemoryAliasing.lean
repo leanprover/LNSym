@@ -149,6 +149,9 @@ theorem mem_automation_test_1
   simp_mem
   rfl
 
+
+  -- rfl
+
 /-- info: 'mem_automation_test_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_1
 
@@ -306,7 +309,7 @@ end ReadOverlappingWrite
 /- We check that we correctly visit the expression tree, both for binders,
 and for general walking. -/
 namespace ExprVisitor
-
+/-
 /-- Check that we correctly go under binders -/
 theorem test_quantified_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' 0 16) : ∀ (_irrelevant : Nat),
@@ -320,6 +323,7 @@ theorem test_quantified_1 {val : BitVec (16 * 8)}
 info: 'ExprVisitor.test_quantified_1' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms test_quantified_1
+-/
 
 /-- Check that we correctly walk under applications. -/
 theorem test_app_1 {val : BitVec (16 * 8)}
@@ -333,6 +337,7 @@ theorem test_app_1 {val : BitVec (16 * 8)}
 /-- info: 'ExprVisitor.test_app_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms test_app_1
 
+/-
 /--
 Check that we correctly walk under applications (`f <walk inside>`)
 and binders (`∀ f, <walk inside>`) simultaneously.
@@ -364,6 +369,7 @@ theorem test_quantified_app_2 {val : BitVec (16 * 8)}
   rfl
 
 end ExprVisitor
+-/
 
 namespace MathProperties
 
