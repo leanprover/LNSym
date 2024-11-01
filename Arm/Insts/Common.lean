@@ -720,7 +720,7 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
              reduceAllOnes,
              reduceZeroExtend,
              Nat.zero_mul,
-             shiftLeft_zero_eq,
+             shiftLeft_zero,
              reduceNot,
              BitVec.extractLsb_ofNat,
              Nat.reducePow,
