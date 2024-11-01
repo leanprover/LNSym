@@ -122,7 +122,7 @@ work for `16#64 + ktbl_addr`?
 -/
 -- set_option trace.simp_mem true in
 -- set_option trace.simp_mem.info true in
-theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
+#time theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (_h_s1_err : read_err s1 = StateError.None)
   (_h_s1_sp_aligned : CheckSPAlignment s1)
   (h_s1_pc : read_pc s1 = 0x126500#64)
@@ -150,7 +150,9 @@ theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
   -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.
   have hSHA2_k512_length : SHA2.k_512.length = 80 := rfl
-  simp_mem -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
+  conv =>
+    lhs
+    simp_mem ⊂ r at h_s1_ktbl with [] -- It should fail if it makes no progress. Also, make small examples that demonstrate such failures.
   rfl
 
 /--
