@@ -17,6 +17,7 @@ abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 
 set_option maxRecDepth 8000 in
+set_option debug.byAsSorry true in
 -- set_option profiler true in
 theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_init_v8_program)
@@ -37,6 +38,7 @@ theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 500000 in
 set_option sat.timeout 120 in
+set_option trace.profiler true in
 -- set_option pp.deepTerms true in
 -- set_option pp.maxSteps 10000 in
 -- set_option trace.profiler true in
@@ -93,19 +95,15 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   --    unable to be reflected
   sym_n 152
   simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
-  apply And.intro  
+  apply And.intro
   · bv_decide
-  · sorry
-  -- [Shilpi] Commenting out the following because the CI fails with 
-  -- "INTERNAL PANIC: out of memory"
-  /-
-    simp only
+  · simp only
     [shift_left_common_aux_64_2
     , shift_right_common_aux_64_2_tff
     , shift_right_common_aux_32_4_fff
     , DPSFP.AdvSIMDExpandImm
     , DPSFP.dup_aux_0_4_32]
-    generalize read_mem_bytes 16 (r (StateField.GPR 1#5) s0) s0 = Hinit
+    generalize Memory.read_bytes 16 (r (StateField.GPR 1#5) s0) s0.mem = Hinit
     -- change the type of Hinit to be BitVec 128, assuming that's def-eq
     change BitVec 128 at Hinit
     simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi,
@@ -118,7 +116,6 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       Nat.zero_mod, Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul,
       Nat.reduceSub, BitVec.reduceMul, BitVec.reduceXOr, BitVec.mul_one, Nat.add_one_sub_one,
       BitVec.one_mul]
+    bv_decide
     -- bv_check "lrat_files/GCMInitV8Sym.lean-GCMInitV8Program.gcm_init_v8_program_correct-117-4.lrat"
     -- TODO: proof works in vscode but timeout in the CI -- need to investigate further
-    -/
-
