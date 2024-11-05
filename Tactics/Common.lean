@@ -284,6 +284,50 @@ def mkMemory : Expr := mkConst ``Memory
 def mkEqReflMemory (x : Expr) : Expr :=
   mkApp2 (.const ``Eq.refl [1]) mkMemory x
 
+/-- Return `<x> ∈ <xs>`, given expressions `α : Type u`, `x : α`
+and `xs : List α` -/
+def mkListMem (u : Level) (α x xs : Expr) : Expr :=
+  let list := mkApp (.const ``List [u]) α
+  let inst := mkApp (.const ``List.instMembership [u]) α
+  mkApp5 (.const ``Membership.mem [u,u]) α list inst xs x
+
+/-- Return `<f> ∈ <fs>`, given expressions `f : StateField`
+and `fs : List StateField` -/
+def mkStateFieldListMem (f fs : Expr) : Expr :=
+  mkListMem 0 (mkConst ``StateField) f fs
+
+/-- Return a proof of type `<x> ∈ <xs>`, given expressions `α : Type u`, `x : α`
+and `xs : List α`, assuming that `xs` is of the form `[x₁, x₂, ⋯, xₙ]` and that
+`x` is *syntactically* equal to one of the elements `xᵢ`.
+
+Returns `none` if the proof could not be constructed  -/
+partial def mkListMemProof (u : Level) (α x xs : Expr) : Option Expr := do
+  let_expr List.cons _α hd tl := xs | none
+  if hd == x then
+    mkApp3 (.const ``List.Mem.head [u]) α x tl
+  else
+    mkApp5 (.const ``List.Mem.tail [u]) α x hd tl (← mkListMemProof u α x tl)
+
+/-- auxiliary lemma for use in `mkNeProofOfMemAndNotMem` -/
+private theorem mkNeProofOfNotMemAndMem.aux.{u}
+    {α : Type u} {x y : α} {xs : List α}
+    (h_not_mem : x ∉ xs) (h_mem : y ∈ xs)  :
+    x ≠ y := by
+  rintro rfl; contradiction
+
+/-- Return a proof of type `<x> ≠ <y>`, given proofs
+`nonMemProof : <x> ∉ <xs>` and `memProof : <y> ∈ <xs>`, assuming that
+`α : Type u`, `x y : α`, and `xs : List α` -/
+@[inline] def mkNeProofOfNotMemAndMem (u : Level) (α x y xs nonMemProof memProof : Expr) :
+    Expr :=
+  mkApp6 (.const ``mkNeProofOfNotMemAndMem.aux [u]) α x y xs
+    nonMemProof memProof
+
+/-- Return a proof of `<x> ∉ <xs>`, given `notMemProof : <x> ∉ <y> :: xs`,
+assuming that `α : Type u`, `x y : α`, and `xs : List α` -/
+@[inline] def mkNotMemOfNotMemCons (u : Level) (α x y xs notMemProof : Expr) : Expr :=
+  mkApp5 (.const ``List.not_mem_of_not_mem_cons [u]) α x y xs notMemProof
+
 /-! ## Expr Helpers -/
 
 /-- Throw an error if `e` is not of type `expectedType` -/

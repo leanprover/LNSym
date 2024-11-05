@@ -442,7 +442,6 @@ section PartialCorrectness
 -- set_option skip_proof.skip true in
 -- set_option trace.profiler true in
 -- set_option profiler true in
-set_option maxHeartbeats 0 in
 theorem Memcpy.extracted_2 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -466,26 +465,17 @@ theorem Memcpy.extracted_2 (s0 si : ArmState)
       (Memory.write_bytes 16 (s0.x2 + 0x10#64 * (s0.x0 - si.x0))
         (Memory.read_bytes 16 (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) si.mem) si.mem) =
     Memory.read_bytes n addr s0.mem := by
-  have h_le : (s0.x0 - (si.x0 - 0x1#64)).toNat ≤ s0.x0.toNat := by bv_omega_bench
-  have h_upper_bound := hsep.hb.omega_def
-  have h_upper_bound₂ := h_pre_1.hb.omega_def
-  have h_upper_bound₃ := hsep.ha.omega_def
-  have h_width_lt : (0x10#64).toNat * (s0.x0 - (si.x0 - 0x1#64)).toNat < 2 ^ 64 := by mem_omega
-  rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
-  · rw [h_assert_6]
-    skip_proof mem_omega
-  · -- @bollu: TODO: figure out why this is so slow!/
-    apply mem_separate'.symm
-    apply mem_separate'.of_subset'_of_subset' hsep
-    · apply mem_subset'.of_omega
-      skip_proof refine ⟨?_, ?_, ?_, ?_⟩ <;> skip_proof bv_omega_bench
-    · apply mem_subset'_refl hsep.hb
+  conv =>
+    lhs
+    simp_mem sep with [h_si_x0_nonzero, h_assert_1, h_pre_1, h_assert_1, hsep]
+  rw [h_assert_6]
+  mem_omega with [hsep, h_pre_1, h_assert_1, h_assert_4]
 
 -- set_option skip_proof.skip true in
 set_option maxHeartbeats 0 in
 -- set_option trace.profiler true in
 -- set_option profiler true in
-theorem Memcpy.extracted_0 (s0 si : ArmState)
+#time theorem Memcpy.extracted_0 (s0 si : ArmState)
   (h_si_x0_nonzero : si.x0 ≠ 0)
   (h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
   (h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)))
@@ -518,9 +508,10 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
   apply And.intro
   · intros i hi
     have h_subset_2 : mem_subset' s0.x2 (0x10#64 * (s0.x0 - si.x0)).toNat s0.x2 (s0.x0.toNat * 16) := by
-      skip_proof mem_omega
+      -- skip_proof mem_omega with [*, -h_assert_4, -h_assert_3, -h_pre_6]
+      skip_proof mem_omega with [h_si_x0_nonzero, h_assert_1, h_pre_1]
     have h_subset_1 : mem_subset' (s0.x1 + 0x10#64 * (s0.x0 - si.x0)) 16 s0.x1 (s0.x0.toNat * 16) := by
-      skip_proof mem_omega
+      skip_proof mem_omega with [h_si_x0_nonzero, h_assert_1, h_pre_1]
     have icases : i = s0.x0 - si.x0 ∨ i < s0.x0 - si.x0 := by skip_proof bv_omega_bench
     have s2_sum_inbounds := h_pre_1.hb.omega_def
     have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega_bench
@@ -531,24 +522,20 @@ theorem Memcpy.extracted_0 (s0 si : ArmState)
       · simp only [Nat.reduceMul, BitVec.toNat_add, BitVec.toNat_mul, BitVec.toNat_ofNat,
         Nat.reducePow, Nat.reduceMod, BitVec.toNat_sub, Nat.add_mod_mod, Nat.sub_self,
         BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
-        rw [h_assert_6 _ _ (by mem_omega)]
-      · skip_proof mem_omega
+        rw [h_assert_6 _ _ (by mem_omega with [h_si_x0_nonzero, h_assert_1, h_pre_1])]
+      · skip_proof mem_omega with [h_si_x0_nonzero, h_assert_1, h_pre_1]
     · rw [Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate']
       · apply h_assert_5 _ hi
       · constructor
-        · skip_proof mem_omega
-        · skip_proof mem_omega
+        · skip_proof mem_omega with [*, -h_s0_x1, -h_s0_x2, -h_assert_1, -h_assert_6, -h_pre_1, -h_pre_6]
+        · skip_proof mem_omega with [h_si_x0_nonzero, h_assert_1, h_pre_1]
         · left
           -- @bollu: TODO, see if `simp_mem` can figure this out given less aggressive
           -- proof states.
           skip_proof {
             have s2_sum_inbounds := h_pre_1.hb.omega_def
             have i_sub_x0_mul_16 : 16 * i.toNat < 16 * s0.x0.toNat := by skip_proof bv_omega_bench
-            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega_bench)]
-            rw [BitVec.toNat_add_eq_toNat_add_toNat (by bv_omega_bench)]
-            rw [BitVec.toNat_mul_of_lt (by bv_omega_bench)]
-            rw [BitVec.toNat_mul_of_lt (by bv_omega_bench)]
-            bv_omega_bench
+            skip_proof mem_omega with [*, -h_assert_3, -h_assert_4]
           }
   · intros n addr hsep
     apply Memcpy.extracted_2 <;> assumption

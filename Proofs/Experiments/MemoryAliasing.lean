@@ -130,6 +130,7 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
   simp_mem /- Need better address normalization. -/
   trace_state
 
+#time
 /--
 Check that we can close address relationship goals that require
 us to exploit memory separateness properties.
@@ -138,9 +139,135 @@ theorem mem_separate_9  (h : mem_separate' a 100 b 100)
   (hab : a < b) : a + 50 ≤ b := by
   mem_omega
 
+set_option linter.all false in
+#time theorem mem_separate_10  (h : mem_separate' a 100 b 100)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (hab : a < b) : a + 50 ≤ b := by
+  mem_omega
+
+set_option linter.all false in
+set_option trace.simp_mem.info true in
+#time theorem mem_separate_11  (h : mem_separate' a 100 b 100)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (hab : a < b) : a + 50 ≤ b := by
+  mem_omega with [h, hab]
+
+
 end MemSeparate
 
 
+section HypothesisSelectors
+
+set_option linter.all false in
+set_option trace.simp_mem.info true in
+/--
+info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Processing 'h'' : 'a ≤ 100'
+[simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
+[simp_mem.info] Adding omega facts from hypotheses
+[simp_mem.info] Reducion to omega
+  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+    [simp_mem.info] a : Nat
+        h' : a ≤ 100
+        hab : a ≤ a + 1
+        ⊢ a ≤ a + 1
+  [simp_mem.info] ✅️ `omega` succeeded.
+-/
+#guard_msgs in example (h' : a ≤ 100)
+  (hab : a ≤ a + 1) : a ≤ a + 1 := by
+  mem_omega  -- by default, process all hyps
+
+/--
+info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
+[simp_mem.info] Adding omega facts from hypotheses
+[simp_mem.info] Reducion to omega
+  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+    [simp_mem.info] a : Nat
+        h' : a ≤ 100
+        hab : a ≤ a + 1
+        ⊢ a ≤ a + 1
+  [simp_mem.info] ✅️ `omega` succeeded.
+-/
+#guard_msgs in
+set_option trace.simp_mem.info true in
+example (h' : a ≤ 100) (hab : a ≤ a + 1) : a ≤ a + 1 := by
+  mem_omega with [hab, h', -h'] -- correctly exclude h', so processing should not mention h'.
+
+
+/--
+warning: unused variable `hab`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+---
+info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
+[simp_mem.info] Adding omega facts from hypotheses
+[simp_mem.info] Reducion to omega
+  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+    [simp_mem.info] a : Nat
+        h' : a ≤ 100
+        hab : a ≤ a + 1
+        ⊢ a ≤ a + 1
+  [simp_mem.info] ✅️ `omega` succeeded.
+-/
+#guard_msgs in -- TODO: fix this, we shouldn't process h!
+set_option trace.simp_mem.info true in
+example (h' : a ≤ 100) (hab : a ≤ a + 1) : a ≤ a + 1 := by
+  mem_omega with [*, -h'] -- correctly exclude h' and include hab, so processing should not mention h'.
+
+
+end HypothesisSelectors
+
+
+#time
 theorem mem_automation_test_1
   (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
   read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
@@ -149,9 +276,30 @@ theorem mem_automation_test_1
   simp_mem
   rfl
 
+
+theorem mem_automation_test_1_conv_all_hyps
+  (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  conv =>
+    lhs
+    simp_mem sep with [*]
+
+#time
+theorem mem_automation_test_1_conv_focused_hyp
+  (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  conv =>
+    lhs
+    simp_mem sep with [h_s0_src_dest_separate]
+
 /-- info: 'mem_automation_test_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_1
 
+#time
 theorem mem_automation_test_2
   (h_n0 : n0 ≠ 0)
   (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
@@ -166,9 +314,40 @@ theorem mem_automation_test_2
   rfl
 
 
+#time
+theorem mem_automation_test_2_conv
+  (h_n0 : n0 ≠ 0)
+  (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
+  (h_no_wrap_dest_region : mem_legal' dest_addr (n0 <<< 4))
+  (h_s0_src_dest_separate :
+    mem_separate' src_addr  (n0 <<< 4)
+                  dest_addr (n0 <<< 4)) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  conv =>
+    lhs 
+    simp_mem sep with [*]
+
+theorem mem_automation_test_2_conv_focus
+  (h_n0 : n0 ≠ 0)
+  (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
+  (h_no_wrap_dest_region : mem_legal' dest_addr (n0 <<< 4))
+  (h_s0_src_dest_separate :
+    mem_separate' src_addr  (n0 <<< 4)
+                  dest_addr (n0 <<< 4)) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  conv =>
+    lhs 
+    simp_mem sep with [h_s0_src_dest_separate]
+
+
 /-- info: 'mem_automation_test_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_2
 
+#time
 /-- reading from a region `[src_addr+1..10] ⊆ [src_addr..16]` with an
 interleaved write `[ignore_addr..ignore_addr+ignore_n)`
 -/
@@ -183,11 +362,26 @@ theorem mem_automation_test_3
   simp_mem
   rfl
 
-
+#time
+/-- reading from a region `[src_addr+1..10] ⊆ [src_addr..16]` with an
+interleaved write `[ignore_addr..ignore_addr+ignore_n)`
+-/
+theorem mem_automation_test_3_conv
+  (h_no_wrap_src_region : mem_legal' src_addr 16)
+  (h_s0_src_ignore_disjoint :
+    mem_separate' src_addr  16
+                  ignore_addr ignore_n) :
+  read_mem_bytes 10 (src_addr + 1) (write_mem_bytes ignore_n ignore_addr blah s0) =
+   read_mem_bytes 10 (src_addr + 1) s0 := by
+  simp only [memory_rules]
+  conv =>
+    lhs
+    simp_mem sep with [h_s0_src_ignore_disjoint]
 
 /-- info: 'mem_automation_test_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_3
 
+#time
 /-- TODO: make simp_mem repeat on change. -/
 theorem mem_automation_test_4
   (h_no_wrap_src_region : mem_legal' src_addr 48)
@@ -203,12 +397,49 @@ theorem mem_automation_test_4
   congr 1
   bv_omega_bench -- TODO: address normalization.
 
+#time
+/-- TODO: make simp_mem repeat on change. -/
+theorem mem_automation_test_4_conv
+  (h_no_wrap_src_region : mem_legal' src_addr 48)
+  (h_s0_src_ignore_disjoint :
+    mem_separate' src_addr  48
+                  ignore_addr ignore_n) :
+  read_mem_bytes 10 (1 + src_addr)
+    (write_mem_bytes ignore_n ignore_addr blah
+      (write_mem_bytes 48 src_addr val s0)) =
+   val.extractLsBytes 1 10 := by
+  simp only [memory_rules]
+  conv =>
+    lhs
+    simp_mem sep with [*], sub with [*]
+  congr 1
+  bv_omega_bench -- TODO: address normalization.
+
 /-- info: 'mem_automation_test_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_4
+
+#time
+/-- TODO: make simp_mem repeat on change. -/
+theorem mem_automation_test_4_conv_focused
+  (h_no_wrap_src_region : mem_legal' src_addr 48)
+  (h_s0_src_ignore_disjoint :
+    mem_separate' src_addr  48
+                  ignore_addr ignore_n) :
+  read_mem_bytes 10 (1 + src_addr)
+    (write_mem_bytes ignore_n ignore_addr blah
+      (write_mem_bytes 48 src_addr val s0)) =
+   val.extractLsBytes 1 10 := by
+  simp only [memory_rules]
+  conv =>
+    lhs
+    simp_mem sep with [h_no_wrap_src_region, h_s0_src_ignore_disjoint], sub with [*]
+  congr 1
+  bv_omega_bench -- TODO: address normalization.
 
 
 namespace ReadOverlappingRead
 
+#time
 /-- A read overlapping with another read. -/
 theorem overlapping_read_test_1 {out : BitVec (16 * 8)}
     (hlegal : mem_legal' src_addr 16)
@@ -218,9 +449,34 @@ theorem overlapping_read_test_1 {out : BitVec (16 * 8)}
   simp_mem
   simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
 
+
+#time
+/-- A read overlapping with another read. -/
+theorem overlapping_read_test_1_conv {out : BitVec (16 * 8)}
+    (hlegal : mem_legal' src_addr 16)
+    (h : read_mem_bytes 16 src_addr s = out) :
+    read_mem_bytes 16 src_addr s = out := by
+  simp only [memory_rules] at h ⊢
+  conv =>
+    lhs
+    simp_mem ⊆r at h with [*]
+  simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
+
+/-- A read overlapping with another read. -/
+theorem overlapping_read_test_1_conv_search_read {out : BitVec (16 * 8)}
+    (hlegal : mem_legal' src_addr 16)
+    (h : read_mem_bytes 16 src_addr s = out) :
+    read_mem_bytes 16 src_addr s = out := by
+  simp only [memory_rules] at h ⊢
+  conv =>
+    lhs
+    simp_mem ⊆r with [*]
+  simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
+
 /-- info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms overlapping_read_test_1
 
+#time
 /-- A read overlapping with another read. -/
 theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
     (hlegal : mem_legal' src_addr 16)
@@ -235,6 +491,20 @@ theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
 info: 'ReadOverlappingRead.overlapping_read_test_2' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms overlapping_read_test_2
+
+#time
+/-- A read overlapping with another read. -/
+theorem overlapping_read_test_2_conv {out : BitVec (16 * 8)}
+    (hlegal : mem_legal' src_addr 16)
+    (h : read_mem_bytes 16 src_addr s = out) :
+    read_mem_bytes 10 (src_addr + 6) s = out.extractLsBytes 6 10 := by
+  simp only [memory_rules] at h ⊢
+  conv =>
+    lhs
+    simp_mem ⊆r at h with [*]
+  · congr
+    -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
+    bv_omega_bench
 
 /-- A read in the goal state overlaps with a read in the
 left hand side of the hypotheis `h`.
@@ -306,7 +576,7 @@ end ReadOverlappingWrite
 /- We check that we correctly visit the expression tree, both for binders,
 and for general walking. -/
 namespace ExprVisitor
-
+/-
 /-- Check that we correctly go under binders -/
 theorem test_quantified_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' 0 16) : ∀ (_irrelevant : Nat),
@@ -320,6 +590,7 @@ theorem test_quantified_1 {val : BitVec (16 * 8)}
 info: 'ExprVisitor.test_quantified_1' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms test_quantified_1
+-/
 
 /-- Check that we correctly walk under applications. -/
 theorem test_app_1 {val : BitVec (16 * 8)}
@@ -333,6 +604,7 @@ theorem test_app_1 {val : BitVec (16 * 8)}
 /-- info: 'ExprVisitor.test_app_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms test_app_1
 
+/-
 /--
 Check that we correctly walk under applications (`f <walk inside>`)
 and binders (`∀ f, <walk inside>`) simultaneously.
@@ -364,6 +636,23 @@ theorem test_quantified_app_2 {val : BitVec (16 * 8)}
   rfl
 
 end ExprVisitor
+-/
+
+
+namespace SimpMemConv
+
+#time
+theorem irrelvant_hyps
+  (h_irrelevant: mem_subset' src_addr 10 src_addr 30)
+  (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  conv => 
+    lhs
+    simp_mem sep with [h_s0_src_dest_separate]
+  -- rfl
+end SimpMemConv
 
 namespace MathProperties
 

@@ -149,7 +149,7 @@ example :
 set_option pp.deepTerms false in
 set_option pp.deepTerms.threshold 50 in
 -- set_option trace.simp_mem.info true in
-theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
+#time theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_gmult_v8_program)
     (h_s0_err : read_err s0 = .None)
     (h_s0_pc : read_pc s0 = gcm_gmult_v8_program.min)
@@ -203,18 +203,21 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
   -- Split conjunction
   repeat' apply And.intro
   · simp_mem; rfl
-  · simp only [List.mem_cons, List.mem_singleton, not_or, and_imp]
+  · simp only [List.mem_cons, List.mem_singleton, not_or, and_imp] at *
     sym_aggregate
   · intro n addr h_separate
-    simp_mem
-    -- Aggregate the memory (non)effects.
-    simp only [*]
+    conv =>
+      lhs
+      simp_mem sep with [h_separate]
   · clear_named [h_s, stepi_]
     clear s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 s12 s13 s14 s15 s16 s17 s18 s19 s20 s21 s22 s23 s24 s25 s26
     -- Simplifying the LHS
     have h_HTable_low :
       Memory.read_bytes 16 (r (StateField.GPR 1#5) s0) s0.mem = HTable.extractLsb' 0 128 := by
       -- (FIXME @bollu) use `simp_mem` instead of the rw below.
+      -- conv => 
+      --   lhs
+      --   simp_mem sub r 
       rw [@Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
            32 (r (StateField.GPR 1#5) s0) HTable (r (StateField.GPR 1#5) s0) 16 _ h_HTable.symm]
       · simp only [Nat.reduceMul, BitVec.extractLsBytes, Nat.sub_self, Nat.zero_mul]
@@ -222,6 +225,9 @@ theorem gcm_gmult_v8_program_run_27 (s0 sf : ArmState)
     have h_HTable_high :
       (Memory.read_bytes 16 (r (StateField.GPR 1#5) s0 + 16#64) s0.mem) = HTable.extractLsb' 128 128 := by
       -- (FIXME @bollu) use `simp_mem` instead of the rw below.
+      -- conv => 
+      --   lhs
+      --   simp_mem sub r 
       rw [@Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
           32 (r (StateField.GPR 1#5) s0) HTable (r (StateField.GPR 1#5) s0 + 16#64) 16 _ h_HTable.symm]
       repeat sorry

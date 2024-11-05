@@ -115,7 +115,7 @@ in this proof. This will hopefully go down, once we optimize `sym_aggregate`.
 -/
 set_option maxRecDepth 8000 in
 set_option linter.unusedVariables false in
-theorem sha512_block_armv8_prelude (s0 sf : ArmState)
+#time theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   -- We fix the number of blocks to hash to 1.
   (h_N : N = 1#64)
   (h_s0_init : precondition 0x1264c0#64 N SP CtxBase InputBase s0)
@@ -194,7 +194,11 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   · constructor
     · -- (TODO @bollu) Think about whether `simp_mem` should be powerful enough to solve this goal.
       -- Also, `mem_omega` name suggestion from Alex for the already souped up `simp_mem`.
-      simp_mem
+      -- simp_mem
+      conv =>
+        lhs
+        simp_mem sep with [h_s0_mem_sep, h_s0_sp]
+        simp_mem sub r with [h_s0_ctx, h_s0_ctx_base, h_s0_mem_sep]
       simp only [h_s0_ctx_base, Nat.sub_self, minimal_theory, bitvec_rules]
     · constructor
       · -- (FIXME @bollu) simp_mem doesn't make progress here. :-(
@@ -214,7 +218,9 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
   · intro n addr h
     simp only [←h_s0_sp] at h
     clear_named [h_, stepi]
-    simp_mem
+    conv =>
+      lhs
+      simp_mem sep with [h]
     /-
     (NOTE @bollu): Without the `clear_named...` above, we run into the following
     error(s):
@@ -227,7 +233,11 @@ theorem sha512_block_armv8_prelude (s0 sf : ArmState)
     `(deterministic) timeout at elaborator, maximum number of heartbeats
      (200000) has been reached...`
     -/
-    rfl
   done
+
+/--
+info: 'SHA512.sha512_block_armv8_prelude' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+-/
+#guard_msgs in #print axioms sha512_block_armv8_prelude 
 
 end SHA512
