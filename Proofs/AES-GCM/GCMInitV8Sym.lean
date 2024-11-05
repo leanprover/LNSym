@@ -38,10 +38,9 @@ theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 500000 in
 set_option sat.timeout 120 in
-set_option trace.profiler true in
+-- set_option trace.profiler true in
 -- set_option pp.deepTerms true in
 -- set_option pp.maxSteps 10000 in
--- set_option trace.profiler true in
 -- set_option linter.unusedVariables false in
 -- set_option profiler true in
 theorem gcm_init_v8_program_correct (s0 sf : ArmState)
@@ -111,11 +110,9 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR]
     simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtracLsb',
       BitVec.reduceHShiftLeft, BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.ofNat_eq_ofNat,
-      BitVec.reduceEq, ↓reduceIte, BitVec.zero_eq, Nat.sub_self, BitVec.ushiftRight_zero_eq,
-      BitVec.reduceAnd, BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero,
-      Nat.zero_mod, Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul,
-      Nat.reduceSub, BitVec.reduceMul, BitVec.reduceXOr, BitVec.mul_one, Nat.add_one_sub_one,
-      BitVec.one_mul]
+      BitVec.reduceEq, ↓reduceIte, Nat.sub_self, BitVec.ushiftRight_zero_eq, BitVec.reduceAnd,
+      BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero, Nat.zero_mod,
+      Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul, Nat.reduceSub,
+      BitVec.and_self, BitVec.zero_and, BitVec.reduceMul, BitVec.xor_zero, BitVec.mul_one,
+      BitVec.zero_xor, Nat.add_one_sub_one, BitVec.one_mul, BitVec.reduceXOr]
     bv_decide
-    -- bv_check "lrat_files/GCMInitV8Sym.lean-GCMInitV8Program.gcm_init_v8_program_correct-117-4.lrat"
-    -- TODO: proof works in vscode but timeout in the CI -- need to investigate further
