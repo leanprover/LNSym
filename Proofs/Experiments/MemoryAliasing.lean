@@ -17,7 +17,7 @@ import Arm.Memory.SeparateAutomation
 namespace MemLegal
 /-- Show reflexivity of legality. -/
 theorem legal_1 (l : mem_legal' a 16) : mem_legal' a 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemLegal.legal_1' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in #print axioms legal_1
@@ -27,28 +27,28 @@ end MemLegal
 namespace MemSubset
 /-- Reflexivity. -/
 theorem subset_1 (l : mem_subset' a 16 b 16) : mem_subset' a 16 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSubset.subset_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms subset_1
 
 /-- Show that smaller subsets are also subsets. -/
 theorem subset_2 (l : mem_subset' a 16 b 16) : mem_subset' a 10 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSubset.subset_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms subset_2
 
 /-- Show that smaller subsets are also subsets, even when moving base pointer. -/
 theorem subset_3 (l : mem_subset' a 16 b 16) : mem_subset' (a+6) 10 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSubset.subset_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms subset_3
 
 /-- Show that we can perform address arithmetic based on subset constraints. -/
 theorem subset_4 (l : mem_subset' a 16 b 16) : a = b := by
-  simp_mem (config := {useOmegaToClose := true})
+  mem_omega
 
 /-- Show that we can perform address arithmetic based on subset constraints.
 Only two configurations possible:
@@ -60,7 +60,7 @@ a0 a1 a2 ..
 b0 b1 b2 b3
 -/
 theorem subset_5 (l : mem_subset' a 3 b 4) : a ≤ b + 1 := by
-  simp_mem (config := {useOmegaToClose := true})
+  mem_omega
 
 end MemSubset
 
@@ -68,7 +68,7 @@ namespace MemSeparate
 
 /-- Reflexivity. -/
 theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_1
@@ -76,14 +76,14 @@ theorem separate_1 (l : mem_separate' a 16 b 16) : mem_separate' a 16 b 16 := by
 
 /-- Symmetry. -/
 theorem separate_2 (l : mem_separate' a 16 b 16) : mem_separate' b 16 a 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_2
 
 /-- Smaller subsets. -/
 theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_3
@@ -91,7 +91,7 @@ theorem separate_3 (l : mem_separate' a 16 b 16) : mem_separate' b 10 a 10 := by
 /-- sliding subset to the right. -/
 theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
     mem_separate' a 17 (b+1) 15 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_4
@@ -100,7 +100,7 @@ theorem separate_4 (l : mem_separate' a 16 b 16) (hab : a < b) :
 theorem separate_5 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
     mem_separate' a 16 b 16 := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_5' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_5
@@ -109,7 +109,7 @@ theorem separate_5 {n : Nat} (hn : n ≠ 0)
 theorem separate_6 {n : Nat} (hn : n ≠ 0)
     (l : mem_separate' a (n <<< 4) b (n <<< 4))  :
     mem_separate' a (n <<< 3 + 8) b (n <<< 4) := by
-  simp_mem
+  mem_omega
 
 /-- info: 'MemSeparate.separate_6' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms separate_6
@@ -130,17 +130,144 @@ theorem separate_6 {n : Nat} (hn : n ≠ 0)
   simp_mem /- Need better address normalization. -/
   trace_state
 
+#time
 /--
 Check that we can close address relationship goals that require
 us to exploit memory separateness properties.
 -/
 theorem mem_separate_9  (h : mem_separate' a 100 b 100)
   (hab : a < b) : a + 50 ≤ b := by
-  simp_mem (config := {useOmegaToClose := true})
+  mem_omega
+
+set_option linter.all false in
+#time theorem mem_separate_10  (h : mem_separate' a 100 b 100)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (hab : a < b) : a + 50 ≤ b := by
+  mem_omega
+
+set_option linter.all false in
+set_option trace.simp_mem.info true in
+#time theorem mem_separate_11  (h : mem_separate' a 100 b 100)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
+  (hab : a < b) : a + 50 ≤ b := by
+  mem_omega with [h, hab]
+
 
 end MemSeparate
 
 
+section HypothesisSelectors
+
+set_option linter.all false in
+set_option trace.simp_mem.info true in
+/--
+info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Processing 'h'' : 'a ≤ 100'
+[simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
+[simp_mem.info] Adding omega facts from hypotheses
+[simp_mem.info] Reducion to omega
+  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+    [simp_mem.info] a : Nat
+        h' : a ≤ 100
+        hab : a ≤ a + 1
+        ⊢ a ≤ a + 1
+  [simp_mem.info] ✅️ `omega` succeeded.
+-/
+#guard_msgs in example (h' : a ≤ 100)
+  (hab : a ≤ a + 1) : a ≤ a + 1 := by
+  mem_omega  -- by default, process all hyps
+
+/--
+info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
+[simp_mem.info] Adding omega facts from hypotheses
+[simp_mem.info] Reducion to omega
+  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+    [simp_mem.info] a : Nat
+        h' : a ≤ 100
+        hab : a ≤ a + 1
+        ⊢ a ≤ a + 1
+  [simp_mem.info] ✅️ `omega` succeeded.
+-/
+#guard_msgs in
+set_option trace.simp_mem.info true in
+example (h' : a ≤ 100) (hab : a ≤ a + 1) : a ≤ a + 1 := by
+  mem_omega with [hab, h', -h'] -- correctly exclude h', so processing should not mention h'.
+
+
+/--
+warning: unused variable `hab`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+---
+info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
+[simp_mem.info] Adding omega facts from hypotheses
+[simp_mem.info] Reducion to omega
+  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+    [simp_mem.info] a : Nat
+        h' : a ≤ 100
+        hab : a ≤ a + 1
+        ⊢ a ≤ a + 1
+  [simp_mem.info] ✅️ `omega` succeeded.
+-/
+#guard_msgs in -- TODO: fix this, we shouldn't process h!
+set_option trace.simp_mem.info true in
+example (h' : a ≤ 100) (hab : a ≤ a + 1) : a ≤ a + 1 := by
+  mem_omega with [*, -h'] -- correctly exclude h' and include hab, so processing should not mention h'.
+
+
+end HypothesisSelectors
+
+
+#time
 theorem mem_automation_test_1
   (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
   read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
@@ -149,9 +276,30 @@ theorem mem_automation_test_1
   simp_mem
   rfl
 
+
+theorem mem_automation_test_1_conv_all_hyps
+  (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  conv =>
+    lhs
+    simp_mem sep with [*]
+
+#time
+theorem mem_automation_test_1_conv_focused_hyp
+  (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  conv =>
+    lhs
+    simp_mem sep with [h_s0_src_dest_separate]
+
 /-- info: 'mem_automation_test_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_1
 
+#time
 theorem mem_automation_test_2
   (h_n0 : n0 ≠ 0)
   (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
@@ -166,9 +314,40 @@ theorem mem_automation_test_2
   rfl
 
 
+#time
+theorem mem_automation_test_2_conv
+  (h_n0 : n0 ≠ 0)
+  (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
+  (h_no_wrap_dest_region : mem_legal' dest_addr (n0 <<< 4))
+  (h_s0_src_dest_separate :
+    mem_separate' src_addr  (n0 <<< 4)
+                  dest_addr (n0 <<< 4)) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  conv =>
+    lhs 
+    simp_mem sep with [*]
+
+theorem mem_automation_test_2_conv_focus
+  (h_n0 : n0 ≠ 0)
+  (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
+  (h_no_wrap_dest_region : mem_legal' dest_addr (n0 <<< 4))
+  (h_s0_src_dest_separate :
+    mem_separate' src_addr  (n0 <<< 4)
+                  dest_addr (n0 <<< 4)) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  conv =>
+    lhs 
+    simp_mem sep with [h_s0_src_dest_separate]
+
+
 /-- info: 'mem_automation_test_2' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_2
 
+#time
 /-- reading from a region `[src_addr+1..10] ⊆ [src_addr..16]` with an
 interleaved write `[ignore_addr..ignore_addr+ignore_n)`
 -/
@@ -183,11 +362,26 @@ theorem mem_automation_test_3
   simp_mem
   rfl
 
-
+#time
+/-- reading from a region `[src_addr+1..10] ⊆ [src_addr..16]` with an
+interleaved write `[ignore_addr..ignore_addr+ignore_n)`
+-/
+theorem mem_automation_test_3_conv
+  (h_no_wrap_src_region : mem_legal' src_addr 16)
+  (h_s0_src_ignore_disjoint :
+    mem_separate' src_addr  16
+                  ignore_addr ignore_n) :
+  read_mem_bytes 10 (src_addr + 1) (write_mem_bytes ignore_n ignore_addr blah s0) =
+   read_mem_bytes 10 (src_addr + 1) s0 := by
+  simp only [memory_rules]
+  conv =>
+    lhs
+    simp_mem sep with [h_s0_src_ignore_disjoint]
 
 /-- info: 'mem_automation_test_3' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_3
 
+#time
 /-- TODO: make simp_mem repeat on change. -/
 theorem mem_automation_test_4
   (h_no_wrap_src_region : mem_legal' src_addr 48)
@@ -203,12 +397,49 @@ theorem mem_automation_test_4
   congr 1
   bv_omega_bench -- TODO: address normalization.
 
+#time
+/-- TODO: make simp_mem repeat on change. -/
+theorem mem_automation_test_4_conv
+  (h_no_wrap_src_region : mem_legal' src_addr 48)
+  (h_s0_src_ignore_disjoint :
+    mem_separate' src_addr  48
+                  ignore_addr ignore_n) :
+  read_mem_bytes 10 (1 + src_addr)
+    (write_mem_bytes ignore_n ignore_addr blah
+      (write_mem_bytes 48 src_addr val s0)) =
+   val.extractLsBytes 1 10 := by
+  simp only [memory_rules]
+  conv =>
+    lhs
+    simp_mem sep with [*], sub with [*]
+  congr 1
+  bv_omega_bench -- TODO: address normalization.
+
 /-- info: 'mem_automation_test_4' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms mem_automation_test_4
+
+#time
+/-- TODO: make simp_mem repeat on change. -/
+theorem mem_automation_test_4_conv_focused
+  (h_no_wrap_src_region : mem_legal' src_addr 48)
+  (h_s0_src_ignore_disjoint :
+    mem_separate' src_addr  48
+                  ignore_addr ignore_n) :
+  read_mem_bytes 10 (1 + src_addr)
+    (write_mem_bytes ignore_n ignore_addr blah
+      (write_mem_bytes 48 src_addr val s0)) =
+   val.extractLsBytes 1 10 := by
+  simp only [memory_rules]
+  conv =>
+    lhs
+    simp_mem sep with [h_no_wrap_src_region, h_s0_src_ignore_disjoint], sub with [*]
+  congr 1
+  bv_omega_bench -- TODO: address normalization.
 
 
 namespace ReadOverlappingRead
 
+#time
 /-- A read overlapping with another read. -/
 theorem overlapping_read_test_1 {out : BitVec (16 * 8)}
     (hlegal : mem_legal' src_addr 16)
@@ -218,9 +449,34 @@ theorem overlapping_read_test_1 {out : BitVec (16 * 8)}
   simp_mem
   simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
 
+
+#time
+/-- A read overlapping with another read. -/
+theorem overlapping_read_test_1_conv {out : BitVec (16 * 8)}
+    (hlegal : mem_legal' src_addr 16)
+    (h : read_mem_bytes 16 src_addr s = out) :
+    read_mem_bytes 16 src_addr s = out := by
+  simp only [memory_rules] at h ⊢
+  conv =>
+    lhs
+    simp_mem ⊆r at h with [*]
+  simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
+
+/-- A read overlapping with another read. -/
+theorem overlapping_read_test_1_conv_search_read {out : BitVec (16 * 8)}
+    (hlegal : mem_legal' src_addr 16)
+    (h : read_mem_bytes 16 src_addr s = out) :
+    read_mem_bytes 16 src_addr s = out := by
+  simp only [memory_rules] at h ⊢
+  conv =>
+    lhs
+    simp_mem ⊆r with [*]
+  simp only [Nat.reduceMul, Nat.sub_self, BitVec.extractLsBytes_eq_self, BitVec.cast_eq]
+
 /-- info: 'ReadOverlappingRead.overlapping_read_test_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms overlapping_read_test_1
 
+#time
 /-- A read overlapping with another read. -/
 theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
     (hlegal : mem_legal' src_addr 16)
@@ -235,6 +491,20 @@ theorem overlapping_read_test_2 {out : BitVec (16 * 8)}
 info: 'ReadOverlappingRead.overlapping_read_test_2' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms overlapping_read_test_2
+
+#time
+/-- A read overlapping with another read. -/
+theorem overlapping_read_test_2_conv {out : BitVec (16 * 8)}
+    (hlegal : mem_legal' src_addr 16)
+    (h : read_mem_bytes 16 src_addr s = out) :
+    read_mem_bytes 10 (src_addr + 6) s = out.extractLsBytes 6 10 := by
+  simp only [memory_rules] at h ⊢
+  conv =>
+    lhs
+    simp_mem ⊆r at h with [*]
+  · congr
+    -- ⊢ (src_addr + 6).toNat - src_addr.toNat = 6
+    bv_omega_bench
 
 /-- A read in the goal state overlaps with a read in the
 left hand side of the hypotheis `h`.
@@ -306,7 +576,7 @@ end ReadOverlappingWrite
 /- We check that we correctly visit the expression tree, both for binders,
 and for general walking. -/
 namespace ExprVisitor
-
+/-
 /-- Check that we correctly go under binders -/
 theorem test_quantified_1 {val : BitVec (16 * 8)}
     (hlegal : mem_legal' 0 16) : ∀ (_irrelevant : Nat),
@@ -320,6 +590,7 @@ theorem test_quantified_1 {val : BitVec (16 * 8)}
 info: 'ExprVisitor.test_quantified_1' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms test_quantified_1
+-/
 
 /-- Check that we correctly walk under applications. -/
 theorem test_app_1 {val : BitVec (16 * 8)}
@@ -333,6 +604,7 @@ theorem test_app_1 {val : BitVec (16 * 8)}
 /-- info: 'ExprVisitor.test_app_1' depends on axioms: [propext, Classical.choice, Quot.sound] -/
 #guard_msgs in #print axioms test_app_1
 
+/-
 /--
 Check that we correctly walk under applications (`f <walk inside>`)
 and binders (`∀ f, <walk inside>`) simultaneously.
@@ -364,6 +636,23 @@ theorem test_quantified_app_2 {val : BitVec (16 * 8)}
   rfl
 
 end ExprVisitor
+-/
+
+
+namespace SimpMemConv
+
+#time
+theorem irrelvant_hyps
+  (h_irrelevant: mem_subset' src_addr 10 src_addr 30)
+  (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
+  read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
+  read_mem_bytes 16 src_addr s0 := by
+  simp only [memory_rules]
+  conv => 
+    lhs
+    simp_mem sep with [h_s0_src_dest_separate]
+  -- rfl
+end SimpMemConv
 
 namespace MathProperties
 
@@ -374,7 +663,7 @@ proving generic properties about our definitions of `mem_legal'`,
 -/
 
 /-! ### mem_subset is a partial order. -/
-theorem mem_subset_refl (h : mem_legal' a an) : mem_subset' a an a an := by simp_mem
+theorem mem_subset_refl (h : mem_legal' a an) : mem_subset' a an a an := by mem_omega
 /-
 TODO(@bollu): In such a scenario, we should call `omega` directly on the goal,
 and see if it can solve it.
@@ -383,35 +672,41 @@ theorem mem_subset_asymm (h : mem_subset' a an b bn) (h' : mem_subset' b bn a an
   simp_mem
 -/
 theorem mem_subset_trans (h : mem_subset' a an b bn) (h' : mem_subset' b bn c cn) :
-  mem_subset' a an c cn := by simp_mem
+  mem_subset' a an c cn := by mem_omega
 
 /-! ### mem_separate relationship to arithmetic -/
 
-theorem mem_separate_comm (h : mem_separate' a an b bn) : mem_separate' b bn a an := by simp_mem
+theorem mem_separate_comm (h : mem_separate' a an b bn) : mem_separate' b bn a an := by mem_omega
 /-- if `[a..an)⟂[b..bn)`, then `[a+δ..an-δ)⟂[b..bn)`-/
 theorem mem_separate_of_lt_of_lt_sub (h : mem_separate' a an b bn) (hab : a < b)
-  (hδ : δ < b - a): mem_separate' (a + δ) (an - δ.toNat) b bn := by simp_mem
+  (hδ : δ < b - a): mem_separate' (a + δ) (an - δ.toNat) b bn := by mem_omega
 /-- If `[a..an)⟂[b..bn)`, and `a ≤ b`, then `[a'..an+(a-a'))⟂[b..bn)`.
 This lets us increase the size of the left memory region.
 -/
 theorem mem_separate_move_of_lt_of_le  (h : mem_separate' a an b bn)
   (hab : a < b)
-  (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a').toNat) b bn := by simp_mem
+  (hlegal : a' ≤ a) : mem_separate' a' (an + (a - a').toNat) b bn := by mem_omega
 
 end MathProperties
-
 
 
 section PairwiseSeparate
   /- Check that a direct implication of the pairwise separation is proven. -/
   theorem pairwise_direct (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
     mem_separate' a 100 b 200 := by
-    simp_mem
+    mem_omega (config := {explodePairwiseSeparate := true})
+
+  /- Check that a direct implication of the pairwise separation is proven. -/
+  theorem pairwise_direct' (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
+    mem_separate' a 100 b 200 := by
+    mem_omega! -- use the notation to exploit every hypothesis.
 
   /- Check that a direct implication of the pairwise separation is proven. -/
   theorem pairwise_subset (h : Memory.Region.pairwiseSeparate [⟨a, 100⟩, ⟨b, 200⟩, ⟨c, 300⟩, ⟨d, 400⟩]) :
     mem_separate' a 80 b 100 := by
-    simp_mem
+    have := h.get 0 1
+    simp at this
+    mem_omega -- intro useful hypothesis and use it.
 
 end PairwiseSeparate
 
@@ -425,7 +720,6 @@ error: unsolved goals
 ---
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
-[simp_mem.info] ⚙️ Matching on ⊢ False
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
@@ -443,7 +737,6 @@ error: ❌️ simp_mem failed to make any progress.
 ---
 info: [simp_mem.info] Searching for Hypotheses
 [simp_mem.info] Summary: Found 0 hypotheses
-[simp_mem.info] ⚙️ Matching on ⊢ False
 [simp_mem.info] Performing Rewrite At Main Goal
   [simp_mem.info] Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.

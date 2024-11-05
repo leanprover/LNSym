@@ -100,12 +100,13 @@ theorem popcount32_sym_meets_spec (s0 sf : ArmState)
     simp only [popcount32_spec, popcount32_spec_rec]
     bv_decide
   · -- Register Frame Condition
-    simp only [List.mem_cons, List.mem_singleton, not_or, and_imp]; sym_aggregate
+    simp only [List.mem_cons, List.mem_singleton, not_or, and_imp,
+      List.not_mem_nil, not_false_eq_true, true_implies] at *
+    sym_aggregate
   · -- Memory Frame Condition
     intro n addr h_separate
     simp only [memory_rules] at *
-    repeat (simp_mem (config := { useOmegaToClose := false }); sym_aggregate)
-
+    repeat (simp_mem; sym_aggregate)
   done
 
 /--

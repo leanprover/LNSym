@@ -85,7 +85,7 @@ elab "sym_aggregate" simpConfig?:(config)? loc?:(location)? : tactic => withMain
         searchLCtxFor (whenFound := whenFound)
           /- By matching under binders, this also matches for non-effect
           hypotheses, which look like:
-            `∀ f, f ≠ _ → r f ?state = ?rhs`
+            `∀ f, f ∉ […] → r f ?state = ?rhs`
           -/
           (matchUnderBinders := true)
           (expectedType := do
