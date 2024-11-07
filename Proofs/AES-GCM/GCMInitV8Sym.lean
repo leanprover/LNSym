@@ -16,25 +16,6 @@ set_option bv.ac_nf false
 abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 
-set_option maxRecDepth 8000 in
-set_option debug.byAsSorry true in
--- set_option profiler true in
-theorem gcm_init_v8_program_run_152 (s0 sf : ArmState)
-    (h_s0_program : s0.program = gcm_init_v8_program)
-    (h_s0_err : read_err s0 = .None)
-    (h_s0_pc : read_pc s0 = gcm_init_v8_program.min)
-    (h_s0_sp_aligned : CheckSPAlignment s0)
-    (h_run : sf = run gcm_init_v8_program.length s0)
-    (_h_mem : Memory.Region.pairwiseSeparate
-      [ ⟨(H_addr s0), 128⟩,
-        ⟨(Htable_addr s0), 2048⟩ ])
-    : read_err sf = .None := by
-  simp (config := {ground := true}) only at h_s0_pc
-  -- ^^ Still needed, because `gcm_init_v8_program.min` is somehow
-  --    unable to be reflected
-  sym_n 152
-  done
-
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 500000 in
 set_option sat.timeout 120 in
