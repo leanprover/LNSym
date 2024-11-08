@@ -8,10 +8,9 @@ Author(s): Shilpi Goel
 Experimental method to aggregate state effects using reflection.
 
 In LNSym, we already have a language that describes writes to the `ArmState`
-using functions `w` and `Memory.write_bytes`. However, these writes can shadow
-others, which causes the nest of writes to grow large. We reflect `w` and
-`Memory.write_bytes` to get a pruned nest of writes. As a simple example,
-consider the following nest of writes:
+using functions `w`. However, these writes can shadow others, which causes the
+nest of writes to grow large. We reflect `w` and to get a pruned nest of writes.
+As a simple example, consider the following nest of writes:
 ```
 s1 = w .PC pc (w (.GPR 0) x0 (w .PC pc' (w (.GPR 0) x0' s0)))
 ```
@@ -19,6 +18,8 @@ We would like to prune this to the equivalent term below:
 ```
 s1 = w .PC pc (w (.GPR 0) x0 s0)
 ```
+
+Note that we do not reflect memory updates at this point.
 
 This is inspired by `simp_arith`, especially the following files:
 
@@ -32,17 +33,29 @@ import Arm.FromMathlib
 
 namespace ArmConstr
 
-/- We use `Nat`s to refer to all the state variables in our context. -/
-abbrev StateVar := Nat
+/- We use `Nat`s to refer to all the variables in our context. -/
+abbrev StateVar  := Nat
+abbrev GPRVar    := Nat
+abbrev SFPVar    := Nat
+abbrev PCVar     := Nat
+abbrev ErrVar    := Nat
+abbrev FlagVar   := Nat
 
-/-- A `GPRVal` is simply a variable. -/
-inductive GPRVal where
-  -- A variable in the context.
-  | var (i : Nat)
-  deriving DecidableEq, Repr, Inhabited
+inductive Var where
+  | state (var : StateVar)
+  | gpr   (var : GPRVar)
+  | sfp   (var : SFPVar)
+  | pc    (var : PCVar)
+  | err   (var : ErrVar)
+  | flag  (var : FlagVar)
+  deriving Repr, DecidableEq, Inhabited
 
 abbrev StateContext := List ArmState
-abbrev GPRValContext := List (BitVec 64)
+abbrev GPRContext   := List (BitVec 64)
+abbrev SFPContext   := List (BitVec 128)
+abbrev PCContext    := List (BitVec 64)
+abbrev FlagContext  := List (BitVec 1)
+abbrev ErrContext  := List (StateError)
 
 /--
 Context containing all the variables encountered in the problem. The
@@ -51,8 +64,21 @@ position of a variable in the context becomes variable name (see, e.g.,
 -/
 structure Context where
   state : StateContext
-  gpr : GPRValContext
+  err   : ErrContext
+  pc    : PCContext
+  gpr   : GPRContext
+  sfp   : SFPContext
+  flag  : FlagContext
   deriving Repr, Inhabited
+
+def Val (var : Var) : Type :=
+  match var with
+  | .state _ => ArmState
+  | .gpr _ => BitVec 64
+  | .sfp _ => BitVec 128
+  | .pc _ => BitVec 64
+  | .flag _ => BitVec 1
+  | .err _ => StateError
 
 /--
 Look up variable `v` in the `StateContext`.
@@ -61,64 +87,160 @@ def StateVar.denote (ctx : StateContext) (v : StateVar) : ArmState :=
   ctx.getD v ArmState.default
 
 /--
-Denote `GPRVal v` over `ArmState prev_s`. That is, if `v` is a variable then
-look it up in the `GPRValContext`.
+Look up variable `v` in the `GPRContext`.
 -/
-def GPRVal.denote (ctx : GPRValContext) (v : GPRVal) : BitVec 64 :=
-  match v with
-  | var i => ctx.getD i 0
+def GPRVar.denote (ctx : GPRContext) (v : GPRVar) : BitVec 64 :=
+  ctx.getD v 0
 
 @[local simp]
-theorem GPRVal.denote_of_var :
-  GPRVal.denote ctx (GPRVal.var v) = ctx.getD v 0 := by
-  simp [GPRVal.denote]
+theorem GPRVar.denote_of_var :
+  GPRVar.denote ctx v = ctx.getD v 0 := by
+  simp [GPRVar.denote]
+
+/--
+Look up variable `v` in the `SFPContext`.
+-/
+def SFPVar.denote (ctx : SFPContext) (v : SFPVar) : BitVec 128 :=
+  ctx.getD v 0
+
+/--
+Look up variable `v` in the `PCContext`.
+-/
+def PCVar.denote (ctx : PCContext) (v : PCVar) : BitVec 64 :=
+  ctx.getD v 0
+
+/--
+Look up variable `v` in the `ErrContext`.
+-/
+def ErrVar.denote (ctx : ErrContext) (v : ErrVar) : StateError :=
+  ctx.getD v StateError.None
+
+/--
+Look up variable `v` in the `FlagContext`.
+-/
+def FlagVar.denote (ctx : FlagContext) (v : FlagVar) : BitVec 1 :=
+  ctx.getD v 0
+
+/--
+Look up `var` in the appropriate field of `ctx`, indicated by `fld`.
+-/
+def Var.denote (ctx : Context) (fld : StateField) (var : Nat) : state_value fld :=
+  match fld with
+  | .GPR _   => GPRVar.denote ctx.gpr var
+  | .SFP _   => SFPVar.denote ctx.sfp var
+  | .PC      => PCVar.denote ctx.pc var
+  | .FLAG _  => FlagVar.denote ctx.flag var
+  | .ERR     => ErrVar.denote ctx.err var
 
 /--
 Datastructure that characterizes all the updates that can be made to an
 `ArmState`.
 -/
 inductive Update where
-  -- `i` is a constant.
-  | w_gpr (i : BitVec 5) (v : GPRVal)
-  -- TODO: Other state components.
-  deriving DecidableEq, Repr, Inhabited
+  | err  (v : ErrVar)
+  | pc   (v : PCVar)
+  | gpr  (i : BitVec 5) (v : GPRVar)
+  | sfp  (i : BitVec 5) (v : SFPVar)
+  | flag (i : PFlag)    (v : FlagVar)
+ deriving DecidableEq, Repr, Inhabited
 
-def Update.field (u : Update) : BitVec 5 :=
-  match u with
-  | w_gpr i _ => i
+instance : ToString Update where toString a := toString (repr a)
+
+instance : Lean.ToMessageData Update where
+  toMessageData x := match x with
+  | .err v    => m!"(err {v})"
+  | .pc v     => m!"(pc {v})"
+  | .gpr i v  => m!"(gpr {i} {v})"
+  | .sfp i v  => m!"(sfp {i} {v})"
+  | .flag i v => m!"(flag {i} {v})"
 
 abbrev Updates := List Update
+
+/--
+`StateField` characterized by the `Update u`.
+-/
+def Update.field (u : Update) : StateField :=
+  match u with
+  | .err _ => StateField.ERR
+  | .pc _ => StateField.PC
+  | .gpr i _ => StateField.GPR i
+  | .sfp i _ => StateField.SFP i
+  | .flag i _ => StateField.FLAG i
+
+/--
+Variable ensconsed in `Update u`.
+-/
+def Update.var (u : Update) : Nat :=
+  match u with
+  | Update.err v    => v
+  | Update.pc v     => v
+  | Update.gpr _ v  => v
+  | Update.sfp _ v  => v
+  | Update.flag _ v => v
 
 /--
 Do updates `x` and `y` refer to the same state component?
 -/
 def Update.regEq (x y : Update) : Prop :=
   match x, y with
-  | w_gpr i _, w_gpr j _ => i = j
+  | err _, err _ => True
+  | pc _, pc _ => True
+  | gpr i _, gpr j _ => i = j
+  | sfp i _, sfp j _ => i = j
+  | flag i _, flag j _ => i = j
+  | _, _ => False
 
-instance : Decidable (Update.regEq x y) :=
-  inferInstanceAs (Decidable <|
-    match x, y with
-    | .w_gpr i _, .w_gpr j _ => i = j)
+-- set_option diagnostics true in
+-- instance : Decidable (Update.regEq x y) :=
+--   inferInstanceAs (Decidable <|
+--     match x, y with
+--     | .pc _, .pc _ => True
+--     | .gpr i _, .gpr j _ => i = j
+--     | .sfp i _, .sfp j _ => i = j
+--     | .flag i _, .flag j _ => i = j
+--     | _, _ => False)
+
+private def PFlag.natIdx (f : PFlag) : Nat :=
+  match f with
+  | .N => 0
+  | .Z => 1
+  | .C => 2
+  | .V => 3
 
 /--
-Is the register index of update `x` less than or equal to that of `y`?
+Is the field of update `x` "less than or equal to" that of `y`?
 -/
 def Update.regIndexLe (x y : Update) : Bool :=
   match x, y with
-  | w_gpr i _, w_gpr j _ => i <= j
+  | err _, _ => true
+  | _, err _ => false
+  | pc _, _ => true
+  | _, pc _ => false
+  | gpr i _, gpr j _ => i <= j
+  | gpr _ _, _ => true
+  | _, gpr _ _ => false
+  | sfp i _, sfp j _ => i <= j
+  | sfp _ _, _ => true
+  | _, sfp _ _ => false
+  | flag i _, flag j _ => PFlag.natIdx i <= PFlag.natIdx j
 
 theorem Update.regIndexLe_trans (a b c : Update)
   (h1 : Update.regIndexLe a b)
   (h2 : Update.regIndexLe b c) :
   Update.regIndexLe a c := by
   simp_all [Update.regIndexLe]
-  exact BitVec.le_trans h1 h2
+  cases a <;> cases b <;> cases c <;> simp_all
+  repeat (exact BitVec.le_trans h1 h2)
+  exact Nat.le_trans h1 h2
+  done
 
 theorem Update.regIndexLe_total (a b : Update) :
   Update.regIndexLe a b || Update.regIndexLe b a := by
-  simp_all [Update.regIndexLe]
-  exact BitVec.le_total a.1 b.1
+  simp [Update.regIndexLe]
+  cases a <;> cases b <;> simp_all
+  repeat apply BitVec.le_total
+  apply Nat.le_total
+  done
 
 /--
 Datastructure to represent expressions characterizing the following state
@@ -140,9 +262,25 @@ def Expr.denote_writes (ctx : Context) (us : Updates) (prev_state : StateVar)
   : ArmState :=
   match us with
   | [] => StateVar.denote ctx.state prev_state
-  | Update.w_gpr i v :: rest =>
+  | Update.gpr i v :: rest =>
     w (.GPR i)
-      (GPRVal.denote ctx.gpr v)
+      (GPRVar.denote ctx.gpr v)
+      (Expr.denote_writes ctx rest prev_state)
+  | Update.sfp i v :: rest =>
+    w (.SFP i)
+      (SFPVar.denote ctx.sfp v)
+      (Expr.denote_writes ctx rest prev_state)
+  | Update.pc v :: rest =>
+    w .PC
+      (PCVar.denote ctx.pc v)
+      (Expr.denote_writes ctx rest prev_state)
+  | Update.err v :: rest =>
+    w .ERR
+      (ErrVar.denote ctx.err v)
+      (Expr.denote_writes ctx rest prev_state)
+  | Update.flag i v :: rest =>
+    w (.FLAG i)
+      (FlagVar.denote ctx.flag v)
       (Expr.denote_writes ctx rest prev_state)
 
 @[local simp]
@@ -153,9 +291,39 @@ theorem denote_writes_empty :
 @[local simp]
 theorem denote_writes_cons :
   Expr.denote_writes ctx (e :: us) prev_state =
-  w (StateField.GPR e.1) (GPRVal.denote ctx.gpr e.2)
+  w (Update.field e) (Var.denote ctx (Update.field e) (Update.var e))
     (Expr.denote_writes ctx us prev_state) := by
-  simp only [Expr.denote_writes]
+  conv => lhs; unfold Expr.denote_writes
+  simp_all [Update.field, Update.var, Var.denote]
+  split
+  · -- Empty updates
+    simp_all
+  · -- GPR update
+    rename_i heq i' v i h_cons
+    have h_cons_1 : e = Update.gpr i' v := by simp_all
+    have h_cons_2 : us = i := by simp_all
+    rw [h_cons_1]; simp_all
+  · -- SFP update
+    rename_i heq i' v i h_cons
+    have h_cons_1 : e = Update.sfp i' v := by simp_all
+    have h_cons_2 : us = i := by simp_all
+    rw [h_cons_1]; simp_all
+  · -- PC update
+    rename_i heq i' v i
+    have h_cons_1 : e = Update.pc i' := by simp_all
+    have h_cons_2 : us = v := by simp_all
+    rw [h_cons_1]; simp_all
+  · -- ERR update
+    rename_i heq i' v i
+    have h_cons_1 : e = Update.err i' := by simp_all
+    have h_cons_2 : us = v := by simp_all
+    rw [h_cons_1]; simp_all
+  · -- Flag update
+    rename_i heq i' v i h_cons
+    have h_cons_1 : e = Update.flag i' v := by simp_all
+    have h_cons_2 : us = i := by simp_all
+    rw [h_cons_1]; simp_all
+  done
 
 theorem denote_statevar_eq_denote_writes_eq
   (h : StateVar.denote ctx.state v1 = StateVar.denote ctx.state v2) :
@@ -185,14 +353,14 @@ private theorem denote_writes_sorted_helper
     rw [ih]
     simp only [List.cons_append, denote_writes_cons]
     · rw [w_of_w_commute]
-      simp_all [Update.regIndexLe]
-      apply BitVec.ne_of_lt
-      simp_all
-    · simp_all only [List.mem_cons,
-                     or_true, implies_true,
-                     List.cons_append, denote_writes_cons,
-                     true_implies, Bool.not_eq_eq_eq_not,
-                     Bool.not_true, forall_eq_or_imp, Bool.not_false]
+      simp_all [Update.regIndexLe, Update.field]
+      obtain ⟨h1, h2⟩ := h
+      clear h2
+      cases head <;> try simp_all <;> cases head' <;>
+      try simp_all <;> try exact BitVec.ne_of_lt h1
+      rename_i i1 _ i2 _
+      cases i1 <;> cases i2 <;> try simp_all
+    · simp_all
 
 /--
 Sorting `Updates xs` using `Update.regIndexLe` is immaterial to their denotation
@@ -258,10 +426,10 @@ open Expr Update in
 info: true
 -/
 #guard_msgs in
-#eval List.mergeSort [.w_gpr 1#5 (.var 1), .w_gpr 1#5 (.var 2)] Update.regIndexLe =
+#eval List.mergeSort [.gpr 1#5 1, .gpr 1#5 2] Update.regIndexLe =
       -- If a write shadows another, then `List.mergeSort` with `Update.regIndexLe`
       -- will preserve the order of the writes.
-      [.w_gpr 1#5 (.var 1), .w_gpr 1#5 (.var 2)]
+      [.gpr 1#5 1, .gpr 1#5 2]
 
 /--
 Erase repeated adjacent elements. Keeps the first occurrence of each run.
@@ -274,7 +442,7 @@ def Expr.eraseReps (us : Updates) : Updates :=
   | [x] => [x]
   | x :: y :: rest =>
     match x.field == y.field with
-    | true => x :: eraseReps rest
+    | true => eraseReps (x :: rest)
     | false => x :: eraseReps (y :: rest)
 
 @[local simp]
@@ -291,8 +459,10 @@ theorem denote_writes_eraseReps :
     rename_i x y rest h_eq ih
     simp [Expr.eraseReps, h_eq]
     simp [Update.field] at h_eq
+    cases x <;> try simp_all <;> cases y <;>
+    try simp_all [Update.field, Update.var] <;>
     rw [h_eq, w_of_w_shadow]
-    simp_all
+    all_goals (simp_all [Update.field, Update.var]; rw [w_of_w_shadow])
   case case4 =>
     rename_i x y rest h_eq ih
     simp [Expr.eraseReps, h_eq]
@@ -307,8 +477,11 @@ match u, us, rs with
   match a.field == a'.field with
   | true  => loop a as rs
   | false => loop a' as (a::rs)
+
 /--
 Tail-recursive version of `Expr.eraseReps`.
+
+(FIXME) Prove equivalent to `Expr.eraseReps`.
 -/
 def Expr.eraseAdjReps (us : Updates) : Updates :=
   match us with
@@ -372,15 +545,31 @@ theorem Expr.eraseReps_and_eraseAdjReps.loop :
 -/
 
 def Expr.prune (e : Expr) : Expr :=
-  let e_nodups := eraseReps $ List.mergeSort e.writes Update.regIndexLe
+  let e_sorted := List.mergeSort e.writes Update.regIndexLe
+  let e_nodups := eraseReps e_sorted
   { e with writes := e_nodups }
 
 open Expr Update in
 /--
-info: { curr_state := 1, prev_state := 0, writes := [ArmConstr.Update.w_gpr 0x00#5 (ArmConstr.GPRVal.var 0)] }
+info: { curr_state := 1,
+  prev_state := 0,
+  writes := [ArmConstr.Update.pc 0,
+             ArmConstr.Update.sfp 0x00#5 3,
+             ArmConstr.Update.sfp 0x01#5 2,
+             ArmConstr.Update.sfp 0x02#5 1,
+             ArmConstr.Update.sfp 0x03#5 0] }
 -/
 #guard_msgs in
-#eval prune { prev_state := 0, curr_state := 1, writes := [w_gpr 0#5 (.var 0), w_gpr 0#5 (.var 1)] }
+#eval Expr.prune { curr_state := 1,
+                   prev_state := 0,
+                   writes := [(.pc 0),
+                              (.sfp 0x03#5 0),
+                              (.pc 1),
+                              (.sfp 0x02#5 1),
+                              (.pc 2),
+                              (.sfp 0x01#5 2),
+                              (.pc 3),
+                              (.sfp 0x00#5 3)]}
 
 /--
 Does removing shadowed writes in `e1` give `e2`?
@@ -404,13 +593,17 @@ theorem example1
   s1 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 s0) := by
   exact
     ((Expr.eq_true_of_denote { state := [s0, s1],
-                               gpr := [x0, x1] }
+                               gpr := [x0, x1],
+                               sfp := [],
+                               pc := [],
+                               flag := [],
+                               err := [] }
         -- e1
         { prev_state := 0, curr_state := 1,
-          writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1), w_gpr 0#5 (.var 1)] }
+          writes := [.gpr 0#5 (0), .gpr 1#5 (1), .gpr 0#5 (1)] }
         -- e2
         { prev_state := 0, curr_state := 1,
-          writes := [w_gpr 0#5 (.var 0), w_gpr 1#5 (.var 1)] }
+          writes := [.gpr 0#5 (0), .gpr 1#5 (1)] }
         (by native_decide)))
     h_s1
 

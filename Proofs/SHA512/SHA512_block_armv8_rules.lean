@@ -45,6 +45,7 @@ theorem sha512h2_rule (a b c : BitVec 128) :
   simp only [sha512h2, Nat.reduceAdd, maj, sigma_big_0, ror, compression_update_t2]
   bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512h2_rule-43-2.lrat"
 
+
 private theorem and_nop_lemma (x : BitVec 64) :
   (setWidth 128 x) &&& 0xffffffffffffffff#128 = (setWidth 128 x) := by
   bv_decide
@@ -107,6 +108,69 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   -- simp only [and_nop_lemma, extractLsb'_low_64_from_setWidth_128_or, extractLsb'_high_64_from_setWidth_128_or]
   generalize (b_hi.rotateRight 14 ^^^ b_hi.rotateRight 18 ^^^ b_hi.rotateRight 41) = aux0
   generalize (b_hi &&& a_lo ^^^ ~~~b_hi &&& a_hi) = aux1
+  ac_rfl
+
+theorem binary_vector_op_aux_add_128_simp (x y result : BitVec 128) :
+  DPSFP.binary_vector_op_aux 0 2 64 BitVec.add x y result =
+  (BitVec.extractLsb' 64 64 x + BitVec.extractLsb' 64 64 y) ++
+  (BitVec.extractLsb' 0 64 x + BitVec.extractLsb' 0 64 y) := by
+  repeat simp [DPSFP.binary_vector_op_aux, state_simp_rules, bitvec_rules, partInstall]
+  bv_decide
+  done
+
+/-
+DPSFP.sha512h2 (r (StateField.SFP 0x1#5) s) (r (StateField.SFP 0x0#5) s)
+    (DPSFP.sha512h (extractLsb' 64 128 (r (StateField.SFP 0x3#5) s ++ r (StateField.SFP 0x2#5) s))
+      (extractLsb' 64 128 (r (StateField.SFP 0x2#5) s ++ r (StateField.SFP 0x1#5) s))
+      (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (r (StateField.SFP 0x3#5) s)
+        (extractLsb' 64 128
+          (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (Memory.read_bytes 16 (r (StateField.GPR 0x3#5) s) s.mem)
+              (r (StateField.SFP 0x10#5) s) 0x0#128 ++
+            DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (Memory.read_bytes 16 (r (StateField.GPR 0x3#5) s) s.mem)
+              (r (StateField.SFP 0x10#5) s) 0x0#128))
+        0x0#128))
+-/
+
+theorem sha512h_and_sha512h2_rule_1 :
+  let elements := 2
+  let esize := 64
+  let inner_sum := (binary_vector_op_aux 0 elements esize BitVec.add c d 0#128)
+  let outer_sum := (binary_vector_op_aux 0 elements esize BitVec.add inner_sum e 0#128)
+  let a0 := extractLsb'  0 64 a
+  let a1 := extractLsb' 64 64 a
+  let b0 := extractLsb'  0 64 b
+  let b1 := extractLsb' 64 64 b
+  let c0 := extractLsb'  0 64 c
+  let c1 := extractLsb' 64 64 c
+  let d0 := extractLsb'  0 64 d
+  let d1 := extractLsb' 64 64 d
+  let e0 := extractLsb'  0 64 e
+  let e1 := extractLsb' 64 64 e
+  let x0 := extractLsb'  0 64 x
+  let y0 := extractLsb'  0 64 y
+  let y1 := extractLsb' 64 64 y
+  let hi64_spec_1 := compression_update_t1 b1 a0 a1 c1 d1 e1
+  let hi64_spec_2 := compression_update_t2 y0 x0 y1
+  let lo64_spec_1 := compression_update_t1 (b0 + hi64_spec_1) b1 a0 c0 d0 e0
+  let lo64_spec_2 := compression_update_t2 (hi64_spec_2 + hi64_spec_1) y0 y1
+  DPSFP.sha512h2 x y (DPSFP.sha512h a b outer_sum) =
+  (hi64_spec_1 + hi64_spec_2) ++ (lo64_spec_1 + lo64_spec_2) := by
+  simp [sha512h2_rule, sha512h_rule_1]
+  generalize extractLsb'  0 64 a = a0
+  generalize extractLsb' 64 64 a = a1
+  generalize extractLsb'  0 64 b = b0
+  generalize extractLsb' 64 64 b = b1i
+  generalize extractLsb'  0 64 c = c0
+  generalize extractLsb' 64 64 c = c1
+  generalize extractLsb'  0 64 d = d0
+  generalize extractLsb' 64 64 d = d1
+  generalize extractLsb'  0 64 e = e0
+  generalize extractLsb' 64 64 e = e1
+  generalize extractLsb'  0 64 x = x0
+  -- generalize extractLsb' 64 64 x = x1
+  generalize extractLsb'  0 64 y = y0
+  generalize extractLsb' 64 64 y = y1
+  rw [BitVec.extractLsb'_append_left, BitVec.extractLsb'_append_right]
   ac_rfl
 
 -- set_option maxHeartbeats 0 in

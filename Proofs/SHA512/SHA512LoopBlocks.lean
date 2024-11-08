@@ -6,12 +6,78 @@ Author(s): Shilpi Goel
 import Proofs.SHA512.SHA512Prelude
 import Proofs.SHA512.SHA512_block_armv8_rules
 import Arm.Cfg.Cfg
+import Tactics.PruneUpdates
 open BitVec
 
 namespace SHA512
 
 -- Prove block lemmas for the Loop.
 
+-- set_option pp.maxSteps 50000 in
+-- theorem program.blocki_eq_0x126550 {s : ArmState}
+  -- (h_program : s.program = program)
+  -- (h_pc : r StateField.PC s = 0x126550#64)
+  -- (h_err : r StateField.ERR s = StateError.None) :
+  -- run 24 s =
+  -- xxxx
+  -- := by
+  -- generalize h_run : run 24 s = sf
+  -- replace h_run := h_run.symm
+  -- sym_n 24
+  -- simp (config := {decide := true}) only
+    -- [h_step_23, h_step_22, h_step_21, h_step_20,
+    --  h_step_19, h_step_18, h_step_17, h_step_16, h_step_15,
+    --  h_step_14, h_step_13, h_step_12, h_step_11, h_step_10,
+    --  h_step_9,  h_step_8,  h_step_7,  h_step_6,  h_step_5,
+    --  h_step_4,  h_step_3,  h_step_2,  h_step_1,
+    --  state_simp_rules, bitvec_rules, minimal_theory,
+    --  sha512_message_schedule_rule, sha512h2_rule,
+    --  sha512h_rule_1, sha512h_rule_2]
+    -- at h_step_24
+  -- exact h_step_24
+  -- done
+  -- sorry
+
+set_option trace.Tactic.prune_updates true in
+theorem program.blocki_eq_0x126500_1 {s : ArmState}
+  (h_program : s.program = program)
+  (h_pc : r StateField.PC s = 0x126500#64)
+  (h_err : r StateField.ERR s = StateError.None) :
+  run 8 s = (w .PC (0x126520#64)  (w (.GPR 0x01#5) (if
+        ¬(AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.z = 0x1#1 then
+      r (StateField.GPR 0x1#5) s
+    else
+      r (StateField.GPR 0x1#5) s -
+        0x80#64)  (w (.GPR 0x02#5) (r (StateField.GPR 0x2#5) s -
+      0x1#64)  (w (.GPR 0x03#5) (r (StateField.GPR 0x3#5) s +
+      0x10#64)  (w (.GPR 0x04#5) (r (StateField.GPR 0x1#5) s -
+      0x80#64)  (w (.SFP 0x18#5) (read_mem_bytes 16 (r (StateField.GPR 0x3#5) s)
+      s)  (w (.SFP 0x1a#5) (r (StateField.SFP 0x0#5)
+      s)  (w (.SFP 0x1b#5) (r (StateField.SFP 0x1#5)
+      s)  (w (.SFP 0x1c#5) (r (StateField.SFP 0x2#5)
+      s)  (w (.SFP 0x1d#5) (r (StateField.SFP 0x3#5)
+      s)  (w (.FLAG N) ((AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64
+          0x1#1).snd.n)  (w (.FLAG Z) ((AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64
+          0x1#1).snd.z)  (w (.FLAG C) ((AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64
+          0x1#1).snd.c)  (w (.FLAG V) ((AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64
+          0x1#1).snd.v)  s))))))))))))))
+  := by
+  generalize h_run : run 8 s = sf
+  replace h_run := h_run.symm
+  sym_n 8
+  simp (config := {decide := true}) only
+     [h_step_7,  h_step_6,  h_step_5,
+     h_step_4,  h_step_3,  h_step_2,  h_step_1,
+     state_simp_rules, bitvec_rules, minimal_theory,
+     sha512_message_schedule_rule, sha512h2_rule,
+     sha512h_rule_1, sha512h_rule_2]
+    at h_step_8
+  -- prune_updates h_step_8
+  -- exact h_step_20
+  -- done
+  sorry
+
+/-
 -- #eval ((Cfg.create' (0x126500#64) (0x126500#64 + 20*4) SHA512.program).toOption.get!).maybe_modified_regs
 #time
 theorem program.blocki_eq_0x126500 {s : ArmState}
@@ -242,6 +308,7 @@ theorem program.blocki_eq_0x126500 {s : ArmState}
      sha512_message_schedule_rule, sha512h2_rule,
      sha512h_rule_1, sha512h_rule_2]
     at h_step_20
+  -- prune_updates h_step_20
   exact h_step_20
   done
 
@@ -15596,5 +15663,7 @@ theorem program.blocki_eq_0x126c80 {s : ArmState}
      sha512_message_schedule_rule, sha512h2_rule,
      sha512h_rule_1, sha512h_rule_2]
     at h_step_5
+  -- explode_step h_step_5 at s5
   exact h_step_5
   done
+-/

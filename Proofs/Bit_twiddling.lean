@@ -149,6 +149,7 @@ theorem power_of_two (x : BitVec 32) (i : BitVec 5)
 
 -- ============================================================
 
+set_option sat.solver "cadical" in
 /--
 6. Conditionally set or clear bits without branching
 (https://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching)
@@ -159,7 +160,6 @@ unsigned int w; // the word to modify:  if (f) w |= m; else w &= ~m;
 
 w ^= (-f ^ w) & m;
 -/
-
 theorem set_clear_no_branch (x : BitVec 32) (f : Bool) (mask : BitVec 32) :
   (if f then (x ||| mask) else (x &&& ~~~mask)) =
   (x ^^^ (((-(BitVec.zeroExtend 32 (BitVec.ofBool f))) ^^^ x) &&& mask)) := by

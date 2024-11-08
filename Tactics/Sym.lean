@@ -228,6 +228,11 @@ elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
   let c ← SymContext.fromMainContext (some stateDecl.userName)
   let _ ← SymM.run c <| explodeStep hStep
 
+-- elab "prune_updates" h_step:term : tactic => withMainContext do
+--   let hStep ← elabTerm h_step none
+--   let ax ← AxEffects.fromEq hStep
+--   let _ ← ax.addHypothesesToLContext
+
 /--
 Symbolically simulate a single step, according the the symbolic simulation
 context `c`, returning the context for the next step in simulation. -/
