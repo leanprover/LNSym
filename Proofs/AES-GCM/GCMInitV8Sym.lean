@@ -16,8 +16,24 @@ set_option bv.ac_nf false
 abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 
-set_option maxRecDepth 2000 in
-set_option maxHeartbeats 500000 in
+-- Taken from gcm_gmult_v8
+theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
+  DPSFP.pmull_op 0 64 1 x y 0#128 =
+  DPSFP.polynomial_mult x y := by
+  unfold DPSFP.pmull_op
+  simp (config := {ground := true}) only [minimal_theory]
+  unfold DPSFP.pmull_op
+  simp (config := {ground := true}) only [minimal_theory]
+  simp only [state_simp_rules, bitvec_rules]
+  done
+
+-- (TODO) Should we simply replace one function by the other here?
+theorem gcm_polyval_mul_eq_polynomial_mult {x y : BitVec 128} :
+  GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by
+  sorry
+
+set_option maxRecDepth 10000 in
+set_option maxHeartbeats 4000000 in
 set_option sat.timeout 120 in
 -- set_option pp.deepTerms true in
 -- set_option pp.maxSteps 10000 in
@@ -47,9 +63,12 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     -- H_addr ptr stays the same
     ∧ H_addr sf = H_addr s0
     -- v20 - v31 stores results of Htable
+    -- ∧ let Hinit := (read_mem_bytes 16 (H_addr s0) s0)
+    --   read_sfp 128 20#5 sf =
+    --   (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 0
     ∧ let Hinit := (read_mem_bytes 16 (H_addr s0) s0)
-      read_sfp 128 20#5 sf =
-      (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 0
+      read_sfp 128 21#5 sf =
+      (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 1
     --
     -- TODO: Commenting out memory related conjuncts since it seems
     -- to make symbolic execution stuck
@@ -86,14 +105,19 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     generalize Memory.read_bytes 16 (r (StateField.GPR 1#5) s0) s0.mem = Hinit
     -- change the type of Hinit to be BitVec 128, assuming that's def-eq
     change BitVec 128 at Hinit
+    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq]
     simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi,
       GCMV8.gcm_init_H, GCMV8.refpoly, GCMV8.pmod, GCMV8.pmod.pmodTR,
-      GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR]
-    simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtracLsb',
-      BitVec.reduceHShiftLeft, BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.ofNat_eq_ofNat,
-      BitVec.reduceEq, ↓reduceIte, Nat.sub_self, BitVec.ushiftRight_zero_eq, BitVec.reduceAnd,
-      BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero, Nat.zero_mod,
-      Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul, Nat.reduceSub,
-      BitVec.and_self, BitVec.zero_and, BitVec.reduceMul, BitVec.xor_zero, BitVec.mul_one,
-      BitVec.zero_xor, Nat.add_one_sub_one, BitVec.one_mul, BitVec.reduceXOr]
+      GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR,
+      GCMV8.gcm_polyval, GCMV8.gcm_polyval_red, GCMV8.irrepoly,
+      BitVec.reverse, BitVec.reverse.reverseTR, BitVec.partInstall
+      ]
+    simp only [gcm_polyval_mul_eq_polynomial_mult]
+    simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtracLsb', BitVec.reduceHShiftLeft,
+      BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.reduceAllOnes, BitVec.truncate_eq_setWidth,
+      BitVec.reduceSetWidth, BitVec.reduceNot, BitVec.shiftLeft_zero_eq, BitVec.zero_eq, Nat.sub_self, BitVec.zero_and,
+      Nat.add_one_sub_one, BitVec.ofNat_eq_ofNat, BitVec.reduceEq, ↓reduceIte, BitVec.ushiftRight_zero_eq, BitVec.reduceAnd,
+      BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero, Nat.zero_mod, Nat.zero_add, Nat.sub_zero,
+      Nat.mul_one, Nat.zero_mul, Nat.one_mul, Nat.reduceSub, BitVec.and_self, BitVec.reduceMul, BitVec.xor_zero,
+      BitVec.mul_one, BitVec.zero_xor, BitVec.one_mul, BitVec.reduceXOr, BitVec.zero_or]
     bv_decide
