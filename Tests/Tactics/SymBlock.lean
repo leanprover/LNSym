@@ -57,6 +57,7 @@ theorem ugh_program.blocki_eq_0x12650c_alt {s : ArmState}
   -- simp (config := {decide := true})
   -- [h_step_3, h_step_2, h_step_1, state_simp_rules] at h_step_4
   sorry
+
 theorem ugh_program.blocki_eq_0x12651c {s : ArmState}
   (h_program : s.program = ugh_program)
   (h_pc : r StateField.PC s = 0x12651c#64)
@@ -78,7 +79,7 @@ theorem test_orig {s0 : ArmState}
   (h_err : r StateField.ERR s0 = StateError.None)
   (h_run : sf = run 8 s0) :
   sf.program = ugh_program := by
-  sym_n 8 (add_hyps := true)
+  sym_n 8
 
 
 #time

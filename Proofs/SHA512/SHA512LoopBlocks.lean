@@ -38,6 +38,7 @@ namespace SHA512
   -- done
   -- sorry
 
+/-
 set_option trace.Tactic.prune_updates true in
 theorem program.blocki_eq_0x126500_1 {s : ArmState}
   (h_program : s.program = program)
@@ -76,8 +77,8 @@ theorem program.blocki_eq_0x126500_1 {s : ArmState}
   -- exact h_step_20
   -- done
   sorry
+-/
 
-/-
 -- #eval ((Cfg.create' (0x126500#64) (0x126500#64 + 20*4) SHA512.program).toOption.get!).maybe_modified_regs
 #time
 theorem program.blocki_eq_0x126500 {s : ArmState}
@@ -15666,4 +15667,3 @@ theorem program.blocki_eq_0x126c80 {s : ArmState}
   -- explode_step h_step_5 at s5
   exact h_step_5
   done
--/

@@ -11,11 +11,11 @@ import Tactics.ClearNamed
 open BitVec
 
 namespace SHA512
-#eval SHA2.k_512.length
 
 #time
-set_option trace.Tactic.sym.info true in
-set_option trace.Tactic.sym true in
+set_option linter.unusedVariables false in
+-- set_option trace.Tactic.sym.info true in
+-- set_option trace.Tactic.sym true in
 set_option pp.maxSteps 100 in
 theorem sha512_loop_sym {s0 sf : ArmState}
  { a b c d e f g h
@@ -92,14 +92,11 @@ theorem sha512_loop_sym {s0 sf : ArmState}
 
   (h_run : sf = run 485 s0) :
   r .ERR sf = .None
-  /-
-  More generally:
-  r .PC sf = (if ¬r (StateField.GPR 0x2#5) s0 - 0x1#64 = 0x0#64
+  -- More generally:
+  ∧ r .PC sf = (if ¬r (StateField.GPR 0x2#5) s0 - 0x1#64 = 0x0#64
               then 0x126500#64
               else 0x126c94#64)
-  -/
-  -- ∧ r .PC sf = 0x126c94#64
---   ∧ r (.SFP 1) sf = q1
+  -- ∧ r (.SFP 1) sf = q1
   -- ∧ (r (.SFP 3) sf ++ r (.SFP 2) sf ++ r (.SFP 1) sf ++ r (.SFP 0) sf) = final_hash
   := by
   -- Symbolic Simulation

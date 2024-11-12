@@ -377,7 +377,7 @@ private def update_w (eff : AxEffects) (fld val : Expr) :
       -- `fld` was previously modified
 
       let neProof := -- : `<f> ≠ <fld>`
-        mkNeProofOfNotMemAndMem 0 (mkConst ``StateField) f fld modifiedFields h nonMemHyp
+        mkNeProofOfNotMemAndMem 0 (mkConst ``StateField) f fld modifiedFields nonMemHyp h
       -- Adjust the proof
       let proof ← newProofOfNe proof neProof
       -- And abstract `f` and `nonMemHyp` again, without changing their types
