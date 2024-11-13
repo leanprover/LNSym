@@ -16,6 +16,40 @@ set_option bv.ac_nf false
 abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 
+abbrev lo (x : BitVec 128) : BitVec 64 := BitVec.extractLsb' 0 64 x
+abbrev hi (x : BitVec 128) : BitVec 64 := BitVec.extractLsb' 64 64 x
+
+-- The following represents the assembly version of gcm_polyval
+def gcm_polyval_asm (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
+  let v19 := 0xe1#128
+  let v19 := BitVec.shiftLeft (hi v19) 57 ++ BitVec.shiftLeft (lo v19) 57
+  let v16 := ((lo x) ^^^ (hi x)) ++ ((hi x) ^^^ (lo x))
+  let v17 := ((lo y) ^^^ (hi y)) ++ ((hi y) ^^^ (lo y))
+  let x := (lo x) ++ (hi x)
+  let y := (lo y) ++ (hi y)
+  let v0 := DPSFP.polynomial_mult (hi x) (hi y)
+  let v2 := DPSFP.polynomial_mult (lo x) (lo y)
+  let v1 := DPSFP.polynomial_mult (lo v16) (lo v17)
+  let v16 := (lo v2) ++ (hi v0)
+  let v18 := v0 ^^^ v2
+  let v1 := v1 ^^^ v16
+  let v1 := v1 ^^^ v18
+  let v18 := DPSFP.polynomial_mult (lo v0) (lo v19)
+  let v2 := BitVec.partInstall 0 64 (hi v1) v2
+  let v1 := BitVec.partInstall 64 64 (lo v0) v1
+  let v0 := v1 ^^^ v18
+  let v18 := (lo v0) ++ (hi v0)
+  let v0 := DPSFP.polynomial_mult (lo v0) (lo v19)
+  let v18 := v18 ^^^ v2
+  let v16 := v0 ^^^ v18
+  let v23 := (hi v16) ++ (lo v16)
+  v23
+
+#eval gcm_polyval_asm 0xcdd297a9df1458771099f4b39468565c#128 0x88d320376963120dea0b3a488cb9209b#128
+
+theorem gcm_polyval_asm_gcm_polyval_equiv (x : BitVec 128) (y : BitVec 128) :
+  GCMV8.gcm_polyval x y = gcm_polyval_asm x y := by sorry
+
 -- Taken from gcm_gmult_v8
 theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
   DPSFP.pmull_op 0 64 1 x y 0#128 =
@@ -28,9 +62,37 @@ theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
   done
 
 -- (TODO) Should we simply replace one function by the other here?
-theorem gcm_polyval_mul_eq_polynomial_mult {x y : BitVec 128} :
+theorem gcm_polyval_mul_eq_polynomial_mult (x y : BitVec 128) :
   GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by
   sorry
+
+theorem extractLsb'_of_append_mid (x : BitVec 128) :
+  BitVec.extractLsb' 64 128 (x ++ x)
+  = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x := by
+  sorry
+
+theorem extractLsb'_of_append_hi (x y : BitVec 64) :
+  BitVec.extractLsb' 64 64 (x ++ y) = x := by
+  sorry
+
+theorem extractLsb'_of_append_lo (x y : BitVec 64) :
+  BitVec.extractLsb' 0 64 (x ++ y) = y := by
+  sorry
+
+theorem crock3 (x : BitVec 32) :
+  (BitVec.extractLsb' 0 32 (x ++ x ++ x ++ x)) = x := by sorry
+
+theorem crock4 (x : BitVec 32) :
+  (BitVec.extractLsb' 32 32 (x ++ x ++ x ++ x)) = x := by sorry
+
+theorem crock5 (x : BitVec 32) :
+  (BitVec.extractLsb' 64 32 (x ++ x ++ x ++ x)) = x := by sorry
+
+theorem crock6 (x : BitVec 32) :
+  (BitVec.extractLsb' 96 32 (x ++ x ++ x ++ x)) = x := by sorry
+
+theorem crock7 (x : BitVec 128) :
+  (BitVec.setWidth 64 x) = BitVec.extractLsb' 0 64 x := by sorry
 
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 4000000 in
@@ -101,23 +163,30 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     , shift_right_common_aux_64_2_tff
     , shift_right_common_aux_32_4_fff
     , DPSFP.AdvSIMDExpandImm
-    , DPSFP.dup_aux_0_4_32]
+    , DPSFP.dup_aux_0_4_32
+    , BitVec.partInstall]
     generalize Memory.read_bytes 16 (r (StateField.GPR 1#5) s0) s0.mem = Hinit
     -- change the type of Hinit to be BitVec 128, assuming that's def-eq
     change BitVec 128 at Hinit
+    -- simplifying LHS
+    simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
+      extractLsb'_of_append_lo, crock3, crock4, crock5, crock6, crock7]
+    simp (config := {ground := true}) only
+    generalize h_Hinit_lo : BitVec.extractLsb' 0 64 Hinit = Hinit_lo
+    generalize h_Hinit_hi : BitVec.extractLsb' 64 64 Hinit = Hinit_hi
     simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq]
-    simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi,
-      GCMV8.gcm_init_H, GCMV8.refpoly, GCMV8.pmod, GCMV8.pmod.pmodTR,
-      GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR,
-      GCMV8.gcm_polyval, GCMV8.gcm_polyval_red, GCMV8.irrepoly,
-      BitVec.reverse, BitVec.reverse.reverseTR, BitVec.partInstall
-      ]
-    simp only [gcm_polyval_mul_eq_polynomial_mult]
-    simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtracLsb', BitVec.reduceHShiftLeft,
-      BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.reduceAllOnes, BitVec.truncate_eq_setWidth,
-      BitVec.reduceSetWidth, BitVec.reduceNot, BitVec.shiftLeft_zero_eq, BitVec.zero_eq, Nat.sub_self, BitVec.zero_and,
-      Nat.add_one_sub_one, BitVec.ofNat_eq_ofNat, BitVec.reduceEq, ↓reduceIte, BitVec.ushiftRight_zero_eq, BitVec.reduceAnd,
-      BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero, Nat.zero_mod, Nat.zero_add, Nat.sub_zero,
-      Nat.mul_one, Nat.zero_mul, Nat.one_mul, Nat.reduceSub, BitVec.and_self, BitVec.reduceMul, BitVec.xor_zero,
-      BitVec.mul_one, BitVec.zero_xor, BitVec.one_mul, BitVec.reduceXOr, BitVec.zero_or]
+    -- simplifying RHS
+    simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi, GCMV8.gcm_init_H]
+    simp only [gcm_polyval_asm_gcm_polyval_equiv]
+    simp only [gcm_polyval_asm, GCMV8.refpoly, GCMV8.pmod, GCMV8.pmod.pmodTR,
+      GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR, lo, hi, BitVec.partInstall]
+    simp only [Nat.reduceAdd, BitVec.shiftLeft_zero_eq, BitVec.ofNat_eq_ofNat, BitVec.reduceEq,
+      ↓reduceIte, Nat.sub_self, BitVec.ushiftRight_zero_eq, BitVec.reduceAnd,
+      BitVec.reduceExtracLsb', BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero,
+      Nat.add_zero, BitVec.reduceHShiftRight, Nat.zero_mod, Nat.zero_add, Nat.sub_zero, Nat.mul_one,
+      Nat.zero_mul, Nat.one_mul, Nat.reduceSub, BitVec.and_self, BitVec.zero_and, BitVec.reduceMul,
+      BitVec.xor_zero, BitVec.mul_one, BitVec.zero_xor, BitVec.reduceHShiftLeft,
+      Nat.add_one_sub_one, BitVec.one_mul, BitVec.reduceXOr, BitVec.reduceAllOnes,
+      BitVec.truncate_eq_setWidth, BitVec.reduceSetWidth, BitVec.reduceNot, BitVec.shiftLeft_eq,
+      BitVec.zero_shiftLeft, BitVec.reduceAppend]
     bv_decide
