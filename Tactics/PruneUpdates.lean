@@ -412,6 +412,20 @@ private theorem example2
   prune_updates h_s1
   done
 
+/--
+info: private theorem ArmConstr.ArmConstr.example2 : ∀ {s1 : ArmState} {x100 x100' : state_value (StateField.GPR 1#5)}
+  {x500 : state_value (StateField.GPR 0#5)} {x1 : state_value (StateField.GPR 8#5)} {s0 : ArmState},
+  s1 = w (StateField.GPR 1#5) (x100 + x100') (w (StateField.GPR 0#5) x500 (w (StateField.GPR 8#5) x1 s0)) →
+    s1 = w (StateField.GPR 0#5) x500 (w (StateField.GPR 1#5) (x100 + x100') (w (StateField.GPR 8#5) x1 s0)) :=
+fun {s1} {x100 x100'} {x500} {x1} {s0} h_s1 =>
+  eq_true_of_denote { state := [s0, s1], err := [], pc := [], gpr := [x100 + x100', x500, x1], sfp := [], flag := [] }
+    { curr_state := 1, prev_state := 0, writes := [Update.gpr (1#5) 0, Update.gpr (0#5) 1, Update.gpr (8#5) 2] }
+    { curr_state := 1, prev_state := 0, writes := [Update.gpr (0#5) 1, Update.gpr (1#5) 0, Update.gpr (8#5) 2] }
+    (ofReduceBool ArmConstr.ArmConstr.example2._armexpr_reflection_def_1 true (Eq.refl true)) h_s1
+-/
+#guard_msgs in
+#print example2
+
 #time
 -- set_option trace.Tactic.prune_updates.answer true in
 private theorem example3
@@ -445,5 +459,55 @@ private theorem example3
   := by
   prune_updates h_s1
   done
+
+/-
+set_option trace.Tactic.prune_updates true in
+-- set_option trace.Tactic.prune_updates.answer true in
+theorem timeout_example
+  (h_step : s' = w (StateField.GPR 0x1#5)
+    (if ¬(AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.z = 0x1#1 then
+      r (StateField.GPR 0x1#5) s
+    else r (StateField.GPR 0x1#5) s - 0x80#64)
+    (w StateField.PC 0x126520#64
+      (w (StateField.SFP 0x1d#5) (r (StateField.SFP 0x3#5) s)
+        (w StateField.PC 0x126518#64
+          (w (StateField.SFP 0x1c#5) (r (StateField.SFP 0x2#5) s)
+            (w StateField.PC 0x126514#64
+              (w (StateField.SFP 0x1b#5) (r (StateField.SFP 0x1#5) s)
+                (w StateField.PC 0x126510#64
+                  (w (StateField.SFP 0x1a#5) (r (StateField.SFP 0x0#5) s)
+                    (w (StateField.GPR 0x4#5) (r (StateField.GPR 0x1#5) s - 0x80#64)
+                      (w StateField.PC 0x12650c#64
+                        (w (StateField.GPR 0x2#5) (r (StateField.GPR 0x2#5) s - 0x1#64)
+                          (w (StateField.FLAG PFlag.V)
+                            (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.v
+                            (w (StateField.FLAG PFlag.C)
+                              (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.c
+                              (w (StateField.FLAG PFlag.Z)
+                                (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.z
+                                (w (StateField.FLAG PFlag.N)
+                                  (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.n
+                                  (w StateField.PC 0x126508#64
+                                    (w (StateField.GPR 0x3#5) (r (StateField.GPR 0x3#5) s + 0x10#64)
+                                      (w (StateField.SFP 0x18#5) (read_mem_bytes 16 (r (StateField.GPR 0x3#5) s) s)
+                                        s))))))))))))))))))) :
+  s' = (w .PC (1205536#64)  (w (.GPR 0x01#5) (if
+        ¬(AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.z = 1#1 then r (StateField.GPR 1#5) s
+    else
+      r (StateField.GPR 1#5) s - 128#64)
+      (w (.GPR 0x02#5) (r (StateField.GPR 2#5) s - 1#64)
+        (w (.GPR 0x03#5) (r (StateField.GPR 3#5) s + 16#64)
+         (w (.GPR 0x04#5) (r (StateField.GPR 1#5) s - 128#64)
+          (w (.SFP 0x18#5) (read_mem_bytes 16 (r (StateField.GPR 3#5) s) s)
+            (w (.SFP 0x1a#5) (r (StateField.SFP 0#5) s)
+             (w (.SFP 0x1b#5) (r (StateField.SFP 1#5) s)
+               (w (.SFP 0x1c#5) (r (StateField.SFP 2#5) s)
+                (w (.SFP 0x1d#5) (r (StateField.SFP 3#5) s)
+                 (w (.FLAG N) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.n)
+                   (w (.FLAG Z) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.z)
+                     (w (.FLAG C) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.c)
+                      (w (.FLAG V) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.v) s)))))))))))))) := by
+  prune_updates h_step
+-/
 
 end Tests
