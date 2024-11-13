@@ -19,12 +19,12 @@ open Sym (withTraceNode withInfoTraceNode)
 
 /-- A wrapper around `evalTactic` that traces the passed tactic script,
 executes those tactics, and then traces the new goal state -/
-private def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
+def evalTacticAndTrace (tactic : TSyntax `tactic) : TacticM Unit :=
   withTraceNode m!"running: {tactic}" <| do
     evalTactic tactic
     trace[Tactic.sym] "new goal state:\n{← getGoals}"
 
-private def Sym.traceHeartbeats (header : Option String := none) :=
+def Sym.traceHeartbeats (header : Option String := none) :=
   _root_.traceHeartbeats `Tactic.sym.heartbeats header
 open Sym (traceHeartbeats)
 
@@ -166,7 +166,7 @@ def unfoldRun (whileTac : Unit → TacticM Unit) : SymReaderM Unit := do
 add the relevant hypotheses to the local context, and
 store an `AxEffects` object with the newly added variables in the monad state
 -/
-def explodeStep (hStep : Expr) : SymM Unit :=
+def explodeStep (hStep : Expr) (blockSize : Nat := 1) : SymM Unit :=
   withMainContext' <|
   withTraceNode m!"explodeStep {hStep}" (tag := "explodeStep") <| do
     let c ← getThe SymContext
@@ -197,7 +197,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
 
           if let some subGoal := subGoal? then
             trace[Tactic.sym] "subgoal got simplified to:\n{subGoal}"
-            subGoal.setTag (.mkSimple s!"h_{← getNextStateName}_sp_aligned")
+            subGoal.setTag (.mkSimple s!"h_{← getNextStateName blockSize}_sp_aligned")
             appendGoals [subGoal]
           else
             trace[Tactic.sym] "subgoal got closed by simplification"
@@ -210,7 +210,7 @@ def explodeStep (hStep : Expr) : SymM Unit :=
       if ←(getBoolOption `Tactic.sym.debug) then
         eff.validate
 
-      let eff ← eff.addHypothesesToLContext s!"h_{← getNextStateName}_"
+      let eff ← eff.addHypothesesToLContext s!"h_{← getNextStateName blockSize}_"
       withMainContext' <| do
         let simpThms ← eff.toSimpTheorems
         modifyThe SymContext (·.addSimpTheorems simpThms)
@@ -227,6 +227,11 @@ elab "explode_step" h_step:term " at " state:term : tactic => withMainContext do
   let stateDecl := (← getLCtx).get! stateFVar
   let c ← SymContext.fromMainContext (some stateDecl.userName)
   let _ ← SymM.run c <| explodeStep hStep
+
+-- elab "prune_updates" h_step:term : tactic => withMainContext do
+--   let hStep ← elabTerm h_step none
+--   let ax ← AxEffects.fromEq hStep
+--   let _ ← ax.addHypothesesToLContext
 
 /--
 Symbolically simulate a single step, according the the symbolic simulation
@@ -291,7 +296,7 @@ def sym1 (whileTac : TSyntax `tactic) : SymM Unit := do
       prepareForNextStep
 
       let goal ← getMainGoal
-      let goal ← goal.clear hStep.fvarId
+      -- let goal ← goal.clear hStep.fvarId
       replaceMainGoal [goal]
 
       traceHeartbeats

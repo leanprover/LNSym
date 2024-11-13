@@ -55,6 +55,15 @@ theorem store_write_irrelevant [DecidableEq α]
     unfold write_store read_store
     simp
 
+@[local simp]
+theorem write_store_commute [DecidableEq α] (store : Store α β)
+  (h : i ≠ j) :
+  write_store i x (write_store j y store) =
+  write_store j y (write_store i x store) := by
+  apply funext; intro idx
+  simp [write_store]
+  split <;> simp_all
+
 instance [Repr β]: Repr (Store (BitVec n) β) where
   reprPrec store _ :=
     let rec helper (a : Nat) (acc : Lean.Format) :=
@@ -450,6 +459,19 @@ theorem w_irrelevant : w fld (r fld s) s = s := by
   unfold read_base_flag write_base_flag
   unfold read_base_error write_base_error
   repeat (split <;> simp_all)
+
+theorem w_of_w_commute (h : fld1 ≠ fld2) :
+  w fld1 v1 (w fld2 v2 s) = w fld2 v2 (w fld1 v1 s) := by
+  unfold w
+  unfold write_base_gpr
+  unfold write_base_sfp
+  unfold write_base_pc
+  unfold write_base_flag
+  unfold write_base_error
+  split <;> split <;> (simp_all; try rwa [write_store_commute])
+  rename_i fld1 t1 i1 v1 fld2 t2 i2 v2
+  cases i1 <;> (cases i2 <;> (split <;> simp_all))
+  done
 
 @[state_simp_rules]
 theorem fetch_inst_of_w : fetch_inst addr (w fld val s) = fetch_inst addr s := by

@@ -125,7 +125,7 @@ work for `16#64 + ktbl_addr`?
 #time theorem sha512_block_armv8_loop_sym_ktbl_access (s1 : ArmState)
   (_h_s1_err : read_err s1 = StateError.None)
   (_h_s1_sp_aligned : CheckSPAlignment s1)
-  (h_s1_pc : read_pc s1 = 0x126500#64)
+  (_h_s1_pc : read_pc s1 = 0x126500#64)
   (_h_s1_program : s1.program = sha512_program)
   (h_s1_num_blocks : num_blocks s1 = 1)
   (_h_s1_x3 : r (StateField.GPR 3#5) s1 = ktbl_addr)

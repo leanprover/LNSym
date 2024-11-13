@@ -10,6 +10,8 @@ import Arm.Memory.MemoryProofs
 import Arm.BitVec
 import Arm.Memory.SeparateAutomation
 
+
+
 -- set_option trace.simp_mem true
 -- set_option trace.simp_mem.info true
 -- set_option trace.Meta.Tactic.simp true
@@ -170,7 +172,7 @@ set_option linter.all false in
   mem_omega
 
 set_option linter.all false in
-set_option trace.simp_mem.info true in
+-- set_option trace.simp_mem.info true in
 #time theorem mem_separate_11  (h : mem_separate' a 100 b 100)
   (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)
   (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1) (h' : a < b + 1)

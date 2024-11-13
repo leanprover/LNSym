@@ -60,10 +60,10 @@ def run (g : MVarId) (hyps : Array Expr) (bvToNatSimpCtx : Simp.Context) (bvToNa
      /- Wow, this is gross. I need to filter out the fvars, and keep track of which ones I use for simplification. -/
      try
        let (result?, _stats) ← g.withContext <| simpGoal g bvToNatSimpCtx bvToNatSimprocs (simplifyTarget := true) (discharge? := .none) hypFVars
-       let .some (hypFVars', g') := result? | return ()
+       let .some (_hypFVars', g') := result? | return ()
        g := g'
        let hypsOldRetained ← g.withContext <| pure (← getLCtx).getFVarIds
-       let hypsOldRetained := hypsOldRetained.filter (fun fvar => hypFVars.contains fvar)
+       let _hypsOldRetained := hypsOldRetained.filter (fun fvar => hypFVars.contains fvar)
        -- hypFVars := hypFVars'
      catch e => 
        trace[simp_mem.info] "in BvOmega, ran `simp only [bv_toNat]` and got error: {indentD e.toMessageData}"

@@ -10,6 +10,22 @@ initialize
   -- CSE tactic's non-verbose summary logging.
   registerTraceClass `Tactic.cse.summary
 
+  -- enable tracing for `prune_updates` tactic
+  registerTraceClass `Tactic.prune_updates
+  -- show the pruned updates in a form that the user can copy/paste into the
+  -- theorem's conclusion
+  registerTraceClass `Tactic.prune_updates.answer
+
+  registerOption `Tactic.prune_updates.validate {
+    defValue := false
+    descr := "enable/disable type-checking of internal state during execution \
+      of the `prune_updates` tactic.
+
+      This is an internal option for debugging purposes, end users should \
+      generally not set this option, unless they are reporting a bug with \
+      `prune_updates`"
+  }
+
   -- enable tracing for `sym_n` tactic and related components
   registerTraceClass `Tactic.sym
   -- enable verbose tracing

@@ -112,6 +112,9 @@ def init_sha512_test : ArmState :=
 -- `Tests/SHA512_PC.log`.
 -- #eval (log_run "Tests/SHA512_PC.log" pc_trace 503 init_sha512_test)
 
+-- #eval r (.SFP 0) (run 5 init_sha512_test) =  SHA512_H0.extractLsb' 0 128
+-- #eval r (.SFP 0) (run 5 init_sha512_test) =  (SHA2.h0_512.b ++ SHA2.h0_512.a)
+
 def final_sha512_state : ArmState := run 503 init_sha512_test
 def final_sha512_pc : BitVec 64 := read_pc final_sha512_state
 
@@ -123,6 +126,10 @@ def final_sha512_pc : BitVec 64 := read_pc final_sha512_state
 -- def final_sha512_hash : BitVec 512 := read_mem_bytes (512/8) ctx_address final_sha512_state
 --
 def final_sha512_hash : BitVec 512 := read_mem_bytes 64 ctx_address final_sha512_state
+
+example : (final_sha512_hash = (r (.SFP 3) final_sha512_state) ++ (r (.SFP 2) final_sha512_state) ++
+                               (r (.SFP 1) final_sha512_state) ++ (r (.SFP 0) final_sha512_state)):= by
+  native_decide
 
 -- Proof that we have reached the end of the program.
 example : final_sha512_pc =

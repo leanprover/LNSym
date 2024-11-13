@@ -93,7 +93,7 @@ structure SymContext where
   to determine the name of the next state variable that is added by `sym` -/
   state_prefix      : String := "s"
   /-- `curr_state_number` is incremented each simulation step,
-  and used together with `curr_state_number`
+  and used together with `state_prefix`
   to determine the name of the next state variable that is added by `sym` -/
   currentStateNumber : Nat := 0
 
@@ -183,9 +183,9 @@ def getHRunName : m Name := do return (← read).h_run
 NOTE: `getNextStateName` does not increment the state, so consecutive calls
 will give the same name. Calling `prepareForNextStep` will increment the state.
 -/
-def getNextStateName : m Name := do
+def getNextStateName (blockSize : Nat := 1) : m Name := do
   let c ← read
-  return Name.mkSimple s!"{c.state_prefix}{c.currentStateNumber + 1}"
+  return Name.mkSimple s!"{c.state_prefix}{c.currentStateNumber + blockSize}"
 
 end MonadicGetters
 
@@ -462,18 +462,19 @@ evaluation:
   * `runSteps?`, if specified, is decremented,
   * the `currentStateNumber` is incremented
 -/
-def prepareForNextStep : SymM Unit := do
-  withInfoTraceNode "prepareForNextStep" (tag := "prepareForNextStep") <| do
+def prepareForNextStep (blockSize : Nat := 1) : SymM Unit := do
+  withInfoTraceNode "prepareForNextStep'" (tag := "prepareForNextStep'") <| do
     let pc ← do
       let { value, ..} ← AxEffects.getFieldM .PC
       try
         reflectBitVecLiteral 64 value
       catch err =>
-        trace[Tactic.sym] "failed to reflect PC: {err.toMessageData}"
+        trace[Tactic.sym.info] "failed to reflect PC: {err.toMessageData}"
         pure <| (← getThe SymContext).pc + 4
 
     modifyThe SymContext (fun c => { c with
       pc
-      runSteps?   := (· - 1) <$> c.runSteps?
-      currentStateNumber := c.currentStateNumber + 1
+      runSteps?   := (· - blockSize) <$> c.runSteps?
+      currentStateNumber := c.currentStateNumber + blockSize
     })
+    trace[Tactic.sym] "New currentStateNumber:\n {← getCurrentStateNumber}"

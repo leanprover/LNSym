@@ -5,3 +5,4 @@ Author(s): Shilpi Goel
 -/
 import Proofs.SHA512.SHA512_block_armv8_rules
 import Proofs.SHA512.SHA512Sym
+import Proofs.SHA512.SHA512BlockSym
