@@ -90,5 +90,6 @@ theorem test {s0 : ArmState}
   (h_err : r StateField.ERR s0 = StateError.None)
   (h_run : sf = run 8 s0) :
   sf.program = ugh_program := by
-  sym_block 8 (block_size := 4) -- 2 blocks: size 4 each
+  -- sym_block 8 (block_size := 4) -- 2 blocks: size 4 each
+  sym_block 8 (block_sizes := [4, 4])
   done

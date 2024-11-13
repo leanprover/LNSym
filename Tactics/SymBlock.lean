@@ -135,28 +135,63 @@ def sym_block1 (blockSize stepsLeft : Nat) : SymM Unit := do
       traceHeartbeats
 
 syntax sym_block_size := "(" "block_size" " := " num ")"
+syntax sym_block_sizes := "(" "block_sizes" " := " "[" num,* "]" ")"
+
+/--
+Get the first `n` elements of the list `xs`, where `acc` is the accumulator.
+
+(FIXME) Implicit assumption: `xs` has at least one assumption.
+-/
+def first_n (n : Nat) (xs acc : List Nat) : List Nat :=
+  match n with
+  | 0 => acc.reverse
+  | n' + 1 => first_n n' xs.tail (List.headD xs 0 :: acc)
+
+/-- info: 5 -/
+#guard_msgs in
+#eval (first_n 1 [5, 2, 2, 1] []).foldl Nat.add 0
 
 open Elab.Term (elabTerm) in
-elab "sym_block" n:num block_size:(sym_block_size)? s:(sym_at)? : tactic => do
+elab "sym_block" n:num
+                 -- block_size:(sym_block_size)?
+                 block_sizes:(sym_block_sizes)?
+                 s:(sym_at)? : tactic => do
   traceHeartbeats "initial heartbeats"
 
   let s ← s.mapM fun
     | `(sym_at|at $s:ident) => pure s.getId
     | _ => Lean.Elab.throwUnsupportedSyntax
-  let block_size ← block_size.mapM (fun
-  | `(sym_block_size|(block_size := $val)) => pure val.getNat
-  |  _ => -- If no block size is specified, we step one instruction at a time.
-          pure 1)
-  let block_size := block_size.get!
+  let block_sizes ← block_sizes.mapM (fun
+  | `(sym_block_sizes|(block_sizes := [$elems,*])) => do
+      let size_exprs ← elems.getElems.mapM (fun elem => do
+        let size := elem.getNat
+        return (mkNatLit size))
+      let size_terms ← size_exprs.mapM (fun e => do
+          let some val ← Lean.Meta.getNatValue? e | throwError ""
+          return val)
+      dbg_trace s!"size_terms: {size_terms}"
+      pure size_terms.toList
+  |  _ =>
+      -- (FIXME)
+      -- If no block size is specified, we step one instruction at a time.
+      pure [1])
+  let block_sizes := block_sizes.get!
+  trace[Tactic.sym.info] "block_sizes: {block_sizes}"
+
+  -- let block_size ← block_size.mapM (fun
+  -- | `(sym_block_size|(block_size := $val)) => pure val.getNat
+  -- |  _ => -- If no block size is specified, we step one instruction at a time.
+  --         pure 1)
+  -- let block_size := block_size.get!
 
   let c ← SymContext.fromMainContext s
   -- TODO: Is this `get!` safe?
-  let total_steps := c.runSteps?.get!
+  -- let total_steps := c.runSteps?.get!
   -- The number of instructions, not blocks, the user asked to simulate.
   let sim_steps := n.getNat
   -- We compute the number of blocks to be simulated using a ceiling divide.
   -- Note that the last block can be < `block_size`.
-  let num_blocks := (sim_steps + block_size - 1) / block_size
+  -- let num_blocks := (sim_steps + block_size - 1) / block_size
 
   SymM.run' c <| withMainContext' <|  do
     -- Check pre-conditions
@@ -166,10 +201,15 @@ elab "sym_block" n:num block_size:(sym_block_size)? s:(sym_at)? : tactic => do
 
     withMainContext' <| do
       -- The main loop
-      for i in List.range num_blocks do
-        let block_size' := min (sim_steps - (i * block_size)) block_size
-        let steps_left := (total_steps - (i * block_size) - block_size')
-        sym_block1 block_size' steps_left
+      -- for i in List.range num_blocks do
+      --   let block_size' := min (sim_steps - (i * block_size)) block_size
+      --   let steps_left := (total_steps - (i * block_size) - block_size')
+      --   sym_block1 block_size' steps_left
+      let mut ctr := 0
+      for bsize in block_sizes do
+        ctr := ctr + 1
+        let steps_left := sim_steps - ((first_n ctr block_sizes []).foldl Nat.add 0)
+        sym_block1 bsize steps_left
 
     traceHeartbeats "symbolic simulation total"
     withCurrHeartbeats <|

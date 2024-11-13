@@ -100,7 +100,11 @@ theorem sha512_loop_sym {s0 sf : ArmState}
   -- ∧ (r (.SFP 3) sf ++ r (.SFP 2) sf ++ r (.SFP 1) sf ++ r (.SFP 0) sf) = final_hash
   := by
   -- Symbolic Simulation
-  sym_block 485 (block_size := 20) -- ceiling|485/20| blocks
+  -- sym_block 485 (block_size := 20) -- ceiling|485/20| blocks
+  sym_block 485 (block_sizes := [20, 20, 20, 20, 20, 20, 20,
+                                 20, 20, 20, 20, 20, 20, 20,
+                                 20, 20, 20, 20, 20, 20, 20,
+                                 20, 20, 20, 5])
   -- clear_named [h_s, blocki_]
   -- Reasoning
   -- subst h_N
