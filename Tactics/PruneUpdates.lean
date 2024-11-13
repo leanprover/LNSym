@@ -285,7 +285,7 @@ def toArmMessageData (e : Expr) (s : ToArmExpr.State) : MessageData :=
         | .pc v => m!"(w .PC ({s.pcVars[v]!}) "
         | .gpr i v => m!"(w (.GPR {i}) ({s.gprVars[v]!}) "
         | .sfp i v => m!"(w (.SFP {i}) ({s.sfpVars[v]!}) "
-        | .flag i v => m!"(w (.FLAG {i}) ({s.flagVars[v]!}) "
+        | .flag i v => m!"(w (.FLAG .{i}) ({s.flagVars[v]!}) "
       m!"{m} {go rest prev_state s (1 + paren_count)}"
 
 def ArmExprPruned? (refl_proof_name : Name) (e : Lean.Expr) :
@@ -503,10 +503,10 @@ theorem timeout_example
              (w (.SFP 0x1b#5) (r (StateField.SFP 1#5) s)
                (w (.SFP 0x1c#5) (r (StateField.SFP 2#5) s)
                 (w (.SFP 0x1d#5) (r (StateField.SFP 3#5) s)
-                 (w (.FLAG N) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.n)
-                   (w (.FLAG Z) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.z)
-                     (w (.FLAG C) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.c)
-                      (w (.FLAG V) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.v) s)))))))))))))) := by
+                 (w (.FLAG .N) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.n)
+                   (w (.FLAG .Z) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.z)
+                     (w (.FLAG .C) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.c)
+                      (w (.FLAG .V) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.v) s)))))))))))))) := by
   prune_updates h_step
 -/
 
