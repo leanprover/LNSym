@@ -19,6 +19,31 @@ abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 abbrev lo (x : BitVec 128) : BitVec 64 := BitVec.extractLsb' 0 64 x
 abbrev hi (x : BitVec 128) : BitVec 64 := BitVec.extractLsb' 64 64 x
 
+-- define a function that represents gcm_init_H in the assembly
+def gcm_init_H_asm (H : BitVec 128) : BitVec 128 :=
+  let v17 := (lo H) ++ (hi H)
+  let v19 := 0xe1#128
+  let v19 := BitVec.shiftLeft (hi v19) 57 ++ BitVec.shiftLeft (lo v19) 57
+  let v3 := (lo v17) ++ (hi v17)
+  let v18 := BitVec.ushiftRight v19 63
+  let v17_1 := BitVec.extractLsb' 32 32 v17
+  let v17 := v17_1 ++ v17_1 ++ v17_1 ++ v17_1
+  let v16 := (lo v19) ++ (hi v18)
+  let v18 := BitVec.ushiftRight v3 63
+  let v17 := BitVec.sshiftRight v17 31
+  let v18 := v18 &&& v16
+  let v3 := v3 <<< 1
+  let v18 := (lo v18) ++ (hi v18)
+  let v16 := v16 &&& v17
+  let v3 := v3 ||| v18
+  let v20 := v3 ^^^ v16
+  v20
+
+#eval gcm_init_H_asm 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128
+
+theorem gcm_init_H_asm_gcm_int_H_equiv (x : BitVec 128) :
+  GCMV8.gcm_init_H x = gcm_init_H_asm x := by sorry
+
 -- The following represents the assembly version of gcm_polyval
 def gcm_polyval_asm (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
   let v19 := 0xe1#128
@@ -176,17 +201,11 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     generalize h_Hinit_hi : BitVec.extractLsb' 64 64 Hinit = Hinit_hi
     simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq]
     -- simplifying RHS
-    simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi, GCMV8.gcm_init_H]
-    simp only [gcm_polyval_asm_gcm_polyval_equiv]
-    simp only [gcm_polyval_asm, GCMV8.refpoly, GCMV8.pmod, GCMV8.pmod.pmodTR,
-      GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR, lo, hi, BitVec.partInstall]
-    simp only [Nat.reduceAdd, BitVec.shiftLeft_zero_eq, BitVec.ofNat_eq_ofNat, BitVec.reduceEq,
-      ↓reduceIte, Nat.sub_self, BitVec.ushiftRight_zero_eq, BitVec.reduceAnd,
-      BitVec.reduceExtracLsb', BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero,
-      Nat.add_zero, BitVec.reduceHShiftRight, Nat.zero_mod, Nat.zero_add, Nat.sub_zero, Nat.mul_one,
-      Nat.zero_mul, Nat.one_mul, Nat.reduceSub, BitVec.and_self, BitVec.zero_and, BitVec.reduceMul,
-      BitVec.xor_zero, BitVec.mul_one, BitVec.zero_xor, BitVec.reduceHShiftLeft,
-      Nat.add_one_sub_one, BitVec.one_mul, BitVec.reduceXOr, BitVec.reduceAllOnes,
-      BitVec.truncate_eq_setWidth, BitVec.reduceSetWidth, BitVec.reduceNot, BitVec.shiftLeft_eq,
-      BitVec.zero_shiftLeft, BitVec.reduceAppend]
+    simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi]
+    simp only [gcm_polyval_asm_gcm_polyval_equiv, gcm_init_H_asm_gcm_int_H_equiv]
+    simp only [gcm_polyval_asm, gcm_init_H_asm, hi, lo, BitVec.partInstall]
+    simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.shiftLeft_zero_eq,
+      BitVec.reduceExtracLsb', BitVec.shiftLeft_eq, BitVec.zero_shiftLeft, BitVec.reduceHShiftLeft,
+      BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.reduceAllOnes,
+      BitVec.truncate_eq_setWidth, BitVec.reduceSetWidth, BitVec.reduceNot]
     bv_decide
