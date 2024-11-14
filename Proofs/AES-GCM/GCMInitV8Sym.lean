@@ -43,6 +43,11 @@ def gcm_init_H_asm (H : BitVec 128) : BitVec 128 :=
 theorem gcm_init_H_asm_gcm_int_H_equiv (x : BitVec 128) :
   GCMV8.gcm_init_H x = gcm_init_H_asm x := by sorry
 
+-- (TODO) Should we simply replace one function by the other here?
+theorem gcm_polyval_mul_eq_polynomial_mult (x y : BitVec 128) :
+  GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by
+  sorry
+
 -- The following represents the assembly version of gcm_polyval
 def gcm_polyval_asm (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
   let v19 := 0xe1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1#128
@@ -71,8 +76,14 @@ def gcm_polyval_asm (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
 
 #eval gcm_polyval_asm 0xcdd297a9df1458771099f4b39468565c#128 0x88d320376963120dea0b3a488cb9209b#128
 
+-- TODO: RME look into https://github.com/GaloisInc/saw-script/tree/master/rme
+-- https://github.com/GaloisInc/aws-lc-verification/blob/0efc892de9a4d2660067ab02fdcef5993ff5184a/SAW/proof/AES/goal-rewrites.saw#L200-L214
+set_option maxRecDepth 10000 in
+set_option maxHeartbeats 1000000 in
 theorem gcm_polyval_asm_gcm_polyval_equiv (x : BitVec 128) (y : BitVec 128) :
-  GCMV8.gcm_polyval x y = gcm_polyval_asm x y := by sorry
+  GCMV8.gcm_polyval x y = gcm_polyval_asm x y := by
+  simp only [GCMV8.gcm_polyval, gcm_polyval_asm]
+  sorry
 
 -- Taken from gcm_gmult_v8
 theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
@@ -84,11 +95,6 @@ theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
   simp (config := {ground := true}) only [minimal_theory]
   simp only [state_simp_rules, bitvec_rules]
   done
-
--- (TODO) Should we simply replace one function by the other here?
-theorem gcm_polyval_mul_eq_polynomial_mult (x y : BitVec 128) :
-  GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by
-  sorry
 
 theorem extractLsb'_of_append_mid (x : BitVec 128) :
   BitVec.extractLsb' 64 128 (x ++ x)
