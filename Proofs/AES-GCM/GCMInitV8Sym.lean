@@ -42,6 +42,7 @@ def gcm_init_H_asm (H : BitVec 128) : BitVec 128 :=
 set_option maxRecDepth 3000 in
 set_option maxHeartbeats 1000000 in
 set_option sat.timeout 120 in
+set_option debug.byAsSorry true in
 theorem gcm_init_H_asm_gcm_int_H_equiv (x : BitVec 128) :
   GCMV8.gcm_init_H x = gcm_init_H_asm x := by
   simp only [GCMV8.gcm_init_H, gcm_init_H_asm, hi, lo,
@@ -109,9 +110,9 @@ theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
   simp only [state_simp_rules, bitvec_rules]
   done
 
-theorem extractLsb'_of_append_mid (x : BitVec 128) :
-  BitVec.extractLsb' 64 128 (x ++ x)
-  = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x := by
+theorem extractLsb'_of_append_mid (x : BitVec 128) (y : BitVec 128):
+  BitVec.extractLsb' 64 128 (x ++ y)
+  = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 y := by
   bv_decide
 
 theorem extractLsb'_of_append_hi (x y : BitVec 64) :
@@ -122,38 +123,34 @@ theorem extractLsb'_of_append_lo (x y : BitVec 64) :
   BitVec.extractLsb' 0 64 (x ++ y) = y := by
   bv_decide
 
-theorem crock3 (x : BitVec 32) :
+theorem extractLsb'_append4_1 (x : BitVec 32) :
   (BitVec.extractLsb' 0 32 (x ++ x ++ x ++ x)) = x := by bv_decide
 
-theorem crock4 (x : BitVec 32) :
+theorem extractLsb'_append4_2 (x : BitVec 32) :
   (BitVec.extractLsb' 32 32 (x ++ x ++ x ++ x)) = x := by bv_decide
 
-theorem crock5 (x : BitVec 32) :
+theorem extractLsb'_append4_3 (x : BitVec 32) :
   (BitVec.extractLsb' 64 32 (x ++ x ++ x ++ x)) = x := by bv_decide
 
-theorem crock6 (x : BitVec 32) :
+theorem extractLsb'_append4_4 (x : BitVec 32) :
   (BitVec.extractLsb' 96 32 (x ++ x ++ x ++ x)) = x := by bv_decide
 
-theorem crock7 (x : BitVec 128) :
+theorem setWidth_extractLsb'_equiv_64_128 (x : BitVec 128) :
   (BitVec.setWidth 64 x) = BitVec.extractLsb' 0 64 x := by bv_decide
 
-theorem crock8 (x : BitVec 64) (y : BitVec 64) :
+theorem append_of_extractLsb'_of_append (x : BitVec 64) (y : BitVec 64) :
   (BitVec.extractLsb' 0 64 (x ++ y)) ++ (BitVec.extractLsb' 64 64 (x ++ y))
   = y ++ x := by bv_decide
 
-theorem crock11 (x : BitVec 64) (y : BitVec 64) :
+theorem extractLsb'_of_xor_of_append (x : BitVec 64) (y : BitVec 64) :
   (BitVec.extractLsb' 0 64 ((x ++ y) ^^^ (y ++ x)))
   = (x ^^^ y) := by bv_decide
-
-theorem crock12 (x : BitVec 128) (y : BitVec 128) :
-  BitVec.extractLsb' 64 128 (x ++ y)
-  = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 y := by bv_decide
 
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 4000000 in
 set_option sat.timeout 120 in
-set_option pp.deepTerms true in
-set_option pp.maxSteps 10000 in
+-- set_option pp.deepTerms true in
+-- set_option pp.maxSteps 10000 in
 -- set_option trace.profiler true in
 -- set_option linter.unusedVariables false in
 -- set_option profiler true in
@@ -224,12 +221,14 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     -- change the type of Hinit to be BitVec 128, assuming that's def-eq
     change BitVec 128 at Hinit
     -- simplifying LHS
-    simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-      extractLsb'_of_append_lo, crock3, crock4, crock5, crock6, crock7, crock11, crock12]
+    simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi, extractLsb'_of_append_lo,
+      extractLsb'_append4_1, extractLsb'_append4_2, extractLsb'_append4_3, extractLsb'_append4_4,
+      setWidth_extractLsb'_equiv_64_128, extractLsb'_of_xor_of_append]
     simp (config := {ground := true}) only
+    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq]
+    -- generalize hi and lo of Hinit
     generalize h_Hinit_lo : BitVec.extractLsb' 0 64 Hinit = Hinit_lo
     generalize h_Hinit_hi : BitVec.extractLsb' 64 64 Hinit = Hinit_hi
-    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq]
     -- simplifying RHS
     simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi]
     simp only [gcm_polyval_asm_gcm_polyval_equiv, gcm_init_H_asm_gcm_int_H_equiv]
@@ -238,18 +237,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       BitVec.reduceExtracLsb', BitVec.shiftLeft_eq, BitVec.zero_shiftLeft, BitVec.reduceHShiftLeft,
       BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.reduceAllOnes,
       BitVec.truncate_eq_setWidth, BitVec.reduceSetWidth, BitVec.reduceNot]
-    simp only [crock8, extractLsb'_of_append_hi, extractLsb'_of_append_lo]
-    -- more simplification
-    generalize h_term1 : ((Hinit_lo <<< 1 ++ Hinit_hi <<< 1 |||
-                                        BitVec.extractLsb' 0 64
-                                            (Hinit_lo >>> 63 ++ Hinit_hi >>> 63 &&&
-                                              257870231182273679343338569694386847745#128) ++
-                                          BitVec.extractLsb' 64 64
-                                            (Hinit_lo >>> 63 ++ Hinit_hi >>> 63 &&&
-                                              257870231182273679343338569694386847745#128)) ^^^
-                                      257870231182273679343338569694386847745#128 &&&
-                                        (BitVec.extractLsb' 32 32 Hinit_lo).sshiftRight 31 ++
-                                              (BitVec.extractLsb' 32 32 Hinit_lo).sshiftRight 31 ++
-                                            (BitVec.extractLsb' 32 32 Hinit_lo).sshiftRight 31 ++
-                                          (BitVec.extractLsb' 32 32 Hinit_lo).sshiftRight 31) = term1
+    simp only [append_of_extractLsb'_of_append, extractLsb'_of_append_hi, extractLsb'_of_append_lo]
+    -- TODO: a lot of the lemmas here are for reducing the arguments on DPSFP.polynomial_mul to be the same
+    -- It should be unnecessary after theory of uninterpreted functions are built into bv_decide
     bv_decide
