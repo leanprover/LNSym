@@ -8,6 +8,7 @@ import Proofs.«AES-GCM».GCMInitV8Pre
 import Tactics.Sym
 import Tactics.Aggregate
 import Specs.GCMV8
+import Tactics.ExtractGoal
 
 namespace GCMInitV8Program
 
@@ -21,18 +22,16 @@ abbrev hi (x : BitVec 128) : BitVec 64 := BitVec.extractLsb' 64 64 x
 
 -- define a function that represents gcm_init_H in the assembly
 def gcm_init_H_asm (H : BitVec 128) : BitVec 128 :=
-  let v17 := (lo H) ++ (hi H)
-  let v19 := 0xe1#128
+  let v19 := 0xe1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1#128
   let v19 := BitVec.shiftLeft (hi v19) 57 ++ BitVec.shiftLeft (lo v19) 57
-  let v3 := (lo v17) ++ (hi v17)
-  let v18 := BitVec.ushiftRight v19 63
-  let v17_1 := BitVec.extractLsb' 32 32 v17
-  let v17 := v17_1 ++ v17_1 ++ v17_1 ++ v17_1
+  let v18 := BitVec.ushiftRight (hi v19) 63 ++ BitVec.ushiftRight (lo v19) 63
+  let v17_1 := BitVec.extractLsb' 32 32 (hi H)
   let v16 := (lo v19) ++ (hi v18)
-  let v18 := BitVec.ushiftRight v3 63
-  let v17 := BitVec.sshiftRight v17 31
+  let v18 := BitVec.ushiftRight (hi H) 63 ++ BitVec.ushiftRight (lo H) 63
+  let v17 := BitVec.sshiftRight v17_1 31 ++ BitVec.sshiftRight v17_1 31 ++
+    BitVec.sshiftRight v17_1 31 ++ BitVec.sshiftRight v17_1 31
   let v18 := v18 &&& v16
-  let v3 := v3 <<< 1
+  let v3 := (hi H) <<< 1 ++ (lo H) <<< 1
   let v18 := (lo v18) ++ (hi v18)
   let v16 := v16 &&& v17
   let v3 := v3 ||| v18
@@ -46,7 +45,7 @@ theorem gcm_init_H_asm_gcm_int_H_equiv (x : BitVec 128) :
 
 -- The following represents the assembly version of gcm_polyval
 def gcm_polyval_asm (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
-  let v19 := 0xe1#128
+  let v19 := 0xe1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1#128
   let v19 := BitVec.shiftLeft (hi v19) 57 ++ BitVec.shiftLeft (lo v19) 57
   let v16 := ((lo x) ^^^ (hi x)) ++ ((hi x) ^^^ (lo x))
   let v17 := ((lo y) ^^^ (hi y)) ++ ((hi y) ^^^ (lo y))
@@ -119,11 +118,29 @@ theorem crock6 (x : BitVec 32) :
 theorem crock7 (x : BitVec 128) :
   (BitVec.setWidth 64 x) = BitVec.extractLsb' 0 64 x := by sorry
 
+theorem crock8 (x : BitVec 64) (y : BitVec 64) :
+  (BitVec.extractLsb' 0 64 (x ++ y)) ++ (BitVec.extractLsb' 64 64 (x ++ y))
+  = y ++ x := by sorry
+
+theorem crock9 (x : BitVec 64) (y : BitVec 64) :
+  (x ++ y) >>> 63 = (x >>> 63) ++ (y >>> 63) := by sorry
+
+theorem crock10 (x : BitVec 64) (y : BitVec 64) :
+  (x ++ y) <<< 1 = (x <<< 1) ++ (y >>> 63) := by sorry
+
+theorem crock11 (x : BitVec 64) (y : BitVec 64) :
+  (BitVec.extractLsb' 0 64 ((x ++ y) ^^^ (y ++ x)))
+  = (x ^^^ y) := by sorry
+
+theorem crock12 (x : BitVec 128) (y : BitVec 128) :
+  BitVec.extractLsb' 64 128 (x ++ y)
+  = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 y := by sorry
+
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 4000000 in
 set_option sat.timeout 120 in
--- set_option pp.deepTerms true in
--- set_option pp.maxSteps 10000 in
+set_option pp.deepTerms true in
+set_option pp.maxSteps 10000 in
 -- set_option trace.profiler true in
 -- set_option linter.unusedVariables false in
 -- set_option profiler true in
@@ -195,7 +212,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     change BitVec 128 at Hinit
     -- simplifying LHS
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-      extractLsb'_of_append_lo, crock3, crock4, crock5, crock6, crock7]
+      extractLsb'_of_append_lo, crock3, crock4, crock5, crock6, crock7, crock11, crock12]
     simp (config := {ground := true}) only
     generalize h_Hinit_lo : BitVec.extractLsb' 0 64 Hinit = Hinit_lo
     generalize h_Hinit_hi : BitVec.extractLsb' 64 64 Hinit = Hinit_hi
@@ -208,4 +225,18 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       BitVec.reduceExtracLsb', BitVec.shiftLeft_eq, BitVec.zero_shiftLeft, BitVec.reduceHShiftLeft,
       BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.reduceAllOnes,
       BitVec.truncate_eq_setWidth, BitVec.reduceSetWidth, BitVec.reduceNot]
+    simp only [crock8, extractLsb'_of_append_hi, extractLsb'_of_append_lo]
+    -- more simplification
+    generalize h_term1 : ((Hinit_lo <<< 1 ++ Hinit_hi <<< 1 |||
+                                        BitVec.extractLsb' 0 64
+                                            (Hinit_lo >>> 63 ++ Hinit_hi >>> 63 &&&
+                                              257870231182273679343338569694386847745#128) ++
+                                          BitVec.extractLsb' 64 64
+                                            (Hinit_lo >>> 63 ++ Hinit_hi >>> 63 &&&
+                                              257870231182273679343338569694386847745#128)) ^^^
+                                      257870231182273679343338569694386847745#128 &&&
+                                        (BitVec.extractLsb' 32 32 Hinit_lo).sshiftRight 31 ++
+                                              (BitVec.extractLsb' 32 32 Hinit_lo).sshiftRight 31 ++
+                                            (BitVec.extractLsb' 32 32 Hinit_lo).sshiftRight 31 ++
+                                          (BitVec.extractLsb' 32 32 Hinit_lo).sshiftRight 31) = term1
     bv_decide
