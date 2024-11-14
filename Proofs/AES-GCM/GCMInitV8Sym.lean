@@ -8,7 +8,6 @@ import Proofs.«AES-GCM».GCMInitV8Pre
 import Tactics.Sym
 import Tactics.Aggregate
 import Specs.GCMV8
-import Tactics.ExtractGoal
 
 namespace GCMInitV8Program
 
@@ -40,13 +39,27 @@ def gcm_init_H_asm (H : BitVec 128) : BitVec 128 :=
 
 #eval gcm_init_H_asm 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128
 
+set_option maxRecDepth 3000 in
+set_option maxHeartbeats 1000000 in
+set_option sat.timeout 120 in
 theorem gcm_init_H_asm_gcm_int_H_equiv (x : BitVec 128) :
-  GCMV8.gcm_init_H x = gcm_init_H_asm x := by sorry
+  GCMV8.gcm_init_H x = gcm_init_H_asm x := by
+  simp only [GCMV8.gcm_init_H, gcm_init_H_asm, hi, lo,
+    GCMV8.pmod, GCMV8.refpoly, GCMV8.pmod.pmodTR,
+    GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR]
+  simp only [Nat.reduceAdd, BitVec.ofNat_eq_ofNat, BitVec.reduceEq, ↓reduceIte, Nat.sub_self,
+    BitVec.ushiftRight_zero_eq, BitVec.reduceAnd, BitVec.reduceExtracLsb', BitVec.toNat_ofNat,
+    Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero, BitVec.reduceHShiftRight, Nat.zero_mod,
+    Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul, Nat.reduceSub,
+    BitVec.and_self, BitVec.zero_and, BitVec.reduceMul, BitVec.xor_zero, BitVec.mul_one,
+    BitVec.zero_xor, BitVec.reduceHShiftLeft, Nat.add_one_sub_one, BitVec.one_mul, BitVec.reduceXOr,
+    BitVec.ushiftRight_eq, BitVec.shiftLeft_eq, BitVec.reduceAppend]
+  bv_decide
 
--- (TODO) Should we simply replace one function by the other here?
-theorem gcm_polyval_mul_eq_polynomial_mult (x y : BitVec 128) :
-  GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by
-  sorry
+-- -- (TODO) Should we simply replace one function by the other here?
+-- theorem gcm_polyval_mul_eq_polynomial_mult (x y : BitVec 128) :
+--   GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by
+--   sorry
 
 -- The following represents the assembly version of gcm_polyval
 def gcm_polyval_asm (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
@@ -99,48 +112,42 @@ theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
 theorem extractLsb'_of_append_mid (x : BitVec 128) :
   BitVec.extractLsb' 64 128 (x ++ x)
   = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x := by
-  sorry
+  bv_decide
 
 theorem extractLsb'_of_append_hi (x y : BitVec 64) :
   BitVec.extractLsb' 64 64 (x ++ y) = x := by
-  sorry
+  bv_decide
 
 theorem extractLsb'_of_append_lo (x y : BitVec 64) :
   BitVec.extractLsb' 0 64 (x ++ y) = y := by
-  sorry
+  bv_decide
 
 theorem crock3 (x : BitVec 32) :
-  (BitVec.extractLsb' 0 32 (x ++ x ++ x ++ x)) = x := by sorry
+  (BitVec.extractLsb' 0 32 (x ++ x ++ x ++ x)) = x := by bv_decide
 
 theorem crock4 (x : BitVec 32) :
-  (BitVec.extractLsb' 32 32 (x ++ x ++ x ++ x)) = x := by sorry
+  (BitVec.extractLsb' 32 32 (x ++ x ++ x ++ x)) = x := by bv_decide
 
 theorem crock5 (x : BitVec 32) :
-  (BitVec.extractLsb' 64 32 (x ++ x ++ x ++ x)) = x := by sorry
+  (BitVec.extractLsb' 64 32 (x ++ x ++ x ++ x)) = x := by bv_decide
 
 theorem crock6 (x : BitVec 32) :
-  (BitVec.extractLsb' 96 32 (x ++ x ++ x ++ x)) = x := by sorry
+  (BitVec.extractLsb' 96 32 (x ++ x ++ x ++ x)) = x := by bv_decide
 
 theorem crock7 (x : BitVec 128) :
-  (BitVec.setWidth 64 x) = BitVec.extractLsb' 0 64 x := by sorry
+  (BitVec.setWidth 64 x) = BitVec.extractLsb' 0 64 x := by bv_decide
 
 theorem crock8 (x : BitVec 64) (y : BitVec 64) :
   (BitVec.extractLsb' 0 64 (x ++ y)) ++ (BitVec.extractLsb' 64 64 (x ++ y))
-  = y ++ x := by sorry
-
-theorem crock9 (x : BitVec 64) (y : BitVec 64) :
-  (x ++ y) >>> 63 = (x >>> 63) ++ (y >>> 63) := by sorry
-
-theorem crock10 (x : BitVec 64) (y : BitVec 64) :
-  (x ++ y) <<< 1 = (x <<< 1) ++ (y >>> 63) := by sorry
+  = y ++ x := by bv_decide
 
 theorem crock11 (x : BitVec 64) (y : BitVec 64) :
   (BitVec.extractLsb' 0 64 ((x ++ y) ^^^ (y ++ x)))
-  = (x ^^^ y) := by sorry
+  = (x ^^^ y) := by bv_decide
 
 theorem crock12 (x : BitVec 128) (y : BitVec 128) :
   BitVec.extractLsb' 64 128 (x ++ y)
-  = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 y := by sorry
+  = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 y := by bv_decide
 
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 4000000 in
