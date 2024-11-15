@@ -8,6 +8,7 @@ import Proofs.«AES-GCM».GCMInitV8Pre
 import Tactics.Sym
 import Tactics.Aggregate
 import Specs.GCMV8
+import Tactics.ExtractGoal
 
 namespace GCMInitV8Program
 
@@ -37,8 +38,6 @@ def gcm_init_H_asm (H : BitVec 128) : BitVec 128 :=
   let v20 := v3 ^^^ v16
   v20
 
-#eval gcm_init_H_asm 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128
-
 set_option maxRecDepth 3000 in
 set_option maxHeartbeats 1000000 in
 set_option sat.timeout 120 in
@@ -57,10 +56,11 @@ theorem gcm_init_H_asm_gcm_int_H_equiv (x : BitVec 128) :
     BitVec.ushiftRight_eq, BitVec.shiftLeft_eq, BitVec.reduceAppend]
   bv_decide
 
--- -- (TODO) Should we simply replace one function by the other here?
--- theorem gcm_polyval_mul_eq_polynomial_mult (x y : BitVec 128) :
---   GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by
---   sorry
+set_option maxRecDepth 10000 in
+set_option maxHeartbeats 1000000 in
+theorem gcm_polyval_mul_eq_polynomial_mult (x y : BitVec 128) :
+  GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by
+  sorry
 
 -- The following represents the assembly version of gcm_polyval
 def gcm_polyval_asm (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
@@ -88,15 +88,54 @@ def gcm_polyval_asm (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
   let v23 := (hi v16) ++ (lo v16)
   v23
 
-#eval gcm_polyval_asm 0xcdd297a9df1458771099f4b39468565c#128 0x88d320376963120dea0b3a488cb9209b#128
+theorem extractLsb'_of_append_hi (x y : BitVec 64) :
+  BitVec.extractLsb' 64 64 (x ++ y) = x := by
+  bv_decide
 
--- TODO: RME look into https://github.com/GaloisInc/saw-script/tree/master/rme
+theorem extractLsb'_of_append_lo (x y : BitVec 64) :
+  BitVec.extractLsb' 0 64 (x ++ y) = y := by
+  bv_decide
+
+-- https://kib.kiev.ua/x86docs/Intel/WhitePapers/323640-001.pdf
+def karatsuba_multiplication (x : BitVec 128) (y : BitVec 128) : BitVec 256 :=
+  let A1 := hi x
+  let A0 := lo x
+  let B1 := hi y
+  let B0 := lo y
+  let A1B1 := DPSFP.polynomial_mult A1 B1
+  let C1 := hi A1B1
+  let C0 := lo A1B1
+  let A0B0 := DPSFP.polynomial_mult A0 B0
+  let D1 := hi A0B0
+  let D0 := lo A0B0
+  let A1A0B1B0 := DPSFP.polynomial_mult (A1 ^^^ A0) (B1 ^^^ B0)
+  let E1 := hi A1A0B1B0
+  let E0 := lo A1A0B1B0
+  C1 ++ (C0 ^^^ C1 ^^^ D1 ^^^ E1) ++ (D1 ^^^ C0 ^^^ D0 ^^^ E0) ++ D0
+
+theorem karatsuba_multiplication_equiv (x : BitVec 128) (y : BitVec 128) :
+  DPSFP.polynomial_mult x y = karatsuba_multiplication x y := by sorry
+
+-- TODO: look into https://github.com/GaloisInc/saw-script/tree/master/rme for RME
 -- https://github.com/GaloisInc/aws-lc-verification/blob/0efc892de9a4d2660067ab02fdcef5993ff5184a/SAW/proof/AES/goal-rewrites.saw#L200-L214
 set_option maxRecDepth 10000 in
-set_option maxHeartbeats 1000000 in
+set_option maxHeartbeats 5000000 in
 theorem gcm_polyval_asm_gcm_polyval_equiv (x : BitVec 128) (y : BitVec 128) :
   GCMV8.gcm_polyval x y = gcm_polyval_asm x y := by
-  simp only [GCMV8.gcm_polyval, gcm_polyval_asm]
+  simp only [GCMV8.gcm_polyval, gcm_polyval_asm, hi, lo,
+    extractLsb'_of_append_hi, extractLsb'_of_append_lo, BitVec.partInstall,
+    gcm_polyval_mul_eq_polynomial_mult]
+  simp only [Nat.reduceAdd, BitVec.reduceAllOnes, BitVec.truncate_eq_setWidth,
+    BitVec.reduceSetWidth, BitVec.reduceHShiftLeft, BitVec.reduceNot, BitVec.reduceExtracLsb',
+    BitVec.shiftLeft_eq, BitVec.shiftLeft_zero_eq]
+  simp only [karatsuba_multiplication_equiv, karatsuba_multiplication, hi, lo]
+  generalize h_A1 : BitVec.extractLsb' 64 64 x = A1
+  generalize h_A0 : BitVec.extractLsb' 0 64 x = A0
+  generalize h_B1 : BitVec.extractLsb' 64 64 y = B1
+  generalize h_B0 : BitVec.extractLsb' 0 64 y = B0
+  generalize h_A1A0B1B0 : DPSFP.polynomial_mult (A1 ^^^ A0) (B1 ^^^ B0) = A1A0B1B0
+  generalize h_A1B1 : DPSFP.polynomial_mult A1 B1 = A1B1
+  generalize h_A0B0 : DPSFP.polynomial_mult A0 B0 = A0B0
   sorry
 
 -- Taken from gcm_gmult_v8
@@ -113,14 +152,6 @@ theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
 theorem extractLsb'_of_append_mid (x : BitVec 128) (y : BitVec 128):
   BitVec.extractLsb' 64 128 (x ++ y)
   = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 y := by
-  bv_decide
-
-theorem extractLsb'_of_append_hi (x y : BitVec 64) :
-  BitVec.extractLsb' 64 64 (x ++ y) = x := by
-  bv_decide
-
-theorem extractLsb'_of_append_lo (x y : BitVec 64) :
-  BitVec.extractLsb' 0 64 (x ++ y) = y := by
   bv_decide
 
 theorem extractLsb'_append4_1 (x : BitVec 32) :
@@ -146,11 +177,53 @@ theorem extractLsb'_of_xor_of_append (x : BitVec 64) (y : BitVec 64) :
   (BitVec.extractLsb' 0 64 ((x ++ y) ^^^ (y ++ x)))
   = (x ^^^ y) := by bv_decide
 
+
+syntax "gcm_init_v8_tac" : tactic
+
+macro_rules
+  | `(tactic| gcm_init_v8_tac) =>
+  `(tactic|
+    (simp only
+       [shift_left_common_aux_64_2
+      , shift_right_common_aux_64_2_tff
+      , shift_right_common_aux_32_4_fff
+      , DPSFP.AdvSIMDExpandImm
+      , DPSFP.dup_aux_0_4_32
+      , BitVec.partInstall];
+     generalize Memory.read_bytes 16 (r (StateField.GPR 1#5) s0) s0.mem = Hinit;
+     -- change the type of Hinit to be BitVec 128, assuming that's def-eq
+     change BitVec 128 at Hinit;
+     -- simplifying LHS
+     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
+       extractLsb'_of_append_lo, extractLsb'_append4_1, extractLsb'_append4_2,
+       extractLsb'_append4_3, extractLsb'_append4_4,
+       setWidth_extractLsb'_equiv_64_128, extractLsb'_of_xor_of_append];
+     simp (config := {ground := true}) only;
+     simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq];
+     -- generalize hi and lo of Hinit
+     generalize h_Hinit_lo : BitVec.extractLsb' 0 64 Hinit = Hinit_lo;
+     generalize h_Hinit_hi : BitVec.extractLsb' 64 64 Hinit = Hinit_hi;
+     -- simplifying RHS
+     simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi];
+     simp only [gcm_polyval_asm_gcm_polyval_equiv, gcm_init_H_asm_gcm_int_H_equiv];
+     simp only [gcm_polyval_asm, gcm_init_H_asm, hi, lo, BitVec.partInstall];
+     simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.shiftLeft_zero_eq,
+       BitVec.reduceExtracLsb', BitVec.shiftLeft_eq, BitVec.zero_shiftLeft,
+       BitVec.reduceHShiftLeft, BitVec.reduceAppend, BitVec.reduceHShiftRight,
+       BitVec.reduceAllOnes, BitVec.truncate_eq_setWidth, BitVec.reduceSetWidth,
+       BitVec.reduceNot];
+     simp only [append_of_extractLsb'_of_append, extractLsb'_of_append_hi,
+       extractLsb'_of_append_lo];
+     -- TODO: a lot of the lemmas here are for reducing the arguments on
+     --  DPSFP.polynomial_mul to be the same. It should be unnecessary after
+     --  theory of uninterpreted functions are built into bv_decide
+     (try bv_decide)))
+
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 4000000 in
 set_option sat.timeout 120 in
--- set_option pp.deepTerms true in
--- set_option pp.maxSteps 10000 in
+set_option pp.deepTerms true in
+set_option pp.maxSteps 1000000 in
 -- set_option trace.profiler true in
 -- set_option linter.unusedVariables false in
 -- set_option profiler true in
@@ -180,9 +253,15 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     -- ∧ let Hinit := (read_mem_bytes 16 (H_addr s0) s0)
     --   read_sfp 128 20#5 sf =
     --   (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 0
+    -- ∧ let Hinit := (read_mem_bytes 16 (H_addr s0) s0)
+    --   read_sfp 128 21#5 sf =
+    --   (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 1
+    -- ∧ let Hinit := (read_mem_bytes 16 (H_addr s0) s0)
+    --   read_sfp 128 22#5 sf =
+    --   (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 2
     ∧ let Hinit := (read_mem_bytes 16 (H_addr s0) s0)
-      read_sfp 128 21#5 sf =
-      (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 1
+      read_sfp 128 23#5 sf =
+      (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 3
     --
     -- TODO: Commenting out memory related conjuncts since it seems
     -- to make symbolic execution stuck
@@ -208,36 +287,45 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   --    unable to be reflected
   sym_n 152
   simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
-  apply And.intro
-  · bv_decide
-  · simp only
-    [shift_left_common_aux_64_2
-    , shift_right_common_aux_64_2_tff
-    , shift_right_common_aux_32_4_fff
-    , DPSFP.AdvSIMDExpandImm
-    , DPSFP.dup_aux_0_4_32
-    , BitVec.partInstall]
-    generalize Memory.read_bytes 16 (r (StateField.GPR 1#5) s0) s0.mem = Hinit
-    -- change the type of Hinit to be BitVec 128, assuming that's def-eq
-    change BitVec 128 at Hinit
-    -- simplifying LHS
-    simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi, extractLsb'_of_append_lo,
-      extractLsb'_append4_1, extractLsb'_append4_2, extractLsb'_append4_3, extractLsb'_append4_4,
-      setWidth_extractLsb'_equiv_64_128, extractLsb'_of_xor_of_append]
-    simp (config := {ground := true}) only
-    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq]
-    -- generalize hi and lo of Hinit
-    generalize h_Hinit_lo : BitVec.extractLsb' 0 64 Hinit = Hinit_lo
-    generalize h_Hinit_hi : BitVec.extractLsb' 64 64 Hinit = Hinit_hi
-    -- simplifying RHS
-    simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi]
-    simp only [gcm_polyval_asm_gcm_polyval_equiv, gcm_init_H_asm_gcm_int_H_equiv]
-    simp only [gcm_polyval_asm, gcm_init_H_asm, hi, lo, BitVec.partInstall]
-    simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.shiftLeft_zero_eq,
-      BitVec.reduceExtracLsb', BitVec.shiftLeft_eq, BitVec.zero_shiftLeft, BitVec.reduceHShiftLeft,
-      BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.reduceAllOnes,
-      BitVec.truncate_eq_setWidth, BitVec.reduceSetWidth, BitVec.reduceNot]
-    simp only [append_of_extractLsb'_of_append, extractLsb'_of_append_hi, extractLsb'_of_append_lo]
-    -- TODO: a lot of the lemmas here are for reducing the arguments on DPSFP.polynomial_mul to be the same
-    -- It should be unnecessary after theory of uninterpreted functions are built into bv_decide
-    bv_decide
+  repeat' apply And.intro
+  · first | bv_decide | gcm_init_v8_tac
+  · first | bv_decide |
+    (simp only
+       [shift_left_common_aux_64_2
+      , shift_right_common_aux_64_2_tff
+      , shift_right_common_aux_32_4_fff
+      , DPSFP.AdvSIMDExpandImm
+      , DPSFP.dup_aux_0_4_32
+      , BitVec.partInstall];
+     generalize Memory.read_bytes 16 (r (StateField.GPR 1#5) s0) s0.mem = Hinit;
+     -- change the type of Hinit to be BitVec 128, assuming that's def-eq
+     change BitVec 128 at Hinit;
+     -- simplifying LHS
+     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
+       extractLsb'_of_append_lo, extractLsb'_append4_1, extractLsb'_append4_2,
+       extractLsb'_append4_3, extractLsb'_append4_4,
+       setWidth_extractLsb'_equiv_64_128, extractLsb'_of_xor_of_append];
+     simp (config := {ground := true}) only;
+     simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq];
+     -- generalize hi and lo of Hinit
+     generalize h_Hinit_lo : BitVec.extractLsb' 0 64 Hinit = Hinit_lo;
+     generalize h_Hinit_hi : BitVec.extractLsb' 64 64 Hinit = Hinit_hi;
+     -- simplifying RHS
+     simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi];
+     simp only [gcm_polyval_asm_gcm_polyval_equiv, gcm_init_H_asm_gcm_int_H_equiv];
+     simp only [gcm_polyval_asm, gcm_init_H_asm, hi, lo, BitVec.partInstall];
+     simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.shiftLeft_zero_eq,
+       BitVec.reduceExtracLsb', BitVec.shiftLeft_eq, BitVec.zero_shiftLeft,
+       BitVec.reduceHShiftLeft, BitVec.reduceAppend, BitVec.reduceHShiftRight,
+       BitVec.reduceAllOnes, BitVec.truncate_eq_setWidth, BitVec.reduceSetWidth,
+       BitVec.reduceNot];
+     simp only [append_of_extractLsb'_of_append, extractLsb'_of_append_hi,
+       extractLsb'_of_append_lo];
+     -- TODO: a lot of the lemmas here are for reducing the arguments on
+     --  DPSFP.polynomial_mul to be the same. It should be unnecessary after
+     --  theory of uninterpreted functions are built into bv_decide
+     -- extract_goal
+     -- TODO: later terms in Htable gets larger because it depends on previous term
+     --   Need to simplify the term along the way, maybe do some simulation, simplify,
+     --   then do some more, then simplify more?
+     bv_decide)
