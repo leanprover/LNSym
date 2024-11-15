@@ -113,9 +113,28 @@ structure State where
   pcVarMap     : KExprMap PCVar := {}
   pcVars       : Array Lean.Expr := #[]
 
+structure Context where
+  stateVars    : Array Lean.Expr := #[]
+  gprVars      : Array Lean.Expr := #[]
+  sfpVars      : Array Lean.Expr := #[]
+  flagVars     : Array Lean.Expr := #[]
+  errVars      : Array Lean.Expr := #[]
+  pcVars       : Array Lean.Expr := #[]
+
+def mkContextFromState (s : State) : Context :=
+  ⟨
+    s.stateVars,
+    s.gprVars,
+    s.sfpVars,
+    s.flagVars,
+    s.errVars,
+    s.pcVars
+  ⟩
+
 abbrev M := StateRefT State MetaM
 
-def addAsStateVar (e : Lean.Expr) : M ArmStateVar := do
+
+def addAsStateVar (e : Lean.Expr) : M Nat := do
   if let some x ← (← get).stateVarMap.find? e then
     return x
   else
@@ -186,8 +205,8 @@ def getPFlagValue? (e : Lean.Expr) : MetaM (Option PFlag) := OptionT.run do
   | PFlag.V => return PFlag.V
   | _ => failure
 
-partial def toArmUpdatesAndStateVar (curr_state writes : Lean.Expr) (us : ArmUpdates) :
-  M (ArmStateVar × ArmUpdates × ArmStateVar) :=
+partial def toArmUpdatesAndStateVar (writes : Lean.Expr) (us : ArmUpdates) :
+  M (ArmUpdates × ArmStateVar) :=
   withTraceNode m!"toArmUpdatesAndStateVar" (tag := "toArmUpdatesAndStateVar") <| do
   match_expr writes with
   | w fld val rest =>
@@ -226,34 +245,33 @@ partial def toArmUpdatesAndStateVar (curr_state writes : Lean.Expr) (us : ArmUpd
         trace[Tactic.prune_updates] "All variables in the Flag map: {(← get).flagVars}"
         pure (Update.flag i' var)
       | _ => failure
-    toArmUpdatesAndStateVar curr_state rest (us ++ [update])
+    toArmUpdatesAndStateVar rest (us ++ [update])
   | _ =>
     -- writes is just a state var at this point.
     let (prev_state_var : ArmStateVar) ← addAsStateVar writes
-    let (curr_state_var : ArmStateVar) ← addAsStateVar curr_state
-    trace[Tactic.prune_updates] "Current State: {curr_state} var: {curr_state_var}"
     trace[Tactic.prune_updates] "Previous State: {writes} var: {prev_state_var}"
     trace[Tactic.prune_updates] "All Updates: {us}"
-    return (curr_state_var, us, prev_state_var)
+    return (us, prev_state_var)
 
 partial def toArmExpr? (e : Lean.Expr) : M (Option ArmExpr) :=
   withTraceNode m!"toArmExpr?" (tag := "toArmExpr?") <| do
   match_expr e with
   | Eq α s writes =>
     let_expr ArmState ← α | failure
-    let (curr_state, writes, prev_state) ← toArmUpdatesAndStateVar s writes []
+    let (writes, prev_state) ← toArmUpdatesAndStateVar writes []
+    let (curr_state : ArmStateVar) ← addAsStateVar s
     return some { curr_state, writes, prev_state }
   | _ => failure
 
-def run (x : M α) : MetaM (α × State) := do
-  let (a, s) ← x.run {}
+def run (x : M α) (s : State := {}): MetaM (α × State) := do
+  let (a, s) ← x.run s
   return (a, s)
 
 end ToArmExpr
 
-def toContextExpr (s : ToArmExpr.State) : MetaM Lean.Expr :=
+def toContextExpr (s : ToArmExpr.Context) : MetaM Lean.Expr :=
   withTraceNode m!"toContextExpr" (tag := "toContextExpr") <| do
-  let state_ctx ← mkListLit (mkConst ``ArmState) s.stateVars.toList
+  let state_ctx ←  mkListLit (mkConst ``ArmState) s.stateVars.toList
   let err_ctx   ← (mkListLit (mkConst ``StateError) s.errVars.toList)
   let pc_ctx    ← (mkListLit (← mkAppM ``BitVec #[mkNatLit 64]) s.pcVars.toList)
   let gpr_ctx   ← (mkListLit (← mkAppM ``BitVec #[mkNatLit 64]) s.gprVars.toList)
@@ -267,13 +285,13 @@ def toContextExpr (s : ToArmExpr.State) : MetaM Lean.Expr :=
 abbrev mkAuxDecl := Lean.Elab.Tactic.BVDecide.Frontend.mkAuxDecl
 
 -- (FIXME) Better formatting; change into code action, etc.!
-def toArmMessageData (e : Expr) (s : ToArmExpr.State) : MessageData :=
+def toArmMessageData (e : Expr) (s : ToArmExpr.Context) : MessageData :=
   let curr_state := s.stateVars[e.curr_state]!
   let prev_state := s.stateVars[e.prev_state]!
   let writes := go e.writes prev_state s 0
   m!"{curr_state} = {writes}"
   where go (us : Updates) (prev_state : Lean.Expr)
-           (s : ToArmExpr.State) (paren_count : Nat) :=
+           (s : ToArmExpr.Context) (paren_count : Nat) :=
     match us with
     | [] =>
         let closing_parens := List.asString (List.replicate paren_count ')')
@@ -285,38 +303,15 @@ def toArmMessageData (e : Expr) (s : ToArmExpr.State) : MessageData :=
         | .pc v => m!"(w .PC ({s.pcVars[v]!}) "
         | .gpr i v => m!"(w (.GPR {i}) ({s.gprVars[v]!}) "
         | .sfp i v => m!"(w (.SFP {i}) ({s.sfpVars[v]!}) "
-        | .flag i v => m!"(w (.FLAG .{i}) ({s.flagVars[v]!}) "
+        | .flag i v => m!"(w (.FLAG {i}) ({s.flagVars[v]!}) "
       m!"{m} {go rest prev_state s (1 + paren_count)}"
 
-def ArmExprPruned? (refl_proof_name : Name) (e : Lean.Expr) :
-  MetaM (Option (Lean.Expr × Lean.Expr)) :=
-  withTraceNode m!"ArmExprPruned?" (tag := "ArmExprPruned?") <| do
-  let validate ←(getBoolOption `Tactic.prune_updates.validate)
-  let (some arm_expr, state) ←
-    ToArmExpr.run (ToArmExpr.toArmExpr? e) | return none
-  trace[Tactic.prune_updates] "Arm Expr: {arm_expr}"
-  trace[Tactic.prune_updates] "State Context: {state.stateVars}"
-  trace[Tactic.prune_updates] "ERR Context: {state.errVars}"
-  trace[Tactic.prune_updates] "PC Context: {state.pcVars}"
-  trace[Tactic.prune_updates] "GPR Context: {state.gprVars}"
-  trace[Tactic.prune_updates] "SFP Context: {state.sfpVars}"
-  trace[Tactic.prune_updates] "Flag Context: {state.flagVars}"
-  let arm_expr_pruned := arm_expr.prune
-  trace[Tactic.prune_updates] "Pruned Arm Expr: {arm_expr_pruned}"
-
+def ArmExprBuildProofTerm (state : ToArmExpr.Context) (lhs_writes rhs_writes : Updates)
+  (refl_proof_name : Name) (validate : Bool) (s0 : ArmStateVar): MetaM Lean.Expr := do
   let ctx_expr ← toContextExpr state
-  if validate then
-    check ctx_expr
-    trace[Tactic.prune_updates] "Checked context expressions: {ctx_expr}"
-
-  let answer := toArmMessageData arm_expr_pruned state
-  trace[Tactic.prune_updates.answer] "Pruned Answer: {answer}"
-
-  let auxValue := mkApp2 (mkConst ``ArmConstr.Expr.isPruned)
-                         (toExpr arm_expr) (toExpr arm_expr_pruned)
-  trace[Tactic.prune_updates] "Aux Value: {auxValue}"
-  mkAuxDecl refl_proof_name auxValue (mkConst ``Bool)
-
+  let prune_eq := mkApp2 (mkConst ``ArmConstr.Updates.prune_eq)
+                  (toExpr lhs_writes) (toExpr rhs_writes)
+  mkAuxDecl refl_proof_name prune_eq (mkConst ``Bool)
   let refl_proof :=
     mkApp3
     (mkConst ``Lean.ofReduceBool)
@@ -328,144 +323,195 @@ def ArmExprPruned? (refl_proof_name : Name) (e : Lean.Expr) :
     check refl_proof
     trace[Tactic.prune_updates] "Checked reflection proof: {refl_proof}"
 
-  let p := mkAppN (mkConst ``ArmConstr.Expr.eq_true_of_denote)
-                    #[ctx_expr,
-                      (toExpr arm_expr),
-                      (toExpr arm_expr_pruned),
-                      refl_proof]
+  let p := mkAppN (mkConst ``ArmConstr.Expr.eq_of_denote_writes)
+                  #[ctx_expr,
+                    (toExpr lhs_writes),
+                    (toExpr rhs_writes),
+                    (mkNatLit s0),
+                    refl_proof]
   if validate then
     check p
     trace[Tactic.prune_updates] "Checked proof: {p}"
-  return some (mkConst ``True, p)
+  return p
+
+def withAbstractGPRAtoms (state : ToArmExpr.Context) (k : ToArmExpr.Context → MetaM (Option Lean.Expr)) :
+    MetaM (Option Lean.Expr) := do
+  let atoms := state.gprVars
+  let declsGPR : Array (Name × (Array Lean.Expr → MetaM Lean.Expr)) ← atoms.mapM fun _ => do
+    return ((← mkFreshUserName `x), fun _ => return (mkApp (mkConst ``BitVec) (mkNatLit 64)))
+  withLocalDeclsD declsGPR fun ctxt => do
+    let state := {state with gprVars := ctxt}
+    let some p ← k state | return none
+    let p := mkAppN (← mkLambdaFVars ctxt p) atoms
+    return some p
+
+def withAbstractStateAtoms (state : ToArmExpr.Context) (k : ToArmExpr.Context → MetaM (Option Lean.Expr)) :
+    MetaM (Option Lean.Expr) := do
+  let atoms := state.stateVars
+  let declsGPR : Array (Name × (Array Lean.Expr → MetaM Lean.Expr)) ← atoms.mapM fun _ => do
+    return ((← mkFreshUserName `x), fun _ => return mkConst ``ArmState)
+  withLocalDeclsD declsGPR fun ctxt => do
+    let state := {state with stateVars := ctxt}
+    let some p ← k state | return none
+    let p := mkAppN (← mkLambdaFVars ctxt p) atoms
+    return some p
+
+def withAbstractSFPAtoms (state : ToArmExpr.Context) (k : ToArmExpr.Context → MetaM (Option Lean.Expr)) :
+    MetaM (Option Lean.Expr) := do
+  let atoms := state.sfpVars
+  let declsGPR : Array (Name × (Array Lean.Expr → MetaM Lean.Expr)) ← atoms.mapM fun _ => do
+    return ((← mkFreshUserName `x), fun _ => return mkApp (mkConst ``BitVec) (mkNatLit 128))
+  withLocalDeclsD declsGPR fun ctxt => do
+    let state := {state with sfpVars := ctxt}
+    let some p ← k state | return none
+    let p := mkAppN (← mkLambdaFVars ctxt p) atoms
+    return some p
+
+def withAbstractPCAtoms (state : ToArmExpr.Context) (k : ToArmExpr.Context → MetaM (Option Lean.Expr)) :
+    MetaM (Option Lean.Expr) := do
+  let atoms := state.pcVars
+  let declsGPR : Array (Name × (Array Lean.Expr → MetaM Lean.Expr)) ← atoms.mapM fun _ => do
+    return ((← mkFreshUserName `x), fun _ => return mkApp (mkConst ``BitVec) (mkNatLit 64))
+  withLocalDeclsD declsGPR fun ctxt => do
+    let state := {state with pcVars := ctxt}
+    let some p ← k state | return none
+    let p := mkAppN (← mkLambdaFVars ctxt p) atoms
+    return some p
+
+def withAbstractFlagAtoms (state : ToArmExpr.Context) (k : ToArmExpr.Context → MetaM (Option Lean.Expr)) :
+    MetaM (Option Lean.Expr) := do
+  let atoms := state.flagVars
+  let declsGPR : Array (Name × (Array Lean.Expr → MetaM Lean.Expr)) ← atoms.mapM fun _ => do
+    return ((← mkFreshUserName `x), fun _ => return mkApp (mkConst ``BitVec) (mkNatLit 1))
+  withLocalDeclsD declsGPR fun ctxt => do
+    let state := {state with flagVars := ctxt}
+    let some p ← k state | return none
+    let p := mkAppN (← mkLambdaFVars ctxt p) atoms
+    return some p
+
+def withAbstractErrAtoms (state : ToArmExpr.Context) (k : ToArmExpr.Context → MetaM (Option Lean.Expr)) :
+    MetaM (Option Lean.Expr) := do
+  let atoms := state.errVars
+  let declsGPR : Array (Name × (Array Lean.Expr → MetaM Lean.Expr)) ← atoms.mapM fun _ => do
+    return ((← mkFreshUserName `x), fun _ => return mkConst ``StateError)
+  withLocalDeclsD declsGPR fun ctxt => do
+    let state := {state with errVars := ctxt}
+    let some p ← k state | return none
+    let p := mkAppN (← mkLambdaFVars ctxt p) atoms
+    return some p
+
+def withAbstractAtoms (state : ToArmExpr.Context) (k : ToArmExpr.Context → MetaM (Option Lean.Expr)) :
+    MetaM (Option Lean.Expr) := do
+  withAbstractStateAtoms state fun s1 =>
+    withAbstractGPRAtoms s1 fun s2 =>
+      withAbstractSFPAtoms s2 fun s3 =>
+        withAbstractPCAtoms s3 fun s4 =>
+          withAbstractFlagAtoms s4 fun s5 =>
+            withAbstractErrAtoms s5 k
+
+def ArmExprPruned? (refl_proof_name : Name) (e : Lean.Expr) :
+  MetaM (Option Lean.Expr) :=
+  withTraceNode m!"ArmExprPruned?" (tag := "ArmExprPruned?") <| do
+  let validate ←(getBoolOption `Tactic.prune_updates.validate)
+  let_expr Eq _ lhs rhs := e | return none
+  let ((lhs_writes, lhs_s0), state) ←
+    ToArmExpr.run (ToArmExpr.toArmUpdatesAndStateVar lhs []) {}
+  let ((rhs_writes, rhs_s0), state) ←
+    ToArmExpr.run (ToArmExpr.toArmUpdatesAndStateVar rhs []) state
+  trace[Tactic.prune_updates] "LHS writes: {lhs_writes}"
+  trace[Tactic.prune_updates] "RHS writes: {rhs_writes}"
+  trace[Tactic.prune_updates] "State Context: {state.stateVars}"
+  trace[Tactic.prune_updates] "ERR Context: {state.errVars}"
+  trace[Tactic.prune_updates] "PC Context: {state.pcVars}"
+  trace[Tactic.prune_updates] "GPR Context: {state.gprVars}"
+  trace[Tactic.prune_updates] "SFP Context: {state.sfpVars}"
+  trace[Tactic.prune_updates] "Flag Context: {state.flagVars}"
+  --  let arm_expr_pruned := lhs_arm_expr.prune
+  --  trace[Tactic.prune_updates] "Pruned Arm Expr: {arm_expr_pruned}"
+  --
+  let ctx := ToArmExpr.mkContextFromState state
+  withAbstractAtoms ctx fun ctx' => do
+    if lhs_s0 = rhs_s0 then
+      return some (← ArmExprBuildProofTerm ctx'
+                     lhs_writes rhs_writes refl_proof_name validate lhs_s0)
+    else
+      return none
 
 def ReflectionProofName : Lean.Elab.TermElabM Name := do
   Lean.Elab.Term.mkAuxName `_armexpr_reflection_def
 
 open Lean.Elab.Tactic in
-elab "prune_updates" h_state_eq:term : tactic =>
+elab "prune_updates" : tactic =>
   withTraceNode m!"prune_updates" (tag := "prune_updates") <| withMainContext do
-  trace[Tactic.prune_updates] "h_state_eq: {h_state_eq}"
-  let h_state_eq_expr ← elabTerm h_state_eq none
-  let hStateEq ← inferType h_state_eq_expr
-  trace[Tactic.prune_updates] "hStateEq: {hStateEq}"
-  let refl_proof_name ← ReflectionProofName
-  let some (_, e) ← ArmExprPruned? refl_proof_name hStateEq | return
-  trace[Tactic.prune_updates] "Ctor of Proof after ArmExprPruned?: {e.ctorName}"
-  trace[Tactic.prune_updates] "Proof after ArmExprPruned?: {e}"
-  /-
-  The rest of this code is heavily borrowed from `myApply` in Metaprogramming in
-  Lean 4
-  (https://leanprover-community.github.io/lean4-metaprogramming-book/main/04_metam.html)
-  -/
   let goal ← Lean.Elab.Tactic.getMainGoal
-  let target ← goal.getType
-  let type ← inferType e
-  trace[Tactic.prune_updates] "Target: {target}"
-  trace[Tactic.prune_updates] "Proof, after `inferType`: {type}"
-  -- If `type` has the form `∀ (x₁ : T₁) ... (xₙ : Tₙ), U`, introduce new
-  -- metavariables for the `xᵢ` and obtain the conclusion `U`. (If `proof_type` does
-  -- not have this form, `args` is empty and `conclusion = type`.)
-  let (args, _, conclusion) ← forallMetaTelescopeReducing type
-  trace[Tactic.prune_updates] "Args: {args}"
-  trace[Tactic.prune_updates] "Conclusion: {conclusion}"
-  if ← isDefEq target conclusion then
-    trace[Tactic.prune_updates] "Target and conclusion are DefEq!"
-    -- Assign the goal to `e x₁ ... xₙ`, where the `xᵢ` are the fresh
-    -- metavariables in `args`.
-    if ← isDefEq args[0]! h_state_eq_expr then
-    trace[Tactic.prune_updates] "Args[0]! and h_state_eq_expr are DefEq!"
-    let new_goal_term := mkAppN e args
-    trace[Tactic.prune_updates] "New Goal: {new_goal_term}"
-    goal.assign new_goal_term
-    -- `isDefEq` may have assigned some of the `args`. Report the rest as new
-    -- goals.
-    let newGoals ← args.filterMapM λ mvar => do
-      let mvarId := mvar.mvarId!
-      if ! (← mvarId.isAssigned) && ! (← mvarId.isDelayedAssigned) then
-        return some mvarId
-      else
-        return none
-    trace[Tactic.prune_updates] "newGoals: {newGoals.toList}"
-    setGoals newGoals.toList
+  trace[Tactic.prune_updates] "Goal: {goal}"
+  let goal_type ← goal.getType
+  trace[Tactic.prune_updates] "Goal Type: {goal_type}"
+  let refl_proof_name ← ReflectionProofName
+  let some p ← ArmExprPruned? refl_proof_name goal_type | return
+  trace[Tactic.prune_updates] "Ctor of Proof after ArmExprPruned?: {p.ctorName}"
+  trace[Tactic.prune_updates] "Proof after ArmExprPruned?: {p}"
+  let proof_type ← inferType p
+  trace[Tactic.prune_updates] "Proof Type: {proof_type}"
+  Lean.setReducibilityStatus `List.getD .reducible
+  Lean.setReducibilityStatus `List.get? .reducible
+  Lean.setReducibilityStatus `Option.getD .reducible
+  Lean.setReducibilityStatus `Option.getD.match_1 .reducible
+  -- Lean.setIrreducibleAttribute `Nat.casesOn
+  trace[Tactic.prune_updates] "Reduced proof_type: \
+                                {← withTransparency .reducible (reduceAll proof_type)}"
+  if (← withTransparency .reducible (isDefEq goal_type proof_type)) then
+    trace[Tactic.prune_updates] "goal_type and proof_type are DefEq!"
+    -- if (← withTransparency .reducible
+    --       (isDefEq (mkMVar goal) (← mkExpectedTypeHint p goal_type))) then
+    closeMainGoal `prune_updates (← mkExpectedTypeHint p goal_type)
   else
-    -- If the conclusion does not unify with the target, throw an error.
-    throwTacticEx `prune_updates goal m!"{e} is not applicable to goal with target {target}"
+    -- If the proof_type does not unify with goal_type, throw an error.
+    throwTacticEx `prune_updates goal m!"{p} is not applicable to goal {goal_type}"
 
 namespace ArmConstr
 
 section Tests
 
 #time
--- set_option trace.Tactic.prune_updates.answer true in
+-- set_option diagnostics true in
+-- set_option diagnostics.threshold 5 in
+-- set_option trace.Tactic.prune_updates true in
+-- set_option pp.all true in
 private theorem example1
   (h_s1 : s1 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 (w (.GPR 0#5) x1 s0))) :
   s1 = (w (.GPR 0x00#5) x0  (w (.GPR 0x01#5) x1  s0)) := by
-  prune_updates h_s1
-  done
-
--- #print example1
-
-#time
-private theorem example2
-  (h_s1 : s1 = w (.GPR 1#5) (x100 + x100') (w (.GPR 0#5) x500 (w (.GPR 8#5) x1 s0))) :
-  s1 = w (.GPR 0#5) x500 (w (.GPR 1#5) (x100 + x100') (w (.GPR 8#5) x1 s0)) := by
-  prune_updates h_s1
+  rw [h_s1]
+  prune_updates
   done
 
 /--
-info: private theorem ArmConstr.ArmConstr.example2 : ∀ {s1 : ArmState} {x100 x100' : state_value (StateField.GPR 1#5)}
-  {x500 : state_value (StateField.GPR 0#5)} {x1 : state_value (StateField.GPR 8#5)} {s0 : ArmState},
-  s1 = w (StateField.GPR 1#5) (x100 + x100') (w (StateField.GPR 0#5) x500 (w (StateField.GPR 8#5) x1 s0)) →
-    s1 = w (StateField.GPR 0#5) x500 (w (StateField.GPR 1#5) (x100 + x100') (w (StateField.GPR 8#5) x1 s0)) :=
-fun {s1} {x100 x100'} {x500} {x1} {s0} h_s1 =>
-  eq_true_of_denote { state := [s0, s1], err := [], pc := [], gpr := [x100 + x100', x500, x1], sfp := [], flag := [] }
-    { curr_state := 1, prev_state := 0, writes := [Update.gpr (1#5) 0, Update.gpr (0#5) 1, Update.gpr (8#5) 2] }
-    { curr_state := 1, prev_state := 0, writes := [Update.gpr (0#5) 1, Update.gpr (1#5) 0, Update.gpr (8#5) 2] }
-    (ofReduceBool ArmConstr.ArmConstr.example2._armexpr_reflection_def_1 true (Eq.refl true)) h_s1
+info: private theorem ArmConstr.ArmConstr.example1 : ∀ {s1 : ArmState} {x0 : state_value (StateField.GPR 0#5)}
+  {x1 : state_value (StateField.GPR 1#5)} {s0 : ArmState},
+  s1 = w (StateField.GPR 0#5) x0 (w (StateField.GPR 1#5) x1 (w (StateField.GPR 0#5) x1 s0)) →
+    s1 = w (StateField.GPR 0#5) x0 (w (StateField.GPR 1#5) x1 s0) :=
+fun {s1} {x0} {x1} {s0} h_s1 =>
+  Eq.mpr (id (congrArg (fun _a => _a = w (StateField.GPR 0#5) x0 (w (StateField.GPR 1#5) x1 s0)) h_s1))
+    (id
+      ((fun x =>
+          (fun x_1 x_2 =>
+              eq_of_denote_writes { state := [x], err := [], pc := [], gpr := [x_1, x_2], sfp := [], flag := [] }
+                [Update.gpr (0#5) 0, Update.gpr (1#5) 1, Update.gpr (0#5) 1] [Update.gpr (0#5) 0, Update.gpr (1#5) 1] 0
+                (ofReduceBool ArmConstr.ArmConstr.example1._armexpr_reflection_def_1 true (Eq.refl true)))
+            x0 x1)
+        s0))
 -/
 #guard_msgs in
-#print example2
+#print example1
 
 #time
--- set_option trace.Tactic.prune_updates.answer true in
-private theorem example3
-  (h_s1 : s1 =
-   (w StateField.PC (if ¬r (StateField.GPR 0x2#5) s = 0x0#64 then 0x126500#64 else 0x126c94#64)
-    (w (StateField.SFP 0x3#5)
-      (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (r (StateField.SFP 0x3#5) s) (r (StateField.SFP 0x1d#5) s) 0x0#128)
-      (w StateField.PC 0x126c8c#64
-        (w (StateField.SFP 0x2#5)
-          (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (r (StateField.SFP 0x2#5) s) (r (StateField.SFP 0x1c#5) s)
-            0x0#128)
-          (w StateField.PC 0x126c88#64
-            (w (StateField.SFP 0x1#5)
-              (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (r (StateField.SFP 0x1#5) s) (r (StateField.SFP 0x1b#5) s)
-                0x0#128)
-              (w StateField.PC 0x126c84#64
-                (w (StateField.SFP 0x0#5)
-                  (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (r (StateField.SFP 0x0#5) s)
-                    (r (StateField.SFP 0x1a#5) s) 0x0#128)
-                  s))))))))) :
-  s1 = (w .PC (if ¬r (StateField.GPR 2#5) s = 0#64 then 1205504#64
-    else
-      1207444#64)  (w (.SFP 0x00#5) (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (r (StateField.SFP 0#5) s)
-      (r (StateField.SFP 26#5) s)
-      0#128)  (w (.SFP 0x01#5) (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (r (StateField.SFP 1#5) s)
-      (r (StateField.SFP 27#5) s)
-      0#128)  (w (.SFP 0x02#5) (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (r (StateField.SFP 2#5) s)
-      (r (StateField.SFP 28#5) s)
-      0#128)  (w (.SFP 0x03#5) (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (r (StateField.SFP 3#5) s)
-      (r (StateField.SFP 29#5) s) 0#128)  s)))))
-  := by
-  prune_updates h_s1
-  done
-
-/-
+set_option diagnostics true in
+set_option diagnostics.threshold 5 in
 set_option trace.Tactic.prune_updates true in
--- set_option trace.Tactic.prune_updates.answer true in
+set_option maxRecDepth 2000 in
 theorem timeout_example
   (h_step : s' = w (StateField.GPR 0x1#5)
-    (if ¬(AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.z = 0x1#1 then
+    (if ¬(AddWithCarry (r (StateField.GPR 0x2#5) s) 0xffff#64 0x1#1).snd.z = 0x1#1 then
       r (StateField.GPR 0x1#5) s
     else r (StateField.GPR 0x1#5) s - 0x80#64)
     (w StateField.PC 0x126520#64
@@ -480,19 +526,19 @@ theorem timeout_example
                       (w StateField.PC 0x12650c#64
                         (w (StateField.GPR 0x2#5) (r (StateField.GPR 0x2#5) s - 0x1#64)
                           (w (StateField.FLAG PFlag.V)
-                            (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.v
+                            (AddWithCarry (r (StateField.GPR 0x2#5) s) 0x0#64 0x1#1).snd.v
                             (w (StateField.FLAG PFlag.C)
-                              (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.c
+                              (AddWithCarry (r (StateField.GPR 0x2#5) s) 0x0#64 0x1#1).snd.c
                               (w (StateField.FLAG PFlag.Z)
-                                (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.z
+                                (AddWithCarry (r (StateField.GPR 0x2#5) s) 0x0#64 0x1#1).snd.z
                                 (w (StateField.FLAG PFlag.N)
-                                  (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xfffffffffffffffe#64 0x1#1).snd.n
+                                  (AddWithCarry (r (StateField.GPR 0x2#5) s) 0x0#64 0x1#1).snd.n
                                   (w StateField.PC 0x126508#64
                                     (w (StateField.GPR 0x3#5) (r (StateField.GPR 0x3#5) s + 0x10#64)
                                       (w (StateField.SFP 0x18#5) (read_mem_bytes 16 (r (StateField.GPR 0x3#5) s) s)
                                         s))))))))))))))))))) :
   s' = (w .PC (1205536#64)  (w (.GPR 0x01#5) (if
-        ¬(AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.z = 1#1 then r (StateField.GPR 1#5) s
+        ¬(AddWithCarry (r (StateField.GPR 2#5) s) 0xffff#64 1#1).snd.z = 1#1 then r (StateField.GPR 1#5) s
     else
       r (StateField.GPR 1#5) s - 128#64)
       (w (.GPR 0x02#5) (r (StateField.GPR 2#5) s - 1#64)
@@ -503,11 +549,12 @@ theorem timeout_example
              (w (.SFP 0x1b#5) (r (StateField.SFP 1#5) s)
                (w (.SFP 0x1c#5) (r (StateField.SFP 2#5) s)
                 (w (.SFP 0x1d#5) (r (StateField.SFP 3#5) s)
-                 (w (.FLAG .N) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.n)
-                   (w (.FLAG .Z) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.z)
-                     (w (.FLAG .C) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.c)
-                      (w (.FLAG .V) ((AddWithCarry (r (StateField.GPR 2#5) s) 18446744073709551614#64 1#1).snd.v) s)))))))))))))) := by
-  prune_updates h_step
--/
+                 (w (.FLAG PFlag.N) ((AddWithCarry (r (StateField.GPR 2#5) s) 0x0#64 1#1).snd.n)
+                   (w (.FLAG PFlag.Z) ((AddWithCarry (r (StateField.GPR 2#5) s) 0x0#64 1#1).snd.z)
+                     (w (.FLAG PFlag.C) ((AddWithCarry (r (StateField.GPR 2#5) s) 0x0#64 1#1).snd.c)
+                      (w (.FLAG PFlag.V) ((AddWithCarry (r (StateField.GPR 2#5) s) 0x0#64 1#1).snd.v) s)))))))))))))) := by
+    rw [h_step]
+    prune_updates
+
 
 end Tests

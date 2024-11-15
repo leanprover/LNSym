@@ -83,12 +83,14 @@ def Val (var : Var) : Type :=
 /--
 Look up variable `v` in the `StateContext`.
 -/
+@[reducible]
 def StateVar.denote (ctx : StateContext) (v : StateVar) : ArmState :=
   ctx.getD v ArmState.default
 
 /--
 Look up variable `v` in the `GPRContext`.
 -/
+@[reducible]
 def GPRVar.denote (ctx : GPRContext) (v : GPRVar) : BitVec 64 :=
   ctx.getD v 0
 
@@ -100,30 +102,35 @@ theorem GPRVar.denote_of_var :
 /--
 Look up variable `v` in the `SFPContext`.
 -/
+@[reducible]
 def SFPVar.denote (ctx : SFPContext) (v : SFPVar) : BitVec 128 :=
   ctx.getD v 0
 
 /--
 Look up variable `v` in the `PCContext`.
 -/
+@[reducible]
 def PCVar.denote (ctx : PCContext) (v : PCVar) : BitVec 64 :=
   ctx.getD v 0
 
 /--
 Look up variable `v` in the `ErrContext`.
 -/
+@[reducible]
 def ErrVar.denote (ctx : ErrContext) (v : ErrVar) : StateError :=
   ctx.getD v StateError.None
 
 /--
 Look up variable `v` in the `FlagContext`.
 -/
+@[reducible]
 def FlagVar.denote (ctx : FlagContext) (v : FlagVar) : BitVec 1 :=
   ctx.getD v 0
 
 /--
 Look up `var` in the appropriate field of `ctx`, indicated by `fld`.
 -/
+@[reducible]
 def Var.denote (ctx : Context) (fld : StateField) (var : Nat) : state_value fld :=
   match fld with
   | .GPR _   => GPRVar.denote ctx.gpr var
@@ -152,7 +159,7 @@ instance : Lean.ToMessageData Update where
   | .pc v     => m!"(pc {v})"
   | .gpr i v  => m!"(gpr {i} {v})"
   | .sfp i v  => m!"(sfp {i} {v})"
-  | .flag i v => m!"(flag {i} {v})"
+  | .flag i v => m!"(flag .{i} {v})"
 
 abbrev Updates := List Update
 
@@ -189,16 +196,6 @@ def Update.regEq (x y : Update) : Prop :=
   | sfp i _, sfp j _ => i = j
   | flag i _, flag j _ => i = j
   | _, _ => False
-
--- set_option diagnostics true in
--- instance : Decidable (Update.regEq x y) :=
---   inferInstanceAs (Decidable <|
---     match x, y with
---     | .pc _, .pc _ => True
---     | .gpr i _, .gpr j _ => i = j
---     | .sfp i _, .sfp j _ => i = j
---     | .flag i _, .flag j _ => i = j
---     | _, _ => False)
 
 private def PFlag.natIdx (f : PFlag) : Nat :=
   match f with
@@ -258,6 +255,7 @@ deriving DecidableEq, Repr, Inhabited
 /--
 Map updates `us` to state `prev_state` to an `ArmState`.
 -/
+@[reducible]
 def Expr.denote_writes (ctx : Context) (us : Updates) (prev_state : StateVar)
   : ArmState :=
   match us with
@@ -329,7 +327,7 @@ theorem denote_statevar_eq_denote_writes_eq
   (h : StateVar.denote ctx.state v1 = StateVar.denote ctx.state v2) :
   Expr.denote_writes ctx writes v1 = Expr.denote_writes ctx writes v2 := by
   induction writes
-  case nil => simpa [Expr.denote_writes]
+  case nil => simp_all [Expr.denote_writes]
   case cons =>
     rename_i head tail h_ind
     simp [Expr.denote_writes]
@@ -434,9 +432,9 @@ info: true
 /--
 Erase repeated adjacent elements. Keeps the first occurrence of each run.
 
-Non tail-recursive version.
+Non tail-recursive.
 -/
-def Expr.eraseReps (us : Updates) : Updates :=
+def Updates.eraseReps (us : Updates) : Updates :=
   match us with
   | [] => []
   | [x] => [x]
@@ -447,107 +445,47 @@ def Expr.eraseReps (us : Updates) : Updates :=
 
 @[local simp]
 theorem denote_writes_eraseReps :
-  Expr.denote_writes ctx (Expr.eraseReps xs) s =
+  Expr.denote_writes ctx (Updates.eraseReps xs) s =
   Expr.denote_writes ctx xs s := by
-  induction xs using Expr.eraseReps.induct
+  induction xs using Updates.eraseReps.induct
   case case1 =>
-    simp_all [Expr.eraseReps]
+    simp_all [Updates.eraseReps]
   case case2 =>
     rename_i x
-    simp [Expr.eraseReps]
+    simp [Updates.eraseReps]
   case case3 =>
     rename_i x y rest h_eq ih
-    simp [Expr.eraseReps, h_eq]
+    simp [Updates.eraseReps, h_eq]
     simp [Update.field] at h_eq
     cases x <;> try simp_all <;> cases y <;>
     try simp_all [Update.field, Update.var] <;>
     rw [h_eq, w_of_w_shadow]
-    all_goals (simp_all [Update.field, Update.var]; rw [w_of_w_shadow])
+    all_goals (simp_all [Expr.denote_writes,
+                         ErrVar.denote,
+                         Var.denote,
+                         Update.field,
+                         Update.var,
+                         w_of_w_shadow])
   case case4 =>
     rename_i x y rest h_eq ih
-    simp [Expr.eraseReps, h_eq]
+    simp [Updates.eraseReps, h_eq]
     simp [Update.field] at h_eq
     simp_all
     done
 
-def Expr.eraseAdjReps.loop (u : Update) (us rs : Updates) : Updates :=
-match u, us, rs with
-| a, [], rs => (a::rs).reverse
-| a, a'::as, rs =>
-  match a.field == a'.field with
-  | true  => loop a as rs
-  | false => loop a' as (a::rs)
+/--
+Normalize the updates in `ws` by sorting them according to `Update.regIndexLe`
+and then removing shadowed updates.
+-/
+def Updates.prune (ws : Updates) : Updates :=
+  let ws_sorted := List.mergeSort ws Update.regIndexLe
+  eraseReps ws_sorted
 
 /--
-Tail-recursive version of `Expr.eraseReps`.
-
-(FIXME) Prove equivalent to `Expr.eraseReps`.
+Prune `e.writes`.
 -/
-def Expr.eraseAdjReps (us : Updates) : Updates :=
-  match us with
-  | []    => []
-  | a::as => Expr.eraseAdjReps.loop a as []
-
-@[local simp]
-theorem Expr.eraseAdjReps_empty :
-  eraseAdjReps [] = [] := by
-  simp [eraseAdjReps]
-
-@[local simp]
-theorem Expr.eraseAdjReps_one :
-  eraseAdjReps [a] = [a] := by
-  simp [eraseAdjReps]
-  unfold eraseAdjReps.loop; simp
-
-private theorem Expr.eraseAdjReps.loop_eq :
-  Expr.eraseAdjReps.loop x (u :: us) rs =
-  if x.field == u.field then Expr.eraseAdjReps.loop x us rs
-                        else Expr.eraseAdjReps.loop u us (x :: rs) := by
-  simp [loop]
-  split
-  · rename_i h_eq
-    simp_all [Update.field]
-  · rename_i h_eq
-    simp_all [Update.field]
-  done
-
-private theorem Expr.eraseAdjReps.loop_append :
-  Expr.eraseAdjReps.loop x xs (acc2 ++ acc1) =
-  acc1.reverse ++ (Expr.eraseAdjReps.loop x xs acc2) := by
-  induction xs generalizing x acc1 acc2
-  case nil => simp [Expr.eraseAdjReps.loop]
-  case cons =>
-    rename_i head tail ih
-    simp [Expr.eraseAdjReps.loop]
-    split
-    · rename_i h_eq
-      simp [Update.field] at h_eq
-      rw [ih]
-    · rename_i h_neq
-      simp [Update.field] at h_neq
-      have : (x :: (acc2 ++ acc1)) = x :: acc2 ++ acc1 := by
-        simp only [List.cons_append]
-      rw [this, ih]
-      done
-
--- #check Expr.eraseReps.induct
--- #check Expr.eraseAdjReps.loop.induct
-/-
-theorem Expr.eraseReps_and_eraseAdjReps.loop :
-  acc.reverse ++ eraseReps (x :: xs) = eraseAdjReps.loop x xs acc := by
-  induction x, xs, acc using eraseAdjReps.loop.induct
-  case case1 => simp [eraseAdjReps.loop, eraseReps]
-  case case2 =>
-    rename_i a a' as rs h_eq ih
-    simp [eraseReps, eraseAdjReps.loop, h_eq]
-    sorry
-  repeat sorry
--/
-
 def Expr.prune (e : Expr) : Expr :=
-  let e_sorted := List.mergeSort e.writes Update.regIndexLe
-  let e_nodups := eraseReps e_sorted
-  { e with writes := e_nodups }
+  { e with writes := Updates.prune e.writes }
 
 open Expr Update in
 /--
@@ -577,36 +515,113 @@ Does removing shadowed writes in `e1` give `e2`?
 def Expr.isPruned (e1 e2 : Expr) : Bool :=
   prune e1 == e2
 
-theorem Expr.eq_true_of_denote (ctx : Context) (e1 e2 : Expr) :
-  (Expr.isPruned e1 e2) → Expr.denote ctx e1 → Expr.denote ctx e2 := by
-  simp [isPruned, prune, denote]
-  intro h; cases e2
-  rename_i s1 s0 writes; simp_all only [mk.injEq]
-  rw [←h.right.right]; clear h
-  simp only [denote_writes_eraseReps, denote_writes_sorted, implies_true]
-  done
+def Updates.prune_eq (w1 w2 : Updates) : Bool :=
+  w1.prune == w2.prune
+
+/--
+If, after pruning, updates `w1` and `w2` are equal, then their denotation in the
+context `ctx` over the same state variable `s` is also equal.
+-/
+theorem Expr.eq_of_denote_writes (ctx : Context) (w1 w2 : Updates) (s : StateVar) :
+  Updates.prune_eq w1 w2 → (Expr.denote_writes ctx w1 s = Expr.denote_writes ctx w2 s) := by
+  intro h
+  simp_all [Updates.prune_eq, Updates.prune, prune]
+  have : denote_writes ctx (Updates.eraseReps (List.mergeSort w1 Update.regIndexLe)) s =
+         denote_writes ctx (Updates.eraseReps (List.mergeSort w2 Update.regIndexLe)) s := by
+        rw [h]
+  simp only [denote_writes_eraseReps, denote_writes_sorted] at this
+  exact this
 
 #time
 open Expr Update in
 theorem example1
   (h_s1 : s1 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 (w (.GPR 0#5) x1 s0))) :
   s1 = w (.GPR 0#5) x0 (w (.GPR 1#5) x1 s0) := by
-  exact
-    ((Expr.eq_true_of_denote { state := [s0, s1],
-                               gpr := [x0, x1],
-                               sfp := [],
-                               pc := [],
-                               flag := [],
-                               err := [] }
-        -- e1
-        { prev_state := 0, curr_state := 1,
-          writes := [.gpr 0#5 (0), .gpr 1#5 (1), .gpr 0#5 (1)] }
-        -- e2
-        { prev_state := 0, curr_state := 1,
-          writes := [.gpr 0#5 (0), .gpr 1#5 (1)] }
-        (by native_decide)))
-    h_s1
-
--- #print example1
+  rw [h_s1]
+  exact Expr.eq_of_denote_writes { state := [s0, s1],
+                                   gpr := [x0, x1],
+                                   sfp := [],
+                                   pc := [],
+                                   flag := [],
+                                   err := [] }
+        [.gpr 0#5 (0), .gpr 1#5 (1), .gpr 0#5 (1)]
+        [.gpr 0#5 (0), .gpr 1#5 (1)] 0 (by native_decide)
 
 end ArmConstr
+
+/-
+
+def Updates.eraseAdjReps.loop (u : Update) (us rs : Updates) : Updates :=
+match u, us, rs with
+| a, [], rs => (a::rs).reverse
+| a, a'::as, rs =>
+  match a.field == a'.field with
+  | true  => loop a as rs
+  | false => loop a' as (a::rs)
+
+/--
+Tail-recursive version of `Updates.eraseReps`.
+
+(FIXME) Prove equivalent to `Updates.eraseReps`.
+-/
+def Updates.eraseAdjReps (us : Updates) : Updates :=
+  match us with
+  | []    => []
+  | a::as => Updates.eraseAdjReps.loop a as []
+
+@[local simp]
+theorem Updates.eraseAdjReps_empty :
+  eraseAdjReps [] = [] := by
+  simp [eraseAdjReps]
+
+@[local simp]
+theorem Updates.eraseAdjReps_one :
+  eraseAdjReps [a] = [a] := by
+  simp [eraseAdjReps]
+  unfold eraseAdjReps.loop; simp
+
+private theorem Updates.eraseAdjReps.loop_eq :
+  Updates.eraseAdjReps.loop x (u :: us) rs =
+  if x.field == u.field then Updates.eraseAdjReps.loop x us rs
+                        else Updates.eraseAdjReps.loop u us (x :: rs) := by
+  simp [loop]
+  split
+  · rename_i h_eq
+    simp_all [Update.field]
+  · rename_i h_eq
+    simp_all [Update.field]
+  done
+
+private theorem Updates.eraseAdjReps.loop_append :
+  Updates.eraseAdjReps.loop x xs (acc2 ++ acc1) =
+  acc1.reverse ++ (Updates.eraseAdjReps.loop x xs acc2) := by
+  induction xs generalizing x acc1 acc2
+  case nil => simp [Updates.eraseAdjReps.loop]
+  case cons =>
+    rename_i head tail ih
+    simp [Updates.eraseAdjReps.loop]
+    split
+    · rename_i h_eq
+      simp [Update.field] at h_eq
+      rw [ih]
+    · rename_i h_neq
+      simp [Update.field] at h_neq
+      have : (x :: (acc2 ++ acc1)) = x :: acc2 ++ acc1 := by
+        simp only [List.cons_append]
+      rw [this, ih]
+      done
+
+-- #check Updates.eraseReps.induct
+-- #check Updates.eraseAdjReps.loop.induct
+
+theorem Updates.eraseReps_and_eraseAdjReps.loop :
+  acc.reverse ++ eraseReps (x :: xs) = eraseAdjReps.loop x xs acc := by
+  induction x, xs, acc using eraseAdjReps.loop.induct
+  case case1 => simp [eraseAdjReps.loop, eraseReps]
+  case case2 =>
+    rename_i a a' as rs h_eq ih
+    simp [eraseReps, eraseAdjReps.loop, h_eq]
+    sorry
+  repeat sorry
+
+-/
