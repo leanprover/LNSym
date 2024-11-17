@@ -400,10 +400,13 @@ theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
     fst_AddWithCarry_eq_add] at this
   obtain ⟨h_step⟩ := hstep
   subst h_step
-  constructor <;> solve
-    | simp (config := { ground := true, decide := true}) [*,
-      state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg]
+  constructor 
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules]
+  · simp (config := { ground := true, decide := true}) [*, state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg]
+  · simp (config := { ground := true, decide := true}) [*, state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg]
+  · simp (config := { ground := true, decide := true}) [*, state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg]
+  · simp (config := { ground := true, decide := true}) [*, state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg]
+  · simp (config := { ground := true, decide := true}) [*, state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg]
 
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
 structure Step_8f4_8f8 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f8 : Prop where
@@ -733,14 +736,14 @@ theorem partial_correctness :
         rw [h_s5_x0, h_s5_x1, h_si_x1]
         have h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
           rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega_bench,
-            BitVec.BitVec.mul_add,
+            BitVec.mul_add,
             BitVec.add_assoc, BitVec.mul_one]
         simp only [h_s0_x1, true_and]
 
         rw [h_s5_x2, h_si_x2]
         have h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
           rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega_bench,
-            BitVec.BitVec.mul_add]
+            BitVec.mul_add]
           skip_proof bv_omega_bench
         simp only [h_s0_x2, true_and]
         simp only [step_8f0_8f4.h_err,

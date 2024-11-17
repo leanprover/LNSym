@@ -77,49 +77,49 @@ theorem addr_add_one_add_m_sub_one  (n : Nat) (addr : BitVec 64)
 
 theorem mem_subset_refl : mem_subset a1 a2 a1 a2 := by
   simp [mem_subset]
-  bv_check "lrat_files/SeparateProofs.lean-mem_subset_refl-78-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_subset_refl-80-2.lrat"
 
 theorem mem_subsets_overlap (h : mem_subset a1 a2 b1 b2) :
   mem_overlap a1 a2 b1 b2 := by
   revert h
   simp [mem_subset, mem_overlap]
-  bv_check "lrat_files/SeparateProofs.lean-mem_subsets_overlap-84-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_subsets_overlap-86-2.lrat"
 
 theorem mem_subset_eq : mem_subset a a b b = (a = b)  := by
   simp [mem_subset]
-  bv_check "lrat_files/SeparateProofs.lean-mem_subset_eq-88-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_subset_eq-90-2.lrat"
 
 theorem mem_subset_first_address (h : mem_subset a b c d) :
   mem_subset a a c d := by
   revert h
   simp_all [mem_subset]
-  bv_check "lrat_files/SeparateProofs.lean-mem_subset_first_address-94-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_subset_first_address-96-2.lrat"
 
 theorem mem_subset_one_addr_neq (h1 : a ≠ b1)
   (h : mem_subset a a b1 b2) :
   mem_subset a a (b1 + 1#64) b2 := by
   revert h
   simp_all [mem_subset]
-  bv_check "lrat_files/SeparateProofs.lean-mem_subset_one_addr_neq-101-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_subset_one_addr_neq-103-2.lrat"
 
 theorem mem_subset_same_address_different_sizes
   (h : mem_subset addr (addr + n1) addr (addr + n2)) :
   n1 <= n2 := by
   revert h
   simp [mem_subset]
-  bv_check "lrat_files/SeparateProofs.lean-mem_subset_same_address_different_sizes-108-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_subset_same_address_different_sizes-110-2.lrat"
 
 theorem first_address_is_subset_of_region :
   mem_subset a a a (a + n) := by
   simp [mem_subset]
-  bv_check "lrat_files/SeparateProofs.lean-first_address_is_subset_of_region-113-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-first_address_is_subset_of_region-115-2.lrat"
 
 private theorem first_address_add_one_is_subset_of_region_helper (n addr : BitVec 64)
   (_h_lb : 0#64 < n) :
   addr + n - addr = 18446744073709551615#64 ∨
   addr + 1#64 - addr ≤ addr + n - addr := by
   bv_check
-    "lrat_files/SeparateProofs.lean-_private.Arm.Memory.SeparateProofs.0.first_address_add_one_is_subset_of_region_helper-119-2.lrat"
+    "lrat_files/SeparateProofs.lean-_private.Arm.Memory.SeparateProofs.0.first_address_add_one_is_subset_of_region_helper-121-2.lrat"
 
 theorem first_address_add_one_is_subset_of_region (n : Nat) (addr : BitVec 64)
   (_h_lb : 0 < n) (h_ub : n < 2 ^ 64) :
@@ -134,8 +134,8 @@ private theorem first_addresses_add_one_is_subset_of_region_general_helper
     addr1 + m - addr2 ≤ addr2 + n - addr2 ∧ addr1 - addr2 ≤ addr1 + m - addr2 →
   addr2 + n - addr2 = 18446744073709551615#64 ∨
     addr1 + m - addr2 ≤ addr2 + n - addr2 ∧ addr1 + 1#64 - addr2 ≤ addr1 + m - addr2 := by
-    bv_check
-      "lrat_files/SeparateProofs.lean-_private.Arm.Memory.SeparateProofs.0.first_addresses_add_one_is_subset_of_region_general_helper-135-4.lrat"
+  bv_check
+    "lrat_files/SeparateProofs.lean-_private.Arm.Memory.SeparateProofs.0.first_addresses_add_one_is_subset_of_region_general_helper-137-2.lrat"
 
 theorem first_addresses_add_one_is_subset_of_region_general
   (h0 : 0 < m) (h1 : m < 2 ^ 64) (h2 : n < 2 ^ 64)
@@ -154,7 +154,7 @@ private theorem first_addresses_add_one_preserves_subset_same_addr_helper (h1l :
   m - 1#64 ≤ 18446744073709551614#64 := by
   revert h1l
   bv_check
-    "lrat_files/SeparateProofs.lean-_private.Arm.Memory.SeparateProofs.0.first_addresses_add_one_preserves_subset_same_addr_helper-154-2.lrat"
+    "lrat_files/SeparateProofs.lean-_private.Arm.Memory.SeparateProofs.0.first_addresses_add_one_preserves_subset_same_addr_helper-156-2.lrat"
 
 theorem first_addresses_add_one_preserves_subset_same_addr
   (h1l : 0 < m) (h1u : m < 2 ^ 64)
@@ -203,8 +203,7 @@ theorem first_addresses_add_one_preserves_subset_same_addr
 private theorem mem_subset_one_addr_region_lemma_helper (n1 addr1 addr2 : BitVec 64) :
   addr1 + n1 - 1#64 - addr2 ≤ 0#64 ∧ addr1 - addr2 ≤ addr1 + n1 - 1#64 - addr2 →
   n1 = 1#64 ∧ addr1 = addr2 := by
-  bv_check
-    "lrat_files/SeparateProofs.lean-_private.Arm.Memory.SeparateProofs.0.mem_subset_one_addr_region_lemma_helper-204-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-_private.Arm.Memory.SeparateProofs.0.mem_subset_one_addr_region_lemma_helper-206-2.lrat"
 
 theorem mem_subset_one_addr_region_lemma (addr1 addr2 : BitVec 64) (h : n1 <= 2 ^ 64) :
   mem_subset addr1 (addr1 + (BitVec.ofNat 64 n1) - 1#64) addr2 addr2 → (n1 = 1) ∧ (addr1 = addr2) := by
@@ -238,7 +237,7 @@ theorem mem_subset_trans
   mem_subset a1 a2 c1 c2 := by
   revert h1 h2
   simp [mem_subset]
-  bv_check "lrat_files/SeparateProofs.lean-mem_subset_trans-239-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_subset_trans-241-2.lrat"
 
 ----------------------------------------------------------------------
 ---- mem_separate ----
@@ -246,37 +245,36 @@ theorem mem_subset_trans
 theorem mem_separate_commutative :
   mem_separate a1 a2 b1 b2 = mem_separate b1 b2 a1 a2 := by
   simp [mem_separate, mem_overlap]
-  bv_check "lrat_files/SeparateProofs.lean-mem_separate_commutative-247-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_separate_commutative-249-2.lrat"
 
 theorem mem_separate_starting_addresses_neq :
   mem_separate a1 a2 b1 b2 → a1 ≠ b1 := by
   simp [mem_separate, mem_overlap]
-  bv_check "lrat_files/SeparateProofs.lean-mem_separate_starting_addresses_neq-252-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_separate_starting_addresses_neq-254-2.lrat" -- SeparateProofs.lean-mem_separate_starting_addresses_neq-252-2.lrat"
 
 theorem mem_separate_neq :
   a ≠ b ↔ mem_separate a a b b := by
   simp [mem_separate, mem_overlap]
-  bv_check "lrat_files/SeparateProofs.lean-mem_separate_neq-257-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_separate_neq-259-2.lrat" -- SeparateProofs.lean-mem_separate_neq-257-2.lrat"
 
 theorem mem_separate_first_address_separate (h : mem_separate a b c d) :
   mem_separate a a c d := by
   revert h
   simp [mem_separate, mem_overlap]
-  bv_check "lrat_files/SeparateProofs.lean-mem_separate_first_address_separate-263-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_separate_first_address_separate-265-2.lrat" -- SeparateProofs.lean-mem_separate_first_address_separate-263-2.lrat"
 
 theorem mem_separate_contiguous_regions (a k n : BitVec 64)
   (hn : n < ((BitVec.ofNat 64 (2^64 - 1)) - k)) :
   mem_separate a (a + k) (a + k + 1#64) (a + k + 1#64 + n) := by
   revert hn
   simp [mem_separate, mem_overlap]
-  bv_check "lrat_files/SeparateProofs.lean-mem_separate_contiguous_regions-270-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_separate_contiguous_regions-272-2.lrat" -- SeparateProofs.lean-mem_separate_contiguous_regions-270-2.lrat"
 
 private theorem mem_separate_contiguous_regions_one_address_helper (n' addr : BitVec 64)
     (h : n' < 0xffffffffffffffff) :
     (0#64 < addr + 1#64 - addr ∧ 0#64 < addr + 1#64 + n' - addr)
     ∧ addr + 1#64 + n' - (addr + 1#64) < addr - (addr + 1#64) := by
-  bv_check
-    "lrat_files/SeparateProofs.lean-_private.Arm.Memory.SeparateProofs.0.mem_separate_contiguous_regions_one_address_helper-276-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-_private.Arm.Memory.SeparateProofs.0.mem_separate_contiguous_regions_one_address_helper-278-2.lrat"
 
 -- TODO: Perhaps use/modify mem_separate_contiguous_regions instead?
 theorem mem_separate_contiguous_regions_one_address (addr : BitVec 64) (h : n' < 2 ^ 64) :
@@ -295,7 +293,7 @@ theorem mem_separate_for_subset2
   mem_separate a1 a2 c1 c2 := by
   revert h1 h2
   simp [mem_subset, mem_separate, mem_overlap]
-  bv_check "lrat_files/SeparateProofs.lean-mem_separate_for_subset2-295-2.lrat"
+  bv_check "lrat_files/SeparateProofs.lean-mem_separate_for_subset2-298-2.lrat" -- SeparateProofs.lean-mem_separate_for_subset2-295-2.lrat"
 
 theorem mem_separate_for_subset1
   (h1 : mem_separate a1 a2 b1 b2) (h2 : mem_subset c1 c2 a1 a2) :

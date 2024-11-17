@@ -121,7 +121,7 @@ def exec_advanced_simd_three_same
 
 theorem pc_of_exec_advanced_simd_three_same
   (h_step : s' = exec_advanced_simd_three_same inst s)
-  (h_no_err: read_err s' = None) :
+  (_h_no_err: read_err s' = None) :
   r StateField.PC s' =
   -- (r StateField.PC s) + 4#64 -- TODO: How do I use + here?
   (BitVec.add (r StateField.PC s) 4#64) := by

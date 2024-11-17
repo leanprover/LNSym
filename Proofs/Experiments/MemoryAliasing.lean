@@ -228,6 +228,12 @@ info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
   mem_omega  -- by default, process all hyps
 
 /--
+warning: unused variable `h'`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+---
+warning: unused variable `hab`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+---
 info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
 [simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
 [simp_mem.info] Adding omega facts from hypotheses
@@ -246,6 +252,9 @@ example (h' : a ≤ 100) (hab : a ≤ a + 1) : a ≤ a + 1 := by
 
 
 /--
+warning: unused variable `h'`
+note: this linter can be disabled with `set_option linter.unusedVariables false`
+---
 warning: unused variable `hab`
 note: this linter can be disabled with `set_option linter.unusedVariables false`
 ---

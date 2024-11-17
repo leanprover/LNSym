@@ -55,4 +55,5 @@ lean_exe «lnsym» where
   -- supportInterpreter := true
 
 require ELFSage from git "https://github.com/draperlaboratory/ELFSage.git" @ "main"
-require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "main"
+-- Disable doc-gen4, since UnicodeBasic is not bumped yet to nightly.
+-- require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "main"
