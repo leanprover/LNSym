@@ -218,7 +218,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     (h_s0_pc : read_pc s0 = gcm_init_v8_program.min)
     (h_s0_sp_aligned : CheckSPAlignment s0)
     -- (h_run : sf = run gcm_init_v8_program.length s0)
-    (h_run : sf = run 78 s0)
+    (h_run : sf = run 116 s0)
     (h_mem : Memory.Region.pairwiseSeparate
       [ ⟨(H_addr s0), 128⟩,
         ⟨(Htable_addr s0), 2048⟩ ])
@@ -312,7 +312,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       extractLsb'_of_append_hi, extractLsb'_of_append_lo]
     simp (config := {ground := true}) only
   -- Step 2: simulate up to H1 and H2_rev and verify
-  sym_n 20
+  sym_n 22
   have h_v16_s20_hi : BitVec.extractLsb' 64 64 (r (StateField.SFP 16#5) s20) =
     let x_rev := (lo x1) ++ (hi x1)
     hi (gcm_init_H_asm x_rev) ^^^ lo (gcm_init_H_asm x_rev) := by
@@ -409,7 +409,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [h_v17_s34, hi, lo,
       extractLsb'_of_append_hi, extractLsb'_of_append_lo]
   -- Step 3: simulate up to H3_rev, H4 and H5_rev and verify
-  sym_n 40
+  sym_n 38
   have h_v16_s68 : r (StateField.SFP 16#5) s68 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -539,9 +539,9 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s75_non_effects, h_s74_non_effects,
       h_s73_non_effects, h_s72_non_effects,
       h_s71_q25, h_s71_non_effects,
+      h_s70_non_effects,
       extractLsb'_of_append_mid,]
-    have q : r (StateField.SFP 17#5) s70 = r (StateField.SFP 17#5) s69 := by sym_aggregate
-    simp only [q, h_v17_s69, gcm_polyval_asm_associativity]
+    simp only [h_v17_s69, gcm_polyval_asm_associativity]
   have h_H4 : r (StateField.SFP 24#5) s77 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -560,6 +560,79 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     have q2 : r (StateField.SFP 25#5) s71 = r (StateField.SFP 25#5) s77 := by sym_aggregate
     have q3 : r (StateField.SFP 23#5) s71 = r (StateField.SFP 23#5) s77 := by sym_aggregate
     simp only [q0, q1, q2, q3, h_v16_s68, h_v17_s69, h_H3, h_H5]
+    simp only [lo, hi, extractLsb'_of_xor_of_extractLsb'_hi,
+      extractLsb'_of_xor_of_extractLsb'_lo,
+      gcm_polyval_asm_associativity]
+  -- Step 4: simulate up to H6_rev, H7, and H8_rev and verify
+  sym_n 38
+  have h_v16_s106 : r (StateField.SFP 16#5) s106 =
+    let x_rev := (lo x1) ++ (hi x1)
+    let H0 := gcm_init_H_asm x_rev
+    let H2 := gcm_polyval_asm H0 H0
+    let H3 := gcm_polyval_asm H0 H2
+    let H5 := gcm_polyval_asm H0 H3
+    gcm_polyval_asm H0 H5 := by
+    sorry
+  have h_v17_s107 : r (StateField.SFP 17#5) s107 =
+    let x_rev := (lo x1) ++ (hi x1)
+    let H0 := gcm_init_H_asm x_rev
+    let H2 := gcm_polyval_asm H0 H0
+    let H3 := gcm_polyval_asm H0 H2
+    let H5 := gcm_polyval_asm H0 H3
+    let H6 := gcm_polyval_asm H0 H5
+    gcm_polyval_asm H0 H6 := by
+    sorry
+  have h_H6 : r (StateField.SFP 26#5) s115 =
+    let x_rev := (lo x1) ++ (hi x1)
+    let H0 := gcm_init_H_asm x_rev
+    let H2 := gcm_polyval_asm H0 H0
+    let H3 := gcm_polyval_asm H0 H2
+    let H5 := gcm_polyval_asm H0 H3
+    let H6 := gcm_polyval_asm H0 H5
+    lo H6 ++ hi H6 := by
+    simp (config := {decide := true}) only [
+      h_s115_non_effects, h_s114_non_effects, h_s113_non_effects,
+      h_s112_non_effects, h_s111_non_effects, h_s110_non_effects,
+      h_s109_non_effects, h_s108_q26, h_s108_non_effects,
+      h_s107_non_effects, extractLsb'_of_append_mid ]
+    simp only [h_v16_s106]
+  have h_H8 : r (StateField.SFP 28#5) s115 =
+    let x_rev := (lo x1) ++ (hi x1)
+    let H0 := gcm_init_H_asm x_rev
+    let H2 := gcm_polyval_asm H0 H0
+    let H3 := gcm_polyval_asm H0 H2
+    let H5 := gcm_polyval_asm H0 H3
+    let H6 := gcm_polyval_asm H0 H5
+    let H8 := gcm_polyval_asm H0 H6
+    lo H8 ++ hi H8 := by
+    simp (config := {decide := true}) only [
+      h_s115_non_effects, h_s114_non_effects,
+      h_s113_non_effects, h_s112_non_effects,
+      h_s111_non_effects, h_s110_non_effects,
+      h_s109_q28, h_s109_non_effects,
+      h_s108_non_effects,
+      extractLsb'_of_append_mid,]
+    simp only [h_v17_s107, gcm_polyval_asm_associativity]
+  have h_H7 : r (StateField.SFP 27#5) s115 =
+    let x_rev := (lo x1) ++ (hi x1)
+    let H0 := gcm_init_H_asm x_rev
+    let H2 := gcm_polyval_asm H0 H0
+    let H3 := gcm_polyval_asm H0 H2
+    let H5 := gcm_polyval_asm H0 H3
+    let H6 := gcm_polyval_asm H0 H5
+    let H8 := gcm_polyval_asm H0 H6
+    ((hi H8) ^^^ (lo H8)) ++ ((hi H6) ^^^ (lo H6)) := by
+    simp (config := {decide := true}) only [
+      h_s115_non_effects, h_s114_q27, h_s113_non_effects,
+      h_s112_q17, h_s112_non_effects,
+      h_s111_q16, h_s111_non_effects,
+      h_s110_non_effects,
+      extractLsb'_of_append_mid]
+    have q0 : r (StateField.SFP 17#5) s109 = r (StateField.SFP 17#5) s107 := by sym_aggregate
+    have q1 : r (StateField.SFP 16#5) s109 = r (StateField.SFP 16#5) s106 := by sym_aggregate
+    have q2 : r (StateField.SFP 26#5) s109 = r (StateField.SFP 26#5) s115 := by sym_aggregate
+    have q3 : r (StateField.SFP 28#5) s109 = r (StateField.SFP 28#5) s115 := by sym_aggregate
+    simp only [q0, q1, q2, q3, h_v16_s106, h_v17_s107, h_H6, h_H8]
     simp only [lo, hi, extractLsb'_of_xor_of_extractLsb'_hi,
       extractLsb'_of_xor_of_extractLsb'_lo,
       gcm_polyval_asm_associativity]
