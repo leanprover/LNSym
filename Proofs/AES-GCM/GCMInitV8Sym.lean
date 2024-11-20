@@ -19,7 +19,7 @@ abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 abbrev lo (x : BitVec 128) : BitVec 64 := BitVec.extractLsb' 0 64 x
 abbrev hi (x : BitVec 128) : BitVec 64 := BitVec.extractLsb' 64 64 x
 
--- define a function that represents gcm_init_H in the assembly
+-- Define a function that represents gcm_init_H in the assembly
 def gcm_init_H_asm (H : BitVec 128) : BitVec 128 :=
   let v19 := 0xe1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1#128
   let v19 := BitVec.shiftLeft (hi v19) 57 ++ BitVec.shiftLeft (lo v19) 57
@@ -37,10 +37,15 @@ def gcm_init_H_asm (H : BitVec 128) : BitVec 128 :=
   let v20 := v3 ^^^ v16
   v20
 
+-- FIXME: This proof takes a non-trivial amount of time in bv_decide
+-- The bulk of time is spent in bitblasting because bitblasting
+-- doesn't have cache for common subterms
+-- See discussion in https://leanprover.zulipchat.com/#narrow/channel/424609-lean-at-aws/topic/.E2.9C.94.20stack.20overflow.20in.20bv_decide
 set_option maxRecDepth 3000 in
 set_option maxHeartbeats 1000000 in
 set_option sat.timeout 120 in
 set_option debug.byAsSorry true in
+-- set_option trace.profiler true in
 theorem gcm_init_H_asm_gcm_int_H_equiv (x : BitVec 128) :
   GCMV8.gcm_init_H x = gcm_init_H_asm x := by
   simp only [GCMV8.gcm_init_H, gcm_init_H_asm, hi, lo,
@@ -55,6 +60,7 @@ theorem gcm_init_H_asm_gcm_int_H_equiv (x : BitVec 128) :
     BitVec.ushiftRight_eq, BitVec.shiftLeft_eq, BitVec.reduceAppend]
   bv_decide
 
+-- FIXME: prove the following lemma
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 1000000 in
 theorem gcm_polyval_mul_eq_polynomial_mult (x y : BitVec 128) :
@@ -141,7 +147,7 @@ theorem gcm_polyval_asm_associativity (x : BitVec 128) (y : BitVec 128) (z : Bit
   gcm_polyval_asm x (gcm_polyval_asm y z) = gcm_polyval_asm (gcm_polyval_asm x y) z := by
   sorry
 
--- Taken from gcm_gmult_v8
+-- FIXME: Taken from gcm_gmult_v8
 theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
   DPSFP.pmull_op 0 64 1 x y 0#128 =
   DPSFP.polynomial_mult x y := by
@@ -196,16 +202,8 @@ theorem extractLsb'_of_xor_of_extractLsb'_hi (x : BitVec 128):
       = BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x := by
       bv_decide
 
-syntax "gcm_init_v8_tac" : tactic
-
-macro_rules
-  | `(tactic| gcm_init_v8_tac) =>
-  `(tactic|
-    (sorry))
-
-set_option maxRecDepth 10000 in
-set_option maxHeartbeats 4000000 in
-set_option sat.timeout 120 in
+set_option maxRecDepth 5000 in
+set_option maxHeartbeats 1000000 in
 -- set_option pp.deepTerms true in
 -- set_option pp.maxSteps 1000000 in
 -- set_option trace.profiler true in
@@ -216,8 +214,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     (h_s0_err : read_err s0 = .None)
     (h_s0_pc : read_pc s0 = gcm_init_v8_program.min)
     (h_s0_sp_aligned : CheckSPAlignment s0)
-    -- (h_run : sf = run gcm_init_v8_program.length s0)
-    (h_run : sf = run 152 s0)
+    (h_run : sf = run gcm_init_v8_program.length s0)
     (h_mem : Memory.Region.pairwiseSeparate
       [ ⟨(H_addr s0), 128⟩,
         ⟨(Htable_addr s0), 2048⟩ ])
@@ -574,10 +571,27 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s73_q16, h_s73_non_effects,
       h_s72_non_effects,
       extractLsb'_of_append_mid]
-    have q0 : r (StateField.SFP 17#5) s71 = r (StateField.SFP 17#5) s69 := by sorry
-    have q1 : r (StateField.SFP 16#5) s71 = r (StateField.SFP 16#5) s68 := by sorry
-    have q2 : r (StateField.SFP 25#5) s71 = r (StateField.SFP 25#5) s77 := by sorry
-    have q3 : r (StateField.SFP 23#5) s71 = r (StateField.SFP 23#5) s77 := by sorry
+    have q0 : r (StateField.SFP 17#5) s71 = r (StateField.SFP 17#5) s69 := by
+      -- FIXME: one could also use sym_aggregate, but it takes longer
+      simp (config := {decide := true}) only [
+        h_s71_non_effects, h_s70_non_effects
+      ]
+    have q1 : r (StateField.SFP 16#5) s71 = r (StateField.SFP 16#5) s68 := by
+      simp (config := {decide := true}) only [
+        h_s71_non_effects, h_s70_non_effects, h_s69_non_effects
+      ]
+    have q2 : r (StateField.SFP 25#5) s71 = r (StateField.SFP 25#5) s77 := by
+      simp (config := {decide := true}) only [
+        h_s71_non_effects, h_s72_non_effects, h_s73_non_effects,
+        h_s74_non_effects, h_s75_non_effects, h_s76_non_effects,
+        h_s77_non_effects
+      ]
+    have q3 : r (StateField.SFP 23#5) s71 = r (StateField.SFP 23#5) s77 := by
+      simp (config := {decide := true}) only [
+        h_s71_non_effects, h_s72_non_effects, h_s73_non_effects,
+        h_s74_non_effects, h_s75_non_effects, h_s76_non_effects,
+        h_s77_non_effects
+      ]
     simp only [q0, q1, q2, q3, h_v16_s68, h_v17_s69, h_H3, h_H5]
     simp only [lo, hi, extractLsb'_of_xor_of_extractLsb'_hi,
       extractLsb'_of_xor_of_extractLsb'_lo,
@@ -648,10 +662,26 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s111_q16, h_s111_non_effects,
       h_s110_non_effects,
       extractLsb'_of_append_mid]
-    have q0 : r (StateField.SFP 17#5) s109 = r (StateField.SFP 17#5) s107 := by sorry
-    have q1 : r (StateField.SFP 16#5) s109 = r (StateField.SFP 16#5) s106 := by sorry
-    have q2 : r (StateField.SFP 26#5) s109 = r (StateField.SFP 26#5) s115 := by sorry
-    have q3 : r (StateField.SFP 28#5) s109 = r (StateField.SFP 28#5) s115 := by sorry
+    have q0 : r (StateField.SFP 17#5) s109 = r (StateField.SFP 17#5) s107 := by
+      simp (config := {decide := true}) only [
+        h_s109_non_effects, h_s108_non_effects
+      ]
+    have q1 : r (StateField.SFP 16#5) s109 = r (StateField.SFP 16#5) s106 := by
+      simp (config := {decide := true}) only [
+        h_s109_non_effects, h_s108_non_effects, h_s107_non_effects
+      ]
+    have q2 : r (StateField.SFP 26#5) s109 = r (StateField.SFP 26#5) s115 := by
+      simp (config := {decide := true}) only [
+        h_s109_non_effects, h_s110_non_effects, h_s111_non_effects,
+        h_s112_non_effects, h_s113_non_effects, h_s114_non_effects,
+        h_s115_non_effects
+      ]
+    have q3 : r (StateField.SFP 28#5) s109 = r (StateField.SFP 28#5) s115 := by
+      simp (config := {decide := true}) only [
+        h_s109_non_effects, h_s110_non_effects, h_s111_non_effects,
+        h_s112_non_effects, h_s113_non_effects, h_s114_non_effects,
+        h_s115_non_effects
+      ]
     simp only [q0, q1, q2, q3, h_v16_s106, h_v17_s107, h_H6, h_H8]
     simp only [lo, hi, extractLsb'_of_xor_of_extractLsb'_hi,
       extractLsb'_of_xor_of_extractLsb'_lo,
@@ -729,10 +759,24 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s149_q17, h_s149_non_effects,
       h_s148_q16, h_s148_non_effects,
       extractLsb'_of_append_mid]
-    have q0 : r (StateField.SFP 17#5) s147 = r (StateField.SFP 17#5) s145 := by sorry
-    have q1 : r (StateField.SFP 16#5) s147 = r (StateField.SFP 16#5) s144 := by sorry
-    have q2 : r (StateField.SFP 29#5) s147 = r (StateField.SFP 29#5) s151 := by sorry
-    have q3 : r (StateField.SFP 31#5) s147 = r (StateField.SFP 31#5) s151 := by sorry
+    have q0 : r (StateField.SFP 17#5) s147 = r (StateField.SFP 17#5) s145 := by
+      simp (config := {decide := true}) only [
+        h_s147_non_effects, h_s146_non_effects,
+      ]
+    have q1 : r (StateField.SFP 16#5) s147 = r (StateField.SFP 16#5) s144 := by
+      simp (config := {decide := true}) only [
+        h_s147_non_effects, h_s146_non_effects, h_s145_non_effects
+      ]
+    have q2 : r (StateField.SFP 29#5) s147 = r (StateField.SFP 29#5) s151 := by
+      simp (config := {decide := true}) only [
+        h_s147_non_effects, h_s148_non_effects, h_s149_non_effects,
+        h_s150_non_effects, h_s151_non_effects
+      ]
+    have q3 : r (StateField.SFP 31#5) s147 = r (StateField.SFP 31#5) s151 := by
+      simp (config := {decide := true}) only [
+        h_s147_non_effects, h_s148_non_effects, h_s149_non_effects,
+        h_s150_non_effects, h_s151_non_effects
+      ]
     simp only [q0, q1, q2, q3, h_v16_s144, h_v17_s145, h_H9, h_H11]
     simp only [lo, hi, extractLsb'_of_xor_of_extractLsb'_hi,
       extractLsb'_of_xor_of_extractLsb'_lo,
