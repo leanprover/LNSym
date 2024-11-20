@@ -8,7 +8,6 @@ import Proofs.«AES-GCM».GCMInitV8Pre
 import Tactics.Sym
 import Tactics.Aggregate
 import Specs.GCMV8
-import Tactics.ExtractGoal
 
 namespace GCMInitV8Program
 
