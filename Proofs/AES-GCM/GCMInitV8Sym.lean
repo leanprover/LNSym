@@ -735,7 +735,16 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     let H5 := gcm_polyval_asm H0 H3
     let H6 := gcm_polyval_asm H0 H5
     (hi H6 ^^^ lo H6) ++ (hi H6 ^^^ lo H6) := by sorry
-  have h_v18_113 : r (StateField.SFP 18#5) s113 =
+  have h_v17_s112 : r (StateField.SFP 17#5) s112 =
+    let x_rev := (lo x1) ++ (hi x1)
+    let H0 := gcm_init_H_asm x_rev
+    let H2 := gcm_polyval_asm H0 H0
+    let H3 := gcm_polyval_asm H0 H2
+    let H5 := gcm_polyval_asm H0 H3
+    let H6 := gcm_polyval_asm H0 H5
+    let H8 := gcm_polyval_asm H0 H6
+    (hi H8 ^^^ lo H8) ++ (hi H8 ^^^ lo H8) := by sorry
+  have h_v18_s113 : r (StateField.SFP 18#5) s113 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
     let H2 := gcm_polyval_asm H0 H0
@@ -843,7 +852,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     have q1 : r (StateField.SFP 16#5) s115 = r (StateField.SFP 16#5) s111 := by sorry
     have q2 : r (StateField.SFP 18#5) s115 = r (StateField.SFP 18#5) s113 := by sorry
     have q3 : r (StateField.SFP 19#5) s115 = r (StateField.SFP 19#5) s17 := by sorry
-    simp only [q0, q1, q2, q3, h_H6, h_H2, h_v16_s111, h_v18_113, h_e1]
+    simp only [q0, q1, q2, q3, h_H6, h_H2, h_v16_s111, h_v18_s113, h_e1]
     generalize (gcm_init_H_asm (lo x1 ++ hi x1)) = H0
     generalize h_H2_var : (gcm_polyval_asm H0 H0) = H2
     generalize (gcm_polyval_asm H0 (gcm_polyval_asm H0 (gcm_polyval_asm H0 H2))) = H5
@@ -876,7 +885,51 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     let H8 := gcm_polyval_asm H0 H6
     let H9 := gcm_polyval_asm H0 H8
     gcm_polyval_asm H0 H9 := by
-    sorry
+    simp (config := {decide := true}) only [
+      h_s145_q17, h_s145_non_effects,
+      h_s144_non_effects, h_s143_q4, h_s143_non_effects,
+      h_s142_non_effects, h_s141_q5, h_s141_non_effects,
+      h_s140_non_effects, h_s139_q4, h_s139_non_effects,
+      h_s138_non_effects, h_s137_q5, h_s137_non_effects,
+      h_s136_non_effects, h_s135_q6, h_s135_non_effects,
+      h_s134_non_effects, h_s133_q7, h_s133_non_effects,
+      h_s132_non_effects, h_s131_q4, h_s131_non_effects,
+      h_s130_q6, h_s130_non_effects, h_s129_non_effects,
+      h_s128_non_effects, h_s127_q6, h_s127_non_effects,
+      h_s126_q4, h_s126_non_effects, h_s125_non_effects,
+      h_s124_non_effects, h_s123_q17, h_s123_non_effects,
+      h_s122_non_effects, h_s121_q6, h_s121_non_effects,
+      h_s120_non_effects, h_s119_q7, h_s119_non_effects,
+      h_s118_non_effects, h_s117_q5, h_s117_non_effects,
+      h_s116_non_effects
+    ]
+    have q0 : r (StateField.SFP 22#5) s115 = r (StateField.SFP 22#5) s37 := by sorry
+    have q1 : r (StateField.SFP 17#5) s115 = r (StateField.SFP 17#5) s112 := by sorry
+    have q2 : r (StateField.SFP 18#5) s115 = r (StateField.SFP 18#5) s113 := by sorry
+    have q3 : r (StateField.SFP 19#5) s115 = r (StateField.SFP 19#5) s17 := by sorry
+    simp only [q0, q1, q2, q3, h_e1, h_H8, h_H2, h_v18_s113, h_v17_s112]
+    generalize (gcm_init_H_asm (lo x1 ++ hi x1)) = H0
+    generalize h_H2_var : (gcm_polyval_asm H0 H0) = H2
+    generalize (gcm_polyval_asm H0 (gcm_polyval_asm H0 (gcm_polyval_asm H0 (gcm_polyval_asm H0 H2)))) = H6
+    -- simplifying LHS
+    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq,
+      gcm_polyval_asm_gcm_polyval_equiv,
+      hi, lo, BitVec.partInstall]
+    simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
+      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
+      extractLsb'_of_xor_of_append]
+    -- simplifying RHS
+    conv =>
+      rhs
+      simp only [gcm_polyval_asm_associativity, h_H2_var]
+      rw [gcm_polyval_asm_commutativity]
+    simp only [gcm_polyval_asm, BitVec.partInstall]
+    simp only [hi, lo] at *
+    simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
+       extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
+       extractLsb'_of_xor_of_append]
+    rw [polynomial_mult_commutativity (BitVec.extractLsb' 64 64 H2) (BitVec.extractLsb' 64 64 H6)]
+    rw [polynomial_mult_commutativity (BitVec.extractLsb' 0 64 H2) (BitVec.extractLsb' 0 64 H6)]
   have h_H9 : r (StateField.SFP 29#5) s151 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
