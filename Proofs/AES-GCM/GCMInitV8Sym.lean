@@ -212,6 +212,12 @@ theorem crock (x : BitVec 128) :
   ((BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x) ++
    (BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x)) := by bv_decide
 
+
+theorem crock2 (x : BitVec 128) :
+  (BitVec.extractLsb' 64 64 x ++ BitVec.extractLsb' 0 64 x) ^^^ (BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x) =
+  ((BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x) ++
+   (BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x)) := by bv_decide
+
 set_option maxRecDepth 5000 in
 set_option maxHeartbeats 1000000 in
 -- set_option pp.deepTerms true in
@@ -464,7 +470,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s41_non_effects, h_s40_q0, h_s40_non_effects,
       h_s39_non_effects, h_s38_non_effects, h_s37_non_effects]
     have q0 : r (StateField.SFP 20#5) s36 = r (StateField.SFP 20#5) s17 := by sym_aggregate
-    have q1 : r (StateField.SFP 22#5) s36 = r (StateField.SFP 22#5) s37 := by sym_aggregate
+    have q1 : r (StateField.SFP 22#5) s36 = r (StateField.SFP 22#5) s37 := by
+      simp (config := {decide := true}) only [ h_s37_non_effects ]
     have q2_1 : r (StateField.SFP 16#5) s36 = r (StateField.SFP 16#5) s20 := by sym_aggregate
     have q2 : BitVec.extractLsb' 0 64 (r (StateField.SFP 16#5) s36) =
       let x_rev := (lo x1) ++ (hi x1)
@@ -521,7 +528,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s40_non_effects, h_s39_non_effects, h_s38_non_effects,
       ]
     have q0 : (r (StateField.SFP 19#5) s37) = (r (StateField.SFP 19#5) s17) := by sym_aggregate
-    have q1 : (r (StateField.SFP 17#5) s37) = (r (StateField.SFP 17#5) s36) := by sym_aggregate
+    have q1 : (r (StateField.SFP 17#5) s37) = (r (StateField.SFP 17#5) s36) := by
+      simp (config := {decide := true}) only [ h_s37_non_effects ]
     simp only [q0, h_H2, h_e1, q1, h_v17_s36]
     -- simplifying LHS
     simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq,
@@ -557,7 +565,14 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
     let H2 := gcm_polyval_asm H0 H0
-    ((hi H2) ^^^ (lo H2)) ++ ((hi H2) ^^^ (lo H2)) := by sorry
+    ((hi H2) ^^^ (lo H2)) ++ ((hi H2) ^^^ (lo H2)) := by
+    simp (config := {decide := true}) only [
+      h_s75_q18, h_s75_non_effects, h_s74_non_effects,
+      h_s73_non_effects, h_s72_q18, h_s72_non_effects,
+    ]
+    have q0 : (r (StateField.SFP 22#5) s71) = (r (StateField.SFP 22#5) s37) := by sym_aggregate
+    simp only [q0, h_H2, hi, lo, extractLsb'_of_append_mid,
+      extractLsb'_of_append_hi, extractLsb'_of_append_lo, crock2]
   have h_H3 : r (StateField.SFP 23#5) s77 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -650,10 +665,11 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s80_q2, h_s80_non_effects, h_s79_non_effects,
       h_s78_q0, h_s78_non_effects
     ]
-    have q0 : r (StateField.SFP 16#5) s77 = r (StateField.SFP 16#5) s73 := by sorry
-    have q1 : r (StateField.SFP 18#5) s77 = r (StateField.SFP 18#5) s75 := by sorry
-    have q2 : r (StateField.SFP 22#5) s77 = r (StateField.SFP 22#5) s37 := by sorry
-    have q3 : r (StateField.SFP 19#5) s77 = r (StateField.SFP 19#5) s17 := by sorry
+    have q0 : r (StateField.SFP 16#5) s77 = r (StateField.SFP 16#5) s73 := by sym_aggregate
+    have q1 : r (StateField.SFP 18#5) s77 = r (StateField.SFP 18#5) s75 := by
+      simp (config := {decide := true}) only [ h_s77_non_effects, h_s76_non_effects ]
+    have q2 : r (StateField.SFP 22#5) s77 = r (StateField.SFP 22#5) s37 := by sym_aggregate
+    have q3 : r (StateField.SFP 19#5) s77 = r (StateField.SFP 19#5) s17 := by sym_aggregate
     simp only [q0, q1, q2, q3, h_v16_s73, h_v18_s75, h_H2, h_H3, h_e1]
     generalize (gcm_init_H_asm (lo x1 ++ hi x1)) = H0
     -- simplifying LHS
@@ -703,8 +719,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s80_non_effects, h_s79_q5, h_s79_non_effects,
       h_s78_non_effects
     ]
-    have q0 : r (StateField.SFP 16#5) s77 = r (StateField.SFP 16#5) s73 := by sorry
-    have q1 : r (StateField.SFP 19#5) s77 = r (StateField.SFP 19#5) s17 := by sorry
+    have q0 : r (StateField.SFP 16#5) s77 = r (StateField.SFP 16#5) s73 := by sym_aggregate
+    have q1 : r (StateField.SFP 19#5) s77 = r (StateField.SFP 19#5) s17 := by sym_aggregate
     simp only [q0, q1, h_e1, h_H3, h_v16_s73]
     generalize (gcm_init_H_asm (lo x1 ++ hi x1)) = H0
     generalize h_H3_var : (gcm_polyval_asm H0 (gcm_polyval_asm H0 H0)) = H3
@@ -734,7 +750,15 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     let H3 := gcm_polyval_asm H0 H2
     let H5 := gcm_polyval_asm H0 H3
     let H6 := gcm_polyval_asm H0 H5
-    (hi H6 ^^^ lo H6) ++ (hi H6 ^^^ lo H6) := by sorry
+    (hi H6 ^^^ lo H6) ++ (hi H6 ^^^ lo H6) := by
+    simp (config := {decide := true}) only [
+      h_s111_q16, h_s111_non_effects, h_s110_non_effects,
+      h_s109_non_effects, h_s108_q26, h_s108_non_effects,
+      h_s107_non_effects,
+    ]
+    simp only [h_v16_s106, hi, lo, extractLsb'_of_append_mid,
+       extractLsb'_of_append_hi,
+       extractLsb'_of_append_lo, crock]
   have h_v17_s112 : r (StateField.SFP 17#5) s112 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -743,12 +767,30 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     let H5 := gcm_polyval_asm H0 H3
     let H6 := gcm_polyval_asm H0 H5
     let H8 := gcm_polyval_asm H0 H6
-    (hi H8 ^^^ lo H8) ++ (hi H8 ^^^ lo H8) := by sorry
+    (hi H8 ^^^ lo H8) ++ (hi H8 ^^^ lo H8) := by
+    simp (config := {decide := true}) only [
+      h_s112_q17, h_s112_non_effects,
+      h_s111_non_effects, h_s110_non_effects,
+      h_s109_q28, h_s109_non_effects,
+      h_s108_non_effects,
+    ]
+    simp only [h_v17_s107, hi, lo, extractLsb'_of_append_mid,
+       extractLsb'_of_append_hi,
+       extractLsb'_of_append_lo, crock]
   have h_v18_s113 : r (StateField.SFP 18#5) s113 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
     let H2 := gcm_polyval_asm H0 H0
-    (hi H2 ^^^ lo H2) ++ (hi H2 ^^^ lo H2) := by sorry
+    (hi H2 ^^^ lo H2) ++ (hi H2 ^^^ lo H2) := by
+    simp (config := {decide := true}) only [
+      h_s113_q18, h_s113_non_effects,
+      h_s112_non_effects, h_s111_non_effects,
+      h_s110_q18, h_s110_non_effects,
+    ]
+    have q: r (StateField.SFP 22#5) s109 = r (StateField.SFP 22#5) s37 := by sym_aggregate
+    simp only [q, h_H2, hi, lo, extractLsb'_of_append_mid,
+       extractLsb'_of_append_hi,
+       extractLsb'_of_append_lo, crock2]
   have h_H6 : r (StateField.SFP 26#5) s115 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -848,10 +890,11 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s118_q2, h_s118_non_effects, h_s117_non_effects,
       h_s116_q0, h_s116_non_effects
     ]
-    have q0 : r (StateField.SFP 22#5) s115 = r (StateField.SFP 22#5) s37 := by sorry
-    have q1 : r (StateField.SFP 16#5) s115 = r (StateField.SFP 16#5) s111 := by sorry
-    have q2 : r (StateField.SFP 18#5) s115 = r (StateField.SFP 18#5) s113 := by sorry
-    have q3 : r (StateField.SFP 19#5) s115 = r (StateField.SFP 19#5) s17 := by sorry
+    have q0 : r (StateField.SFP 22#5) s115 = r (StateField.SFP 22#5) s37 := by sym_aggregate
+    have q1 : r (StateField.SFP 16#5) s115 = r (StateField.SFP 16#5) s111 := by sym_aggregate
+    have q2 : r (StateField.SFP 18#5) s115 = r (StateField.SFP 18#5) s113 := by
+      simp (config := {decide := true}) only [ h_s115_non_effects, h_s114_non_effects ]
+    have q3 : r (StateField.SFP 19#5) s115 = r (StateField.SFP 19#5) s17 := by sym_aggregate
     simp only [q0, q1, q2, q3, h_H6, h_H2, h_v16_s111, h_v18_s113, h_e1]
     generalize (gcm_init_H_asm (lo x1 ++ hi x1)) = H0
     generalize h_H2_var : (gcm_polyval_asm H0 H0) = H2
@@ -903,10 +946,16 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s118_non_effects, h_s117_q5, h_s117_non_effects,
       h_s116_non_effects
     ]
-    have q0 : r (StateField.SFP 22#5) s115 = r (StateField.SFP 22#5) s37 := by sorry
-    have q1 : r (StateField.SFP 17#5) s115 = r (StateField.SFP 17#5) s112 := by sorry
-    have q2 : r (StateField.SFP 18#5) s115 = r (StateField.SFP 18#5) s113 := by sorry
-    have q3 : r (StateField.SFP 19#5) s115 = r (StateField.SFP 19#5) s17 := by sorry
+    have q0 : r (StateField.SFP 22#5) s115 = r (StateField.SFP 22#5) s37 := by sym_aggregate
+    have q1 : r (StateField.SFP 17#5) s115 = r (StateField.SFP 17#5) s112 := by
+      simp (config := {decide := true}) only [
+        h_s115_non_effects, h_s114_non_effects, h_s113_non_effects
+      ]
+    have q2 : r (StateField.SFP 18#5) s115 = r (StateField.SFP 18#5) s113 := by
+      simp (config := {decide := true}) only [
+        h_s115_non_effects, h_s114_non_effects
+      ]
+    have q3 : r (StateField.SFP 19#5) s115 = r (StateField.SFP 19#5) s17 := by sym_aggregate
     simp only [q0, q1, q2, q3, h_e1, h_H8, h_H2, h_v18_s113, h_v17_s112]
     generalize (gcm_init_H_asm (lo x1 ++ hi x1)) = H0
     generalize h_H2_var : (gcm_polyval_asm H0 H0) = H2
@@ -1008,57 +1057,57 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     sym_aggregate
     bv_decide
   · sym_aggregate
-  · have q : r (StateField.SFP 20#5) s151 = r (StateField.SFP 20#5) s17 := by sorry
+  · have q : r (StateField.SFP 20#5) s151 = r (StateField.SFP 20#5) s17 := by sym_aggregate
     simp only [q, h_H0,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
       gcm_polyval_asm_gcm_polyval_equiv]
-  · have q : r (StateField.SFP 21#5) s151 = r (StateField.SFP 21#5) s37 := by sorry
+  · have q : r (StateField.SFP 21#5) s151 = r (StateField.SFP 21#5) s37 := by sym_aggregate
     simp only [q, h_H1,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
       gcm_polyval_asm_gcm_polyval_equiv]
-  · have q : r (StateField.SFP 22#5) s151 = r (StateField.SFP 22#5) s37 := by sorry
+  · have q : r (StateField.SFP 22#5) s151 = r (StateField.SFP 22#5) s37 := by sym_aggregate
     simp only [q, h_H2,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
       gcm_polyval_asm_gcm_polyval_equiv]
-  · have q : r (StateField.SFP 23#5) s151 = r (StateField.SFP 23#5) s77 := by sorry
+  · have q : r (StateField.SFP 23#5) s151 = r (StateField.SFP 23#5) s77 := by sym_aggregate
     simp only [q, h_H3,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
       gcm_polyval_asm_gcm_polyval_equiv]
-  · have q : r (StateField.SFP 24#5) s151 = r (StateField.SFP 24#5) s77 := by sorry
+  · have q : r (StateField.SFP 24#5) s151 = r (StateField.SFP 24#5) s77 := by sym_aggregate
     simp only [q, h_H4,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
       gcm_polyval_asm_gcm_polyval_equiv]
-  · have q : r (StateField.SFP 25#5) s151 = r (StateField.SFP 25#5) s77 := by sorry
+  · have q : r (StateField.SFP 25#5) s151 = r (StateField.SFP 25#5) s77 := by sym_aggregate
     simp only [q, h_H5,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
       gcm_polyval_asm_gcm_polyval_equiv]
-  · have q : r (StateField.SFP 26#5) s151 = r (StateField.SFP 26#5) s115 := by sorry
+  · have q : r (StateField.SFP 26#5) s151 = r (StateField.SFP 26#5) s115 := by sym_aggregate
     simp only [q, h_H6,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
       gcm_polyval_asm_gcm_polyval_equiv]
-  · have q : r (StateField.SFP 27#5) s151 = r (StateField.SFP 27#5) s115 := by sorry
+  · have q : r (StateField.SFP 27#5) s151 = r (StateField.SFP 27#5) s115 := by sym_aggregate
     simp only [q, h_H7,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
       gcm_polyval_asm_gcm_polyval_equiv]
-  · have q : r (StateField.SFP 28#5) s151 = r (StateField.SFP 28#5) s115 := by sorry
+  · have q : r (StateField.SFP 28#5) s151 = r (StateField.SFP 28#5) s115 := by sym_aggregate
     simp only [q, h_H8,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
       gcm_polyval_asm_gcm_polyval_equiv]
-  · have q : r (StateField.SFP 29#5) s151 = r (StateField.SFP 29#5) s151 := by sorry
+  · have q : r (StateField.SFP 29#5) s151 = r (StateField.SFP 29#5) s151 := by sym_aggregate
     simp only [q, h_H9,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
       gcm_polyval_asm_gcm_polyval_equiv]
-  · have q : r (StateField.SFP 30#5) s151 = r (StateField.SFP 30#5) s151 := by sorry
+  · have q : r (StateField.SFP 30#5) s151 = r (StateField.SFP 30#5) s151 := by sym_aggregate
     simp only [q, h_H10,
       GCMV8.GCMInitV8, List.get!, GCMV8.lo, GCMV8.hi,
       gcm_init_H_asm_gcm_int_H_equiv,
