@@ -13,11 +13,73 @@ namespace GCMInitV8Program
 
 set_option bv.ac_nf false
 
+------------------------------------
+-- Definitions
+
 abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 
 abbrev lo (x : BitVec 128) : BitVec 64 := BitVec.extractLsb' 0 64 x
 abbrev hi (x : BitVec 128) : BitVec 64 := BitVec.extractLsb' 64 64 x
+
+------------------------------------
+-- bv lemmas
+
+theorem extractLsb'_of_append_hi (x y : BitVec 64) :
+  BitVec.extractLsb' 64 64 (x ++ y) = x := by
+  bv_decide
+
+theorem extractLsb'_of_append_lo (x y : BitVec 64) :
+  BitVec.extractLsb' 0 64 (x ++ y) = y := by
+  bv_decide
+
+theorem extractLsb'_of_append_mid (x : BitVec 128) (y : BitVec 128):
+  BitVec.extractLsb' 64 128 (x ++ y)
+  = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 y := by
+  bv_decide
+
+theorem extractLsb'_append4_1 (x : BitVec 32) :
+  (BitVec.extractLsb' 0 32 (x ++ x ++ x ++ x)) = x := by bv_decide
+
+theorem extractLsb'_append4_2 (x : BitVec 32) :
+  (BitVec.extractLsb' 32 32 (x ++ x ++ x ++ x)) = x := by bv_decide
+
+theorem extractLsb'_append4_3 (x : BitVec 32) :
+  (BitVec.extractLsb' 64 32 (x ++ x ++ x ++ x)) = x := by bv_decide
+
+theorem extractLsb'_append4_4 (x : BitVec 32) :
+  (BitVec.extractLsb' 96 32 (x ++ x ++ x ++ x)) = x := by bv_decide
+
+theorem setWidth_extractLsb'_equiv_64_128 (x : BitVec 128) :
+  (BitVec.setWidth 64 x) = BitVec.extractLsb' 0 64 x := by bv_decide
+
+theorem xor_of_append_append_of_xor_equiv (x : BitVec 64) (y : BitVec 64) :
+  (x ++ y) ^^^ (y ++ x) =(x ^^^ y) ++ (x ^^^ y) := by bv_decide
+
+theorem bv_append_64_128 (x : BitVec 128) :
+  BitVec.extractLsb' 64 64 x ++ BitVec.extractLsb' 0 64 x = x := by bv_decide
+
+theorem extractLsb'_of_xor_of_extractLsb'_lo (x : BitVec 128):
+  (BitVec.extractLsb' 0 64
+      (x ^^^ (BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x)))
+      = BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x := by
+      bv_decide
+
+theorem extractLsb'_of_xor_of_extractLsb'_hi (x : BitVec 128):
+  (BitVec.extractLsb' 64 64
+      (x ^^^ (BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x)))
+      = BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x := by
+      bv_decide
+
+------------------------------------
+
+-- FIXME: prove the following lemma
+theorem gcm_polyval_mul_eq_polynomial_mult (x y : BitVec 128) :
+  GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by sorry
+
+-- FIXME: prove the following lemma
+theorem polynomial_mult_commutativity (x y : BitVec 64) :
+  DPSFP.polynomial_mult x y = DPSFP.polynomial_mult y x := by sorry
 
 -- Define a function that represents gcm_init_H in the assembly
 def gcm_init_H_asm (H : BitVec 128) : BitVec 128 :=
@@ -44,7 +106,7 @@ def gcm_init_H_asm (H : BitVec 128) : BitVec 128 :=
 set_option maxRecDepth 3000 in
 set_option maxHeartbeats 1000000 in
 set_option sat.timeout 120 in
-set_option debug.byAsSorry true in
+-- set_option debug.byAsSorry true in
 -- set_option trace.profiler true in
 theorem gcm_init_H_asm_gcm_int_H_equiv (x : BitVec 128) :
   GCMV8.gcm_init_H x = gcm_init_H_asm x := by
@@ -59,14 +121,6 @@ theorem gcm_init_H_asm_gcm_int_H_equiv (x : BitVec 128) :
     BitVec.zero_xor, BitVec.reduceHShiftLeft, Nat.add_one_sub_one, BitVec.one_mul, BitVec.reduceXOr,
     BitVec.ushiftRight_eq, BitVec.shiftLeft_eq, BitVec.reduceAppend]
   bv_decide
-
--- FIXME: prove the following lemma
-theorem gcm_polyval_mul_eq_polynomial_mult (x y : BitVec 128) :
-  GCMV8.gcm_polyval_mul x y = DPSFP.polynomial_mult x y := by sorry
-
--- FIXME: prove the following lemma
-theorem polynomial_mult_commutativity (x y : BitVec 64) :
-  DPSFP.polynomial_mult x y = DPSFP.polynomial_mult y x := by sorry
 
 -- The following represents the assembly version of gcm_polyval
 def gcm_polyval_asm (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
@@ -94,14 +148,6 @@ def gcm_polyval_asm (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
   let v23 := v16
   v23
 
-theorem extractLsb'_of_append_hi (x y : BitVec 64) :
-  BitVec.extractLsb' 64 64 (x ++ y) = x := by
-  bv_decide
-
-theorem extractLsb'_of_append_lo (x y : BitVec 64) :
-  BitVec.extractLsb' 0 64 (x ++ y) = y := by
-  bv_decide
-
 -- https://kib.kiev.ua/x86docs/Intel/WhitePapers/323640-001.pdf
 def karatsuba_multiplication (x : BitVec 128) (y : BitVec 128) : BitVec 256 :=
   let A1 := hi x
@@ -122,7 +168,7 @@ def karatsuba_multiplication (x : BitVec 128) (y : BitVec 128) : BitVec 256 :=
 theorem karatsuba_multiplication_equiv (x : BitVec 128) (y : BitVec 128) :
   DPSFP.polynomial_mult x y = karatsuba_multiplication x y := by sorry
 
--- TODO: look into https://github.com/GaloisInc/saw-script/tree/master/rme for RME
+-- FIXME: look into https://github.com/GaloisInc/saw-script/tree/master/rme for RME
 -- https://github.com/GaloisInc/aws-lc-verification/blob/0efc892de9a4d2660067ab02fdcef5993ff5184a/SAW/proof/AES/goal-rewrites.saw#L200-L214
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 5000000 in
@@ -144,82 +190,22 @@ theorem gcm_polyval_asm_gcm_polyval_equiv (x : BitVec 128) (y : BitVec 128) :
   generalize h_A0B0 : DPSFP.polynomial_mult A0 B0 = A0B0
   sorry
 
-theorem gcm_polyval_asm_associativity (x : BitVec 128) (y : BitVec 128) (z : BitVec 128) :
-  gcm_polyval_asm x (gcm_polyval_asm y z) = gcm_polyval_asm (gcm_polyval_asm x y) z := by
+theorem gcm_polyval_asm_commutativity (x y : BitVec 128) :
+  gcm_polyval_asm x y = gcm_polyval_asm y x := by
+  simp only [gcm_polyval_asm, BitVec.partInstall,
+    lo, hi, polynomial_mult_commutativity]
+
+-- FIXME: Prove the following lemma
+theorem gcm_polyval_asm_associativity
+  (x : BitVec 128) (y : BitVec 128) (z : BitVec 128) :
+  gcm_polyval_asm x (gcm_polyval_asm y z) =
+  gcm_polyval_asm (gcm_polyval_asm x y) z := by
   sorry
 
--- FIXME: prove the following lemma
-theorem gcm_polyval_asm_commutativity (x y : BitVec 128) :
-  gcm_polyval_asm x y = gcm_polyval_asm y x := by sorry
-
--- FIXME: Taken from gcm_gmult_v8
-theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
-  DPSFP.pmull_op 0 64 1 x y 0#128 =
-  DPSFP.polynomial_mult x y := by
-  unfold DPSFP.pmull_op
-  simp (config := {ground := true}) only [minimal_theory]
-  unfold DPSFP.pmull_op
-  simp (config := {ground := true}) only [minimal_theory]
-  simp only [state_simp_rules, bitvec_rules]
-  done
-
-theorem extractLsb'_of_append_mid (x : BitVec 128) (y : BitVec 128):
-  BitVec.extractLsb' 64 128 (x ++ y)
-  = BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 y := by
-  bv_decide
-
-theorem extractLsb'_append4_1 (x : BitVec 32) :
-  (BitVec.extractLsb' 0 32 (x ++ x ++ x ++ x)) = x := by bv_decide
-
-theorem extractLsb'_append4_2 (x : BitVec 32) :
-  (BitVec.extractLsb' 32 32 (x ++ x ++ x ++ x)) = x := by bv_decide
-
-theorem extractLsb'_append4_3 (x : BitVec 32) :
-  (BitVec.extractLsb' 64 32 (x ++ x ++ x ++ x)) = x := by bv_decide
-
-theorem extractLsb'_append4_4 (x : BitVec 32) :
-  (BitVec.extractLsb' 96 32 (x ++ x ++ x ++ x)) = x := by bv_decide
-
-theorem setWidth_extractLsb'_equiv_64_128 (x : BitVec 128) :
-  (BitVec.setWidth 64 x) = BitVec.extractLsb' 0 64 x := by bv_decide
-
-theorem append_of_extractLsb'_of_append (x : BitVec 64) (y : BitVec 64) :
-  (BitVec.extractLsb' 0 64 (x ++ y)) ++ (BitVec.extractLsb' 64 64 (x ++ y))
-  = y ++ x := by bv_decide
-
-theorem extractLsb'_of_xor_of_append (x : BitVec 64) (y : BitVec 64) :
-  (BitVec.extractLsb' 0 64 ((x ++ y) ^^^ (y ++ x)))
-  = (x ^^^ y) := by bv_decide
-
-theorem extractLsb'_of_xor_of_append_hi (x : BitVec 64) (y : BitVec 64) :
-  (BitVec.extractLsb' 64 64 ((x ++ y) ^^^ (y ++ x)))
-  = (x ^^^ y) := by bv_decide
-
-theorem extractLsb'_of_xor_of_extractLsb'_lo (x : BitVec 128):
-  (BitVec.extractLsb' 0 64
-      (x ^^^ (BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x)))
-      = BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x := by
-      bv_decide
-
-theorem extractLsb'_of_xor_of_extractLsb'_hi (x : BitVec 128):
-  (BitVec.extractLsb' 64 64
-      (x ^^^ (BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x)))
-      = BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x := by
-      bv_decide
-
-theorem crock (x : BitVec 128) :
-  x ^^^ (BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x) =
-  ((BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x) ++
-   (BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x)) := by bv_decide
-
-
-theorem crock2 (x : BitVec 128) :
-  (BitVec.extractLsb' 64 64 x ++ BitVec.extractLsb' 0 64 x) ^^^ (BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x) =
-  ((BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x) ++
-   (BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x)) := by bv_decide
+------------------------------------
 
 set_option maxRecDepth 5000 in
-set_option maxHeartbeats 1000000 in
+set_option maxHeartbeats 2000000 in
 -- set_option pp.deepTerms true in
 -- set_option pp.maxSteps 1000000 in
 -- set_option trace.profiler true in
@@ -285,12 +271,12 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       read_sfp 128 31#5 sf =
       (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 11
     --
-    -- TODO: Commenting out memory related conjuncts since it seems
+    -- FIXME: Commenting out memory related conjuncts since it seems
     -- to make symbolic execution stuck
     --   -- First 12 elements in Htable is correct
     -- ∧ read_mem_bytes 192 (Htable_addr s0) sf
     --   = revflat (GCMV8.GCMInitV8 (read_mem_bytes 16 (H_addr s0) s0))
-    --
+    -- -----------------------------------------
     -- non-effects
     -- State values that shouldn't change do not change
     -- TODO: figure out all registers that are used ...
@@ -336,7 +322,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
       extractLsb'_of_append_lo, extractLsb'_append4_1, extractLsb'_append4_2,
       extractLsb'_append4_3, extractLsb'_append4_4,
-      setWidth_extractLsb'_equiv_64_128, extractLsb'_of_xor_of_append]
+      setWidth_extractLsb'_equiv_64_128]
     -- simplifying RHS
     simp only [lo, hi, gcm_init_H_asm, BitVec.partInstall,
       extractLsb'_of_append_hi, extractLsb'_of_append_lo]
@@ -389,22 +375,15 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [h_H0, h_e1]
     generalize (gcm_init_H_asm (lo x1 ++ hi x1)) = H0
     -- simplify LHS
-    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq,
+    simp only [DPSFP.pmull_op_e_0_eize_64_elements_1_size_128_eq,
       BitVec.partInstall, lo, hi]
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-       extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-       extractLsb'_of_xor_of_append, extractLsb'_of_xor_of_append_hi]
-    simp only [Nat.reduceAdd, BitVec.reduceAllOnes, BitVec.truncate_eq_setWidth,
-      BitVec.reduceSetWidth, BitVec.reduceHShiftLeft, BitVec.reduceNot,
-      BitVec.reduceExtracLsb', BitVec.shiftLeft_eq, BitVec.shiftLeft_zero_eq]
+       extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128]
     -- simplify RHS
     simp only [gcm_polyval_asm, BitVec.partInstall, hi, lo]
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
       extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-      extractLsb'_of_xor_of_append]
-    simp only [Nat.reduceAdd, BitVec.reduceAllOnes, BitVec.truncate_eq_setWidth,
-      BitVec.reduceSetWidth, BitVec.reduceHShiftLeft, BitVec.reduceNot,
-      BitVec.reduceExtracLsb', BitVec.shiftLeft_eq, BitVec.shiftLeft_zero_eq]
+      xor_of_append_append_of_xor_equiv]
   have h_v17_s36 : BitVec.extractLsb' 0 64 (r (StateField.SFP 17#5) s36) =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -447,7 +426,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     let H0 := gcm_init_H_asm x_rev
     let H2 := gcm_polyval_asm H0 H0
     gcm_polyval_asm H0 H2 := by
-    -- TODO: I want to sym_aggregate, but only aggregate to last step,
+    -- FIXME: I want to sym_aggregate, but only aggregate to last step,
     -- instead of all the way to the top
     -- sym_aggregate
     simp (config := {decide := true}) only [
@@ -484,24 +463,16 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [q0, h_H0, q1, h_H2, q2, h_v17_s36, q4, h_e1]
     generalize (gcm_init_H_asm (lo x1 ++ hi x1)) = H0
     -- simplifying LHS
-    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq,
+    simp only [DPSFP.pmull_op_e_0_eize_64_elements_1_size_128_eq,
       gcm_polyval_asm_gcm_polyval_equiv,
       hi, lo, BitVec.partInstall]
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-      extractLsb'_of_xor_of_append]
+      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128]
     generalize (gcm_polyval_asm H0 H0) = H2
-    simp (config := {ground := true}) only
     -- simplifying RHS
-    simp only [gcm_polyval_asm, BitVec.partInstall]
-    simp only [hi, lo] at *
+    simp only [gcm_polyval_asm, BitVec.partInstall, hi, lo]
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-      extractLsb'_of_xor_of_append]
-    -- simplify all
-    simp only [Nat.reduceAdd, BitVec.shiftLeft_zero_eq, BitVec.reduceAllOnes,
-      BitVec.truncate_eq_setWidth, BitVec.reduceSetWidth, BitVec.reduceHShiftLeft, BitVec.reduceNot,
-      BitVec.reduceExtracLsb', BitVec.shiftLeft_eq]
+      extractLsb'_of_append_lo, xor_of_append_append_of_xor_equiv]
   have h_v17_s69 : r (StateField.SFP 17#5) s69 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -532,23 +503,15 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       simp (config := {decide := true}) only [ h_s37_non_effects ]
     simp only [q0, h_H2, h_e1, q1, h_v17_s36]
     -- simplifying LHS
-    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq,
+    simp only [DPSFP.pmull_op_e_0_eize_64_elements_1_size_128_eq,
       gcm_polyval_asm_gcm_polyval_equiv,
       hi, lo, BitVec.partInstall]
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-      extractLsb'_of_xor_of_append]
-    simp (config := {ground := true}) only
+      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128]
     -- simplifying RHS
-    simp only [gcm_polyval_asm, BitVec.partInstall]
-    simp only [hi, lo] at *
+    simp only [gcm_polyval_asm, BitVec.partInstall, hi, lo]
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-      extractLsb'_of_xor_of_append]
-    -- simplify all
-    simp only [Nat.reduceAdd, BitVec.shiftLeft_zero_eq, BitVec.reduceAllOnes,
-      BitVec.truncate_eq_setWidth, BitVec.reduceSetWidth, BitVec.reduceHShiftLeft,
-      BitVec.reduceNot, BitVec.reduceExtracLsb', BitVec.shiftLeft_eq]
+      extractLsb'_of_append_lo, xor_of_append_append_of_xor_equiv]
   have h_v16_s73 : r (StateField.SFP 16#5) s73 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -560,7 +523,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       h_s72_non_effects, h_s71_non_effects,
       h_s70_q23, h_s70_non_effects, h_s69_non_effects
     ]
-    simp only [h_v16_s68, extractLsb'_of_append_mid, crock]
+    simp only [h_v16_s68, extractLsb'_of_append_mid,
+      hi, lo, bv_append_64_128, ←xor_of_append_append_of_xor_equiv]
   have h_v18_s75 : r (StateField.SFP 18#5) s75 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -572,7 +536,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     ]
     have q0 : (r (StateField.SFP 22#5) s71) = (r (StateField.SFP 22#5) s37) := by sym_aggregate
     simp only [q0, h_H2, hi, lo, extractLsb'_of_append_mid,
-      extractLsb'_of_append_hi, extractLsb'_of_append_lo, crock2]
+      extractLsb'_of_append_hi, extractLsb'_of_append_lo,
+      bv_append_64_128, ←xor_of_append_append_of_xor_equiv]
   have h_H3 : r (StateField.SFP 23#5) s77 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -673,12 +638,11 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [q0, q1, q2, q3, h_v16_s73, h_v18_s75, h_H2, h_H3, h_e1]
     generalize (gcm_init_H_asm (lo x1 ++ hi x1)) = H0
     -- simplifying LHS
-    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq,
+    simp only [DPSFP.pmull_op_e_0_eize_64_elements_1_size_128_eq,
       gcm_polyval_asm_gcm_polyval_equiv,
       hi, lo, BitVec.partInstall]
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-      extractLsb'_of_xor_of_append]
+      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128]
     generalize h_H2_var : (gcm_polyval_asm H0 H0) = H2
     generalize (gcm_polyval_asm H0 H2) = H3
     -- simplifying RHS
@@ -689,8 +653,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [gcm_polyval_asm, BitVec.partInstall]
     simp only [hi, lo] at *
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-       extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-       extractLsb'_of_xor_of_append]
+       extractLsb'_of_append_lo, xor_of_append_append_of_xor_equiv]
     rw [polynomial_mult_commutativity (BitVec.extractLsb' 64 64 H2) (BitVec.extractLsb' 64 64 H3)]
     rw [polynomial_mult_commutativity (BitVec.extractLsb' 0 64 H2) (BitVec.extractLsb' 0 64 H3)]
   have h_v17_s107 : r (StateField.SFP 17#5) s107 =
@@ -725,12 +688,11 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     generalize (gcm_init_H_asm (lo x1 ++ hi x1)) = H0
     generalize h_H3_var : (gcm_polyval_asm H0 (gcm_polyval_asm H0 H0)) = H3
     -- simplifying LHS
-    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq,
+    simp only [DPSFP.pmull_op_e_0_eize_64_elements_1_size_128_eq,
       gcm_polyval_asm_gcm_polyval_equiv,
       hi, lo, BitVec.partInstall]
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-      extractLsb'_of_xor_of_append]
+      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128]
     -- simplifying RHS
     have q3 : (gcm_polyval_asm (gcm_polyval_asm H0 H0) H0) = H3 := by
       rw [gcm_polyval_asm_commutativity (gcm_polyval_asm H0 H0) H0]
@@ -741,8 +703,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [gcm_polyval_asm, BitVec.partInstall]
     simp only [hi, lo] at *
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-       extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-       extractLsb'_of_xor_of_append]
+       extractLsb'_of_append_lo, xor_of_append_append_of_xor_equiv]
   have h_v16_s111 : r (StateField.SFP 16#5) s111 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -758,7 +719,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     ]
     simp only [h_v16_s106, hi, lo, extractLsb'_of_append_mid,
        extractLsb'_of_append_hi,
-       extractLsb'_of_append_lo, crock]
+       extractLsb'_of_append_lo,
+       bv_append_64_128, ←xor_of_append_append_of_xor_equiv]
   have h_v17_s112 : r (StateField.SFP 17#5) s112 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -776,7 +738,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     ]
     simp only [h_v17_s107, hi, lo, extractLsb'_of_append_mid,
        extractLsb'_of_append_hi,
-       extractLsb'_of_append_lo, crock]
+       extractLsb'_of_append_lo,
+       bv_append_64_128, ←xor_of_append_append_of_xor_equiv]
   have h_v18_s113 : r (StateField.SFP 18#5) s113 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -790,7 +753,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     have q: r (StateField.SFP 22#5) s109 = r (StateField.SFP 22#5) s37 := by sym_aggregate
     simp only [q, h_H2, hi, lo, extractLsb'_of_append_mid,
        extractLsb'_of_append_hi,
-       extractLsb'_of_append_lo, crock2]
+       extractLsb'_of_append_lo,
+       xor_of_append_append_of_xor_equiv]
   have h_H6 : r (StateField.SFP 26#5) s115 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
@@ -900,12 +864,11 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     generalize h_H2_var : (gcm_polyval_asm H0 H0) = H2
     generalize (gcm_polyval_asm H0 (gcm_polyval_asm H0 (gcm_polyval_asm H0 H2))) = H5
     -- simplifying LHS
-    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq,
+    simp only [DPSFP.pmull_op_e_0_eize_64_elements_1_size_128_eq,
       gcm_polyval_asm_gcm_polyval_equiv,
       hi, lo, BitVec.partInstall]
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-      extractLsb'_of_xor_of_append]
+      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128]
     -- simplifying RHS
     conv =>
       rhs
@@ -914,8 +877,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [gcm_polyval_asm, BitVec.partInstall]
     simp only [hi, lo] at *
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-       extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-       extractLsb'_of_xor_of_append]
+       extractLsb'_of_append_lo, xor_of_append_append_of_xor_equiv]
     rw [polynomial_mult_commutativity (BitVec.extractLsb' 64 64 H2) (BitVec.extractLsb' 64 64 H5)]
     rw [polynomial_mult_commutativity (BitVec.extractLsb' 0 64 H2) (BitVec.extractLsb' 0 64 H5)]
   have h_v17_s145 : r (StateField.SFP 17#5) s145 =
@@ -961,12 +923,11 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     generalize h_H2_var : (gcm_polyval_asm H0 H0) = H2
     generalize (gcm_polyval_asm H0 (gcm_polyval_asm H0 (gcm_polyval_asm H0 (gcm_polyval_asm H0 H2)))) = H6
     -- simplifying LHS
-    simp only [pmull_op_e_0_eize_64_elements_1_size_128_eq,
+    simp only [DPSFP.pmull_op_e_0_eize_64_elements_1_size_128_eq,
       gcm_polyval_asm_gcm_polyval_equiv,
       hi, lo, BitVec.partInstall]
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-      extractLsb'_of_xor_of_append]
+      extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128]
     -- simplifying RHS
     conv =>
       rhs
@@ -975,8 +936,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [gcm_polyval_asm, BitVec.partInstall]
     simp only [hi, lo] at *
     simp only [extractLsb'_of_append_mid, extractLsb'_of_append_hi,
-       extractLsb'_of_append_lo, setWidth_extractLsb'_equiv_64_128,
-       extractLsb'_of_xor_of_append]
+       extractLsb'_of_append_lo, xor_of_append_append_of_xor_equiv]
     rw [polynomial_mult_commutativity (BitVec.extractLsb' 64 64 H2) (BitVec.extractLsb' 64 64 H6)]
     rw [polynomial_mult_commutativity (BitVec.extractLsb' 0 64 H2) (BitVec.extractLsb' 0 64 H6)]
   have h_H9 : r (StateField.SFP 29#5) s151 =
@@ -1053,7 +1013,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   sym_n 1
   repeat' apply And.intro
   · sym_aggregate
-  · simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
+  · simp only [Htable_addr, state_value] -- FIXME: state_value is needed, why
     sym_aggregate
     bv_decide
   · sym_aggregate
