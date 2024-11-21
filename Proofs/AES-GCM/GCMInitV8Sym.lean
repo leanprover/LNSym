@@ -207,6 +207,11 @@ theorem extractLsb'_of_xor_of_extractLsb'_hi (x : BitVec 128):
       = BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x := by
       bv_decide
 
+theorem crock (x : BitVec 128) :
+  x ^^^ (BitVec.extractLsb' 0 64 x ++ BitVec.extractLsb' 64 64 x) =
+  ((BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x) ++
+   (BitVec.extractLsb' 64 64 x ^^^ BitVec.extractLsb' 0 64 x)) := by bv_decide
+
 set_option maxRecDepth 5000 in
 set_option maxHeartbeats 1000000 in
 -- set_option pp.deepTerms true in
@@ -541,7 +546,13 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     let H0 := gcm_init_H_asm x_rev
     let H2 := gcm_polyval_asm H0 H0
     let H3 := gcm_polyval_asm H0 H2
-    ((hi H3) ^^^ (lo H3)) ++ ((hi H3) ^^^ (lo H3)) := by sorry
+    ((hi H3) ^^^ (lo H3)) ++ ((hi H3) ^^^ (lo H3)) := by
+    simp (config := {decide := true}) only [
+      h_s73_q16, h_s73_non_effects,
+      h_s72_non_effects, h_s71_non_effects,
+      h_s70_q23, h_s70_non_effects, h_s69_non_effects
+    ]
+    simp only [h_v16_s68, extractLsb'_of_append_mid, crock]
   have h_v18_s75 : r (StateField.SFP 18#5) s75 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
