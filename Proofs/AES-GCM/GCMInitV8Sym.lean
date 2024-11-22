@@ -537,7 +537,15 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     have q0 : (r (StateField.SFP 22#5) s71) = (r (StateField.SFP 22#5) s37) := by sym_aggregate
     simp only [q0, h_H2, hi, lo, extractLsb'_of_append_mid,
       extractLsb'_of_append_hi, extractLsb'_of_append_lo,
-      bv_append_64_128, ←xor_of_append_append_of_xor_equiv]
+      bv_append_64_128, ←xor_of_append_append_of_xor_equiv
+      ]
+    -- FIXME: The following wouldn't work
+    -- simp only [q0, h_H2, hi, lo, extractLsb'_of_append_mid,
+    --   extractLsb'_of_append_hi, extractLsb'_of_append_lo]
+    -- generalize gcm_polyval_asm
+    --   (gcm_init_H_asm (BitVec.extractLsb' 0 64 x1 ++ BitVec.extractLsb' 64 64 x1))
+    --   (gcm_init_H_asm (BitVec.extractLsb' 0 64 x1 ++ BitVec.extractLsb' 64 64 x1)) = p
+    -- bv_decide
   have h_H3 : r (StateField.SFP 23#5) s77 =
     let x_rev := (lo x1) ++ (hi x1)
     let H0 := gcm_init_H_asm x_rev
