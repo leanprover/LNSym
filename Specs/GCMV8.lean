@@ -145,8 +145,6 @@ example : reverse irrepoly = refpoly := by native_decide
 def gcm_init_H (H : BitVec 128) : BitVec 128 :=
   pmod (H ++ 0b0#1) refpoly (by omega)
 
-#eval gcm_init_H 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128
-
 def gcm_polyval_red (x : BitVec 256) : BitVec 128 :=
   reverse $ pmod (reverse x) irrepoly (by omega)
 
@@ -161,8 +159,6 @@ def gcm_polyval_red (x : BitVec 256) : BitVec 128 :=
 -/
 def gcm_polyval (x : BitVec 128) (y : BitVec 128) : BitVec 128 :=
   GCMV8.gcm_polyval_red $ GCMV8.gcm_polyval_mul x y
-
-#eval gcm_polyval 0xcdd297a9df1458771099f4b39468565c#128 0x88d320376963120dea0b3a488cb9209b#128
 
 /-- GCMInitV8 specification:
     H : [128] -- initial H input
