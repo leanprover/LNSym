@@ -63,6 +63,16 @@ def pmull_op (e : Nat) (esize : Nat) (elements : Nat) (x : BitVec n)
     pmull_op (e + 1) esize elements x y result
   termination_by (elements - e)
 
+theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
+  DPSFP.pmull_op 0 64 1 x y 0#128 =
+  DPSFP.polynomial_mult x y := by
+  unfold DPSFP.pmull_op
+  simp (config := {ground := true}) only [minimal_theory]
+  unfold DPSFP.pmull_op
+  simp (config := {ground := true}) only [minimal_theory]
+  simp only [state_simp_rules, bitvec_rules]
+  done
+
 @[state_simp_rules]
 def exec_pmull (inst : Advanced_simd_three_different_cls) (s : ArmState) : ArmState :=
   -- This function assumes IsFeatureImplemented(FEAT_PMULL) is true
