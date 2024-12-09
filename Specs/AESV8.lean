@@ -111,7 +111,7 @@ def AESHWCtr32EncryptBlocks_helper {Param : AESArm.KBR} (in_blocks : BitVec m)
   if i >= len then acc
   else
     let lo := m - (i + 1) * 128
-    let hi := lo + 127
+    let _hi := lo + 127
     let curr_block : BitVec 128 := BitVec.extractLsb' lo 128 in_blocks
     have h4 : 128 = Param.block_size := by
       cases h3

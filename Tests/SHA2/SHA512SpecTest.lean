@@ -59,6 +59,10 @@ def ans_one_blk_mem : IO SHA2.Hash := do
 example : SHA2.sha512 ms_mem ms_one_block = expected := by
   native_decide
 
+-- #time
+-- example : SHA2.processBlocks_alt SHA2.j_512 SHA2.h0_512 SHA2.k_512 ms_one_block =
+--           expected := by native_decide
+
 -- Lazy version
 def ms_lazy := (SHA2.message_schedule_lazy SHA2.j_512)
 

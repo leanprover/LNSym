@@ -285,11 +285,10 @@ def toContextExpr (s : ToArmExpr.Context) : MetaM Lean.Expr :=
 abbrev mkAuxDecl := Lean.Elab.Tactic.BVDecide.Frontend.mkAuxDecl
 
 -- (FIXME) Better formatting; change into code action, etc.!
-def toArmMessageData (e : Expr) (s : ToArmExpr.Context) : MessageData :=
-  let curr_state := s.stateVars[e.curr_state]!
-  let prev_state := s.stateVars[e.prev_state]!
-  let writes := go e.writes prev_state s 0
-  m!"{curr_state} = {writes}"
+def toArmMessageData (prev_state : StateVar) (updates : Updates) (s : ToArmExpr.Context) : MessageData :=
+  let prev_state := s.stateVars[prev_state]!
+  let writes := go updates prev_state s 0
+  m!"{writes}"
   where go (us : Updates) (prev_state : Lean.Expr)
            (s : ToArmExpr.Context) (paren_count : Nat) :=
     match us with
@@ -416,6 +415,10 @@ def ArmExprPruned? (refl_proof_name : Name) (e : Lean.Expr) :
   let_expr Eq _ lhs rhs := e | return none
   let ((lhs_writes, lhs_s0), state) ←
     ToArmExpr.run (ToArmExpr.toArmUpdatesAndStateVar lhs []) {}
+  let ctx := ToArmExpr.mkContextFromState state
+  trace[Tactic.prune_updates.answer] "Pruned Updates: {toArmMessageData lhs_s0 lhs_writes.prune ctx}"
+  if ←(getBoolOption `Tactic.prune_updates.only_answer) then
+    return none
   let ((rhs_writes, rhs_s0), state) ←
     ToArmExpr.run (ToArmExpr.toArmUpdatesAndStateVar rhs []) state
   trace[Tactic.prune_updates] "LHS writes: {lhs_writes}"
@@ -429,7 +432,6 @@ def ArmExprPruned? (refl_proof_name : Name) (e : Lean.Expr) :
   --  let arm_expr_pruned := lhs_arm_expr.prune
   --  trace[Tactic.prune_updates] "Pruned Arm Expr: {arm_expr_pruned}"
   --
-  let ctx := ToArmExpr.mkContextFromState state
   withAbstractAtoms ctx fun ctx' => do
     if lhs_s0 = rhs_s0 then
       return some (← ArmExprBuildProofTerm ctx'
@@ -504,12 +506,80 @@ fun {s1} {x0} {x1} {s0} h_s1 =>
 #guard_msgs in
 #print example1
 
+/-
+
+set_option trace.Tactic.prune_updates.answer true in
+theorem timeout_example (test : Bool)
+  (h_step : s' = w (StateField.GPR 0x1#5)
+                  (if (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xffffffffffffffff#64 0x1#1).snd.z = 0#1 then
+                   (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xffffffffffffffff#64 0x1#1).fst
+                  else
+                   (AddWithCarry (r (StateField.GPR 0x2#5) s) 0#64 0x1#1).fst)
+                  (w StateField.PC 0x126520#64
+                    (w (StateField.SFP 0x1d#5) (r (StateField.SFP 0x3#5) s) s))) :
+  s' =  (w .PC (1205536#64)
+              (w (.GPR 0x01#5)
+                  (if (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xffffffffffffffff#64 0x1#1).snd.z = 0#1 then
+                    (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xffffffffffffffff#64 0x1#1).fst
+                  else
+                    (AddWithCarry (r (StateField.GPR 0x2#5) s) 0#64 0x1#1).fst)
+                  (w (.SFP 0x1d#5) (r (StateField.SFP 3#5) s)  s)))  := by
+  rw [h_step]
+  prune_updates
+
+-- set_option allowUnsafeReducibility true
+seal AddWithCarry
+-- seal Prod.snd
+-- seal PState.z
+-- seal PFlag.Z
+
 #time
+-- set_option trace.Tactic.prune_updates.answer true in
 set_option diagnostics true in
 set_option diagnostics.threshold 5 in
-set_option trace.Tactic.prune_updates true in
+-- set_option trace.Tactic.prune_updates true in
 set_option maxRecDepth 2000 in
-theorem timeout_example
+theorem timeout_example1
+  (h_step : s' = w (StateField.FLAG PFlag.Z)
+                   (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xff#64 0x1#1).snd.z
+                  (w StateField.PC 0x126520#64
+                    (w (StateField.SFP 0x1d#5) (r (StateField.SFP 0x3#5) s) s))) :
+  s' = (w .PC (1205536#64)  (w (.SFP 0x1d#5) (r (StateField.SFP 3#5)
+      s)  (w (.FLAG PFlag.Z) (AddWithCarry (r (StateField.GPR 0x2#5) s) 0xff#64 0x1#1).snd.z s)))  := by
+  rw [h_step]
+  prune_updates
+
+
+seal AddWithCarry
+set_option allowUnsafeReducibility true in
+seal Prod.snd
+
+-- #time
+-- set_option diagnostics true in
+-- set_option diagnostics.threshold 5 in
+-- -- set_option trace.Tactic.prune_updates true in
+-- set_option trace.Tactic.prune_updates.answer true in
+-- set_option maxRecDepth 2000 in
+-- theorem timeout_example2
+--   (h_step : s' = w (StateField.GPR 0x1#5)
+--     (if ¬(AddWithCarry (r (StateField.GPR 0x2#5) s) 0xffffffffffffffff#64 0x1#1).snd.z = 0x1#1 then
+--       r (StateField.GPR 0x1#5) s
+--     else r (StateField.GPR 0x1#5) s - 0x80#64)
+--     (w StateField.PC 0x126520#64
+--       (w (StateField.SFP 0x1d#5) (r (StateField.SFP 0x3#5) s) s))) :
+--   s' =  (w .PC (1205536#64)  (w (.GPR 0x01#5) (if
+--         ¬(AddWithCarry (r (StateField.GPR 2#5) s) 0xffffffffffffffff#64 1#1).snd.z = 1#1 then r (StateField.GPR 1#5) s
+--     else r (StateField.GPR 1#5) s - 128#64)  (w (.SFP 0x1d#5) (r (StateField.SFP 3#5) s)  s)))  := by
+--   rw [h_step]
+--   prune_updates
+
+/-
+#time
+-- set_option diagnostics true in
+-- set_option diagnostics.threshold 5 in
+-- set_option trace.Tactic.prune_updates true in
+-- set_option maxRecDepth 2000 in
+theorem timeout_example2
   (h_step : s' = w (StateField.GPR 0x1#5)
     (if ¬(AddWithCarry (r (StateField.GPR 0x2#5) s) 0xffff#64 0x1#1).snd.z = 0x1#1 then
       r (StateField.GPR 0x1#5) s
@@ -555,6 +625,6 @@ theorem timeout_example
                       (w (.FLAG PFlag.V) ((AddWithCarry (r (StateField.GPR 2#5) s) 0x0#64 1#1).snd.v) s)))))))))))))) := by
     rw [h_step]
     prune_updates
-
-
+-/
+-/
 end Tests

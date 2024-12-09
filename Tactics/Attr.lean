@@ -16,6 +16,11 @@ initialize
   -- theorem's conclusion
   registerTraceClass `Tactic.prune_updates.answer
 
+  registerOption `Tactic.prune_updates.only_answer {
+  defValue := false
+  descr := "Print the pruned updates and exit"
+  }
+
   registerOption `Tactic.prune_updates.validate {
     defValue := false
     descr := "enable/disable type-checking of internal state during execution \

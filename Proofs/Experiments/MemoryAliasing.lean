@@ -333,8 +333,8 @@ theorem mem_automation_test_2_conv
 
 theorem mem_automation_test_2_conv_focus
   (h_n0 : n0 ≠ 0)
-  (h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
-  (h_no_wrap_dest_region : mem_legal' dest_addr (n0 <<< 4))
+  (_h_no_wrap_src_region : mem_legal' src_addr (n0 <<< 4))
+  (_h_no_wrap_dest_region : mem_legal' dest_addr (n0 <<< 4))
   (h_s0_src_dest_separate :
     mem_separate' src_addr  (n0 <<< 4)
                   dest_addr (n0 <<< 4)) :
@@ -369,7 +369,7 @@ theorem mem_automation_test_3
 interleaved write `[ignore_addr..ignore_addr+ignore_n)`
 -/
 theorem mem_automation_test_3_conv
-  (h_no_wrap_src_region : mem_legal' src_addr 16)
+  (_h_no_wrap_src_region : mem_legal' src_addr 16)
   (h_s0_src_ignore_disjoint :
     mem_separate' src_addr  16
                   ignore_addr ignore_n) :
@@ -645,7 +645,7 @@ namespace SimpMemConv
 
 #time
 theorem irrelvant_hyps
-  (h_irrelevant: mem_subset' src_addr 10 src_addr 30)
+  (_h_irrelevant: mem_subset' src_addr 10 src_addr 30)
   (h_s0_src_dest_separate : mem_separate' src_addr  16 dest_addr 16) :
   read_mem_bytes 16 src_addr (write_mem_bytes 16 dest_addr blah s0) =
   read_mem_bytes 16 src_addr s0 := by
