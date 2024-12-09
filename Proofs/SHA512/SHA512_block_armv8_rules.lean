@@ -58,6 +58,17 @@ private theorem extractLsb'_high_64_from_setWidth_128_or (x y : BitVec 64) :
   extractLsb' 64 64 ((setWidth 128 x) ||| (setWidth 128 y <<< 64)) = y := by
   bv_decide
 
+theorem sha512h_rule (a0 a1 b0 b1 c0 c1 d0 d1 e0 e1 : BitVec 64) :
+  (DPSFP.sha512h (a1 ++ a0) (b1 ++ b0) (c1 + (d1 + e1) ++ (c0 + (d0 + e0)))) =
+  let hi64_spec := compression_update_t1 b1 a0 a1 c1 d1 e1
+  let lo64_spec := compression_update_t1 (b0 + hi64_spec) b1 a0 c0 d0 e0
+  hi64_spec ++ lo64_spec
+  := by
+  simp [DPSFP.sha512h, compression_update_t1]
+  repeat rw [extractLsb'_append_left, extractLsb'_append_right]
+  ac_rfl
+  done
+
 -- This lemma takes ~5min with bv_decide and the generated LRAT
 -- file is ~207MB. It turns out this this theorem is not a good candidate for
 -- proof via bit-blasting. As Bruno Dutertre says:
@@ -118,19 +129,32 @@ theorem binary_vector_op_aux_add_128_simp (x y result : BitVec 128) :
   bv_decide
   done
 
-/-
-DPSFP.sha512h2 (r (StateField.SFP 0x1#5) s) (r (StateField.SFP 0x0#5) s)
-    (DPSFP.sha512h (extractLsb' 64 128 (r (StateField.SFP 0x3#5) s ++ r (StateField.SFP 0x2#5) s))
-      (extractLsb' 64 128 (r (StateField.SFP 0x2#5) s ++ r (StateField.SFP 0x1#5) s))
-      (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (r (StateField.SFP 0x3#5) s)
-        (extractLsb' 64 128
-          (DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (Memory.read_bytes 16 (r (StateField.GPR 0x3#5) s) s.mem)
-              (r (StateField.SFP 0x10#5) s) 0x0#128 ++
-            DPSFP.binary_vector_op_aux 0 2 64 BitVec.add (Memory.read_bytes 16 (r (StateField.GPR 0x3#5) s) s.mem)
-              (r (StateField.SFP 0x10#5) s) 0x0#128))
-        0x0#128))
--/
+theorem sha512h_and_sha512h2_rule :
+  let x0 := extractLsb'  0 64 x
+  let y0 := extractLsb'  0 64 y
+  let y1 := extractLsb' 64 64 y
+  let hi64_spec_1 := compression_update_t1 b1 a0 a1 c1 d1 e1
+  let hi64_spec_2 := compression_update_t2 y0 x0 y1
+  let lo64_spec_1 := compression_update_t1 (b0 + hi64_spec_1) b1 a0 c0 d0 e0
+  let lo64_spec_2 := compression_update_t2 (hi64_spec_2 + hi64_spec_1) y0 y1
+  (DPSFP.sha512h2 x y
+      (DPSFP.sha512h (a1 ++ a0) (b1 ++ b0)
+                     (c1 + (d1 + e1) ++ (c0 + (d0 + e0))))) =
+  (hi64_spec_1 + hi64_spec_2) ++ (lo64_spec_1 + lo64_spec_2) := by
+  simp [sha512h2_rule, sha512h]
+  generalize extractLsb'  0 64 x = x0
+  -- generalize extractLsb' 64 64 x = x1
+  generalize extractLsb'  0 64 y = y0
+  generalize extractLsb' 64 64 y = y1
+  repeat rw [BitVec.extractLsb'_append_left, BitVec.extractLsb'_append_right]
+  simp [compression_update_t1]
+  generalize compression_update_t2 y0 x0 y1 = p0
+  generalize ch b1 a0 a1 = p1
+  generalize sigma_big_1 b1 = p2
+  ac_rfl
+  done
 
+/-
 theorem sha512h_and_sha512h2_rule_1 :
   let elements := 2
   let esize := 64
@@ -172,6 +196,7 @@ theorem sha512h_and_sha512h2_rule_1 :
   generalize extractLsb' 64 64 y = y1
   rw [BitVec.extractLsb'_append_left, BitVec.extractLsb'_append_right]
   ac_rfl
+-/
 
 -- set_option maxHeartbeats 0 in
 -- This lemma takes 2min with bv_decide and the generated LRAT

@@ -168,8 +168,7 @@ elab "sym_block" n:num
         return (mkNatLit size))
       let size_terms ← size_exprs.mapM (fun e => do
           let some val ← Lean.Meta.getNatValue? e | throwError ""
-          return val)
-      dbg_trace s!"size_terms: {size_terms}"
+          return val)      
       pure size_terms.toList
   |  _ =>
       -- (FIXME)

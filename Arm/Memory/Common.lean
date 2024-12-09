@@ -255,7 +255,7 @@ def TacticM.withTraceNode'
     [MonadRef m]
     [AddMessageContext m]
     [MonadOptions m]
-    [always : MonadAlwaysExcept ε m]
+    [_always : MonadAlwaysExcept ε m]
     [MonadLiftT BaseIO m]
     (header : MessageData) (k : m α)
     (collapsed : Bool := false)
@@ -272,7 +272,7 @@ def TacticM.traceLargeMsg
     [MonadRef m]
     [AddMessageContext m]
     [MonadOptions m]
-    [always : MonadAlwaysExcept ε m]
+    [_always : MonadAlwaysExcept ε m]
     [MonadLiftT BaseIO m]
     (header : MessageData)
     (msg : MessageData) : m Unit := do

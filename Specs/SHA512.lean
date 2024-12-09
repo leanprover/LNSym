@@ -165,6 +165,25 @@ def processBlocks (message_schedule : List (BitVec 64) → List (BitVec 64))
     let hash' := add_hash hash work_vars
     processBlocks message_schedule j hash' k rest
 
+def compression_alt (i max : Nat) (wv : Hash) (k m : List (BitVec 64)) : Hash :=
+  if i < max then
+    let ki := List.get! k i
+    let wi := message_schedule_word i m
+    let wv' := compression_update wv ki wi
+    compression_alt (i + 1) max wv' k m
+  else
+    wv
+  termination_by max - i
+
+def processBlocks_alt (j : Nat) (hash : Hash)
+  (k : List (BitVec 64)) (ms : List (List (BitVec 64))) : Hash :=
+  match ms with
+  | [] => hash
+  | m :: rest =>
+    let work_vars := compression_alt 0 j hash k m
+    let hash' := add_hash hash work_vars
+    processBlocks_alt j hash' k rest
+
 def j_512 : Nat := 80
 
 def h0_512 : Hash :=

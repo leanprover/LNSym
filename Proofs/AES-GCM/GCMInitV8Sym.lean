@@ -217,7 +217,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     (h_s0_pc : read_pc s0 = gcm_init_v8_program.min)
     (h_s0_sp_aligned : CheckSPAlignment s0)
     (h_run : sf = run gcm_init_v8_program.length s0)
-    (h_mem : Memory.Region.pairwiseSeparate
+    (_h_mem : Memory.Region.pairwiseSeparate
       [ ⟨(H_addr s0), 128⟩,
         ⟨(Htable_addr s0), 2048⟩ ])
     : -- effects
