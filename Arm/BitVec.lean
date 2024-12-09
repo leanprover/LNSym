@@ -28,9 +28,6 @@ instance : Ord (BitVec n) where
   -- Unsigned comparison
   compare := unsigned_compare
 
-instance {w} : Hashable (BitVec w) where
-  hash x := hash x.toNat
-
 -- Adding some useful simp lemmas to `bitvec_rules`: we do not include
 -- `bv_toNat` lemmas here.
 -- See Init.Data.BitVec.Lemmas.
@@ -892,14 +889,6 @@ theorem add_sub_cancel_left {a b : BitVec w₁}
     omega
   · apply BitVec.le_add_self_of_lt
     omega
-
-theorem le_add_iff_sub_le {a b c : BitVec w₁}
-   (hac : c ≤ a) (hbc : b.toNat + c.toNat < 2^w₁) :
-    (a ≤ b + c) ↔ (a - c ≤ b) := by
-  simp_all only [BitVec.le_def]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-  omega
 
 theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
     (hbc : c ≤ b) : (a - c ≤ b - c) ↔ a ≤ b := by

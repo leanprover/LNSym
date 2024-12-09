@@ -104,7 +104,7 @@ protected def initialize_J0 (H : BitVec 128) (IV : BitVec lv) :=
   if h₀ : lv == 96
   then have h₁ : lv + 31 + 1 = 128 := by
          simp only [Nat.succ.injEq]
-         exact Nat.eq_of_beq_eq_true h₀
+         simpa using h₀
        BitVec.cast h₁ (IV ++ BitVec.zero 31 ++ 0b1#1)
   else let s := GCM.ceiling_in_bits lv - lv
        have h₂ : 128 ∣ (lv + (s + 64) + 64) := by
