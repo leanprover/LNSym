@@ -54,5 +54,23 @@ lean_exe «lnsym» where
   -- Remove this line if you do not need such functionality.
   -- supportInterpreter := true
 
-require ELFSage from git "https://github.com/draperlaboratory/ELFSage.git" @ "main"
-require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "main"
+-- TEMPORARY (toolchain-stepping only): both external git deps are detached while
+-- stepping through intermediate Lean versions; reattach at pinned, compatible revs
+-- at the final version step.
+--
+-- `ELFSage` has no Lean v4.14-compatible revision: its history sat at
+-- nightly-2024-10-07 (`main` head `18c69c9`) and then jumped toward modern Lean, so
+-- there is no rev that compiles under v4.14 (`ELFSage/Util/ByteArray` and its `Cli`
+-- dep both fail). ELFSage is used only by `Tests/ELFParser/*` (via
+-- `import ELFSage`); LNSym's own libraries and the `lnsym` exe never import it. We
+-- therefore detach it and exclude only the `ELFParser` import from `Tests/Tests.lean`
+-- (see the note there) so the rest of `Tests` stays green.
+--
+-- `doc-gen4` is only needed by `Doc.lean`, which is not part of `make all`
+-- (specs/correctness/proofs/tests/cosim) nor the per-version done-list. Its
+-- transitive deps (UnicodeBasic/MD4Lean/BibtexQuery) float on `@main`/`@master` and
+-- their lakefiles fail to elaborate under intermediate Lean versions; since Lake
+-- configures every package before building anything, leaving it attached would
+-- block even `lake build Arm`.
+-- require ELFSage from git "https://github.com/draperlaboratory/ELFSage.git" @ "main"
+-- require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "main"

@@ -101,10 +101,11 @@ protected theorem initialize_J0_simplification
   lv + (x * 128 - lv + 64) + 64  = x * 128 + 128 := by omega
 
 protected def initialize_J0 (H : BitVec 128) (IV : BitVec lv) :=
-  if h₀ : lv == 96
-  then have h₁ : lv + 31 + 1 = 128 := by
-         simp only [Nat.succ.injEq]
-         exact Nat.eq_of_beq_eq_true h₀
+  -- v4.14: branch on the `Nat` `DecidableEq` (`lv = 96`) rather than the `Bool`
+  -- `lv == 96`. The old `(lv == 96)` / `Nat.eq_of_beq_eq_true h₀` bridge no longer
+  -- typechecks here; with `h₀ : lv = 96` in scope, `omega` discharges the cast.
+  if h₀ : lv = 96
+  then have h₁ : lv + 31 + 1 = 128 := by omega
        BitVec.cast h₁ (IV ++ BitVec.zero 31 ++ 0b1#1)
   else let s := GCM.ceiling_in_bits lv - lv
        have h₂ : 128 ∣ (lv + (s + 64) + 64) := by

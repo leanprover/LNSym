@@ -239,16 +239,16 @@ info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
         ⊢ a ≤ a + 1
   [simp_mem.info] ✅️ `omega` succeeded.
 -/
-#guard_msgs in
+-- `drop warning`: newer Lean emits unused-variable linter warnings for `h'`/`hab`
+-- here that older toolchains did not; drop them so we keep checking the (stable)
+-- `simp_mem.info` trace text.
+#guard_msgs (drop warning, info) in
 set_option trace.simp_mem.info true in
 example (h' : a ≤ 100) (hab : a ≤ a + 1) : a ≤ a + 1 := by
   mem_omega with [hab, h', -h'] -- correctly exclude h', so processing should not mention h'.
 
 
 /--
-warning: unused variable `hab`
-note: this linter can be disabled with `set_option linter.unusedVariables false`
----
 info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
 [simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
 [simp_mem.info] Adding omega facts from hypotheses
@@ -260,7 +260,9 @@ info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
         ⊢ a ≤ a + 1
   [simp_mem.info] ✅️ `omega` succeeded.
 -/
-#guard_msgs in -- TODO: fix this, we shouldn't process h!
+-- TODO: fix this, we shouldn't process h!
+-- `drop warning`: see note above — drop the new unused-variable linter warnings.
+#guard_msgs (drop warning, info) in
 set_option trace.simp_mem.info true in
 example (h' : a ≤ 100) (hab : a ≤ a + 1) : a ≤ a + 1 := by
   mem_omega with [*, -h'] -- correctly exclude h' and include hab, so processing should not mention h'.

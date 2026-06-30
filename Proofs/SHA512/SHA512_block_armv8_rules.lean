@@ -31,7 +31,7 @@ theorem sha512_message_schedule_rule (a b c d : BitVec 128) :
   message_schedule_word_aux a1 b1 c0 d1 ++
   message_schedule_word_aux a0 b0 d1 d0 := by
   simp only [sha512su1, Nat.reduceAdd, sha512su0, message_schedule_word_aux]
-  bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512_message_schedule_rule-31-2.lrat"
+  bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512_message_schedule_rule-34-2.lrat"
 
 theorem sha512h2_rule (a b c : BitVec 128) :
   sha512h2 a b c =
@@ -43,7 +43,7 @@ theorem sha512h2_rule (a b c : BitVec 128) :
   ((compression_update_t2 b0 a0 b1) + c1) ++
   ((compression_update_t2 ((compression_update_t2 b0 a0 b1) + c1) b0 b1) + c0) := by
   simp only [sha512h2, Nat.reduceAdd, maj, sigma_big_0, ror, compression_update_t2]
-  bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512h2_rule-43-2.lrat"
+  bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512h2_rule-46-2.lrat"
 
 
 private theorem and_nop_lemma (x : BitVec 64) :

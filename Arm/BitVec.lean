@@ -28,8 +28,9 @@ instance : Ord (BitVec n) where
   -- Unsigned comparison
   compare := unsigned_compare
 
-instance {w} : Hashable (BitVec w) where
-  hash x := hash x.toNat
+-- NOTE: a `Hashable (BitVec w)` instance (identical to the one LNSym used to
+-- define here, `hash x := hash x.toNat`) is provided by core as of Lean v4.14
+-- (`Init.Data.BitVec.Basic`). The local instance now clashes, so we drop it.
 
 -- Adding some useful simp lemmas to `bitvec_rules`: we do not include
 -- `bv_toNat` lemmas here.
@@ -893,13 +894,9 @@ theorem add_sub_cancel_left {a b : BitVec w₁}
   · apply BitVec.le_add_self_of_lt
     omega
 
-theorem le_add_iff_sub_le {a b c : BitVec w₁}
-   (hac : c ≤ a) (hbc : b.toNat + c.toNat < 2^w₁) :
-    (a ≤ b + c) ↔ (a - c ≤ b) := by
-  simp_all only [BitVec.le_def]
-  rw [BitVec.toNat_sub_eq_toNat_sub_toNat_of_le (by rw [BitVec.le_def]; omega)]
-  rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
-  omega
+-- NOTE: `BitVec.le_add_iff_sub_le` (same statement and hypotheses) was upstreamed
+-- into core as of Lean v4.14 (`Init.Data.BitVec.Lemmas`). The local copy now
+-- clashes, so we drop it and rely on core; it had no other references in LNSym.
 
 theorem sub_le_sub_iff_right (a b c : BitVec w₁) (hac : c ≤ a)
     (hbc : c ≤ b) : (a - c ≤ b - c) ↔ a ≤ b := by

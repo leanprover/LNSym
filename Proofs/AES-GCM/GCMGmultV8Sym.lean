@@ -70,8 +70,7 @@ theorem rev_elems_128_8_eq_rev_elems_64_8_extractLsb' (x : BitVec 128) :
   rev_elems 64 8 (BitVec.extractLsb' 0 64 x) _p3 _p4 ++ rev_elems 64 8 (BitVec.extractLsb' 64 64 x) _p5 _p6 := by
   repeat unfold rev_elems
   simp (config := {decide := true, ground := true}) only [minimal_theory, BitVec.cast_eq]
-  bv_check
-    "lrat_files/GCMGmultV8Sym.lean-GCMGmultV8Program.rev_elems_128_8_eq_rev_elems_64_8_extractLsb'-51-2.lrat"
+  bv_check "lrat_files/GCMGmultV8Sym.lean-GCMGmultV8Program.rev_elems_128_8_eq_rev_elems_64_8_extractLsb'-73-2.lrat"
   done
 
 theorem rev_elems_64_8_append_eq_rev_elems_128_8 (x y : BitVec 64) :
@@ -79,8 +78,7 @@ theorem rev_elems_64_8_append_eq_rev_elems_128_8 (x y : BitVec 64) :
   rev_elems 128 8 (y ++ x) _p5 _p6 := by
   repeat unfold rev_elems
   simp (config := {decide := true, ground := true}) only [minimal_theory, BitVec.cast_eq]
-  bv_check
-    "lrat_files/GCMGmultV8Sym.lean-GCMGmultV8Program.rev_elems_64_8_append_eq_rev_elems_128_8-60-2.lrat"
+  bv_check "lrat_files/GCMGmultV8Sym.lean-GCMGmultV8Program.rev_elems_64_8_append_eq_rev_elems_128_8-81-2.lrat"
   done
 
 private theorem lsb_from_extractLsb'_of_append_self (x : BitVec 128) :
