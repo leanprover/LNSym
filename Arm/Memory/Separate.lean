@@ -273,7 +273,7 @@ theorem mem_legal_of_mem_legal' (h : mem_legal' a n) :
     mem_legal a (a + (BitVec.ofNat 64 (n - 1))) := by
   simp only [mem_legal', mem_legal, BitVec.le_def] at h ⊢
   rw [BitVec.toNat_add_eq_toNat_add_toNat]
-  simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.le_add_right, decide_True]
+  simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.le_add_right, decide_true]
   bv_omega_bench
 
 /--
@@ -546,7 +546,7 @@ theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
      Memory.getLsbD_write_bytes (by omega),
      Memory.getLsbD_read_bytes (by omega)]
   simp only [i.isLt]
-  simp only [decide_True, ite_eq_left_iff, Bool.true_and]
+  simp only [decide_true, ite_eq_left_iff, Bool.true_and]
   intros h₁
   intros h₂
   bv_omega_bench
@@ -575,7 +575,7 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
     simp only [Nat.reduceMul, Nat.zero_mul, Nat.not_lt_zero] at h
   · by_cases h₁ : ↑i < xn * 8
     · simp only [h₁]
-      simp only [decide_True, Bool.true_and]
+      simp only [decide_true, Bool.true_and]
       obtain ⟨i, hi⟩ := i
       simp only at h₁
       simp only []
@@ -598,7 +598,7 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
           omega
         · simp only [h₃, if_false]
           simp only [show i % 8 ≤ 7 by omega]
-          simp only [decide_True, Bool.true_and]
+          simp only [decide_true, Bool.true_and]
           -- ⊢ val.getLsbD ((x + BitVec.ofNat 64 (i / 8) - y).toNat * 8 + i % 8) = val.getLsbD ((y.toNat - x.toNat) * 8 + i)
           /-
           This is clearly true, it simplifes to (x.toNat - y.toNat) * 8 + (i/8)*8 + i % 8.
@@ -674,7 +674,7 @@ def Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
         · subst ha
           simp only [List.getElem?_cons_succ] at hb
           apply ihx
-          exact List.getElem?_mem hb
+          exact List.mem_of_getElem? hb
     · rcases j with rfl | j'
       · simp only [List.length_cons, Nat.zero_lt_succ, List.getElem?_eq_getElem,
         List.getElem_cons_zero, Option.some.injEq] at hb
@@ -682,7 +682,7 @@ def Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
           simp only [List.getElem?_cons_succ] at ha
           apply mem_separate'_comm
           apply ihx
-          exact List.getElem?_mem ha
+          exact List.mem_of_getElem? ha
       · simp only [List.getElem?_cons_succ] at ha hb
         apply ihxs' i' j'
         · omega

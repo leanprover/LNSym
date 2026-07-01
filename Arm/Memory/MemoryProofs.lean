@@ -615,15 +615,15 @@ private theorem read_mem_of_write_mem_bytes_subset_helper_4
   by_cases h₀ : i < 8
   case pos => -- i < 8
     simp only [h₀, Nat.testBit_shiftRight, Nat.testBit_mod_two_pow,
-               decide_True, Bool.and_true, Bool.true_and]
+               decide_true, Bool.and_true, Bool.true_and]
     by_cases h₁ : ((a + (2 ^ 64 - 1)) % 2 ^ 64 * 8 + i < n' * 8)
     case pos => -- (i < 8) and ((a + (2 ^ 64 - 1)) % 2 ^ 64 * 8 + i < n' * 8)
-      simp only [h₁, decide_True, Bool.and_true, Bool.true_and]
+      simp only [h₁, decide_true, Bool.and_true, Bool.true_and]
       rw [read_mem_of_write_mem_bytes_subset_helper_1]
       · exact Nat.pos_of_ne_zero h_a_base
       · exact h_a_size
     case neg => -- (i < 8) and ¬((a + (2 ^ 64 - 1)) % 2 ^ 64 * 8 + i < n' * 8)
-      simp only [h₁, decide_False, Bool.false_and]
+      simp only [h₁, decide_false, Bool.false_and]
       rw [read_mem_of_write_mem_bytes_subset_helper_3
           a (Nat.pos_of_ne_zero h_a_base) h_a_size] at h₁
       simp only [Nat.not_lt] at h₁
@@ -635,7 +635,7 @@ private theorem read_mem_of_write_mem_bytes_subset_helper_4
                                    decide; exact this
       done
   case neg => -- ¬(i < 8)
-    simp only [h₀, decide_False, Bool.false_and]
+    simp only [h₀, decide_false, Bool.false_and]
   done
 
 theorem read_mem_of_write_mem_bytes_subset_helper_5 (a x y : Nat) :
@@ -739,21 +739,21 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_helper2
   simp only [Nat.testBit_mod_two_pow, Nat.testBit_shiftRight]
   by_cases h₀ : (i < ((n + 1) * 8))
   case pos =>
-    simp only [h₀, decide_True, Bool.true_and, BitVec.toNat_ofNat,
+    simp only [h₀, decide_true, Bool.true_and, BitVec.toNat_ofNat,
                BitVec.toNat_append, Nat.testBit_or]
     simp only [Nat.testBit_shiftRight, Nat.testBit_mod_two_pow]
     by_cases h₁ : (i < 8)
     case pos => -- (i < 8)
       have : ¬(8 <= i) := by omega
       simp only [this, h₁, Nat.testBit_shiftLeft, Nat.testBit_mod_two_pow]
-      simp only [decide_False, Bool.false_and, decide_True,
+      simp only [decide_false, Bool.false_and, decide_true,
                  Bool.true_and, Bool.false_or]
     case neg => -- ¬(i < 8)
-      simp only [h₁, decide_False, Bool.false_and, Bool.or_false]
+      simp only [h₁, decide_false, Bool.false_and, Bool.or_false]
       simp only [Nat.testBit_shiftLeft, Nat.testBit_mod_two_pow, Nat.testBit_shiftRight]
-      simp_all only [ne_eq, Nat.not_lt, ge_iff_le, decide_True, Bool.true_and]
+      simp_all only [ne_eq, Nat.not_lt, ge_iff_le, decide_true, Bool.true_and]
       have l1 : (i - 8 < n * 8) := by omega
-      simp_all only [l1, decide_True, Bool.true_and, Nat.add_mod_mod]
+      simp_all only [l1, decide_true, Bool.true_and, Nat.add_mod_mod]
       rw [read_mem_bytes_of_write_mem_bytes_subset_helper1] <;> assumption
   case neg =>
     simp only [h₀, BitVec.toNat_ofNat, BitVec.toNat_append, Nat.testBit_or]
@@ -763,7 +763,7 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_helper2
       have h₀' : i - 8 < n * 8 := by omega
       have h₁' : ¬(8 <= i) := by omega
       simp only [Nat.not_lt] at h₀
-      simp only [h₀', h₁, h₁', decide_True, decide_False,
+      simp only [h₀', h₁, h₁', decide_true, decide_false,
                  Bool.false_and, Bool.true_and, Bool.false_or]
       rw [Nat.testBit_lt_two_pow]
       omega
@@ -940,7 +940,7 @@ theorem leftshift_n_or_rightshift_n (n x y : Nat) (h : y < 2^n) :
       _ < 2^n := by assumption
       _ <= 2^(n + i) := Nat.pow_le_pow_right (by omega) (by omega)
   rw [Nat.testBit_lt_two_pow l0]
-  simp only [Nat.testBit_shiftLeft, decide_True, Nat.add_sub_cancel_left,
+  simp only [Nat.testBit_shiftLeft, decide_true, Nat.add_sub_cancel_left,
              Nat.le_add_right, Bool.true_and, Bool.or_false]
 
 private theorem write_mem_bytes_irrelevant_helper (h : n * 8 + 8 = (n + 1) * 8) :

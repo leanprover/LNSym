@@ -303,11 +303,11 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : TacticM FVarId  := do
 
     -- unfold `state_value.
     simpTheorems := simpTheorems.push <| ← ({} : SimpTheorems).addDeclToUnfold `state_value
-    let simpCtx : Simp.Context := {
-      simpTheorems,
-      config := { decide := true, failIfUnchanged := false },
-      congrTheorems := (← Meta.getSimpCongrTheorems)
-    }
+    -- v4.15: `Simp.Context` constructor is private; use the public `Simp.mkContext`.
+    let simpCtx : Simp.Context ← Simp.mkContext
+      (config := { decide := true, failIfUnchanged := false })
+      (simpTheorems := simpTheorems)
+      (congrTheorems := (← Meta.getSimpCongrTheorems))
     let (simpResult, _stats) ← simp hdefTy simpCtx (simprocs := #[])
     let hdefVal ← simpResult.mkCast hdefVal
     let hdefTy ← inferType hdefVal
@@ -331,11 +331,11 @@ def simpAndIntroDef' (g : MVarId) (name : String) (hdefVal : Expr) : MetaM (FVar
 
     -- unfold `state_value.
     simpTheorems := simpTheorems.push <| ← ({} : SimpTheorems).addDeclToUnfold `state_value
-    let simpCtx : Simp.Context := {
-      simpTheorems,
-      config := { decide := true, failIfUnchanged := false },
-      congrTheorems := (← Meta.getSimpCongrTheorems)
-    }
+    -- v4.15: `Simp.Context` constructor is private; use the public `Simp.mkContext`.
+    let simpCtx : Simp.Context ← Simp.mkContext
+      (config := { decide := true, failIfUnchanged := false })
+      (simpTheorems := simpTheorems)
+      (congrTheorems := (← Meta.getSimpCongrTheorems))
     let (simpResult, _stats) ← simp hdefTy simpCtx (simprocs := #[])
     let hdefVal ← simpResult.mkCast hdefVal
     let hdefTy ← inferType hdefVal

@@ -34,7 +34,8 @@ def fixSimpTheoremKey (thm : SimpTheorem) : MetaM SimpTheorem := do
           Currently, the keys are:\n{thm.keys}"
         pure thm
     | some (_eqType, lhs, _rhs) =>
-        let keys ← mkPath lhs simpDtConfig (noIndexAtArgs := false)
+        -- v4.15: `DiscrTree.mkPath` dropped its `simpDtConfig` positional argument.
+        let keys ← mkPath lhs (noIndexAtArgs := false)
         pure { thm with keys }
 
 /- Create a context for using the `simp` tactic during symbolic
@@ -86,15 +87,20 @@ def LNSymSimpContext
         .fvar id
       else
         .other (← mkFreshUserName `sym_n)
-    let mut newThms ← mkSimpTheorems origin #[] e
+    -- v4.15: `mkSimpTheorems` became private. Build the theorems via the public
+    -- `SimpTheorems.add` (same internals) and extract the `Array SimpTheorem` from
+    -- the resulting discrimination trees so the `fixSimpTheoremKey` path still works.
+    let freshThms ← ({} : SimpTheorems).add origin #[] e
+    let mut newThms := freshThms.pre.values ++ freshThms.post.values
     if noIndexAtArgs = false then
       newThms ← newThms.mapM fixSimpTheoremKey
     const_simpTheorems := newThms.foldl addSimpTheoremEntry const_simpTheorems
 
   let all_simpTheorems := (#[const_simpTheorems] ++ ext_simpTheorems)
-  let (ctx : Simp.Context) := { config := config,
-                                simpTheorems := all_simpTheorems,
-                                congrTheorems := (← Meta.getSimpCongrTheorems) }
+  -- v4.15: the `Simp.Context` constructor is private; use the public smart
+  -- constructor `Simp.mkContext` (it is `MetaM Context`, hence the `←`).
+  let ctx : Simp.Context ← Simp.mkContext config all_simpTheorems
+                             (← Meta.getSimpCongrTheorems)
   for s in simprocs do
     all_simprocs ← Simp.SimprocsArray.add all_simprocs s false
   return (ctx, all_simprocs)

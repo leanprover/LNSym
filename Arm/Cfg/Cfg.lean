@@ -155,7 +155,8 @@ private def addEntry (from_inst : InstType) (to_insts : List InstType)
   -- We crawl through the program in a linear manner, so by
   -- construction, we should not add a previously-added InstType to
   -- the graph.
-  let maybe_entry := Array.find? cfg.graph (fun (e, _) => InstType.pc_equal e from_inst)
+  -- v4.15: `Array.find?` is predicate-first now; use dot notation on the array.
+  let maybe_entry := cfg.graph.find? (fun (e, _) => InstType.pc_equal e from_inst)
   if Option.isNone maybe_entry then
     let maybe_loop_info ← loop_detected from_inst to_insts
     let new_loops_info := addToLoopsInfo maybe_loop_info cfg.loops_info

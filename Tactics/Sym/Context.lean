@@ -226,7 +226,9 @@ def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext
     else
       oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
 
-  { c with aggregateSimpCtx.simpTheorems := simpTheorems }
+  -- v4.15: the `Simp.Context` constructor is private, so the nested record-update
+  -- `aggregateSimpCtx.simpTheorems := …` no longer elaborates; use the public setter.
+  { c with aggregateSimpCtx := c.aggregateSimpCtx.setSimpTheorems simpTheorems }
 
 /-! ## Creating initial contexts -/
 
@@ -243,13 +245,13 @@ private def initial (state : Expr) : MetaM SymContext := do
     LNSymSimpContext
       (config := {decide := true, failIfUnchanged := false})
       (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules, `memory_rules])
-  let aggregateSimpCtx := { aggregateSimpCtx with
-    -- Create a new discrtree for effect hypotheses to be added to.
-    -- TODO(@alexkeizer): I put this here, since the previous version kept
-    -- a seperate discrtree for lemmas. I should run benchmarks to see what
-    -- happens if we keep everything in one simpset.
-    simpTheorems := aggregateSimpCtx.simpTheorems.push {}
-  }
+  -- Create a new discrtree for effect hypotheses to be added to.
+  -- TODO(@alexkeizer): I put this here, since the previous version kept
+  -- a seperate discrtree for lemmas. I should run benchmarks to see what
+  -- happens if we keep everything in one simpset.
+  -- v4.15: `Simp.Context` constructor is private → use the public `setSimpTheorems`.
+  let aggregateSimpCtx :=
+    aggregateSimpCtx.setSimpTheorems (aggregateSimpCtx.simpTheorems.push {})
   return {
     finalState
     runSteps? := none

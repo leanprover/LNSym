@@ -25,7 +25,9 @@ def dup_aux (e : Nat) (elements : Nat) (esize : Nat)
     dup_aux (e + 1) elements esize element result
   termination_by (elements - e)
 
-set_option bv.ac_nf false
+-- v4.15: `bv.ac_nf` is no longer a global option; it is now the `acNf` field of
+-- the `bv_decide` config and already defaults to `false` (AC-normalization off),
+-- which is exactly what this `set_option` requested — so it is dropped.
 
 theorem dup_aux_0_4_32 (element : BitVec 32) (result : BitVec 128) :
   dup_aux 0 4 32 element result

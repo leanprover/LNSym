@@ -316,15 +316,15 @@ theorem partInstall_partInstall (x : BitVec n) :
   apply BitVec.eq_of_getLsbD_eq
   intro i
   simp only [partInstall, truncate_eq_setWidth, getLsbD_or, getLsbD_and,
-    getLsbD_not, Fin.is_lt, decide_True, getLsbD_shiftLeft, Bool.true_and,
+    getLsbD_not, Fin.is_lt, decide_true, getLsbD_shiftLeft, Bool.true_and,
     getLsbD_setWidth, getLsbD_allOnes, Bool.not_and, Bool.not_not,
     getLsbD_cast, BitVec.getLsbD_append]
   simp only [
     show ∀ m, i.val - m < n by omega,
-    decide_True, Bool.not_true, Bool.false_or, Bool.true_and]
+    decide_true, Bool.not_true, Bool.false_or, Bool.true_and]
   by_cases h₁ : i < start
   · simp [h₁, show i < start + len₁ by omega]
-  · simp only [h₁, decide_False, Bool.false_or, Bool.not_false, Bool.true_and,
+  · simp only [h₁, decide_false, Bool.false_or, Bool.not_false, Bool.true_and,
       show i < start + len₁ ↔ i - start < len₁ by omega]
     by_cases h₂ : i - start < len₁
     · simp [h₂, show ↑i - start < len₂ + len₁ by omega]
@@ -587,7 +587,7 @@ theorem extractLsb'_zero_extractLsb'_of_le (h : len1 ≤ len2) :
   BitVec.extractLsb' start len1 x := by
   apply BitVec.eq_of_getLsbD_eq; intro i
   simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
-             decide_True, Nat.zero_add, Bool.true_and,
+             decide_true, Nat.zero_add, Bool.true_and,
              Bool.and_iff_right_iff_imp, decide_eq_true_eq]
   omega
 
@@ -596,7 +596,7 @@ theorem extractLsb'_extractLsb'_zero_of_le (h : start + len1 ≤ len2):
   BitVec.extractLsb' start len1 x := by
   apply BitVec.eq_of_getLsbD_eq; intro i
   simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
-            decide_True, Nat.zero_add, Bool.true_and,
+            decide_true, Nat.zero_add, Bool.true_and,
             Bool.and_iff_right_iff_imp, decide_eq_true_eq]
   omega
 
@@ -606,7 +606,7 @@ theorem extractLsb'_or (x y : BitVec w₁) (n : Nat) :
   apply BitVec.eq_of_getLsbD_eq
   simp only [getLsbD_extract, getLsbD_or]
   intros i
-  simp only [getLsbD_extractLsb', Fin.is_lt, decide_True, getLsbD_or, Bool.true_and]
+  simp only [getLsbD_extractLsb', Fin.is_lt, decide_true, getLsbD_or, Bool.true_and]
 
 -- TODO: upstream
 protected theorem extractLsb'_ofNat (x n : Nat) (l lo : Nat) :
@@ -691,7 +691,7 @@ theorem extractLsb'_extractLsb'_of_le {w : Nat} (start₁ len₁ start₂ len₂
     = x.extractLsb' (start₁ + start₂) len₂ := by
   apply eq_of_getLsbD_eq
   intro i
-  simp only [getLsbD_extractLsb', Fin.is_lt, decide_True, Bool.true_and,
+  simp only [getLsbD_extractLsb', Fin.is_lt, decide_true, Bool.true_and,
     Bool.and_iff_right_iff_imp, decide_eq_true_eq,
     show start₁ + (start₂ + i.val) = start₁ + start₂ + i.val by ac_rfl]
   omega
@@ -739,7 +739,7 @@ theorem append_of_extract_general_nat (high low n vn : Nat) (h : vn < 2 ^ n) :
   case pos => -- low <= i
     by_cases h₁ : (i < n) ..
     case pos => -- (low <= i) and (i < n)
-      simp_all only [decide_True, Bool.true_and]
+      simp_all only [decide_true, Bool.true_and]
       have h1 : vn % 2^low < 2^i :=
         calc
          _ < 2^low := by apply Nat.mod_lt; exact Nat.two_pow_pos low
@@ -924,8 +924,8 @@ theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
   simp only [getLsbD_extract, getLsbD_or]
   intros i
   by_cases h : (i : Nat) ≤ n - lo
-  · simp only [h, decide_True, Bool.true_and]
-  · simp only [h, decide_False, Bool.false_and, Bool.or_self]
+  · simp only [h, decide_true, Bool.true_and]
+  · simp only [h, decide_false, Bool.false_and, Bool.or_self]
 
 theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
   simp only [extractLsByte, BitVec.extractLsb'_ofNat, Nat.zero_mod, Nat.zero_shiftRight, cast_ofNat]
@@ -936,7 +936,7 @@ theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
   intros i
   simp only [getLsbD_zero, extractLsByte_def,
     getLsbD_cast, getLsbD_extract, Bool.and_eq_false_imp, decide_eq_true_eq]
-  simp only [getLsbD_extractLsb', Fin.is_lt, decide_True, Bool.true_and]
+  simp only [getLsbD_extractLsb', Fin.is_lt, decide_true, Bool.true_and]
   apply BitVec.getLsbD_ge
   omega
 
@@ -948,9 +948,9 @@ theorem getLsbD_extractLsByte (val : BitVec w₁) :
   simp only [getLsbD_extractLsb']
   generalize val.getLsbD (n * 8 + i) = x
   by_cases h : i < 8
-  · simp only [show (i : Nat) ≤ 7 by omega, decide_True, Bool.true_and,
+  · simp only [show (i : Nat) ≤ 7 by omega, decide_true, Bool.true_and,
     Bool.and_iff_right_iff_imp, decide_eq_true_eq, h]
-  · simp only [show ¬(i : Nat) ≤ 7 by omega, decide_False, Bool.false_and,
+  · simp only [show ¬(i : Nat) ≤ 7 by omega, decide_false, Bool.false_and,
     Bool.and_eq_false_imp, decide_eq_true_eq, h]
 
 theorem BitVec.getLsbD_eq_false_of_le {w} (x : BitVec w) {i : Nat} (h : w ≤ i) :
@@ -969,7 +969,7 @@ theorem eq_of_extractLsByte_eq (x y : BitVec (n * 8))
   specialize h (j / 8)
   have hx := x.getLsbD_extractLsByte (n := j / 8) (i := j % 8)
   have hy := y.getLsbD_extractLsByte (n := j / 8) (i := j % 8)
-  simp only [show j % 8 ≤ 7 by omega, decide_True, Bool.true_and] at hx hy
+  simp only [show j % 8 ≤ 7 by omega, decide_true, Bool.true_and] at hx hy
   simp only [show j / 8 * 8 + j % 8 = j by omega] at hx hy
   simp only [← hx, ← hy, h]
 
@@ -987,14 +987,14 @@ theorem getLsbD_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat)
       ((decide (i < n * 8) &&
       val.getLsbD (base * 8 + i))) := by
   rcases n with rfl | n
-  · simp only [Nat.reduceMul, Nat.zero_le, getLsbD_ge, Nat.lt_irrefl, decide_False, Nat.zero_mul,
+  · simp only [Nat.reduceMul, Nat.zero_le, getLsbD_ge, Nat.lt_irrefl, decide_false, Nat.zero_mul,
     Nat.add_zero, Bool.false_and]
-    simp only [show ¬i < 0 by omega, decide_False, Bool.false_and]
-  · simp only [extractLsBytes, getLsbD_cast, getLsbD_extract, Nat.zero_lt_succ, decide_True,
+    simp only [show ¬i < 0 by omega, decide_false, Bool.false_and]
+  · simp only [extractLsBytes, getLsbD_cast, getLsbD_extract, Nat.zero_lt_succ, decide_true,
     Bool.true_and]
     by_cases h : i < (n + 1) * 8
-    · simp only [getLsbD_extractLsb', h, decide_True, Bool.true_and]
-    · simp only [getLsbD_extractLsb', h, decide_False, Bool.false_and]
+    · simp only [getLsbD_extractLsb', h, decide_true, Bool.true_and]
+    · simp only [getLsbD_extractLsb', h, decide_false, Bool.false_and]
 
 theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat) :
     (BitVec.extractLsBytes val base n).extractLsByte i =
@@ -1002,15 +1002,15 @@ theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i 
   apply BitVec.eq_of_getLsbD_eq
   simp only [getLsbD_extractLsByte, getLsbD_extractLsBytes]
   intros j
-  simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
+  simp only [show (j : Nat) ≤ 7 by omega, decide_true, Bool.true_and]
   by_cases hn : i < n
   · simp only [hn, ↓reduceIte, getLsbD_extractLsByte,
       show (j : Nat) ≤ 7 by omega]
     by_cases h : (i * 8 + (j : Nat) < n * 8)
-    · simp only [h, decide_True, Bool.true_and]
+    · simp only [h, decide_true, Bool.true_and]
       congr 1
       omega
-    · simp only [h, decide_False, Bool.false_and, decide_True, Bool.true_and, Bool.false_eq]
+    · simp only [h, decide_false, Bool.false_and, decide_true, Bool.true_and, Bool.false_eq]
       apply BitVec.getLsbD_ge
       omega
   · simp only [hn, ↓reduceIte, getLsbD_zero, Bool.and_eq_false_imp, decide_eq_true_eq]
@@ -1021,7 +1021,7 @@ theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i 
 theorem extractLsBytes_zero {w : Nat} (base : Nat) :
     (0#w).extractLsBytes base n = 0#(n*8) := by
   apply BitVec.eq_of_getLsbD_eq
-  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, getLsbD_zero, Bool.and_false,
+  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_true, getLsbD_zero, Bool.and_false,
     implies_true]
 
 /-- Extracting out all the bytes is equal to the bitvector.
@@ -1045,7 +1045,7 @@ theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   x.extractLsBytes a n = 0#(n*8) := by
   apply BitVec.eq_of_getLsbD_eq
   intros i
-  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, Bool.true_and, getLsbD_zero]
+  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_true, Bool.true_and, getLsbD_zero]
   apply BitVec.getLsbD_ge
   omega
 
@@ -1060,7 +1060,8 @@ theorem not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
 
 /-- If subtraction does not overflow,
 then `(x - y).toNat` equals `x.toNat - y.toNat` -/
-@[deprecated toNat_sub_of_le]
+-- v4.15: the `deprecated` attribute now requires a `(since := …)` version tag.
+@[deprecated toNat_sub_of_le (since := "2024-05")]
 theorem toNat_sub_of_lt' {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
     (y - x).toNat = y.toNat - x.toNat := by
   apply toNat_sub_of_le

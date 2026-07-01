@@ -244,7 +244,7 @@ theorem program.step_8e0_8f0_of_wellformed (s sn : ArmState)
   subst h_step
   constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
   · constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
-  · decide
+  -- v4.15: `constructor <;> simp only […]` above now closes this goal; `· decide` removed.
 
 structure Step_8e4_8e8 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8e8 : Prop where
   h_x1 : snext.x1 = scur.x1 + 0x10#64
@@ -256,7 +256,7 @@ structure Step_8e4_8e8 (scur : ArmState) (snext : ArmState) extends WellFormedAt
 def Step_8e4_8e8.h_cut (h : Step_8e4_8e8 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
-  decide
+  -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
 
 -- 2/7 (0x8e4#64, 0x3cc10424#32),  /- ldr q4, [x1], #16        -/
 theorem program.step_8e4_8e8_of_wellformed_of_stepped (scur snext : ArmState)
@@ -286,7 +286,7 @@ structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) extends WellFormedAt
 def Step_8e8_8ec.h_cut (h : Step_8e8_8ec scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
-  decide
+  -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
 
 theorem program.step_8e8_8ec_of_wellformed (scur snext : ArmState)
     (hscur : WellFormedAtPc scur 0x8e8)
@@ -324,7 +324,7 @@ structure Step_8ec_8f0 (scur : ArmState) (snext : ArmState) extends WellFormedAt
 def Step_8ec_8f0.h_cut (h : Step_8ec_8f0 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
-  decide
+  -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
 
 theorem program.step_8ec_8f0_of_wellformed (scur snext : ArmState)
     (hs : WellFormedAtPc scur 0x8ec#64)
@@ -383,7 +383,7 @@ structure Step_8f4_8e4 (scur : ArmState) (snext : ArmState) extends WellFormedAt
 def Step_8f4_8e4.h_cut (h : Step_8f4_8e4 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
-  decide
+  -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
 
 theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
     (hs : WellFormedAtPc scur 0x8f4)
@@ -556,7 +556,7 @@ theorem partial_correctness :
   case v2 =>
     intro sf h_exit
     simp only [Spec.exit, Spec'.cut, cut, exit] at h_exit ⊢
-    simp only [h_exit, BitVec.reduceEq, decide_False, Bool.or_self, decide_True, Bool.or_true]
+    simp only [h_exit, BitVec.reduceEq, decide_false, Bool.or_self, decide_true, Bool.or_true]
   case v3 =>
     intro s0 sf h_assert h_exit
     simp [Spec'.assert, Spec.exit, Spec.post, post, exit,

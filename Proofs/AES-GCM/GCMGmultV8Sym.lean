@@ -65,20 +65,24 @@ theorem pmull_op_e_0_eize_64_elements_1_size_128_eq (x y : BitVec 64) :
   simp only [state_simp_rules, bitvec_rules]
   done
 
+-- v4.15: the `simp` below now exceeds the default heartbeats at `whnf`; bump.
+set_option maxHeartbeats 1000000 in
 theorem rev_elems_128_8_eq_rev_elems_64_8_extractLsb' (x : BitVec 128) :
   rev_elems 128 8 x _p1 _p2 =
   rev_elems 64 8 (BitVec.extractLsb' 0 64 x) _p3 _p4 ++ rev_elems 64 8 (BitVec.extractLsb' 64 64 x) _p5 _p6 := by
   repeat unfold rev_elems
   simp (config := {decide := true, ground := true}) only [minimal_theory, BitVec.cast_eq]
-  bv_check "lrat_files/GCMGmultV8Sym.lean-GCMGmultV8Program.rev_elems_128_8_eq_rev_elems_64_8_extractLsb'-73-2.lrat"
+  bv_check "lrat_files/GCMGmultV8Sym.lean-GCMGmultV8Program.rev_elems_128_8_eq_rev_elems_64_8_extractLsb'-75-2.lrat"
   done
 
+-- v4.15: the `simp` below now exceeds the default heartbeats at `whnf`; bump.
+set_option maxHeartbeats 1000000 in
 theorem rev_elems_64_8_append_eq_rev_elems_128_8 (x y : BitVec 64) :
   rev_elems 64 8 x _p1 _p2 ++ rev_elems 64 8 y _p3 _p4 =
   rev_elems 128 8 (y ++ x) _p5 _p6 := by
   repeat unfold rev_elems
   simp (config := {decide := true, ground := true}) only [minimal_theory, BitVec.cast_eq]
-  bv_check "lrat_files/GCMGmultV8Sym.lean-GCMGmultV8Program.rev_elems_64_8_append_eq_rev_elems_128_8-81-2.lrat"
+  bv_check "lrat_files/GCMGmultV8Sym.lean-GCMGmultV8Program.rev_elems_64_8_append_eq_rev_elems_128_8-85-2.lrat"
   done
 
 private theorem lsb_from_extractLsb'_of_append_self (x : BitVec 128) :
@@ -120,7 +124,7 @@ theorem BitVec.extractLsb'_append_eq (x : BitVec (n + n)) :
   simp only [Nat.reduceAdd, BitVec.extractLsb'_eq] at h1
   have h3 : BitVec.setWidth n (x >>> n) = BitVec.extractLsb' n n x := by
     apply BitVec.eq_of_getLsbD_eq; intro i
-    simp only [BitVec.getLsbD_setWidth, Fin.is_lt, decide_True, BitVec.getLsbD_ushiftRight,
+    simp only [BitVec.getLsbD_setWidth, Fin.is_lt, decide_true, BitVec.getLsbD_ushiftRight,
       Bool.true_and, BitVec.getLsbD_extractLsb']
   simp_all only
 
@@ -298,7 +302,7 @@ set_option pp.deepTerms.threshold 50 in
     rw [@rev_elems_128_8_eq_rev_elems_64_8_extractLsb' _ (by decide) (by decide) (by decide) (by decide) (by decide)]
     rw [h_Xi_upper_rev, h_Xi_lower_rev]
     rw [BitVec.extractLsb'_append_eq]
-    simp only [BitVec.truncate_eq_setWidth, Nat.reduceAdd, BitVec.shiftLeft_zero_eq]
+    simp only [BitVec.truncate_eq_setWidth, Nat.reduceAdd, BitVec.shiftLeft_zero]
 
     simp [DPSFP.polynomial_mult_append]
     simp [GCMV8.gcm_polyval_red, GCMV8.irrepoly]
@@ -315,7 +319,7 @@ set_option pp.deepTerms.threshold 50 in
     --            GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR]
     -- simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtracLsb',
     --   BitVec.reduceHShiftLeft, BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.ofNat_eq_ofNat,
-    --   BitVec.reduceEq, ↓reduceIte, Nat.sub_self, BitVec.ushiftRight_zero_eq, BitVec.reduceAnd,
+    --   BitVec.reduceEq, ↓reduceIte, Nat.sub_self, BitVec.ushiftRight_zero, BitVec.reduceAnd,
     --   BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero, Nat.zero_mod,
     --   Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul, Nat.reduceSub,
     --   BitVec.and_self, BitVec.zero_and, BitVec.reduceMul, BitVec.xor_zero, BitVec.mul_one,

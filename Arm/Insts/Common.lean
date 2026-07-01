@@ -689,7 +689,9 @@ theorem shift_le (x : Nat) (shift :Nat) :
   simp only [Nat.shiftRight_eq_div_pow]
   exact Nat.div_le_self x (2 ^ shift)
 
-set_option bv.ac_nf false
+-- v4.15: `bv.ac_nf` is no longer a global option; it is now the `acNf` field of
+-- the `bv_decide` config and already defaults to `false` (AC-normalization off),
+-- which is exactly what this `set_option` requested — so it is dropped.
 
 @[state_simp_rules]
 theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
@@ -720,7 +722,7 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
              reduceAllOnes,
              reduceZeroExtend,
              Nat.zero_mul,
-             shiftLeft_zero_eq,
+             shiftLeft_zero,
              reduceNot,
              BitVec.extractLsb_ofNat,
              Nat.reducePow,
@@ -773,7 +775,7 @@ theorem msb_signExtend (x : BitVec n) (hw: n < n'):
                getLsbD_ge]
   · simp only [msb_eq_getLsbD_last, Nat.add_one_sub_one,
                getLsbD_signExtend, Nat.lt_add_one,
-               decide_True, Bool.true_and, ite_eq_right_iff]
+               decide_true, Bool.true_and, ite_eq_right_iff]
     by_cases h : n' < n
     · rcases n with rfl | n
       · simp
@@ -815,7 +817,7 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
              reduceAllOnes,
              reduceZeroExtend,
              Nat.zero_mul,
-             shiftLeft_zero_eq,
+             shiftLeft_zero,
              reduceNot,
              BitVec.extractLsb_ofNat,
              Nat.reducePow,
@@ -843,19 +845,19 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
     simp only [Nat.sub_zero, Nat.reduceAdd, getLsbD_extractLsb', Nat.zero_add,
                getLsbD_sshiftRight, getLsbD_signExtend]
     simp only [show (i : Nat) < 32 by omega,
-               decide_True, Bool.true_and]
+               decide_true, Bool.true_and]
     simp only [show ¬33 ≤ (i : Nat) by omega,
-               decide_False, Bool.not_false, Bool.true_and]
+               decide_false, Bool.not_false, Bool.true_and]
     simp only [show ¬32 ≤ (i : Nat) by omega,
-               decide_False, Bool.not_false, Bool.true_and]
+               decide_false, Bool.not_false, Bool.true_and]
     by_cases h : shift + (i : Nat) < 32
     · simp only [h, reduceIte]
       simp only [show shift + (i : Nat) < 33 by omega,
-                 ↓reduceIte, decide_True, Bool.true_and]
+                 ↓reduceIte, decide_true, Bool.true_and]
     · simp only [h, reduceIte]
       have icases : shift + (i : Nat) = 32 ∨ 32 < shift + (i : Nat) := by omega
       rcases icases with (h' | h')
-      · simp only [h', Nat.lt_add_one, ↓reduceIte, decide_True, Bool.true_and]
+      · simp only [h', Nat.lt_add_one, ↓reduceIte, decide_true, Bool.true_and]
       · simp only [show ¬(shift + (i : Nat) < 33) by omega, ↓reduceIte]
         apply msb_signExtend; trivial
   simp only [h]

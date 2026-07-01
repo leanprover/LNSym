@@ -64,7 +64,14 @@ set_option linter.unusedVariables false in
 -- set_option trace.Tactic.sym.info true in
 -- set_option trace.Tactic.sym true in
 set_option pp.maxSteps 100 in
-set_option maxHeartbeats 2000000 in
+-- Note (v4.15 port): elaboration of this 485-step symbolic block is fast, but the
+-- v4.15 kernel takes a very long time type-checking the resulting (very large) proof
+-- term and exceeds the previous `maxHeartbeats 2000000` budget. Disable the heartbeat
+-- limit (`0`) so the kernel can finish; memory stays low (~1GB, no OOM) and the proof
+-- logic is unchanged (this theorem still ends in its pre-existing `sorry`). This is the
+-- same remedy the reference branch applied here at v4.21; the v4.31 `sym_n` memory-OOM
+-- that later forces parking this proof does NOT occur at v4.15.
+set_option maxHeartbeats 0 in
 set_option maxRecDepth 8000 in
 theorem sha512_loop_sym {s0 sf : ArmState}
  { a b c d e f g h

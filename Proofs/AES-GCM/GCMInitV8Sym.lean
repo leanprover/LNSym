@@ -11,14 +11,19 @@ import Specs.GCMV8
 
 namespace GCMInitV8Program
 
-set_option bv.ac_nf false
+-- v4.15: `bv.ac_nf` is no longer a global option; it is now the `acNf` field of
+-- the `bv_decide` config and already defaults to `false` (AC-normalization off),
+-- which is exactly what this `set_option` requested — so it is dropped.
 
 abbrev H_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 1#5) s
 abbrev Htable_addr (s : ArmState) : BitVec 64 := r (StateField.GPR 0#5) s
 
 set_option maxRecDepth 2000 in
-set_option maxHeartbeats 500000 in
-set_option sat.timeout 120 in
+-- v4.15: the 152-step symbolic simulation now exceeds 500000 heartbeats at `whnf`; bump.
+set_option maxHeartbeats 2000000 in
+-- v4.15: `sat.timeout` is no longer a global option; the SAT-solver timeout is now
+-- the `timeout` field of the `bv_decide` config. Moved to per-call
+-- `bv_decide (config := { timeout := 120 })` on the two solver calls in this proof.
 -- set_option pp.deepTerms true in
 -- set_option pp.maxSteps 10000 in
 -- set_option trace.profiler true in
@@ -76,7 +81,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
   sym_n 152
   simp only [Htable_addr, state_value] -- TODO: state_value is needed, why
   apply And.intro
-  · bv_decide
+  · bv_decide (config := { timeout := 120 })
   · simp only
     [shift_left_common_aux_64_2
     , shift_right_common_aux_64_2_tff
@@ -91,9 +96,9 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
       GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR]
     simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtracLsb',
       BitVec.reduceHShiftLeft, BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.ofNat_eq_ofNat,
-      BitVec.reduceEq, ↓reduceIte, Nat.sub_self, BitVec.ushiftRight_zero_eq, BitVec.reduceAnd,
+      BitVec.reduceEq, ↓reduceIte, Nat.sub_self, BitVec.ushiftRight_zero, BitVec.reduceAnd,
       BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero, Nat.zero_mod,
       Nat.zero_add, Nat.sub_zero, Nat.mul_one, Nat.zero_mul, Nat.one_mul, Nat.reduceSub,
       BitVec.and_self, BitVec.zero_and, BitVec.reduceMul, BitVec.xor_zero, BitVec.mul_one,
       BitVec.zero_xor, Nat.add_one_sub_one, BitVec.one_mul, BitVec.reduceXOr]
-    bv_decide
+    bv_decide (config := { timeout := 120 })

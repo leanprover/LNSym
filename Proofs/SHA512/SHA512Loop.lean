@@ -146,7 +146,7 @@ theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   x.extractLsBytes a n = 0#(n*8) := by
   apply BitVec.eq_of_getLsbD_eq
   intros i
-  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, Bool.true_and, getLsbD_zero]
+  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_true, Bool.true_and, getLsbD_zero]
   apply BitVec.getLsbD_ge
   omega
 

@@ -37,7 +37,8 @@ def bvOmegaSimpCtx : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
 
   let congrTheorems ← Meta.getSimpCongrTheorems
   let config : Simp.Config := { failIfUnchanged := false }
-  let ctx : Simp.Context := { config, simpTheorems, congrTheorems }
+  -- v4.15: the `Simp.Context` constructor is private; use `Simp.mkContext`.
+  let ctx : Simp.Context ← Simp.mkContext config simpTheorems congrTheorems
   return (ctx, simprocs)
 
 /--

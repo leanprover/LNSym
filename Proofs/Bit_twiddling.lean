@@ -149,7 +149,8 @@ theorem power_of_two (x : BitVec 32) (i : BitVec 5)
 
 -- ============================================================
 
-set_option sat.solver "cadical" in
+-- v4.15: `sat.solver` is no longer an option (cadical is the only SAT backend), so
+-- the `set_option sat.solver "cadical" in` that guarded this proof is dropped.
 /--
 6. Conditionally set or clear bits without branching
 (https://graphics.stanford.edu/~seander/bithacks.html#ConditionalSetOrClearBitsWithoutBranching)

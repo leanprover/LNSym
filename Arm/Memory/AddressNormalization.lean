@@ -36,7 +36,9 @@ import Tactics.Common
 open Lean Meta Elab Simp
 
 
-theorem Nat.mod_eq_sub {x y : Nat} (h : x ≥ y) (h' : x - y < y) :
+-- v4.15: core now defines `Nat.mod_eq_sub` (with a different statement), so the
+-- LNSym-local lemma is renamed to `Nat.mod_eq_sub'` to avoid the clash.
+theorem Nat.mod_eq_sub' {x y : Nat} (h : x ≥ y) (h' : x - y < y) :
     x % y = x - y := by
   rw [Nat.mod_eq_sub_mod h, Nat.mod_eq_of_lt h']
 
@@ -106,7 +108,7 @@ more `omega` facts.
   let ltTy := mkLTNat subTy n
   let some ltProof ← dischargeByOmega ltTy
     | return .continue
-  let eqProof ← mkAppM ``Nat.mod_eq_sub #[geProof, ltProof]
+  let eqProof ← mkAppM ``Nat.mod_eq_sub' #[geProof, ltProof]
   trace[Tactic.address_normalization] "{checkEmoji} reduceModSub '{x} % {n}'"
   return .done { expr := subTy, proof? := eqProof : Result }
 

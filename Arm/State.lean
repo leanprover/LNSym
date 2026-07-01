@@ -887,7 +887,7 @@ theorem read_bytes_one_eq (m : Memory) : m.read_bytes 1 addr = m.read addr := by
   apply BitVec.eq_of_getLsbD_eq
   intros i
   rw [BitVec.getLsbD_append]
-  simp only [show (i : Nat) < 8 by omega, decide_True, Nat.zero_le, BitVec.getLsbD_ge, cond_true]
+  simp only [show (i : Nat) < 8 by omega, decide_true, Nat.zero_le, BitVec.getLsbD_ge, cond_true]
 
 theorem read_bytes_succ_eq (m : Memory) :
   m.read_bytes (n' + 1) addr = (m.read_bytes n' (addr + 1) ++ m.read addr).cast (by omega) := rfl
@@ -898,23 +898,23 @@ theorem getLsbD_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
   induction n generalizing i addr m
   case zero =>
     simp only [Nat.reduceMul, Nat.zero_le, BitVec.getLsbD_ge, Nat.zero_mul, Nat.not_lt_zero,
-      decide_False, Bool.false_and]
+      decide_false, Bool.false_and]
   case succ n' ih =>
     simp only [read_bytes_succ_eq, BitVec.ofNat_eq_ofNat,
       BitVec.getLsbD_cast, BitVec.getLsbD_append, memory_rules,
       getLsbD_read]
     rw [Nat.succ_mul]
     by_cases h₁ : (i < 8)
-    · simp only [h₁, decide_True, cond_true, show i < n' * 8 + 8 by omega, Bool.true_and]
+    · simp only [h₁, decide_true, cond_true, show i < n' * 8 + 8 by omega, Bool.true_and]
       have hdiv : i / 8 = 0 :=  Nat.div_eq_of_lt h₁
       rw [hdiv]
       simp only [BitVec.add_zero]
       have hmod : i % 8 = i := Nat.mod_eq_of_lt h₁
       simp [hmod]
-    · simp only [h₁, decide_False, cond_false]
+    · simp only [h₁, decide_false, cond_false]
       rw [ih]
       by_cases h₂ : i - 8 < n' * 8
-      · simp only [h₂, decide_True, Bool.true_and, show (i < n' * 8 + 8) by omega]
+      · simp only [h₂, decide_true, Bool.true_and, show (i < n' * 8 + 8) by omega]
         have hi' : ∃ i', i = i' + 8 := by
           apply Classical.byContradiction
           intros h
@@ -926,7 +926,7 @@ theorem getLsbD_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
         simp only [Nat.add_sub_cancel, Nat.zero_lt_succ, Nat.add_div_right, Nat.add_mod_right]
         congr 2
         bv_omega
-      · simp only [h₂, decide_False, Bool.false_and, Bool.false_eq, Bool.and_eq_false_imp,
+      · simp only [h₂, decide_false, Bool.false_and, Bool.false_eq, Bool.and_eq_false_imp,
           decide_eq_true_eq]
         bv_omega
       · omega
@@ -941,15 +941,15 @@ theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h 
   apply BitVec.eq_of_getLsbD_eq
   simp only [BitVec.getLsbD_extractLsByte]
   intros j
-  simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
+  simp only [show (j : Nat) ≤ 7 by omega, decide_true, Bool.true_and]
   rw [getLsbD_read_bytes]
   by_cases h₁ : i * 8 + ↑j < n * 8
-  · simp only [h₁, decide_True, Bool.true_and]
+  · simp only [h₁, decide_true, Bool.true_and]
     simp only [show (i < n) by omega, ↓reduceIte]
     simp only [show (i * 8 + ↑j) / 8 = i by omega]
     simp only [show (i * 8 + ↑j) % 8 = j by omega]
     rfl
-  · simp only [h₁, decide_False, Bool.false_and, Bool.false_eq]
+  · simp only [h₁, decide_false, Bool.false_and, Bool.false_eq]
     simp only [show ¬(i < n) by omega, ↓reduceIte, BitVec.getLsbD_zero]
   · omega
 
@@ -1073,22 +1073,22 @@ theorem extractLsByte_setWidth_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i >
     simp only [Nat.add_one_sub_one, BitVec.getLsbD_extractLsByte, BitVec.getLsbD_setWidth,
       BitVec.getLsbD_ushiftRight]
     by_cases hj : (j : Nat) ≤ 7
-    · simp only [hj, decide_True, Bool.true_and]
+    · simp only [hj, decide_true, Bool.true_and]
       by_cases hi' : i * 8 + ↑j < n * 8
-      · simp only [hi', decide_True, Bool.true_and]
+      · simp only [hi', decide_true, Bool.true_and]
         simp only at hi' ⊢
         congr 1
         omega
       · by_cases hi' : i * 8 + ↑j < n * 8
-        · simp only [hi', decide_True, Bool.true_and]
+        · simp only [hi', decide_true, Bool.true_and]
           congr 1
           rw [Nat.add_mul]
           omega
-        · simp only [hi', decide_False, Bool.false_and, Bool.false_eq]
+        · simp only [hi', decide_false, Bool.false_and, Bool.false_eq]
           apply BitVec.getLsbD_ge
           rw [Nat.add_mul, Nat.add_mul]
           omega
-    · simp only [hj, decide_False, Bool.false_and]
+    · simp only [hj, decide_false, Bool.false_and]
 
 /--
 The byte at location `ix` in memory, such that `base ≤ ix ≤ base + ix` will be the `ix - base` byte of `data`.

@@ -783,7 +783,10 @@ def toSimpTheorems (eff : AxEffects) : MetaM (Array SimpTheorem) := do
             .fvar e.fvarId!
           else
             .other <| Name.str baseName name
-        let newThms ← mkSimpTheorems origin #[] e (prio := prio)
+        -- v4.15: `mkSimpTheorems` became private; build via the public
+        -- `SimpTheorems.add` and extract the `Array SimpTheorem` from the trees.
+        let freshThms ← ({} : SimpTheorems).add origin #[] e (prio := prio)
+        let newThms := freshThms.pre.values ++ freshThms.post.values
         let newThms ← newThms.mapM fixSimpTheoremKey
         pure <| thms ++ newThms
 
