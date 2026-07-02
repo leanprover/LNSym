@@ -69,7 +69,7 @@ Such expressions tend to result from using `reduce` or
 `simp` with `{ground := true}`.
 You can call `canonicalizeBitVec` after these functions to ensure you don't
 needlessly expose `BitVec` internal details -/
--- TODO: should this canonicalize to `BitVec.ofNatLt` instead,
+-- TODO: should this canonicalize to `BitVec.ofNatLT` instead,
 --       as the current transformation loses information?
 partial def canonicalizeBitVec (e : Expr) : MetaM Expr := do
   match_expr e with

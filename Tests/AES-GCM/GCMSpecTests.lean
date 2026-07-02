@@ -23,10 +23,10 @@ end GCMInitV8SpecTest
 namespace GCMGmultV8SpecTest
 
 def H : BitVec 128 :=
-  List.get! GCMProgramTestParams.Htable 1 ++
-  List.get! GCMProgramTestParams.Htable 0
-def X0 := List.get! GCMProgramTestParams.X 0
-def X1 := List.get! GCMProgramTestParams.X 1
+  GCMProgramTestParams.Htable[1]! ++
+  GCMProgramTestParams.Htable[0]!
+def X0 := GCMProgramTestParams.X[0]!
+def X1 := GCMProgramTestParams.X[1]!
 
 -- v4.16: no-progress simp → decide
 example : GCMV8.GCMGmultV8 H X0 (by decide) = X1 := by native_decide
@@ -36,11 +36,11 @@ end GCMGmultV8SpecTest
 namespace GCMGhashV8SpecTest
 
 def H : BitVec 128 :=
-  List.get! GCMProgramTestParams.Htable 1 ++
-  List.get! GCMProgramTestParams.Htable 0
-def X1 := List.get! GCMProgramTestParams.X 1
-def X2 := List.get! GCMProgramTestParams.X 2
-def X3 := List.get! GCMProgramTestParams.X 3
+  GCMProgramTestParams.Htable[1]! ++
+  GCMProgramTestParams.Htable[0]!
+def X1 := GCMProgramTestParams.X[1]!
+def X2 := GCMProgramTestParams.X[2]!
+def X3 := GCMProgramTestParams.X[3]!
 def inp1 := List.replicate 16 0x2a#8
 def inp2 := List.replicate 32 0x2a#8
 

@@ -638,7 +638,10 @@ theorem partial_correctness :
       -- 2/15
       name h_s1_run : s2 := run 1 s1
       obtain ⟨h_s2_cut, h_s2_pc, h_s2_err, h_s2_program, _h_s2_read_sp_8, h_s2_read_sp_12, h_s2_x0, h_s2_x1, h_s2_sp, h_s2_sp_aligned⟩ :=
-        program.stepi_0x898_cut s1 s2 h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned (by mem_omega) h_s1_run.symm
+        program.stepi_0x898_cut s1 s2 h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned
+          (by -- v4.18: `mem_omega` no longer relates `s1.sp` and `s0.sp`; do it by hand.
+              rw [mem_legal'.iff_omega]; have := h_mem_legal.omega_def; rw [h_s1_sp]; bv_omega)
+          h_s1_run.symm
       rw [Correctness.snd_cassert_of_not_cut h_s2_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s2 = run 1 s2 by rfl]
       replace h_s2_sp : s2.sp = (s0.sp - 32#64) := by simp_all
@@ -650,7 +653,10 @@ theorem partial_correctness :
 
       -- 3/15
       name h_run : s3 := run 1 s2
-      obtain h := program.stepi_0x89c_cut s2 s3 h_s2_program h_s2_pc h_s2_err h_s2_sp_aligned (by mem_omega) h_run.symm
+      obtain h := program.stepi_0x89c_cut s2 s3 h_s2_program h_s2_pc h_s2_err h_s2_sp_aligned
+        (by -- v4.18: relate `s2.sp` back to `s0.sp` by hand for `mem_legal'`.
+            rw [mem_legal'.iff_omega]; have := h_mem_legal.omega_def; rw [h_s2_sp]; bv_omega)
+        h_run.symm
       obtain ⟨h_s3_cut, h_s3_read_sp_8, h_s3_read_sp_12, h_s3_x0, h_s3_x1, h_s3_sp, h_s3_pc, h_s3_err, h_s3_program, h_s3_sp_aligned⟩ := h
       rw [Correctness.snd_cassert_of_not_cut h_s3_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s3 = run 1 s3 by rfl]

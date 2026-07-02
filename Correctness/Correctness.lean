@@ -206,7 +206,7 @@ theorem partial_correctness_from_verification_conditions [Sys σ] [Spec' σ]
             simp only [hck, ↓reduceIte] at this
             assumption
           have : n - (i + 1 + k) < n - i := by
-            apply Nat.sub_lt_sub_left; assumption; simp_arith
+            apply Nat.sub_lt_sub_left; assumption; simp +arith
           find (i + 1 + k) h' hle'
       else
         have := Nat.ge_of_not_lt hn
@@ -421,7 +421,7 @@ theorem partial_correctness_from_assertions [Sys σ] [Spec' σ]
             simp_all only [Nat.succ_eq_add_one, eq_iff_iff, true_iff]
             done
           have : n - (i + 1 + k) < n - i := by
-            apply Nat.sub_lt_sub_left; assumption; simp_arith
+            apply Nat.sub_lt_sub_left; assumption; simp +arith
           find (i + 1 + k) h' hle'
       else
         have := Nat.ge_of_not_lt hn

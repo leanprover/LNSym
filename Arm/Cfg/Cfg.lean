@@ -325,7 +325,7 @@ protected def create' (start_address end_address : BitVec 64)
                                        not_false_eq_true,
                                        BitVec.lt_of_le_ne, h₁])
                    (by rw [← BitVec.toFin_sub]; exact h₂)
-                   (by simp_arith [Fin.ofNat'])
+                   (by simp +arith [Fin.ofNat'])
            simp [BitVec.fin_bitvec_le, BitVec.fin_bitvec_lt] at *
            exact this
          go (address + 4#64) max_address program cfg

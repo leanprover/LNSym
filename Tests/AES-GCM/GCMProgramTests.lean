@@ -143,9 +143,9 @@ namespace GCMGmultV8ProgramTest
 
 open GCMProgramTestParams
 
-def X_before : List (BitVec 8) := List.get! X 0
+def X_before : List (BitVec 8) := X[0]!
 def flat_X_before := revflat X_before
-def X_after : List (BitVec 8) := List.get! X 1
+def X_after : List (BitVec 8) := X[1]!
 
 def gcm_gmult_init_state : ArmState :=
   let init_gpr :=
@@ -227,8 +227,8 @@ def gcm_ghash_test (n : Nat) (len : BitVec 64) (buf : BitVec 896)
 namespace block2
 def len := 0x20#64
 
-def X_before : List (BitVec 8) := List.get! X 2
-def X_after : List (BitVec 8) := List.get! X 3
+def X_before : List (BitVec 8) := X[2]!
+def X_after : List (BitVec 8) := X[3]!
 
 def final_state : ArmState :=
   gcm_ghash_test 70 len (revflat buf) (revflat X_before)
@@ -242,8 +242,8 @@ end block2
 namespace block4
 def len := 0x40#64
 
-def X_before : List (BitVec 8) := List.get! X 4
-def X_after : List (BitVec 8) := List.get! X 5
+def X_before : List (BitVec 8) := X[4]!
+def X_after : List (BitVec 8) := X[5]!
 
 def final_state : ArmState :=
   gcm_ghash_test 67 len (revflat buf) (revflat X_before)
@@ -258,8 +258,8 @@ end block4
 namespace block5
 def len := 0x50#64
 
-def X_before : List (BitVec 8) := List.get! X 5
-def X_after : List (BitVec 8) := List.get! X 6
+def X_before : List (BitVec 8) := X[5]!
+def X_after : List (BitVec 8) := X[6]!
 
 def final_state : ArmState :=
   gcm_ghash_test 90 len (revflat buf) (revflat X_before)
@@ -274,8 +274,8 @@ end block5
 namespace block6
 def len := 0x60#64
 
-def X_before : List (BitVec 8) := List.get! X 6
-def X_after : List (BitVec 8) := List.get! X 7
+def X_before : List (BitVec 8) := X[6]!
+def X_after : List (BitVec 8) := X[7]!
 
 def final_state : ArmState :=
   gcm_ghash_test 101 len (revflat buf) (revflat X_before)
@@ -290,8 +290,8 @@ end block6
 namespace block7
 def len := 0x70#64
 
-def X_before : List (BitVec 8) := List.get! X 7
-def X_after : List (BitVec 8) := List.get! X 8
+def X_before : List (BitVec 8) := X[7]!
+def X_after : List (BitVec 8) := X[8]!
 
 def final_state : ArmState :=
   gcm_ghash_test 110 len (revflat buf) (revflat X_before)

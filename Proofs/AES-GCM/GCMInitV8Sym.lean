@@ -54,7 +54,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     -- v20 - v31 stores results of Htable
     ∧ let Hinit := (read_mem_bytes 16 (H_addr s0) s0)
       read_sfp 128 20#5 sf =
-      (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit))).get! 0
+      -- v4.18: `List.get!` is deprecated; use getElem-bang indexing `[0]!`.
+      (GCMV8.GCMInitV8 ((BitVec.extractLsb' 0 64 Hinit) ++ (BitVec.extractLsb' 64 64 Hinit)))[0]!
     --
     -- TODO: Commenting out memory related conjuncts since it seems
     -- to make symbolic execution stuck
@@ -91,7 +92,8 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     generalize Memory.read_bytes 16 (r (StateField.GPR 1#5) s0) s0.mem = Hinit
     -- change the type of Hinit to be BitVec 128, assuming that's def-eq
     change BitVec 128 at Hinit
-    simp only [GCMV8.GCMInitV8, GCMV8.lo, List.get!, GCMV8.hi,
+    -- v4.18: `List.get!` deprecated; unfold `[0]!` via `List.getElem!_cons_zero`.
+    simp only [GCMV8.GCMInitV8, GCMV8.lo, List.getElem!_cons_zero, GCMV8.hi,
       GCMV8.gcm_init_H, GCMV8.refpoly, GCMV8.pmod, GCMV8.pmod.pmodTR,
       GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR]
     simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtracLsb',

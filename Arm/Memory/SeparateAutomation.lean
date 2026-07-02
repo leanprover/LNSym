@@ -100,7 +100,23 @@ Doing it here lets us remove it from `bv_toNat` simp-set as a change to `Separat
 without needing us to modify the core definitions file which incurs a recompile cost,
 making experimentation annoying.
 -/
-attribute [bv_toNat] mem_legal'
+attribute [bitvec_to_nat] mem_legal'
+
+/- v4.18: core renamed the `bv_toNat` simp attribute to `bitvec_to_nat` (in
+`Lean.Elab.Tactic.Omega.Frontend`, `bv_toNat` is now `@[deprecated bitvec_to_nat]`),
+and all the core `BitVec`→`Nat` normalization lemmas (`BitVec.toNat_eq`,
+`BitVec.toNat_add`, …) moved onto `bitvec_to_nat`. LNSym's `bv_omega_bench`
+(`Tactics.BvOmegaBench`) builds its omega-preprocessing simp set from that attribute,
+which became (almost) empty under the old name — breaking `mem_omega`/`simp_mem`/
+`bv_omega`'s ability to translate `BitVec` goals into `Nat`. Re-tag the core
+normalization lemmas onto `bitvec_to_nat` here (and read `bitvec_to_nat` above) so the
+preprocessing set is populated exactly as before the bump. -/
+attribute [bitvec_to_nat]
+  BitVec.toNat_eq BitVec.toNat_ne BitVec.toNat_ofNat BitVec.toNat_ofFin
+  BitVec.toNat_cast BitVec.toNat_ofInt BitVec.toNat_setWidth BitVec.toNat_setWidth'
+  BitVec.toNat_not BitVec.toNat_shiftLeft BitVec.toNat_ushiftRight
+  BitVec.toNat_add BitVec.toNat_sub' BitVec.toNat_neg BitVec.toNat_mul
+  BitVec.le_def BitVec.lt_def BitVec.ofNat_eq_ofNat
 
 end BvOmega
 
@@ -141,7 +157,9 @@ def Context.init (cfg : SimpMemConfig) : MetaM Context := do
   let (bvToNatSimpCtx, bvToNatSimprocs) ←
     LNSymSimpContext
       (config := {failIfUnchanged := false})
-      (simp_attrs := #[`bv_toNat])
+      -- v4.18: `bv_toNat` attribute renamed to `bitvec_to_nat` in core (see the
+      -- re-tag note above); read the new name to get the BitVec→Nat lemmas back.
+      (simp_attrs := #[`bitvec_to_nat])
       (useDefaultSimprocs := false)
   return {cfg, bvToNatSimpCtx, bvToNatSimprocs}
 
@@ -444,7 +462,8 @@ def SimpMemM.simplifySupervisedCore (g : MVarId) (e : Expr) (guidance : Guidance
           User has given us a read, prove that it works.
           TODO: replace the use of throwError with telling the user to prove the goals if enabled.
           -/
-          let .some hReadEq := (← ReadBytesEqProof.ofExpr? hyp (← inferType hyp)).get? 0
+          -- v4.18: `Array.get?` deprecated (removed by v4.26) → getElem-bang `a[i]?`.
+          let .some hReadEq := (← ReadBytesEqProof.ofExpr? hyp (← inferType hyp))[0]?
             | throwError "{crossEmoji} expected user provided read hypohesis {hyp} to be a read"
           let subset := (MemSubsetProp.mk er.span hReadEq.read.span)
           match ← proveWithOmega? subset (keepHyps.map .fvar) (← getBvToNatSimpCtx) (← getBvToNatSimprocs)  hyps with

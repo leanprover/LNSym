@@ -346,7 +346,9 @@ private theorem mem_subset_neq_first_addr_small_second_region
       omega
     simp only [l1, Nat.lt_irrefl] at h1
   · rename_i h
-    bv_omega_bench
+    -- v4.18: `bv_omega_bench` wrapper omega no longer closes this pure-BitVec
+    -- goal on its own; use `bv_omega` (matches reference v4.31).
+    bv_omega
     done
 
 private theorem write_mem_bytes_of_write_mem_bytes_shadow_general_n2_lt
@@ -689,7 +691,7 @@ theorem read_mem_of_write_mem_bytes_subset
           -- simp only [bv_toNat]
           simp only [toNat_cast, extractLsb', toNat_setWidth]
           simp only [toNat_ushiftRight]
-          simp_all only [toNat_ofNat, toNat_ofNatLt]
+          simp_all only [toNat_ofNat, toNat_ofNatLT]
           simp only [BitVec.sub_of_add_is_sub_sub, Nat.succ_sub_succ_eq_sub,
                      Nat.mod_eq_of_lt, Nat.reduceLT, Nat.mod_add_mod,
                      Nat.sub_zero]
@@ -781,7 +783,8 @@ private theorem mem_legal_lemma (h0 : 0 < n) (h1 : n < 2^64)
   revert h0 h1 h2
   have : 2^64 = 18446744073709551616 := by decide
   simp_all [mem_legal]
-  bv_omega_bench
+  -- v4.18: `bv_omega` (was `bv_omega_bench`), matches reference v4.31.
+  bv_omega
 
 private theorem addr_diff_upper_bound_lemma (h0 : 0 < n1) (h1 : n1 ≤ 2 ^ 64)
   (h2 : 0 < n2) (h3 : n2 < 2^64)
@@ -793,7 +796,8 @@ private theorem addr_diff_upper_bound_lemma (h0 : 0 < n1) (h1 : n1 ≤ 2 ^ 64)
   have _ : 2^64 = 18446744073709551616 := by decide
   have _ : 2^64 - 1 = 18446744073709551615 := by decide
   simp_all [mem_subset, mem_legal]
-  bv_omega_bench
+  -- v4.18: `bv_omega` (was `bv_omega_bench`), matches reference v4.31.
+  bv_omega
 
 private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_lt
   (h0 : 0 < n1) (h1 : n1 <= 2^64) (h2 : 0 < n2) (h3 : n2 < 2^64)
@@ -875,7 +879,8 @@ theorem entire_memory_subset_of_only_itself
   have : 2^64 = 18446744073709551616 := by decide
   unfold my_pow at *
   simp_all [mem_subset, BitVec.add_sub_self_left_64]
-  bv_omega_bench
+  -- v4.18: `bv_omega` (was `bv_omega_bench`), matches reference v4.31.
+  bv_omega
 
 theorem entire_memory_subset_legal_regions_eq_addr
   (h1 : mem_subset addr2 (addr2 + (BitVec.ofNat 64 (my_pow 2 64 - 1))) addr1 (addr1 + (BitVec.ofNat 64 (my_pow 2 64 - 1))))
@@ -885,7 +890,8 @@ theorem entire_memory_subset_legal_regions_eq_addr
   have : 2^64-1 = 18446744073709551615 := by decide
   unfold my_pow at *
   simp_all [mem_subset, mem_legal]
-  bv_omega_bench
+  -- v4.18: `bv_omega` (was `bv_omega_bench`), matches reference v4.31.
+  bv_omega
 
 private theorem read_mem_bytes_of_write_mem_bytes_subset_n2_eq_alt
   (h0 : 0 < n1) (h1 : n1 <= my_pow 2 64) (h2 : 0 < n2) (h3 : n2 = my_pow 2 64)

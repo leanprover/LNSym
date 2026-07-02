@@ -560,21 +560,24 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
   if h0 : n <= esize then
     x
   else
-    let element := BitVec.setWidth esize x
-    let rest_x := BitVec.setWidth (n - esize) (x >>> esize)
     have h1 : esize <= n := by
       simp at h0; exact Nat.le_of_lt h0; done
-    have h2 : esize ∣ (n - esize) := by
-      refine Nat.dvd_sub ?H h₀ ?h₂
-      · exact h1
-      · simp only [Nat.dvd_refl]
-      done
-    have ?term_lemma : n - esize < n := by exact Nat.sub_lt_self h₁ h1
-    let rest_ans := rev_elems (n - esize) esize rest_x h2 h₁
+    have h2 : esize ∣ (n - esize) := Nat.dvd_sub h1 h₀ (Nat.dvd_refl esize)
     have h3 : (esize + (n - esize)) = n := by
       simp_all only [ge_iff_le, Nat.add_sub_cancel', h1]
-    BitVec.cast h3 (element ++ rest_ans)
+    -- v4.18: inline the `element`, `rest_x`, and recursive-result `let` bindings
+    -- rather than naming them. The WF equation-lemma generator on v4.18 produces
+    -- an ill-typed `let_congr` motive for any value-`let` whose type mentions
+    -- `n - esize` and which feeds the recursive call (the `wfParam` markers wrap
+    -- `n - esize` inconsistently: `wfParam n - wfParam esize` vs
+    -- `wfParam (wfParam n - esize)`). Inlining removes those `let` layers and
+    -- discharging termination via `decreasing_by` avoids the bad motive.
+    -- Semantically identical: same value, same recursion.
+    BitVec.cast h3
+      (BitVec.setWidth esize x ++
+        rev_elems (n - esize) esize (BitVec.setWidth (n - esize) (x >>> esize)) h2 h₁)
    termination_by n
+   decreasing_by exact Nat.sub_lt_self h₁ (by simp at h0; exact Nat.le_of_lt h0)
 
 example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by
   native_decide
@@ -746,7 +749,7 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
     simp only [ushiftRight, toNat_setWidth]
     have h1: z.toNat % 2 ^ 65 = z.toNat := by omega
     simp only [h1]
-    simp only [Std.Tactic.BVDecide.Normalize.BitVec.ofNatLt_reduce]
+    simp only [Std.Tactic.BVDecide.Normalize.BitVec.ofNatLT_reduce]
     simp only [Nat.sub_zero, Nat.reduceAdd, BitVec.extractLsb'_ofNat, Nat.shiftRight_zero]
     have h2 : z.toNat >>> shift % 2 ^ 65 = z.toNat >>> shift := by
       refine Nat.mod_eq_of_lt ?h3

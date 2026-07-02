@@ -27,11 +27,15 @@ def bvOmegaSimpCtx : MetaM (Simp.Context ×  Array Simp.Simprocs) := do
   let mut simprocs := #[]
   let mut simpTheorems := #[]
 
-  let some ext ← (getSimpExtension? `bv_toNat)
-    | throwError m!"[omega] Error: unable to find `bv_toNat"
+  -- v4.18: core renamed the `bv_toNat` simp attribute to `bitvec_to_nat` (the old
+  -- name is now `@[deprecated bitvec_to_nat]`), and moved all the BitVec→Nat
+  -- normalization lemmas onto it. Read `bitvec_to_nat` so this omega-preprocessing
+  -- context is populated as before. (See the re-tag note in SeparateAutomation.lean.)
+  let some ext ← (getSimpExtension? `bitvec_to_nat)
+    | throwError m!"[omega] Error: unable to find `bitvec_to_nat"
   simpTheorems := simpTheorems.push (← ext.getTheorems)
 
-  if let some ext ← (Simp.getSimprocExtension? `bv_toNat) then
+  if let some ext ← (Simp.getSimprocExtension? `bitvec_to_nat) then
     let s ← ext.getSimprocs
     simprocs := simprocs.push s
 
@@ -67,7 +71,7 @@ def run (g : MVarId) (hyps : Array Expr) (bvToNatSimpCtx : Simp.Context) (bvToNa
        let _hypsOldRetained := hypsOldRetained.filter (fun fvar => hypFVars.contains fvar)
        -- hypFVars := hypFVars'
      catch e => 
-       trace[simp_mem.info] "in BvOmega, ran `simp only [bv_toNat]` and got error: {indentD e.toMessageData}"
+       trace[simp_mem.info] "in BvOmega, ran `simp only [bitvec_to_nat]` and got error: {indentD e.toMessageData}"
        throw e
      let some g' ← g.withContext <| g.falseOrByContra | return ()
      g := g'

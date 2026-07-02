@@ -532,19 +532,25 @@ def MemSeparateProof.addOmegaFacts (h : MemSeparateProof e) (g : MVarId) (args :
 /-- info: Ne.{u} {α : Sort u} (a b : α) : Prop -/
 #guard_msgs in #check Ne
 
-/-- info: List.get?.{u} {α : Type u} (as : List α) (i : Nat) : Option α -/
-#guard_msgs in #check List.get?
+-- v4.18: the `separate'_…` theorem statement now uses `mems[i]?` (getElem-bang was
+-- migrated off the deprecated `List.get?` in Separate.lean), so build and `#check`
+-- via `GetElem?.getElem?` to match. (`List.get?` is removed outright by v4.26.)
+/-- info: @getElem? : {coll : Type u_1} →
+  {idx : Type u_2} →
+    {elem : outParam (Type u_3)} →
+      {valid : outParam (coll → idx → Prop)} → [self : GetElem? coll idx elem valid] → coll → idx → Option elem -/
+#guard_msgs in #check @GetElem?.getElem?
 
-/-- Make the expression `mems.get? i = some a`. -/
+/-- Make the expression `mems[i]? = some a`. -/
 def mkListGetEqSomeTy (mems : MemPairwiseSeparateProp) (i : Nat) (a : MemSpanExpr) : TacticM Expr := do
-  let lhs ← mkAppOptM ``List.get? #[.none, mems.getMemSpanListExpr, mkNatLit i]
+  let lhs ← mkAppM ``GetElem?.getElem? #[mems.getMemSpanListExpr, mkNatLit i]
   let rhs ← mkSome MemSpanExpr.toTypeExpr a.toExpr
   mkEq lhs rhs
 
 /--
 info: Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem {mems : List Memory.Region}
-  (h : Memory.Region.pairwiseSeparate mems) (i j : Nat) (hij : i ≠ j) (a b : Memory.Region) (ha : mems.get? i = some a)
-  (hb : mems.get? j = some b) : mem_separate' a.fst a.snd b.fst b.snd
+  (h : Memory.Region.pairwiseSeparate mems) (i j : Nat) (hij : i ≠ j) (a b : Memory.Region) (ha : mems[i]? = some a)
+  (hb : mems[j]? = some b) : mem_separate' a.fst a.snd b.fst b.snd
 -/
 #guard_msgs in #check Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
 

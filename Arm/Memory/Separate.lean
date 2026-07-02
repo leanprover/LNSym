@@ -153,6 +153,9 @@ theorem mem_separate_of_lt_or_gt_of_mem_legal_of_mem_legal (h : a2 < b1 ∨ a1 >
   unfold mem_legal at ha hb
   simp only [decide_eq_true_eq] at ha hb
   rw [BitVec.le_def] at ha hb
+  -- v4.18: toNat-arithmetic regression; omega no longer bridges BitVec ≤/< to Nat,
+  -- so unfold the order relations to Nat facts before bv_omega_bench.
+  simp only [BitVec.le_def, BitVec.lt_def, gt_iff_lt] at h ⊢
   bv_omega_bench
 
 /--
@@ -274,6 +277,8 @@ theorem mem_legal_of_mem_legal' (h : mem_legal' a n) :
   simp only [mem_legal', mem_legal, BitVec.le_def] at h ⊢
   rw [BitVec.toNat_add_eq_toNat_add_toNat]
   simp only [BitVec.toNat_ofNat, Nat.reducePow, Nat.le_add_right, decide_true]
+  -- v4.18: toNat-arithmetic regression; supply the toNat of `ofNat 64 (n-1)` explicitly.
+  have hofnat : (BitVec.ofNat 64 (n - 1)).toNat = (n - 1) % 2^64 := BitVec.toNat_ofNat _ _
   bv_omega_bench
 
 /--
@@ -383,10 +388,10 @@ theorem mem_separate_of_mem_separate' (a b : BitVec 64)
 
   obtain ⟨an, rfl⟩ : ∃ an' : BitVec 64, an = an'.toNat :=
     have han_lt : an < 2^64 := by omega
-    ⟨BitVec.ofNatLt _ han_lt, rfl⟩
+    ⟨BitVec.ofNatLT _ han_lt, rfl⟩
   obtain ⟨bn, rfl⟩ : ∃ bn' : BitVec 64, bn = bn'.toNat :=
     have han_lt : bn < 2^64 := by omega
-    ⟨BitVec.ofNatLt _ han_lt, rfl⟩
+    ⟨BitVec.ofNatLT _ han_lt, rfl⟩
   change an > 0 at han
   change bn > 0 at hbn
   simp only [BitVec.ofNat_toNat, BitVec.setWidth_eq, BitVec.not_le]
@@ -530,8 +535,9 @@ theorem mem_subset_of_mem_subset' (h : mem_subset' a an b bn) (han : an > 0) (hb
   simp only [bitvec_rules, minimal_theory]
   by_cases hb : bn = 2^64
   · left
-    bv_omega_bench
-  · bv_omega_bench
+    -- v4.18: toNat-arithmetic regression; bv_omega closes this directly.
+    bv_omega
+  · bv_omega
 
 /- value of read_mem_bytes when separate from the write. -/
 theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
@@ -540,7 +546,7 @@ theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
     Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
     Memory.read_bytes xn x mem := by
   apply BitVec.eq_of_getLsbD_eq
-  intro i hi -- v4.16: ext lemma now yields Nat index + separate bound `hi`
+  intros i hi
   obtain := hsep.omega_def
   rw [Memory.getLsbD_read_bytes (by omega),
      Memory.getLsbD_write_bytes (by omega),
@@ -549,7 +555,19 @@ theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
   simp only [decide_true, ite_eq_left_iff, Bool.true_and]
   intros h₁
   intros h₂
-  bv_omega_bench
+  -- v4.18: toNat-arithmetic regression; bv_omega_bench can no longer bridge the
+  -- `(x + ofNat 64 (i/8)).toNat` address term, so supply the toNat facts explicitly.
+  exfalso
+  obtain ⟨hx, hy, hsplit⟩ := hsep.omega_def
+  have h₁' : (BitVec.ofNat 64 (i / 8)).toNat = (i / 8) := by
+    apply BitVec.toNat_ofNat_lt
+    omega
+  have hadd : (x + BitVec.ofNat 64 (i / 8)).toNat = x.toNat + (i / 8) := by
+    rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
+    rw [BitVec.toNat_ofNat_lt (by omega)]
+  simp only [BitVec.lt_def, hadd] at h₁
+  rw [hadd] at h₂
+  omega
 
 /- value of `read_mem_bytes'` when subset of the write. -/
 theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
@@ -558,7 +576,7 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
     Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
       val.extractLsBytes (x.toNat - y.toNat) xn := by
   apply BitVec.eq_of_getLsbD_eq
-  intro i hi -- v4.16: ext lemma now yields Nat index + separate bound `hi`
+  intros i hi
   obtain ⟨hx, hy, hstart, hend⟩ := hsep
 
   obtain hx' := hx.size_le_two_pow
@@ -631,12 +649,13 @@ theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
     by_cases h : i < an
     · simp only [h, ↓reduceIte]
       apply BitVec.eq_of_getLsbD_eq
-      intro j hj -- v4.16: ext lemma now yields Nat index + separate bound `hj`
+      intros j hj
       rw [← hread]
       rw [extractLsByte_read_bytes (by bv_omega_bench)]
       simp only [show a.toNat - b.toNat + i < bn by bv_omega_bench, if_true]
       congr 2
-      bv_omega_bench
+      -- v4.18: toNat-arithmetic regression; bv_omega closes this directly.
+      bv_omega
     · simp only [h, ↓reduceIte]
 
 /-- A region of memory, given by (base pointer, length) -/
@@ -660,12 +679,11 @@ def Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
   (i j : Nat)
   (hij : i ≠ j)
   (a b : Memory.Region)
-  (ha : mems.get? i = some a) (hb : mems.get? j = some b) :
+  (ha : mems[i]? = some a) (hb : mems[j]? = some b) :
     mem_separate' a.fst a.snd b.fst b.snd := by
   induction h generalizing a b i j
-  case nil => simp only [List.get?_eq_getElem?, List.getElem?_nil, reduceCtorEq] at ha
+  case nil => simp only [List.getElem?_nil, reduceCtorEq] at ha
   case cons x xs ihx _ihxs ihxs' =>
-    simp only [List.get?_eq_getElem?] at ha hb
     rcases i with rfl | i'
     · simp at ha
       · rcases j with rfl | j'
@@ -685,8 +703,8 @@ def Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
       · simp only [List.getElem?_cons_succ] at ha hb
         apply ihxs' i' j'
         · omega
-        · simp only [List.get?_eq_getElem?, ha]
-        · simp only [List.get?_eq_getElem?, hb]
+        · simp only [ha]
+        · simp only [hb]
 
 
 /--

@@ -55,7 +55,7 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
         have h1 : datasize / 8 * 8 = datasize := by
           exact Nat.div_mul_cancel H1
         have h2 : datasize + datasize = 2 * datasize := by
-          simp_arith
+          simp +arith
         have h3 : datasize + datasize = 2 * (datasize / 8) * 8 := by
           rw [Nat.mul_assoc, h1, h2]
         let data1 := ldst_read inst.SIMD? datasize inst.Rt s

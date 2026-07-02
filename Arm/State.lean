@@ -863,7 +863,7 @@ def read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) :=
   | n' + 1 =>
     let byte := m.read addr
     let rest := m.read_bytes n' (addr + 1#64)
-    have h : n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
+    have h : n' * 8 + 8 = (n' + 1) * 8 := by simp +arith
     BitVec.cast h (rest ++ byte)
 
 -- TODO (@bollu): we should drop the `State` namespace here, given that

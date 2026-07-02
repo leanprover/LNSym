@@ -50,8 +50,8 @@ attribute [bitvec_rules] BitVec.toNat_ofBool
 attribute [bitvec_rules] BitVec.msb_ofBool
 attribute [bitvec_rules] BitVec.not_ofBool
 attribute [bitvec_rules] BitVec.toNat_ofFin
-attribute [bitvec_rules] BitVec.toNat_ofNatLt
-attribute [bitvec_rules] BitVec.getLsbD_ofNatLt
+attribute [bitvec_rules] BitVec.toNat_ofNatLT
+attribute [bitvec_rules] BitVec.getLsbD_ofNatLT
 attribute [bitvec_rules] BitVec.toFin_ofNat
 attribute [bitvec_rules] BitVec.getLsbD_zero
 attribute [bitvec_rules] BitVec.getMsbD_zero
@@ -708,7 +708,7 @@ theorem zero_append {w} (x : BitVec 0) (y : BitVec w) :
 theorem empty_bitvector_append_left
   (x : BitVec n) (h : 0 + n = n) :
   BitVec.cast h (0#0 ++ x) = x := by
-  simp only [cast, zero_width_append, toNat_ofNatLt]
+  simp only [cast, zero_width_append, toNat_ofNatLT]
   rfl
 
 -- In case we need ▸ instead of BitVec.cast (and we should really
@@ -1040,12 +1040,12 @@ theorem extractLsBytes_eq_self {n : Nat} {m : Nat}
     (x : BitVec (no_index m)) :
     x.extractLsBytes 0 n = x.cast hm := by
   apply BitVec.eq_of_getLsbD_eq
-  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`
-  -- (feeds the `omega`), and use plain `i` in place of `↑i`.
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`.
+  -- v4.18: the trailing `simp` left `x.getLsbD i = x[i]` (getLsbD/GetElem no longer
+  -- auto-bridged); fold the width side-condition and `getLsbD_cast` into one simp only.
   intro i hi
-  simp only [getLsbD_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero]
-  -- v4.16: `hi : i < n * 8` (was the Fin bound) closes the trailing `… → i < n * 8`.
-  simp [show i ≤ n * 8 - 1 by omega, hi]
+  simp only [getLsbD_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero,
+    show i < n * 8 by omega, decide_true, Bool.true_and, getLsbD_cast]
 
 theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   x.extractLsBytes a n = 0#(n*8) := by
@@ -1059,12 +1059,11 @@ theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
 
 /-- TODO: upstream -/
 theorem not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
-  simp only [BitVec.slt, BitVec.sle]
-  by_cases h : a.toInt < b.toInt
-  · simp [h]
-    exact Int.not_le.mpr h
-  · simp [h]
-    exact Int.not_lt.mp h
+  -- v4.18: the old `by_cases … ; simp [h] ; exact Int.not_le/​not_lt` proof breaks —
+  -- `simp [h]` now closes each branch itself, leaving the trailing `exact` with no
+  -- goals. `slt`/`sle` unfold to `toInt <`/`toInt ≤`, so decode the Bool then omega.
+  simp only [BitVec.slt, BitVec.sle, decide_eq_true_eq]
+  omega
 
 /-- If subtraction does not overflow,
 then `(x - y).toNat` equals `x.toNat - y.toNat` -/
