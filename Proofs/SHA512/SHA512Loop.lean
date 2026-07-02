@@ -145,8 +145,9 @@ def loop_post_2 (PC N SP CtxBase InputBase : BitVec 64)
 theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   x.extractLsBytes a n = 0#(n*8) := by
   apply BitVec.eq_of_getLsbD_eq
-  intros i
-  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_true, Bool.true_and, getLsbD_zero]
+  -- v4.16: ext lemma now gives a Nat index + bound `hi`; introduce both, drop `Fin.is_lt`.
+  intro i hi
+  simp only [getLsbD_extractLsBytes, hi, decide_true, Bool.true_and, getLsbD_zero]
   apply BitVec.getLsbD_ge
   omega
 
@@ -155,18 +156,21 @@ theorem extractLsBytes_of_read_bytes_le (n m : Nat)
     (h_m_le_n : m ≤ n) :
     (Memory.read_bytes n addr mem).extractLsBytes 0 m =
     Memory.read_bytes m addr mem := by
-    apply BitVec.eq_of_getLsbD_eq; intro i
+    -- v4.16: ext lemma gives Nat index + bound `hi`; introduce both, drop `Fin.isLt`.
+    apply BitVec.eq_of_getLsbD_eq; intro i hi
     simp only [extractLsBytes, bitvec_rules]
-    simp only [getLsbD_extractLsb', minimal_theory, Fin.isLt]
+    simp only [getLsbD_extractLsb', minimal_theory]
     have h_n_upper : n ≤ 2^64 := by
       simp only [mem_legal', Nat.reducePow] at h_legal; omega
     have h_m_upper : m ≤ 2^64 := by
       simp [mem_legal'] at h_legal; omega
-    have h_i_upper : i < m * 8 := Fin.isLt i
+    have h_i_upper : i < m * 8 := hi
     have h_i_upper2 : i < n * 8 := by omega
     have h_lhs := @Memory.getLsbD_read_bytes n i addr mem h_n_upper
     have h_rhs := @Memory.getLsbD_read_bytes m i addr mem h_m_upper
-    simp_all only
+    -- v4.16: residual nested `decide True && …` no longer collapses under empty
+    -- `simp_all only`; add the boolean reductions to close the tautology.
+    simp_all only [decide_true, Bool.true_and]
     done
 
 /--

@@ -98,7 +98,8 @@ example : let in_block := List.replicate 16 0#8
       0x88#8, 0x4c#8, 0xfa#8, 0x59#8, 0xca#8, 0x34#8, 0x2b#8, 0x2e#8]
   have h : in_block.length = 16 := by
     simp only [in_block, List.length_replicate]
-  AESHWEncrypt in_block key (by simp) (by simp only [h]) = out_block
+  -- v4.16: the length side-condition no longer closes by `simp` (no progress); `decide`.
+  AESHWEncrypt in_block key (by decide) (by simp only [h]) = out_block
   := by native_decide
 
 def AESHWCtr32EncryptBlocks_helper {Param : AESArm.KBR} (in_blocks : BitVec m)
@@ -171,8 +172,9 @@ example : let in_blocks := List.replicate 16 0#8
   let ivec := 0#128
   let res := [ 0x66#8, 0xe9#8, 0x4b#8, 0xd4#8, 0xef#8, 0x8a#8, 0x2c#8, 0x3b#8,
                0x88#8, 0x4c#8, 0xfa#8, 0x59#8, 0xca#8, 0x34#8, 0x2b#8, 0x2e#8]
+  -- v4.16: the first length side-condition no longer closes by `simp` (no progress); `decide`.
   AESHWCtr32EncryptBlocks in_blocks 1 key ivec
-    (by simp) (by simp only [in_blocks, List.length_replicate]; omega)
+    (by decide) (by simp only [in_blocks, List.length_replicate]; omega)
     (by simp only [in_blocks, List.length_replicate]) = res
     := by native_decide
 

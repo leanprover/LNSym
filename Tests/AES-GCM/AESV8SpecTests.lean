@@ -30,19 +30,20 @@ namespace AESHWEncryptSpecTest
 example : let key :=
   { rounds := (10#64),
     rd_key := AESHWSetEncryptKeyProgramTest.AES128.rd_key : AESV8.AESKey }
-  AESV8.AESHWEncrypt (List.replicate 16 0#8) key (by simp) (by simp)
+  -- v4.16: no-progress simp → decide
+  AESV8.AESHWEncrypt (List.replicate 16 0#8) key (by decide) (by simp)
   = AESHWEncryptProgramTest.AES128.out_block := by native_decide
 
 example : let key :=
   { rounds := (12#64),
     rd_key := AESHWSetEncryptKeyProgramTest.AES192.rd_key : AESV8.AESKey }
-  AESV8.AESHWEncrypt (List.replicate 16 0#8) key (by simp) (by simp)
+  AESV8.AESHWEncrypt (List.replicate 16 0#8) key (by decide) (by simp)
   = AESHWEncryptProgramTest.AES192.out_block := by native_decide
 
 example : let key :=
   { rounds := (14#64),
     rd_key := AESHWSetEncryptKeyProgramTest.AES256.rd_key : AESV8.AESKey }
-  AESV8.AESHWEncrypt (List.replicate 16 0#8) key (by simp) (by simp)
+  AESV8.AESHWEncrypt (List.replicate 16 0#8) key (by decide) (by simp)
   = AESHWEncryptProgramTest.AES256.out_block := by native_decide
 
 end AESHWEncryptSpecTest
@@ -53,7 +54,7 @@ example : let key :=
   { rounds := (10#64),
     rd_key := AESHWSetEncryptKeyProgramTest.AES128.rd_key : AESV8.AESKey }
   AESV8.AESHWCtr32EncryptBlocks (List.replicate 16 0#8) 1 key 0#128
-    (by simp) (by simp only [List.length_replicate]; omega) (by simp)
+    (by decide) (by simp only [List.length_replicate]; omega) (by decide)
   = List.take 16 AESHWCtr32EncryptBlocksProgramTest.AES128Ctr32.buf_res_128
   := by native_decide
 
@@ -61,7 +62,7 @@ example : let key :=
   { rounds := (12#64),
     rd_key := AESHWSetEncryptKeyProgramTest.AES192.rd_key : AESV8.AESKey }
   AESV8.AESHWCtr32EncryptBlocks (List.replicate 16 0#8) 1 key 0#128
-    (by simp) (by simp only [List.length_replicate]; omega) (by simp)
+    (by decide) (by simp only [List.length_replicate]; omega) (by decide)
   = List.take 16 AESHWCtr32EncryptBlocksProgramTest.AES192Ctr32.buf_res_192
   := by native_decide
 
@@ -69,7 +70,7 @@ example : let key :=
   { rounds := (14#64),
     rd_key := AESHWSetEncryptKeyProgramTest.AES256.rd_key : AESV8.AESKey }
   AESV8.AESHWCtr32EncryptBlocks (List.replicate 16 0#8) 1 key 0#128
-    (by simp) (by simp only [List.length_replicate]; omega) (by simp)
+    (by decide) (by simp only [List.length_replicate]; omega) (by decide)
   = List.take 16 AESHWCtr32EncryptBlocksProgramTest.AES256Ctr32.buf_res_256
   := by native_decide
 
@@ -77,7 +78,7 @@ example : let key :=
   { rounds := (14#64),
     rd_key := AESHWSetEncryptKeyProgramTest.AES256.rd_key : AESV8.AESKey }
   AESV8.AESHWCtr32EncryptBlocks (List.replicate 80 0#8) 5 key 0#128
-    (by simp) (by simp only [List.length_replicate]; omega) (by simp)
+    (by decide) (by simp only [List.length_replicate]; omega) (by decide)
   = List.take 80 AESHWCtr32EncryptBlocksProgramTest.AES256Ctr32.buf_res_256
   := by native_decide
 

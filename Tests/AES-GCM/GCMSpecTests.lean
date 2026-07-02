@@ -28,7 +28,8 @@ def H : BitVec 128 :=
 def X0 := List.get! GCMProgramTestParams.X 0
 def X1 := List.get! GCMProgramTestParams.X 1
 
-example : GCMV8.GCMGmultV8 H X0 (by simp [List.length]) = X1 := by native_decide
+-- v4.16: no-progress simp → decide
+example : GCMV8.GCMGmultV8 H X0 (by decide) = X1 := by native_decide
 
 end GCMGmultV8SpecTest
 
@@ -43,10 +44,10 @@ def X3 := List.get! GCMProgramTestParams.X 3
 def inp1 := List.replicate 16 0x2a#8
 def inp2 := List.replicate 32 0x2a#8
 
-example : GCMV8.GCMGhashV8 H X1 inp1 (by simp [List.length])
-            (by simp [List.length]; omega) = X2 := by native_decide
+example : GCMV8.GCMGhashV8 H X1 inp1 (by decide)
+            (by decide) = X2 := by native_decide
 
-example : GCMV8.GCMGhashV8 H X2 inp2 (by simp [List.length])
-            (by simp [List.length]; omega) = X3 := by native_decide
+example : GCMV8.GCMGhashV8 H X2 inp2 (by decide)
+            (by decide) = X3 := by native_decide
 
 end GCMGhashV8SpecTest

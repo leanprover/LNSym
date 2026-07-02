@@ -840,26 +840,28 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
     extractLsb' 0 32 ((signExtend 33 x).sshiftRight shift)
     = x.sshiftRight shift := by
     intros x
-    apply eq_of_getLsbD_eq; intros i; simp at i
+    -- v4.16: ext lemma now yields Nat index + separate bound `hi`; drop `simp at i`
+    apply eq_of_getLsbD_eq; intro i hi
     simp only [getLsbD_sshiftRight]
     simp only [Nat.sub_zero, Nat.reduceAdd, getLsbD_extractLsb', Nat.zero_add,
                getLsbD_sshiftRight, getLsbD_signExtend]
-    simp only [show (i : Nat) < 32 by omega,
+    simp only [show i < 32 by omega,
                decide_true, Bool.true_and]
-    simp only [show ¬33 ≤ (i : Nat) by omega,
+    simp only [show ¬33 ≤ i by omega,
                decide_false, Bool.not_false, Bool.true_and]
-    simp only [show ¬32 ≤ (i : Nat) by omega,
+    simp only [show ¬32 ≤ i by omega,
                decide_false, Bool.not_false, Bool.true_and]
-    by_cases h : shift + (i : Nat) < 32
+    by_cases h : shift + i < 32
     · simp only [h, reduceIte]
-      simp only [show shift + (i : Nat) < 33 by omega,
+      simp only [show shift + i < 33 by omega,
                  ↓reduceIte, decide_true, Bool.true_and]
     · simp only [h, reduceIte]
-      have icases : shift + (i : Nat) = 32 ∨ 32 < shift + (i : Nat) := by omega
+      have icases : shift + i = 32 ∨ 32 < shift + i := by omega
       rcases icases with (h' | h')
       · simp only [h', Nat.lt_add_one, ↓reduceIte, decide_true, Bool.true_and]
-      · simp only [show ¬(shift + (i : Nat) < 33) by omega, ↓reduceIte]
-        apply msb_signExtend; trivial
+      · simp only [show ¬(shift + i < 33) by omega, ↓reduceIte]
+        -- v4.16: `BitVec.msb_signExtend` now also exists; disambiguate to the local lemma
+        apply _root_.msb_signExtend; trivial
   simp only [h]
   clear h
   generalize a.sshiftRight shift = a

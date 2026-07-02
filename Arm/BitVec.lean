@@ -314,20 +314,22 @@ theorem partInstall_partInstall (x : BitVec n) :
     partInstall (start + len₁) len₂ val₂ (partInstall start len₁ val₁ x)
     = (partInstall start _ (val₂ ++ val₁) x).cast (by omega) := by
   apply BitVec.eq_of_getLsbD_eq
-  intro i
+  -- v4.16: `eq_of_getLsbD_eq` now yields `∀ i, i < w → …`; introduce both the
+  -- `Nat` index `i` and its bound `hi`, and use plain `i` in place of `i.val`/`↑i`.
+  intro i hi
   simp only [partInstall, truncate_eq_setWidth, getLsbD_or, getLsbD_and,
-    getLsbD_not, Fin.is_lt, decide_true, getLsbD_shiftLeft, Bool.true_and,
+    getLsbD_not, hi, decide_true, getLsbD_shiftLeft, Bool.true_and,
     getLsbD_setWidth, getLsbD_allOnes, Bool.not_and, Bool.not_not,
     getLsbD_cast, BitVec.getLsbD_append]
   simp only [
-    show ∀ m, i.val - m < n by omega,
+    show ∀ m, i - m < n by omega,
     decide_true, Bool.not_true, Bool.false_or, Bool.true_and]
   by_cases h₁ : i < start
   · simp [h₁, show i < start + len₁ by omega]
   · simp only [h₁, decide_false, Bool.false_or, Bool.not_false, Bool.true_and,
       show i < start + len₁ ↔ i - start < len₁ by omega]
     by_cases h₂ : i - start < len₁
-    · simp [h₂, show ↑i - start < len₂ + len₁ by omega]
+    · simp [h₂, show i - start < len₂ + len₁ by omega]
     · rw [BitVec.getLsbD_ge val₁ _ (by omega)]
       simp [h₂, Nat.sub_add_eq,
         show i - start < len₂ + len₁ ↔ i - start - len₁ < len₂ by omega]
@@ -585,8 +587,9 @@ theorem extractLsb'_eq (x : BitVec n) :
 theorem extractLsb'_zero_extractLsb'_of_le (h : len1 ≤ len2) :
   BitVec.extractLsb' 0 len1 (BitVec.extractLsb' start len2 x) =
   BitVec.extractLsb' start len1 x := by
-  apply BitVec.eq_of_getLsbD_eq; intro i
-  simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`.
+  apply BitVec.eq_of_getLsbD_eq; intro i hi
+  simp only [BitVec.getLsbD_extractLsb', hi,
              decide_true, Nat.zero_add, Bool.true_and,
              Bool.and_iff_right_iff_imp, decide_eq_true_eq]
   omega
@@ -594,8 +597,9 @@ theorem extractLsb'_zero_extractLsb'_of_le (h : len1 ≤ len2) :
 theorem extractLsb'_extractLsb'_zero_of_le (h : start + len1 ≤ len2):
   BitVec.extractLsb' start len1 (BitVec.extractLsb' 0 len2 x) =
   BitVec.extractLsb' start len1 x := by
-  apply BitVec.eq_of_getLsbD_eq; intro i
-  simp only [BitVec.getLsbD_extractLsb', Fin.is_lt,
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`.
+  apply BitVec.eq_of_getLsbD_eq; intro i hi
+  simp only [BitVec.getLsbD_extractLsb', hi,
             decide_true, Nat.zero_add, Bool.true_and,
             Bool.and_iff_right_iff_imp, decide_eq_true_eq]
   omega
@@ -605,21 +609,27 @@ theorem extractLsb'_or (x y : BitVec w₁) (n : Nat) :
     (x ||| y).extractLsb' lo n = (x.extractLsb' lo n ||| y.extractLsb' lo n) := by
   apply BitVec.eq_of_getLsbD_eq
   simp only [getLsbD_extract, getLsbD_or]
-  intros i
-  simp only [getLsbD_extractLsb', Fin.is_lt, decide_true, getLsbD_or, Bool.true_and]
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`,
+  -- and use `hi` (was `Fin.is_lt`) to discharge the width side-condition.
+  intro i hi
+  simp only [getLsbD_extractLsb', hi, decide_true, getLsbD_or, Bool.true_and]
 
 -- TODO: upstream
 protected theorem extractLsb'_ofNat (x n : Nat) (l lo : Nat) :
     extractLsb' lo l (BitVec.ofNat n x) = .ofNat l ((x % 2^n) >>> lo) := by
   apply eq_of_getLsbD_eq
-  intro ⟨i, _lt⟩
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; the Fin destructuring is gone,
+  -- introduce the `Nat` index `i` and its bound `hi` instead.
+  intro i hi
   simp [BitVec.ofNat]
 
 @[bitvec_rules]
 protected theorem extractLsb'_of_setWidth (x : BitVec n) (h : j ≤ i) :
     extractLsb' 0 j (setWidth i x) = setWidth j x := by
   apply BitVec.eq_of_getLsbD_eq
-  intro k
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ k, k < j → …`; introduce `k` and its bound `hk`
+  -- (needed by the `q` omega, which formerly relied on the Fin bound).
+  intro k hk
   have q : k < i := by omega
   by_cases h : decide (k ≤ j) <;> simp [q, h]
 
@@ -630,22 +640,26 @@ theorem extractLsb'_append (x : BitVec n) (y : BitVec m) :
         ++ y.extractLsb' start len'
         ).cast (by omega) := by
   apply eq_of_getLsbD_eq
-  intro i
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`,
+  -- and use plain `i` in place of `i.val`/`↑i` (`hi` feeds the `omega` side-conditions).
+  intro i hi
   simp [getLsbD_append]
   by_cases h₁ : m - start ≥ len
   · have len'_eq : min len (m - start) = len := Nat.min_eq_left h₁
-    have : start + i.val < m := by omega
+    have : start + i < m := by omega
     simp [len'_eq, this]
   · have len'_eq : min len (m - start) = m - start :=
       Nat.min_eq_right (by omega)
     simp only [len'_eq]
-    by_cases h₂ : start + i.val < m
-    · have h₃ : ↑i < m - start := by omega
-      simp [h₂, h₃]
-    · have h₃ : ¬(↑i < m - start) := by omega
-      have h₄ : ↑i - (m - start) < len - (m - start) := by omega
-      have h₅ : start - m + (↑i - (m - start)) = start + ↑i - m := by omega
-      simp [h₂, h₃, h₄, h₅]
+    by_cases h₂ : start + i < m
+      -- v4.16: `hi : i < len` is now a hypothesis (was the Fin bound), so add it to the
+      -- simp set to close the trailing `… = true → i < len` implication.
+    · have h₃ : i < m - start := by omega
+      simp [h₂, h₃, hi]
+    · have h₃ : ¬(i < m - start) := by omega
+      have h₄ : i - (m - start) < len - (m - start) := by omega
+      have h₅ : start - m + (i - (m - start)) = start + i - m := by omega
+      simp [h₂, h₃, h₄, h₅, hi]
 
 theorem cast_eq_of_heq (x : BitVec n) (y : BitVec m) (h : n = m) :
     HEq x y → x.cast h = y := by
@@ -690,10 +704,12 @@ theorem extractLsb'_extractLsb'_of_le {w : Nat} (start₁ len₁ start₂ len₂
     (x.extractLsb' start₁ len₁).extractLsb' start₂ len₂
     = x.extractLsb' (start₁ + start₂) len₂ := by
   apply eq_of_getLsbD_eq
-  intro i
-  simp only [getLsbD_extractLsb', Fin.is_lt, decide_true, Bool.true_and,
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`
+  -- (was `Fin.is_lt`), and use plain `i` in place of `i.val`.
+  intro i hi
+  simp only [getLsbD_extractLsb', hi, decide_true, Bool.true_and,
     Bool.and_iff_right_iff_imp, decide_eq_true_eq,
-    show start₁ + (start₂ + i.val) = start₁ + start₂ + i.val by ac_rfl]
+    show start₁ + (start₂ + i) = start₁ + start₂ + i by ac_rfl]
   omega
 
 @[bitvec_rules, simp]
@@ -922,8 +938,9 @@ theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
     (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
   apply BitVec.eq_of_getLsbD_eq
   simp only [getLsbD_extract, getLsbD_or]
-  intros i
-  by_cases h : (i : Nat) ≤ n - lo
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`.
+  intro i hi
+  by_cases h : i ≤ n - lo
   · simp only [h, decide_true, Bool.true_and]
   · simp only [h, decide_false, Bool.false_and, Bool.or_self]
 
@@ -933,10 +950,12 @@ theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
 theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
   x.extractLsByte a = 0#8 := by
   apply BitVec.eq_of_getLsbD_eq
-  intros i
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`
+  -- (was `Fin.is_lt`), feeding `hi` to the width-discharging simp.
+  intro i hi
   simp only [getLsbD_zero, extractLsByte_def,
     getLsbD_cast, getLsbD_extract, Bool.and_eq_false_imp, decide_eq_true_eq]
-  simp only [getLsbD_extractLsb', Fin.is_lt, decide_true, Bool.true_and]
+  simp only [getLsbD_extractLsb', hi, decide_true, Bool.true_and]
   apply BitVec.getLsbD_ge
   omega
 
@@ -964,8 +983,10 @@ This theorem can be strengthened to take `(i : Fin n)`.
 theorem eq_of_extractLsByte_eq (x y : BitVec (n * 8))
     (h : ∀ (i : Nat), x.extractLsByte i = y.extractLsByte i) : x = y := by
   apply eq_of_getLsbD_eq
-  intros j
-  obtain ⟨j, hj⟩ := j
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ j, j < w → …`; introduce `j` and its bound `hj`
+  -- directly (the former Fin destructuring `obtain ⟨j, hj⟩ := j` is gone). `hj` feeds
+  -- the `omega` side-conditions below.
+  intro j hj
   specialize h (j / 8)
   have hx := x.getLsbD_extractLsByte (n := j / 8) (i := j % 8)
   have hy := y.getLsbD_extractLsByte (n := j / 8) (i := j % 8)
@@ -1001,12 +1022,14 @@ theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i 
     if (i < n) then val.extractLsByte (base + i) else (0#8) := by
   apply BitVec.eq_of_getLsbD_eq
   simp only [getLsbD_extractLsByte, getLsbD_extractLsBytes]
-  intros j
-  simp only [show (j : Nat) ≤ 7 by omega, decide_true, Bool.true_and]
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ j, j < 8 → …`; introduce `j` and its bound `hj`
+  -- (feeds the `omega` sub-proofs), and use plain `j` in place of `↑j`.
+  intro j hj
+  simp only [show j ≤ 7 by omega, decide_true, Bool.true_and]
   by_cases hn : i < n
   · simp only [hn, ↓reduceIte, getLsbD_extractLsByte,
-      show (j : Nat) ≤ 7 by omega]
-    by_cases h : (i * 8 + (j : Nat) < n * 8)
+      show j ≤ 7 by omega]
+    by_cases h : (i * 8 + j < n * 8)
     · simp only [h, decide_true, Bool.true_and]
       congr 1
       omega
@@ -1021,7 +1044,9 @@ theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i 
 theorem extractLsBytes_zero {w : Nat} (base : Nat) :
     (0#w).extractLsBytes base n = 0#(n*8) := by
   apply BitVec.eq_of_getLsbD_eq
-  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_true, getLsbD_zero, Bool.and_false,
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; `Fin.is_lt` no longer applies
+  -- (no Fin index). The `getLsbD_zero`/`Bool.and_false` rewrite closes it via `implies_true`.
+  simp only [getLsbD_extractLsBytes, decide_true, getLsbD_zero, Bool.and_false,
     implies_true]
 
 /-- Extracting out all the bytes is equal to the bitvector.
@@ -1037,15 +1062,20 @@ theorem extractLsBytes_eq_self {n : Nat} {m : Nat}
     (x : BitVec (no_index m)) :
     x.extractLsBytes 0 n = x.cast hm := by
   apply BitVec.eq_of_getLsbD_eq
-  intros i
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`
+  -- (feeds the `omega`), and use plain `i` in place of `↑i`.
+  intro i hi
   simp only [getLsbD_extractLsBytes, Nat.zero_mul, Nat.zero_add, Nat.sub_zero]
-  simp [show (i : Nat) ≤ n * 8 - 1 by omega]
+  -- v4.16: `hi : i < n * 8` (was the Fin bound) closes the trailing `… → i < n * 8`.
+  simp [show i ≤ n * 8 - 1 by omega, hi]
 
 theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   x.extractLsBytes a n = 0#(n*8) := by
   apply BitVec.eq_of_getLsbD_eq
-  intros i
-  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_true, Bool.true_and, getLsbD_zero]
+  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`
+  -- (was `Fin.is_lt`), feeding `hi` to the width-discharging simp.
+  intro i hi
+  simp only [getLsbD_extractLsBytes, hi, decide_true, Bool.true_and, getLsbD_zero]
   apply BitVec.getLsbD_ge
   omega
 

@@ -123,8 +123,9 @@ theorem BitVec.extractLsb'_append_eq (x : BitVec (n + n)) :
   have h1 := @BitVec.append_of_extract_general (n + n) n n x
   simp only [Nat.reduceAdd, BitVec.extractLsb'_eq] at h1
   have h3 : BitVec.setWidth n (x >>> n) = BitVec.extractLsb' n n x := by
-    apply BitVec.eq_of_getLsbD_eq; intro i
-    simp only [BitVec.getLsbD_setWidth, Fin.is_lt, decide_true, BitVec.getLsbD_ushiftRight,
+    -- v4.16: ext lemma gives Nat index + bound `hi`; introduce both, drop `Fin.is_lt`.
+    apply BitVec.eq_of_getLsbD_eq; intro i hi
+    simp only [BitVec.getLsbD_setWidth, hi, decide_true, BitVec.getLsbD_ushiftRight,
       Bool.true_and, BitVec.getLsbD_extractLsb']
   simp_all only
 

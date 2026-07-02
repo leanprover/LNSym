@@ -885,9 +885,11 @@ theorem read_bytes_zero_eq (m : Memory) : m.read_bytes 0 addr = 0#0 :=
 theorem read_bytes_one_eq (m : Memory) : m.read_bytes 1 addr = m.read addr := by
   simp [read_bytes, read, bitvec_rules]
   apply BitVec.eq_of_getLsbD_eq
-  intros i
+  -- v4.16: ext lemma now yields `∀ i, i < w → …`; introduce the bound `hi`
+  intro i hi
   rw [BitVec.getLsbD_append]
-  simp only [show (i : Nat) < 8 by omega, decide_true, Nat.zero_le, BitVec.getLsbD_ge, cond_true]
+  simp only [show i < 8 by omega, decide_true, Nat.zero_le, BitVec.getLsbD_ge, cond_true,
+    if_true, ↓reduceIte]
 
 theorem read_bytes_succ_eq (m : Memory) :
   m.read_bytes (n' + 1) addr = (m.read_bytes n' (addr + 1) ++ m.read addr).cast (by omega) := rfl
@@ -911,7 +913,8 @@ theorem getLsbD_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
       simp only [BitVec.add_zero]
       have hmod : i % 8 = i := Nat.mod_eq_of_lt h₁
       simp [hmod]
-    · simp only [h₁, decide_false, cond_false]
+    · -- v4.16: `getLsbD_append` now emits `if … then … else …` (ite); reduce it
+      simp only [h₁, decide_false, cond_false, if_false, Bool.false_eq_true, ↓reduceIte]
       rw [ih]
       by_cases h₂ : i - 8 < n' * 8
       · simp only [h₂, decide_true, Bool.true_and, show (i < n' * 8 + 8) by omega]
@@ -940,14 +943,15 @@ theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h 
       if i < n then m.read (addr + (BitVec.ofNat 64 i)) else 0#8 := by
   apply BitVec.eq_of_getLsbD_eq
   simp only [BitVec.getLsbD_extractLsByte]
-  intros j
-  simp only [show (j : Nat) ≤ 7 by omega, decide_true, Bool.true_and]
+  -- v4.16: ext lemma now yields `∀ j, j < w → …`; introduce the bound `hj`, drop `↑j`
+  intro j hj
+  simp only [show j ≤ 7 by omega, decide_true, Bool.true_and]
   rw [getLsbD_read_bytes]
-  by_cases h₁ : i * 8 + ↑j < n * 8
+  by_cases h₁ : i * 8 + j < n * 8
   · simp only [h₁, decide_true, Bool.true_and]
     simp only [show (i < n) by omega, ↓reduceIte]
-    simp only [show (i * 8 + ↑j) / 8 = i by omega]
-    simp only [show (i * 8 + ↑j) % 8 = j by omega]
+    simp only [show (i * 8 + j) / 8 = i by omega]
+    simp only [show (i * 8 + j) % 8 = j by omega]
     rfl
   · simp only [h₁, decide_false, Bool.false_and, Bool.false_eq]
     simp only [show ¬(i < n) by omega, ↓reduceIte, BitVec.getLsbD_zero]
@@ -1069,17 +1073,18 @@ theorem extractLsByte_setWidth_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i >
   rcases i with rfl | i
   · simp at hi
   · apply BitVec.eq_of_getLsbD_eq
-    intros j
+    -- v4.16: ext lemma now yields `∀ j, j < w → …`; introduce the bound `hjb`, drop `↑j`
+    intro j hjb
     simp only [Nat.add_one_sub_one, BitVec.getLsbD_extractLsByte, BitVec.getLsbD_setWidth,
       BitVec.getLsbD_ushiftRight]
-    by_cases hj : (j : Nat) ≤ 7
+    by_cases hj : j ≤ 7
     · simp only [hj, decide_true, Bool.true_and]
-      by_cases hi' : i * 8 + ↑j < n * 8
+      by_cases hi' : i * 8 + j < n * 8
       · simp only [hi', decide_true, Bool.true_and]
         simp only at hi' ⊢
         congr 1
         omega
-      · by_cases hi' : i * 8 + ↑j < n * 8
+      · by_cases hi' : i * 8 + j < n * 8
         · simp only [hi', decide_true, Bool.true_and]
           congr 1
           rw [Nat.add_mul]

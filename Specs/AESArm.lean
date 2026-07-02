@@ -166,7 +166,8 @@ theorem P_of_bv_to_of_nat {n : Nat} {P : BitVec n -> Prop}:
   ∀(p : BitVec n), P p := by
   intro H p
   let x := p.toNat
-  have p_eq : p = (BitVec.ofNat n x) := by simp only [x, BitVec.ofNat_toNat, truncate_eq]
+  -- v4.16: `BitVec.truncate_eq` deprecated → `BitVec.setWidth_eq`.
+  have p_eq : p = (BitVec.ofNat n x) := by simp only [x, BitVec.ofNat_toNat, setWidth_eq]
   simp only [p_eq]
   apply H
   apply BitVec.isLt

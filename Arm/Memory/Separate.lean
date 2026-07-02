@@ -540,12 +540,12 @@ theorem Memory.read_bytes_write_bytes_eq_read_bytes_of_mem_separate'
     Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
     Memory.read_bytes xn x mem := by
   apply BitVec.eq_of_getLsbD_eq
-  intros i
+  intro i hi -- v4.16: ext lemma now yields Nat index + separate bound `hi`
   obtain := hsep.omega_def
   rw [Memory.getLsbD_read_bytes (by omega),
      Memory.getLsbD_write_bytes (by omega),
      Memory.getLsbD_read_bytes (by omega)]
-  simp only [i.isLt]
+  simp only [hi]
   simp only [decide_true, ite_eq_left_iff, Bool.true_and]
   intros h₁
   intros h₂
@@ -558,7 +558,7 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
     Memory.read_bytes xn x (Memory.write_bytes yn y val mem) =
       val.extractLsBytes (x.toNat - y.toNat) xn := by
   apply BitVec.eq_of_getLsbD_eq
-  intros i
+  intro i hi -- v4.16: ext lemma now yields Nat index + separate bound `hi`
   obtain ⟨hx, hy, hstart, hend⟩ := hsep
 
   obtain hx' := hx.size_le_two_pow
@@ -571,18 +571,17 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
   by_cases hxn : xn = 0
   · subst hxn
     exfalso
-    have h := i.isLt
+    have h := hi -- v4.16: bound is now the hypothesis `hi : i < xn * 8`
     simp only [Nat.reduceMul, Nat.zero_mul, Nat.not_lt_zero] at h
-  · by_cases h₁ : ↑i < xn * 8
+  · by_cases h₁ : i < xn * 8 -- v4.16: `i` is now a plain Nat (was `↑i`)
     · simp only [h₁]
       simp only [decide_true, Bool.true_and]
-      obtain ⟨i, hi⟩ := i
-      simp only at h₁
-      simp only []
+      -- v4.16: dropped `obtain ⟨i, hi⟩ := i` (index already a Nat), `simp only at h₁`,
+      -- and the now-no-op `simp only []` (nothing left to unfold once `i` is a Nat)
       have h₁' : (BitVec.ofNat 64 (i / 8)).toNat = (i / 8) := by
         apply BitVec.toNat_ofNat_lt
         omega
-      have hadd : (x + BitVec.ofNat 64 (↑i / 8)).toNat = x.toNat + (i / 8) := by
+      have hadd : (x + BitVec.ofNat 64 (i / 8)).toNat = x.toNat + (i / 8) := by
         rw [BitVec.toNat_add_eq_toNat_add_toNat (by omega)]
         rw [BitVec.toNat_ofNat_lt (by omega)]
       simp only [BitVec.lt_def]
@@ -632,7 +631,7 @@ theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
     by_cases h : i < an
     · simp only [h, ↓reduceIte]
       apply BitVec.eq_of_getLsbD_eq
-      intros j
+      intro j hj -- v4.16: ext lemma now yields Nat index + separate bound `hj`
       rw [← hread]
       rw [extractLsByte_read_bytes (by bv_omega_bench)]
       simp only [show a.toNat - b.toNat + i < bn by bv_omega_bench, if_true]

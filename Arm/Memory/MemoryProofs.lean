@@ -118,12 +118,14 @@ theorem Memory.read_bytes_write_bytes_same (hn1 : n ≤ 2^64) :
       · bv_omega
     rw [read_write_bytes_different (by omega) h_sep, read_write_same]
     apply BitVec.eq_of_getLsbD_eq
-    intro i
+    -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce the `Nat` index `i`
+    -- and its bound `hbound`, and use plain `i` in place of `i.val`.
+    intro i hbound
     simp only [getLsbD_cast, getLsbD_append]
-    by_cases hi : i.val < 8
+    by_cases hi : i < 8
     · simp [hi]
-    · have h₁ : i.val - 8 < n * 8 := by omega
-      have h₂ : 8 + (i.val - 8) = i.val := by omega
+    · have h₁ : i - 8 < n * 8 := by omega
+      have h₂ : 8 + (i - 8) = i := by omega
       simp [hi, h₁, h₂]
 
 @[state_simp_rules, memory_rules]
