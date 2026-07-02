@@ -617,9 +617,10 @@ theorem partial_correctness :
       constructor
       · intro i hi
         rw [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0] at hi
+        -- v4.17: `simp at hi` now derives `False` from `i < 0` and closes the goal
+        -- directly; the erstwhile trailing `exfalso; simp [BitVec.lt_def] at hi` is
+        -- now "no goals to be solved".
         simp at hi
-        exfalso
-        simp [BitVec.lt_def] at hi -- i < 0
       · intros n addr h_mem_sep
         simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
         rw [step_8f0_8f4.h_mem]

@@ -337,7 +337,9 @@ def run_all_tests_go (verbose : Bool) (n : Nat) : Cosim.CosimM UInt32 := do
     -- We are on an Aarch64 machine.
     -- Insts.rand is a list of functions of each class of instructions
     -- that generate legal, random 32-bit instructions.
-    for (i, inst_fn) in Insts.rand.enum do
+    -- v4.17: `List.enum` is deprecated (removed by v4.26); `List.zipIdx` yields
+    -- `(elem, idx)` pairs — note the swapped binding order.
+    for (inst_fn, i) in Insts.rand.zipIdx do
       let logPrefix := s!"Instruction Class ({i + 1}/{Insts.rand.length})"
       tasks ← run_n_tests verbose logPrefix n inst_fn tasks
 

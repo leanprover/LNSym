@@ -350,7 +350,9 @@ partial def SimpMemM.simpifyLoopUnsupervised : SimpMemM Unit := do
       pure foundHyps
 
     withTraceNode m!"Summary: Found {foundHyps.size} hypotheses" do
-      for (i, h) in foundHyps.toList.enum do
+      -- v4.17: `List.enum` is deprecated (removed by v4.26); `zipIdx` yields
+      -- `(elem, idx)` pairs — note the swapped binding order.
+      for (h, i) in foundHyps.toList.zipIdx do
         trace[simp_mem.info] m!"{i+1}) {h}"
 
     -- goal was not closed, try and improve.

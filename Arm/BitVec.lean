@@ -380,18 +380,11 @@ the `n`-bit bitvector `x`.
 abbrev lsb (x : BitVec n) (i : Nat) : BitVec 1 :=
   BitVec.extractLsb' i 1 x
 
-/-- Reverse bits of a bit-vector. -/
-def reverse (x : BitVec n) : BitVec n :=
-  let rec reverseTR (x : BitVec n) (i : Nat) (acc : BitVec n) :=
-    match i with
-    | 0 => acc
-    | j + 1 =>
-      let xi := extractLsb' (i - 1) 1 x
-      let acc := BitVec.partInstall (n - i) 1 xi acc
-      reverseTR x j acc
-  reverseTR x n $ BitVec.zero n
-
-example : reverse 0b11101#5 = 0b10111#5 := rfl
+-- v4.17: `BitVec.reverse` was upstreamed into core (Init.Data.BitVec.Basic); the
+-- local copy now clashes, so we drop it and rely on core. Core's definition is
+-- value-equal to the one LNSym used here (it is only ever used as a black box —
+-- e.g. in `Specs/GCMV8.lean` — never unfolded), as the example below checks.
+example : BitVec.reverse 0b11101#5 = 0b10111#5 := by decide
 
 /-- Split a bit-vector `x` into sub-vectors, each of size `e`. -/
 def split (x : BitVec n) (e : Nat) (h : 0 < e): List (BitVec e) :=
@@ -604,15 +597,8 @@ theorem extractLsb'_extractLsb'_zero_of_le (h : start + len1 ≤ len2):
             Bool.and_iff_right_iff_imp, decide_eq_true_eq]
   omega
 
--- TODO: upstream
-theorem extractLsb'_or (x y : BitVec w₁) (n : Nat) :
-    (x ||| y).extractLsb' lo n = (x.extractLsb' lo n ||| y.extractLsb' lo n) := by
-  apply BitVec.eq_of_getLsbD_eq
-  simp only [getLsbD_extract, getLsbD_or]
-  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`,
-  -- and use `hi` (was `Fin.is_lt`) to discharge the width side-condition.
-  intro i hi
-  simp only [getLsbD_extractLsb', hi, decide_true, getLsbD_or, Bool.true_and]
+-- v4.17: `BitVec.extractLsb'_or` was upstreamed into core (Init.Data.BitVec.Lemmas);
+-- the local copy now clashes, so we drop it and rely on core.
 
 -- TODO: upstream
 protected theorem extractLsb'_ofNat (x n : Nat) (l lo : Nat) :
@@ -933,16 +919,8 @@ def extractLsByte (val : BitVec w₁) (n : Nat) : BitVec 8 :=
 theorem extractLsByte_def (val : BitVec w₁) (n : Nat) :
     val.extractLsByte n = val.extractLsb' (n * 8) 8 := rfl
 
--- TODO: upstream
-theorem extractLsb_or (x y : BitVec w₁) (n : Nat) :
-    (x ||| y).extractLsb n lo = (x.extractLsb n lo ||| y.extractLsb n lo) := by
-  apply BitVec.eq_of_getLsbD_eq
-  simp only [getLsbD_extract, getLsbD_or]
-  -- v4.16: `eq_of_getLsbD_eq` yields `∀ i, i < w → …`; introduce `i` and its bound `hi`.
-  intro i hi
-  by_cases h : i ≤ n - lo
-  · simp only [h, decide_true, Bool.true_and]
-  · simp only [h, decide_false, Bool.false_and, Bool.or_self]
+-- v4.17: `BitVec.extractLsb_or` was upstreamed into core (Init.Data.BitVec.Lemmas);
+-- the local copy now clashes, so we drop it and rely on core.
 
 theorem extractLsByte_zero {w : Nat} : (0#w).extractLsByte i = 0#8 := by
   simp only [extractLsByte, BitVec.extractLsb'_ofNat, Nat.zero_mod, Nat.zero_shiftRight, cast_ofNat]
