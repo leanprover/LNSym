@@ -140,7 +140,7 @@ theorem pc_of_exec_advanced_simd_three_same
 def Advanced_simd_three_same_cls.binary.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let Q := ← BitVec.rand 1
   let size := ← if Q = 0#1 then BitVec.rand 2 (lo := 0) (hi := 2) else BitVec.rand 2
-  let (inst : Advanced_simd_three_same_cls) :=
+  let inst : Advanced_simd_three_same_cls :=
     { Q := Q,
       U := ← BitVec.rand 1,
       size := size,
@@ -151,7 +151,7 @@ def Advanced_simd_three_same_cls.binary.rand : Cosim.CosimM (Option (BitVec 32))
   pure (inst.toBitVec32)
 
 def Advanced_simd_three_same_cls.logic.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Advanced_simd_three_same_cls) :=
+  let inst : Advanced_simd_three_same_cls :=
     { Q := ← BitVec.rand 1,
       U := ← BitVec.rand 1,
       size := ← BitVec.rand 2,

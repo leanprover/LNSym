@@ -107,7 +107,7 @@ def exec_reg_pair_common (inst : Reg_pair_cls) (inst_str : String) (s : ArmState
 @[state_simp_rules]
 def exec_reg_pair_pre_indexed
   (inst : Reg_pair_pre_indexed_cls) (s : ArmState) : ArmState :=
-  let (extracted_inst : Reg_pair_cls) :=
+  let extracted_inst : Reg_pair_cls :=
     { opc := inst.opc,
       SIMD? := inst.V = 1#1,
       L? := inst.L = 1#1,
@@ -122,7 +122,7 @@ def exec_reg_pair_pre_indexed
 @[state_simp_rules]
 def exec_reg_pair_post_indexed
   (inst : Reg_pair_post_indexed_cls) (s : ArmState) : ArmState :=
-  let (extracted_inst : Reg_pair_cls) :=
+  let extracted_inst : Reg_pair_cls :=
     { opc := inst.opc,
       SIMD? := inst.V = 1#1,
       L? := inst.L = 1#1,
@@ -137,7 +137,7 @@ def exec_reg_pair_post_indexed
 @[state_simp_rules]
 def exec_reg_pair_signed_offset
   (inst : Reg_pair_signed_offset_cls) (s : ArmState) : ArmState :=
-  let (extracted_inst : Reg_pair_cls) :=
+  let extracted_inst : Reg_pair_cls :=
     { opc := inst.opc,
       SIMD? := inst.V = 1#1,
       L? := inst.L = 1#1,

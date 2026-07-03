@@ -48,7 +48,7 @@ partial def Add_sub_shifted_reg_cls.rand : Cosim.CosimM (Option (BitVec 32)) := 
   else if sf == 0 && lsb imm6 5 == 1 then
     Add_sub_shifted_reg_cls.rand
   else
-    let (inst : Add_sub_shifted_reg_cls) :=
+    let inst : Add_sub_shifted_reg_cls :=
       { sf    := sf,
         op    := ← BitVec.rand 1,
         S     := ← BitVec.rand 1,

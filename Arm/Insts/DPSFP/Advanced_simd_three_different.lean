@@ -95,7 +95,7 @@ partial def Advanced_simd_three_different_cls.pmull.rand : Cosim.CosimM (Option 
   if size == 0b01#2 || size == 0b10#2 then
     Advanced_simd_three_different_cls.pmull.rand
   else
-    let (inst : Advanced_simd_three_different_cls) :=
+    let inst : Advanced_simd_three_different_cls :=
       { Q := ← BitVec.rand 1,
         U := 0b0#1,
         size := size,

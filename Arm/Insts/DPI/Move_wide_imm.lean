@@ -42,7 +42,7 @@ partial def Move_wide_imm_cls.inst.rand : Cosim.CosimM (Option (BitVec 32)) := d
   if opc == 0b01#2 || sf == 0#1 && getLsbD hw 1 then
     Move_wide_imm_cls.inst.rand
   else
-    let (inst : Move_wide_imm_cls) :=
+    let inst : Move_wide_imm_cls :=
       { sf := sf,
         opc := opc,
         hw := hw,

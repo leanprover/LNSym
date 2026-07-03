@@ -11,6 +11,9 @@ set_option Tactic.sym.debug true
 namespace GCMGmultV8Program
 
 -- Test the behaviour of `sym_n` when `h_err` and `h_sp` are not present
+-- (v4.22) the new `unusedSimpArgs` linter flags `Option.some.injEq` in the
+-- `simp only` below and pollutes the `#guard_msgs`; silence it locally.
+set_option linter.unusedSimpArgs false in
 /-- warning: declaration uses 'sorry' -/ -- `guard_msgs` silences the warning
 #guard_msgs in example (s0 sf : ArmState)
     (h_s0_program : s0.program = gcm_gmult_v8_program)

@@ -139,7 +139,7 @@ def exec_advanced_simd_two_reg_misc
 ----------------------------------------------------------------------
 
 partial def Advanced_simd_two_reg_misc_cls.rev64_16.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Advanced_simd_two_reg_misc_cls) :=
+  let inst : Advanced_simd_two_reg_misc_cls :=
     { Q := ← BitVec.rand 1,
       U := ← pure 0b0#1,
       size := ← BitVec.rand 2,
@@ -155,7 +155,7 @@ partial def Advanced_simd_two_reg_misc_cls.rev64_16.rand : Cosim.CosimM (Option 
     pure (some (inst.toBitVec32))
 
 partial def Advanced_simd_two_reg_misc_cls.rev32.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Advanced_simd_two_reg_misc_cls) :=
+  let inst : Advanced_simd_two_reg_misc_cls :=
     { Q := ← BitVec.rand 1,
       U := ← pure 0b1#1,
       size := ← BitVec.rand 2,

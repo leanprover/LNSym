@@ -98,7 +98,7 @@ def exec_crypto_three_reg_sha512
 def Crypto_three_reg_sha512_cls.sha512.rand : Cosim.CosimM (Option (BitVec 32)) := do
   if ← Cosim.sha512? then
     -- SHA512 feature supported.
-    let (inst : Crypto_three_reg_sha512_cls) :=
+    let inst : Crypto_three_reg_sha512_cls :=
       { Rm     := ← BitVec.rand 5,
         O      := ← pure 0b0#1,
         opcode := ← BitVec.rand 2 (lo := 0) (hi := 0b10),

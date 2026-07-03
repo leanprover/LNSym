@@ -71,7 +71,7 @@ def exec_advanced_simd_table_lookup
 ----------------------------------------------------------------------
 
 def Advanced_simd_table_lookup_cls.tbl.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Advanced_simd_table_lookup_cls) :=
+  let inst : Advanced_simd_table_lookup_cls :=
     { Q := ← BitVec.rand 1,
       op2 := 0b00#2,
       Rm := ← BitVec.rand 5,

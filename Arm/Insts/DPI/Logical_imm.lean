@@ -163,7 +163,7 @@ partial def Logical_imm_cls.inst.rand : Cosim.CosimM (Option (BitVec 32)) := do
     -- treated as ZR.
     let Rn_hi := if (op == .ORR ∧ ! MoveWidePreferred sf N imms immr) then 31 else 30
     let Rd_hi := if (op == .ANDS) then 31 else 30
-    let (inst : Logical_imm_cls) :=
+    let inst : Logical_imm_cls :=
       { sf    := sf,
         opc   := opc,
         N     := N,

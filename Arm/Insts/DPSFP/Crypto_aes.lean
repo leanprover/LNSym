@@ -104,7 +104,7 @@ def exec_crypto_aes
 ----------------------------------------------------------------------
 
 def Crypto_aes_cls.aese.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Crypto_aes_cls) :=
+  let inst : Crypto_aes_cls :=
     { size := 0b00#2,
       opcode := 0b00100#5,
       Rn := ← BitVec.rand 5,
@@ -113,7 +113,7 @@ def Crypto_aes_cls.aese.rand : Cosim.CosimM (Option (BitVec 32)) := do
   pure (some inst.toBitVec32)
 
 def Crypto_aes_cls.aesmc.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Crypto_aes_cls) :=
+  let inst : Crypto_aes_cls :=
     { size := 0b00#2,
       opcode := 0b00110#5,
       Rn := ← BitVec.rand 5,

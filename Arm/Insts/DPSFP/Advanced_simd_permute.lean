@@ -64,7 +64,7 @@ partial def Advanced_simd_permute_cls.trn1.rand : Cosim.CosimM (Option (BitVec 3
   if size ++ Q = 0b110#3 then
     Advanced_simd_permute_cls.trn1.rand
   else
-    let (inst : Advanced_simd_permute_cls) :=
+    let inst : Advanced_simd_permute_cls :=
       { Q := Q,
         size := size,
         Rm := ← BitVec.rand 5,
@@ -80,7 +80,7 @@ partial def Advanced_simd_permute_cls.trn2.rand : Cosim.CosimM (Option (BitVec 3
   if size ++ Q = 0b110#3 then
     Advanced_simd_permute_cls.trn2.rand
   else
-    let (inst : Advanced_simd_permute_cls) :=
+    let inst : Advanced_simd_permute_cls :=
       { Q := Q,
         size := size,
         Rm := ← BitVec.rand 5,

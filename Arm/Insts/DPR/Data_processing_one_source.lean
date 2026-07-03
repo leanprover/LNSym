@@ -107,7 +107,7 @@ partial def Data_processing_one_source_cls.rev_all.rand : Cosim.CosimM (Option (
   if opc == 0b00#2 || opc == 0b11#2 && sf == 0b0#1 then
     Data_processing_one_source_cls.rev_all.rand
   else
-    let (inst : Data_processing_one_source_cls) :=
+    let inst : Data_processing_one_source_cls :=
       { sf := sf,
         S := 0b0#1,
         opcode2 := 0b00000#5,

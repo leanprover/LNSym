@@ -160,7 +160,7 @@ partial def Advanced_simd_copy_cls.dup_element.rand : Cosim.CosimM (Option (BitV
   if size > 3 ∨ (size = 3 ∧ Q = 0) then
     Advanced_simd_copy_cls.dup_element.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := Q,
         op := 0b0#1,
         imm5 := imm5,
@@ -177,7 +177,7 @@ partial def Advanced_simd_copy_cls.dup_general.rand : Cosim.CosimM (Option (BitV
   if size > 3 ∨ (size = 3 ∧ Q = 0) then
     Advanced_simd_copy_cls.dup_general.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := Q,
         op := 0b0#1,
         imm5 := imm5,
@@ -194,7 +194,7 @@ partial def Advanced_simd_copy_cls.ins_element.rand : Cosim.CosimM (Option (BitV
   if size > 3 then
     Advanced_simd_copy_cls.ins_element.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := 0b1#1,
         op := 0b1#1,
         imm5 := imm5,
@@ -210,7 +210,7 @@ partial def Advanced_simd_copy_cls.ins_general.rand : Cosim.CosimM (Option (BitV
   if size > 3 then
     Advanced_simd_copy_cls.ins_general.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := 0b1#1,
         op := 0b0#1,
         imm5 := imm5,
@@ -230,7 +230,7 @@ partial def Advanced_simd_copy_cls.smov.rand : Cosim.CosimM (Option (BitVec 32))
   if size > 2 ∨ datasize <= esize then
     Advanced_simd_copy_cls.smov.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := Q,
         op := 0b0#1,
         imm5 := imm5,
@@ -250,7 +250,7 @@ partial def Advanced_simd_copy_cls.umov.rand : Cosim.CosimM (Option (BitVec 32))
   if size > 3 || datasize == 64 && esize < 64 || datasize == 32 && esize >= 64 then
     Advanced_simd_copy_cls.umov.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := Q,
         op := 0b0#1,
         imm5 := imm5,

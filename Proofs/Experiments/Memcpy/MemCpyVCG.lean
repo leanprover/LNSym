@@ -773,7 +773,7 @@ theorem partial_correctness :
     case h_4 pc h_si =>
       apply False.elim h_assert
 /--
-info: 'Memcpy.partial_correctness' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'Memcpy.partial_correctness' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms partial_correctness
 

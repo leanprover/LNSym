@@ -208,7 +208,7 @@ protected def addArmInstToCfg (pc : BitVec 64) (raw_inst : BitVec 32)
      match i with
       | Compare_branch inst => -- CBZ, CBNZ
         let branch_taken_pc := BR.Compare_branch_inst.branch_taken_pc inst pc
-        let (condition_holds : CondHoldsFn) :=
+        let condition_holds : CondHoldsFn :=
             (fun state => BR.Compare_branch_inst.condition_holds inst state)
         (false, BrOrg pc condition_holds,
                 [Seq default_to_pc, BrTgt branch_taken_pc condition_holds])
@@ -227,7 +227,7 @@ protected def addArmInstToCfg (pc : BitVec 64) (raw_inst : BitVec 32)
         (true, Ret pc, [Ret pc])
       | Cond_branch_imm inst =>
         let branch_taken_pc := BR.Cond_branch_imm_inst.branch_taken_pc inst pc
-        let (condition_holds : CondHoldsFn) :=
+        let condition_holds : CondHoldsFn :=
             (fun state => BR.Cond_branch_imm_inst.condition_holds inst state)
         (false, BrOrg pc condition_holds,
           [Seq default_to_pc, BrTgt branch_taken_pc condition_holds])
