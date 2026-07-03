@@ -41,7 +41,7 @@ attribute [bitvec_rules] BitVec.cast_eq
 attribute [bitvec_rules] BitVec.setWidth_eq
 attribute [bitvec_rules] BitVec.getLsbD_ofFin
 attribute [bitvec_rules] BitVec.getLsbD_of_ge
-attribute [bitvec_rules] BitVec.getMsbD_ge
+attribute [bitvec_rules] BitVec.getMsbD_of_ge
 attribute [bitvec_rules] BitVec.toNat_zero_length
 attribute [bitvec_rules] BitVec.getLsbD_zero_length
 attribute [bitvec_rules] BitVec.getMsbD_zero_length
@@ -297,7 +297,8 @@ See `BitVec.toHex` if you do want the leading zeroes.
 
 NOTE: returns only the digits, without a `0x` prefix -/
 def toHexWithoutLeadingZeroes {w} (x : BitVec w) : String :=
-  (Nat.toDigits 16 x.toNat).asString
+  -- v4.26: `List.asString` deprecated → `String.ofList` (same `List Char → String`).
+  String.ofList (Nat.toDigits 16 x.toNat)
 
 /-- `partInstall start len val x` returns a bitvector where bits
 - `start` to `start+len` are equal to `val`, and

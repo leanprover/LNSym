@@ -742,7 +742,7 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
              -- FIXME: should partInstall be state_simp_rules?
              partInstall,
              -- Eliminating casting functions
-             Int.ofNat_eq_coe, ofInt_natCast, ofNat_toNat
+             Int.ofNat_eq_natCast, ofInt_natCast, ofNat_toNat
     ]
   generalize (extractLsb' 64 64 operand) = x
   generalize (extractLsb' 0 64 operand) = y
