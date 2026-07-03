@@ -9,8 +9,9 @@ import Arm.Memory.AddressNormalization
 /-! ## Examples -/
 
 set_option trace.Tactic.address_normalization true in
+-- NOTE: v4.21 moved trace output to `trace:` severity (was `info:`).
 /--
-info: [Tactic.address_normalization] ⚙️ reduceModOfLt 'x.toNat % 2 ^ w'
+trace: [Tactic.address_normalization] ⚙️ reduceModOfLt 'x.toNat % 2 ^ w'
 [Tactic.address_normalization] ✅️ reduceModOfLt 'x.toNat % 2 ^ w'
 -/
 #guard_msgs in theorem eg₁ {w} (x : BitVec w) : x.toNat % 2 ^ w = x.toNat + 0 := by
@@ -28,8 +29,9 @@ theorem eg₂ {w} (x y : BitVec w)  (h : x.toNat + y.toNat < 2 ^ w) :
 #guard_msgs in #print axioms eg₂
 
 set_option trace.Tactic.address_normalization true in
+-- NOTE: v4.21 moved trace output to `trace:` severity (was `info:`).
 /--
-info: [Tactic.address_normalization] ⚙️ canonicalizeBinConst '(HAdd.hAdd x y)'
+trace: [Tactic.address_normalization] ⚙️ canonicalizeBinConst '(HAdd.hAdd x y)'
 [Tactic.address_normalization] ⚙️ reduceModOfLt 'x.toNat + y.toNat % 2 ^ w'
 [Tactic.address_normalization] ⚙️ reduceModSub 'x.toNat + y.toNat % 2 ^ w'
 -/
@@ -57,8 +59,9 @@ theorem eg₅ {w} (x y : BitVec w) (h : x.toNat + y.toNat ≥ 2 ^ w) (h' : (x.to
 #guard_msgs in #print axioms eg₅
 
 set_option trace.Tactic.address_normalization true in
+-- NOTE: v4.21 moved trace output to `trace:` severity (was `info:`).
 /--
-info: [Tactic.address_normalization] ⚙️ canonicalizeBinConst '(HAdd.hAdd x 100#w)'
+trace: [Tactic.address_normalization] ⚙️ canonicalizeBinConst '(HAdd.hAdd x 100#w)'
 [Tactic.address_normalization] ✅️ canonicalizeBinConst '(HAdd.hAdd x 100#w)'
 [Tactic.address_normalization] ⚙️ canonicalizeBinConst '(HAdd.hAdd 100#w x)'
 -/

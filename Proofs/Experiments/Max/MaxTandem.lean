@@ -770,7 +770,9 @@ theorem partial_correctness :
         simp_all
       replace h_s2_x0 : s2.x0 = spec s0.x0 s0.x1 := by
         simp [spec, h_s2_x0]
-        split  <;> bv_decide
+        -- (v4.21) `simp [spec]` now leaves an implication (not an `if`), so there
+        -- is nothing for `split` to act on; `bv_decide` closes it directly.
+        bv_decide
       clear_named [h_s0]
 
       -- 3/15
@@ -833,7 +835,9 @@ theorem partial_correctness :
       replace h_s2_x0 : s2.x0 = BitVec.zeroExtend 64 (BitVec.zeroExtend 32 s0.x1) := by simp_all
       replace h_s2_x0 : s2.x0 = spec s0.x0 s0.x1 := by
         simp [spec, h_s2_x0]
-        split  <;> bv_decide
+        -- (v4.21) `simp [spec]` now leaves an implication (not an `if`), so there
+        -- is nothing for `split` to act on; `bv_decide` closes it directly.
+        bv_decide
       clear_named [h_s0]
 
       -- 3/15
