@@ -127,7 +127,7 @@ def bitvec_to_hex_list (xs : List (BitVec n)) : List String :=
 /-- Populate regState with the parsed output from the `armsimulate`
 script. -/
 def machine_to_regState (inst : BitVec 32) (str : String) : regState :=
-  let strs := String.split (String.trim str) (fun c => c = ' ')
+  let strs := String.splitToList (String.trim str) (fun c => c = ' ')
   -- Important: the assumption here, because of the use of
   -- String.toNat!, is that the machine output will be in base
   -- 10. This is consistent with simulator.c.

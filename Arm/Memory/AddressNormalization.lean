@@ -112,7 +112,7 @@ more `omega` facts.
   trace[Tactic.address_normalization] "{checkEmoji} reduceModSub '{x} % {n}'"
   return .done { expr := subTy, proof? := eqProof : Result }
 
-@[inline, bv_toNat] def reduceMod (e : Expr) : SimpM Step := do
+@[inline, bitvec_to_nat] def reduceMod (e : Expr) : SimpM Step := do
   match_expr e with
   | HMod.hMod xTy nTy outTy _inst x n =>
     let natTy := mkConst ``Nat
@@ -133,7 +133,7 @@ simproc↑ [address_normalization] reduce_mod_omega (_ % _) := fun e => reduceMo
 1. If both arguments are constants, we perform constant folding.
 2. If only one of the arguments is a constant, we move the constant to the left.
 -/
-@[inline, bv_toNat] def canonicalizeBinConst (declName : Name) -- operator to constant fold, such as `HAdd.hAdd`.
+@[inline, bitvec_to_nat] def canonicalizeBinConst (declName : Name) -- operator to constant fold, such as `HAdd.hAdd`.
     (arity : Nat)
     (commProofDecl : Name) -- commProof: `∀ (x y : Bitvec w), x op y = y op x`.
     (reduceProofDecl : Name) -- reduce proof: `∀ (w : Nat), (n m : Nat) (BitVec.ofNat w n) op (BitVec.ofNat w m) = BitVec.ofNat w (n op' m)`.

@@ -259,7 +259,7 @@ will map this theorem to `BitVecs` (using lemmas like
 -/
 private theorem termination_lemma (i j max : Fin n) (h : n > 0)
   (h0 : i < max) (h1 : j <= max - i)
-  (h2 : ((@Fin.ofNat' n ⟨by omega⟩ 0) : Fin n) < j) :
+  (h2 : ((@Fin.ofNat n ⟨by omega⟩ 0) : Fin n) < j) :
   (max - (i + j)) < (max - i) := by
   -- Our strategy is to convert this proof obligation in terms of Nat,
   -- which is made possible by h0 and h1 hypotheses above.
@@ -325,7 +325,7 @@ protected def create' (start_address end_address : BitVec 64)
                                        not_false_eq_true,
                                        BitVec.lt_of_le_ne, h₁])
                    (by rw [← BitVec.toFin_sub]; exact h₂)
-                   (by simp +arith [Fin.ofNat'])
+                   (by simp +arith [Fin.ofNat])
            simp [BitVec.fin_bitvec_le, BitVec.fin_bitvec_lt] at *
            exact this
          go (address + 4#64) max_address program cfg

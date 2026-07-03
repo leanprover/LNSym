@@ -217,7 +217,8 @@ def traceSymContext : SymM Unit :=
 /-- Add a set of new simp-theorems to the simp-theorems used
 for effect aggregation -/
 def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
-  let addSimpThms := simpThms.foldl addSimpTheoremEntry
+  -- v4.25: `addSimpTheoremEntry` deprecated (removed by v4.31) → `SimpTheorems.addSimpTheorem`.
+  let addSimpThms := simpThms.foldl SimpTheorems.addSimpTheorem
 
   let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
   let simpTheorems :=
@@ -277,7 +278,9 @@ def inferStatePrefixAndNumber : SymM Unit := do
 
   if let some currentStateNumber := tail.toNat? then
     modifyThe SymContext ({ · with
-      state_prefix := (state.get? 0).getD 's' |>.toString,
+      -- v4.25: `String.get?` deprecated → `String.Pos.Raw.get?` (now namespaced
+      -- under `Pos.Raw`, so dot-on-String no longer resolves it; same signature).
+      state_prefix := (String.Pos.Raw.get? state 0).getD 's' |>.toString,
       currentStateNumber })
   else
     SymM.logWarning m!"\

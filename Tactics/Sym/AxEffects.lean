@@ -123,7 +123,7 @@ state -/
 def initial (state : Expr) : AxEffects where
   initialState      := state
   currentState      := state
-  fields            := .empty
+  fields            := .emptyWithCapacity
   nonEffectProof    :=
     -- `fun (f : StateField) (h : f ∉ []) => rfl`
     let SF := mkConst ``StateField

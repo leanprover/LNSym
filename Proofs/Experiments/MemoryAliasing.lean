@@ -211,8 +211,8 @@ section HypothesisSelectors
 set_option linter.all false in
 set_option trace.simp_mem.info true in
 /--
-trace: [simp_mem.info] ⚙️ Processing 'h'' : 'a ≤ 100'
-[simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+trace: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Processing 'h'' : 'a ≤ 100'
 [simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
 [simp_mem.info] Adding omega facts from hypotheses
 [simp_mem.info] Reducion to omega
@@ -224,7 +224,7 @@ trace: [simp_mem.info] ⚙️ Processing 'h'' : 'a ≤ 100'
   [simp_mem.info] ✅️ `omega` succeeded.
 -/
 -- Hyp processing order oscillates across toolchains (reverse `hab`-first at
--- v4.15/v4.19/v4.21-v4.23, declaration order `h'`-first at v4.18/v4.20/v4.24).
+-- v4.15/v4.19/v4.21-v4.23/v4.25, declaration order `h'`-first at v4.18/v4.20/v4.24).
 -- v4.21: `set_option trace.simp_mem.info true` output now surfaces with
 -- `trace:` severity instead of `info:`.
 #guard_msgs in example (h' : a ≤ 100)

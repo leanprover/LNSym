@@ -186,7 +186,7 @@ initialize programInfoExt : PersistentEnvExtension (ProgramInfo) (ProgramInfo) (
     addEntryFn      := fun s p => s.insert p.name p
     exportEntriesFn := fun m =>
       let r : Array (ProgramInfo) :=
-        m.fold (fun a name p => a.push {p with name}) #[]
+        m.foldl (fun a name p => a.push {p with name}) #[]
       r.qsort (fun a b => Name.quickLt a.name b.name)
     statsFn         := fun s =>
       "program info extension" ++ Format.line

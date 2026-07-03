@@ -296,7 +296,7 @@ def simpAndIntroDef (name : String) (hdefVal : Expr) : TacticM FVarId  := do
 
     /- Simp to gain some more juice out of the defn.. -/
     let mut simpTheorems : Array SimpTheorems := #[]
-    for a in #[`minimal_theory, `bitvec_rules, `bv_toNat] do
+    for a in #[`minimal_theory, `bitvec_rules, `bitvec_to_nat] do
       let some ext ← (getSimpExtension? a)
         | throwError m!"[simp_mem] Internal error: simp attribute {a} not found!"
       simpTheorems := simpTheorems.push (← ext.getTheorems)
@@ -324,7 +324,7 @@ def simpAndIntroDef' (g : MVarId) (name : String) (hdefVal : Expr) : MetaM (FVar
 
     /- Simp to gain some more juice out of the defn.. -/
     let mut simpTheorems : Array SimpTheorems := #[]
-    for a in #[`minimal_theory, `bitvec_rules, `bv_toNat] do
+    for a in #[`minimal_theory, `bitvec_rules, `bitvec_to_nat] do
       let some ext ← (getSimpExtension? a)
         | throwError m!"[simp_mem] Internal error: simp attribute {a} not found!"
       simpTheorems := simpTheorems.push (← ext.getTheorems)

@@ -94,7 +94,9 @@ def LNSymSimpContext
     let mut newThms := freshThms.pre.values ++ freshThms.post.values
     if noIndexAtArgs = false then
       newThms ← newThms.mapM fixSimpTheoremKey
-    const_simpTheorems := newThms.foldl addSimpTheoremEntry const_simpTheorems
+    -- v4.25: `addSimpTheoremEntry` deprecated (removed by v4.31) → fold each
+    -- `SimpTheorem` in via the public `SimpTheorems.addSimpTheorem` (same behavior).
+    const_simpTheorems := newThms.foldl SimpTheorems.addSimpTheorem const_simpTheorems
 
   let all_simpTheorems := (#[const_simpTheorems] ++ ext_simpTheorems)
   -- v4.15: the `Simp.Context` constructor is private; use the public smart
