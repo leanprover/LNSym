@@ -703,14 +703,14 @@ theorem read_mem_of_write_mem_bytes_subset
           have h_a_base := BitVec.to_nat_zero_lt_sub_64 addr2 addr1 h₁
           generalize BitVec.toNat val = v at h_v_size
           generalize BitVec.toNat (addr2 - addr1) = a at h_a_size h_a_base
-          have mod_lt_conc : (2 ^ 64 - 1 % 2 ^ 64) = 2 ^ 64 - 1 := by decide
+          have mod_lt_conc : (2 ^ 64 - 1 % 2 ^ 64) = 2 ^ 64 - 1 := by omega
           -- (FIXME) We won't need
           -- read_mem_of_write_mem_bytes_subset_helper_5 once we can
           -- disable simproc for 2^64.
           simp only [mod_lt_conc,
                      read_mem_of_write_mem_bytes_subset_helper_5]
-          have h_tmp : (2 ^ 64 - 1 + a) = (a + 2 ^ 64 - 1) := by
-            apply Nat.add_comm
+          have h_tmp : (2 ^ 64 - 1 + a) = (a + (2 ^ 64 - 1)) := by
+            omega
           simp only [h_tmp]
           apply read_mem_of_write_mem_bytes_subset_helper_4 v a n' h_v_size h_a_base h_a_size
         · omega

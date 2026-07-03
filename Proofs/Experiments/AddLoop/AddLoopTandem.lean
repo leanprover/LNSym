@@ -305,7 +305,7 @@ theorem program.stepi_0x4005b8_cut (s sn : ArmState)
 @[bitvec_rules]
 theorem BitVec.le_refl (x : BitVec n) :
   x <= x := by
-  exact BitVec.le_of_eq x x rfl
+  exact BitVec.le_of_eq rfl
 
 private theorem non_zero_one_bit_is_one {x : BitVec 1}
   (h : ¬ x = 0#1) :

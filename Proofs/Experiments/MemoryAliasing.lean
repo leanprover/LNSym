@@ -211,8 +211,8 @@ section HypothesisSelectors
 set_option linter.all false in
 set_option trace.simp_mem.info true in
 /--
-info: [simp_mem.info] ⚙️ Processing 'h'' : 'a ≤ 100'
-[simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+info: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
+[simp_mem.info] ⚙️ Processing 'h'' : 'a ≤ 100'
 [simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
 [simp_mem.info] Adding omega facts from hypotheses
 [simp_mem.info] Reducion to omega
@@ -223,8 +223,8 @@ info: [simp_mem.info] ⚙️ Processing 'h'' : 'a ≤ 100'
         ⊢ a ≤ a + 1
   [simp_mem.info] ✅️ `omega` succeeded.
 -/
--- v4.15: `mem_omega` now processes hypotheses in reverse declaration order
--- (`h'` before `hab`); the expected trace above is reordered to match.
+-- v4.19: `mem_omega` processes hypotheses in declaration order again
+-- (`hab` before `h'`); the expected trace above is reordered to match.
 #guard_msgs in example (h' : a ≤ 100)
   (hab : a ≤ a + 1) : a ≤ a + 1 := by
   mem_omega  -- by default, process all hyps

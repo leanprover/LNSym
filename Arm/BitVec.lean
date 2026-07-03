@@ -485,11 +485,6 @@ theorem ge_of_not_lt (x y : BitVec w₁) (h : ¬ (x < y)) : x ≥ y := by
   simp_all only [BitVec.le_def, BitVec.lt_def]
   omega
 
-protected theorem le_of_eq (x y : BitVec n) (h : x = y) :
-  x <= y := by
-  simp [←nat_bitvec_le]
-  exact Nat.le_of_eq (congrArg BitVec.toNat h)
-
 protected theorem lt_iff_val_lt_val {a b : BitVec n} : a < b ↔ a.toNat < b.toNat :=
   Iff.rfl
 
@@ -551,12 +546,12 @@ theorem setWidth_append_right (x : BitVec n) (y : BitVec m) :
     BitVec.setWidth m (x ++ y) = y := by
   apply eq_of_toNat_eq
   simp only [toNat_setWidth, toNat_append]
-  rw [← Nat.and_pow_two_sub_one_eq_mod, Nat.and_distrib_right]
+  rw [← Nat.and_two_pow_sub_one_eq_mod, Nat.and_distrib_right]
   suffices x.toNat <<< m &&& 2 ^ m - 1 = 0
     by simp [this]
   apply Nat.eq_of_testBit_eq
   intro i
-  simp only [Nat.and_pow_two_sub_one_eq_mod, Nat.testBit_mod_two_pow, Nat.testBit_shiftLeft,
+  simp only [Nat.and_two_pow_sub_one_eq_mod, Nat.testBit_mod_two_pow, Nat.testBit_shiftLeft,
     ge_iff_le, Nat.zero_testBit, Bool.and_eq_false_imp, decide_eq_true_eq]
   omega
 
@@ -809,7 +804,7 @@ theorem leftshift_n_or_mod_2n :
   case pos =>
     simp [h₀, Nat.testBit_or]
     rw [@Nat.mul_comm x (2^n)]
-    simp [Nat.testBit_mul_pow_two]
+    simp [Nat.testBit_two_pow_mul]
     have : ¬(n <= i) := by omega
     simp [this]
   case neg =>

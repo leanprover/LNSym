@@ -520,7 +520,7 @@ theorem effects_of_nextc_from_0x4005b8 (_h_pre : pre s0)
 @[bitvec_rules]
 theorem BitVec.le_refl (x : BitVec n) :
   x <= x := by
-  exact BitVec.le_of_eq x x rfl
+  exact BitVec.le_of_eq rfl
 
 private theorem loop_inv_x0_le (x y : BitVec 64)
   (h_assert_x0 : x ≤ y)

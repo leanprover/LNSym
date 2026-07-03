@@ -50,7 +50,7 @@ private theorem opc_and_sf_constraint (x : BitVec 2) (y : BitVec 1)
   revert h
   simp only [BitVec.toNat_eq_nat]
   have h₁ : 3 < 2 ^ 2 := by decide
-  simp only [not_and, Nat.reducePow, h₁, true_and, Nat.pow_one, Nat.zero_lt_succ, imp_self]
+  simp only [_root_.not_and, Nat.reducePow, h₁, true_and, Nat.pow_one, Nat.zero_lt_succ, imp_self]
 
 @[state_simp_rules]
 def exec_data_processing_rev

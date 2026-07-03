@@ -333,15 +333,17 @@ This function differs from the Arm's HighestSetBit
 because it returns `n` when no set bit is found, instead of returning `-1`.
 -/
 def highest_set_bit (bv : BitVec n) : Nat :=
-  go (n - 1) bv where
-  go (i : Nat) (bv : BitVec n) :=
+  go n (n - 1) bv where
+  go : Nat → Nat → BitVec n → Nat
+  | 0,            _, _  => n
+  | Nat.succ fuel, i, bv =>
     if lsb bv i = 1#1 then
       i
     else
       if i = 0 then
         n
       else
-        go (i - 1) bv
+        go fuel (i - 1) bv
 
 /- Find the index of the least significant set bit, if any, in `bv`.
 This function matches Arm's LowestSetBit
@@ -349,16 +351,17 @@ This function matches Arm's LowestSetBit
 -- it returns `n` when no set bit is found.
 -/
 def lowest_set_bit (bv : BitVec n) : Nat :=
-  go 0 bv where
-  go (i : Nat) (bv : BitVec n) :=
+  go n 0 bv where
+  go : Nat → Nat → BitVec n → Nat
+  | 0,            _, _  => n
+  | Nat.succ fuel, i, bv =>
     if i >= n then
       n
     else
       if lsb bv i = 1#1 then
         i
       else
-        go (i + 1) bv
-  termination_by (n - i)
+        go fuel (i + 1) bv
 
 open Lean Meta Simp in
 @[inline] def reduceFindSetBit (declName : Name) (arity : Nat)
@@ -562,7 +565,7 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
   else
     have h1 : esize <= n := by
       simp at h0; exact Nat.le_of_lt h0; done
-    have h2 : esize ∣ (n - esize) := Nat.dvd_sub h1 h₀ (Nat.dvd_refl esize)
+    have h2 : esize ∣ (n - esize) := Nat.dvd_sub h₀ (Nat.dvd_refl esize)
     have h3 : (esize + (n - esize)) = n := by
       simp_all only [ge_iff_le, Nat.add_sub_cancel', h1]
     -- v4.18: inline the `element`, `rest_x`, and recursive-result `let` bindings
@@ -605,7 +608,7 @@ def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
     let rest_x := BitVec.setWidth new_datasize (x >>> container_size)
     have h₄' : container_size ∣ new_datasize := by
       have h : container_size ∣ container_size := Nat.dvd_refl _
-      exact Nat.dvd_sub h₂ h₄ h
+      exact Nat.dvd_sub h₄ h
     have h₂' : container_size <= new_datasize := by
       refine Nat.le_of_dvd ?h h₄'
       omega
@@ -731,7 +734,7 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
              Nat.reducePow,
              Nat.zero_mod,
              Int.ofNat_emod,
-             Int.Nat.cast_ofNat_Int,
+             Int.cast_ofNat_Int,
              BitVec.zero_add,
              Nat.reduceSub,
              Nat.one_mul,
@@ -826,7 +829,7 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
              Nat.reducePow,
              Nat.zero_mod,
              Int.ofNat_emod,
-             Int.Nat.cast_ofNat_Int,
+             Int.cast_ofNat_Int,
              BitVec.zero_add,
              Nat.reduceSub,
              Nat.one_mul,
