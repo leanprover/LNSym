@@ -96,7 +96,7 @@ theorem gcm_init_v8_program_correct (s0 sf : ArmState)
     simp only [GCMV8.GCMInitV8, GCMV8.lo, List.getElem!_cons_zero, GCMV8.hi,
       GCMV8.gcm_init_H, GCMV8.refpoly, GCMV8.pmod, GCMV8.pmod.pmodTR,
       GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR]
-    simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtracLsb',
+    simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtractLsb',
       BitVec.reduceHShiftLeft, BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.ofNat_eq_ofNat,
       BitVec.reduceEq, ↓reduceIte, Nat.sub_self, BitVec.ushiftRight_zero, BitVec.reduceAnd,
       BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero, Nat.zero_mod,

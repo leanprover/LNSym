@@ -778,7 +778,7 @@ theorem msb_signExtend (x : BitVec n) (hw: n < n'):
   rcases n' with rfl | n'
   · simp only [show n = 0 by omega,
                msb_eq_getLsbD_last, Nat.zero_sub, Nat.le_refl,
-               getLsbD_ge]
+               getLsbD_of_ge]
   · simp only [msb_eq_getLsbD_last, Nat.add_one_sub_one,
                getLsbD_signExtend, Nat.lt_add_one,
                decide_true, Bool.true_and, ite_eq_right_iff]

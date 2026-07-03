@@ -168,7 +168,11 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
   | assumption
 
 /--
-info: 'MaxTandem.program.stepi_0x894_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x894_cut' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Lean.trustCompiler,
+ Quot.sound]
 -/
 #guard_msgs in #print axioms program.stepi_0x894_cut
 
@@ -237,7 +241,11 @@ theorem program.stepi_0x89c_cut (s sn : ArmState)
   rfl
 
 /--
-info: 'MaxTandem.program.stepi_0x89c_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x89c_cut' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Lean.trustCompiler,
+ Quot.sound]
 -/
 #guard_msgs in #print axioms program.stepi_0x89c_cut
 
@@ -440,7 +448,11 @@ theorem program.stepi_0x8b4_cut (s sn : ArmState)
   rw [Memory.read_bytes_write_bytes_same (by omega)]
 
 /--
-info: 'MaxTandem.program.stepi_0x8b4_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x8b4_cut' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Lean.trustCompiler,
+ Quot.sound]
 -/
 #guard_msgs in #print axioms program.stepi_0x8b4_cut
 
@@ -520,7 +532,11 @@ theorem program.stepi_0x8c0_cut (s sn : ArmState)
   simp [pcs]
 
   /--
-info: 'MaxTandem.program.stepi_0x8c0_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x8c0_cut' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Lean.trustCompiler,
+ Quot.sound]
 -/
 #guard_msgs in #print axioms program.stepi_0x8c0_cut
 
@@ -575,7 +591,11 @@ theorem program.stepi_0x8c8_cut (s sn : ArmState)
   · decide
 
 /--
-info: 'MaxTandem.program.stepi_0x8c8_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x8c8_cut' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Lean.trustCompiler,
+ Quot.sound]
 -/
 #guard_msgs in #print axioms program.stepi_0x8c8_cut
 
@@ -870,7 +890,11 @@ theorem partial_correctness :
     · apply False.elim h_assert
 
 /--
-info: 'MaxTandem.partial_correctness' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.partial_correctness' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Lean.trustCompiler,
+ Quot.sound]
 -/
 #guard_msgs in #print axioms partial_correctness
 

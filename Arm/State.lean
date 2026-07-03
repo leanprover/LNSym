@@ -888,7 +888,7 @@ theorem read_bytes_one_eq (m : Memory) : m.read_bytes 1 addr = m.read addr := by
   -- v4.16: ext lemma now yields `∀ i, i < w → …`; introduce the bound `hi`
   intro i hi
   rw [BitVec.getLsbD_append]
-  simp only [show i < 8 by omega, decide_true, Nat.zero_le, BitVec.getLsbD_ge, cond_true,
+  simp only [show i < 8 by omega, decide_true, Nat.zero_le, BitVec.getLsbD_of_ge, cond_true,
     if_true, ↓reduceIte]
 
 theorem read_bytes_succ_eq (m : Memory) :
@@ -899,7 +899,7 @@ theorem getLsbD_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
     (decide (i < n * 8) && (m (addr + BitVec.ofNat 64 (i / 8))).getLsbD (i % 8)) := by
   induction n generalizing i addr m
   case zero =>
-    simp only [Nat.reduceMul, Nat.zero_le, BitVec.getLsbD_ge, Nat.zero_mul, Nat.not_lt_zero,
+    simp only [Nat.reduceMul, Nat.zero_le, BitVec.getLsbD_of_ge, Nat.zero_mul, Nat.not_lt_zero,
       decide_false, Bool.false_and]
   case succ n' ih =>
     simp only [read_bytes_succ_eq, BitVec.ofNat_eq_ofNat,
@@ -1090,7 +1090,7 @@ theorem extractLsByte_setWidth_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i >
           rw [Nat.add_mul]
           omega
         · simp only [hi', decide_false, Bool.false_and, Bool.false_eq]
-          apply BitVec.getLsbD_ge
+          apply BitVec.getLsbD_of_ge
           rw [Nat.add_mul, Nat.add_mul]
           omega
     · simp only [hj, decide_false, Bool.false_and]

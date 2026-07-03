@@ -40,7 +40,7 @@ attribute [bitvec_rules] BitVec.ofFin.injEq
 attribute [bitvec_rules] BitVec.cast_eq
 attribute [bitvec_rules] BitVec.setWidth_eq
 attribute [bitvec_rules] BitVec.getLsbD_ofFin
-attribute [bitvec_rules] BitVec.getLsbD_ge
+attribute [bitvec_rules] BitVec.getLsbD_of_ge
 attribute [bitvec_rules] BitVec.getMsbD_ge
 attribute [bitvec_rules] BitVec.toNat_zero_length
 attribute [bitvec_rules] BitVec.getLsbD_zero_length
@@ -240,7 +240,7 @@ attribute [bitvec_rules] BitVec.reduceSLT
 attribute [bitvec_rules] BitVec.reduceSLE
 attribute [bitvec_rules] BitVec.reduceSetWidth'
 attribute [bitvec_rules] BitVec.reduceShiftLeftZeroExtend
-attribute [bitvec_rules] BitVec.reduceExtracLsb'
+attribute [bitvec_rules] BitVec.reduceExtractLsb'
 attribute [bitvec_rules] BitVec.reduceReplicate
 attribute [bitvec_rules] BitVec.reduceSetWidth
 attribute [bitvec_rules] BitVec.reduceSignExtend
@@ -330,7 +330,7 @@ theorem partInstall_partInstall (x : BitVec n) :
       show i < start + len₁ ↔ i - start < len₁ by omega]
     by_cases h₂ : i - start < len₁
     · simp [h₂, show i - start < len₂ + len₁ by omega]
-    · rw [BitVec.getLsbD_ge val₁ _ (by omega)]
+    · rw [BitVec.getLsbD_of_ge val₁ _ (by omega)]
       simp [h₂, Nat.sub_add_eq,
         show i - start < len₂ + len₁ ↔ i - start - len₁ < len₂ by omega]
 
@@ -929,7 +929,7 @@ theorem extractLsByte_ge (h : 8 * a ≥ w₁) (x : BitVec w₁) :
   simp only [getLsbD_zero, extractLsByte_def,
     getLsbD_cast, getLsbD_extract, Bool.and_eq_false_imp, decide_eq_true_eq]
   simp only [getLsbD_extractLsb', hi, decide_true, Bool.true_and]
-  apply BitVec.getLsbD_ge
+  apply BitVec.getLsbD_of_ge
   omega
 
 @[bitvec_rules]
@@ -947,7 +947,7 @@ theorem getLsbD_extractLsByte (val : BitVec w₁) :
 
 theorem BitVec.getLsbD_eq_false_of_le {w} (x : BitVec w) {i : Nat} (h : w ≤ i) :
     x.getLsbD i = false := by
-  exact getLsbD_ge x i h
+  exact getLsbD_of_ge x i h
 
 /--
 Two bitvectors of length `n*8` are equal if all their bytes are equal.
@@ -981,7 +981,7 @@ theorem getLsbD_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i : Nat)
       ((decide (i < n * 8) &&
       val.getLsbD (base * 8 + i))) := by
   rcases n with rfl | n
-  · simp only [Nat.reduceMul, Nat.zero_le, getLsbD_ge, Nat.lt_irrefl, decide_false, Nat.zero_mul,
+  · simp only [Nat.reduceMul, Nat.zero_le, getLsbD_of_ge, Nat.lt_irrefl, decide_false, Nat.zero_mul,
     Nat.add_zero, Bool.false_and]
     simp only [show ¬i < 0 by omega, decide_false, Bool.false_and]
   · simp only [extractLsBytes, getLsbD_cast, getLsbD_extract, Nat.zero_lt_succ, decide_true,
@@ -1007,7 +1007,7 @@ theorem extractLsByte_extractLsBytes (val : BitVec w) (base : Nat) (n : Nat) (i 
       congr 1
       omega
     · simp only [h, decide_false, Bool.false_and, decide_true, Bool.true_and, Bool.false_eq]
-      apply BitVec.getLsbD_ge
+      apply BitVec.getLsbD_of_ge
       omega
   · simp only [hn, ↓reduceIte, getLsbD_zero, Bool.and_eq_false_imp, decide_eq_true_eq]
     omega
@@ -1049,7 +1049,7 @@ theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   -- (was `Fin.is_lt`), feeding `hi` to the width-discharging simp.
   intro i hi
   simp only [getLsbD_extractLsBytes, hi, decide_true, Bool.true_and, getLsbD_zero]
-  apply BitVec.getLsbD_ge
+  apply BitVec.getLsbD_of_ge
   omega
 
 /-- TODO: upstream -/

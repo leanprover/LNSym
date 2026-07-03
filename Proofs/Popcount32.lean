@@ -112,8 +112,11 @@ theorem popcount32_sym_meets_spec (s0 sf : ArmState)
   done
 
 /--
-info: 'popcount32_sym_meets_spec' depends on axioms:
-[propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'popcount32_sym_meets_spec' depends on axioms: [propext,
+ Classical.choice,
+ Lean.ofReduceBool,
+ Lean.trustCompiler,
+ Quot.sound]
 -/
 #guard_msgs in #print axioms popcount32_sym_meets_spec
 

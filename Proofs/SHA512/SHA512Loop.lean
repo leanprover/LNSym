@@ -148,7 +148,7 @@ theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   -- v4.16: ext lemma now gives a Nat index + bound `hi`; introduce both, drop `Fin.is_lt`.
   intro i hi
   simp only [getLsbD_extractLsBytes, hi, decide_true, Bool.true_and, getLsbD_zero]
-  apply BitVec.getLsbD_ge
+  apply BitVec.getLsbD_of_ge
   omega
 
 theorem extractLsBytes_of_read_bytes_le (n m : Nat)

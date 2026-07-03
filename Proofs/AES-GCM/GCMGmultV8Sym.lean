@@ -318,7 +318,7 @@ set_option pp.deepTerms.threshold 50 in
     -- simp only [GCMV8.gcm_polyval_red, GCMV8.irrepoly,
     --            GCMV8.pmod, GCMV8.pmod.pmodTR,
     --            GCMV8.reduce, GCMV8.degree, GCMV8.degree.degreeTR]
-    -- simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtracLsb',
+    -- simp only [Nat.reduceAdd, BitVec.ushiftRight_eq, BitVec.reduceExtractLsb',
     --   BitVec.reduceHShiftLeft, BitVec.reduceAppend, BitVec.reduceHShiftRight, BitVec.ofNat_eq_ofNat,
     --   BitVec.reduceEq, ↓reduceIte, Nat.sub_self, BitVec.ushiftRight_zero, BitVec.reduceAnd,
     --   BitVec.toNat_ofNat, Nat.pow_one, Nat.reduceMod, Nat.mul_zero, Nat.add_zero, Nat.zero_mod,
