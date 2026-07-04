@@ -43,15 +43,15 @@ theorem Nat.mod_eq_sub' {x y : Nat} (h : x ≥ y) (h' : x - y < y) :
   rw [Nat.mod_eq_sub_mod h, Nat.mod_eq_of_lt h']
 
 private def mkLTNat (x y : Expr) : Expr :=
-  mkAppN (.const ``LT.lt [levelZero]) #[mkConst ``Nat, mkConst ``instLTNat, x, y]
+  mkAppN (.const ``LT.lt [Level.zero]) #[mkConst ``Nat, mkConst ``instLTNat, x, y]
 
 private def mkLENat (x y : Expr) : Expr :=
-  mkAppN (.const ``LE.le [levelZero]) #[mkConst ``Nat, mkConst ``instLENat, x, y]
+  mkAppN (.const ``LE.le [Level.zero]) #[mkConst ``Nat, mkConst ``instLENat, x, y]
 
 private def mkGENat (x y : Expr) : Expr := mkLENat y x
 
 private def mkSubNat (x y : Expr) : Expr :=
-  let lz := levelZero
+  let lz := Level.zero
   let nat := mkConst ``Nat
   let instSub := mkConst ``instSubNat
   let instHSub := mkAppN (mkConst ``instHSub [lz]) #[nat, instSub]

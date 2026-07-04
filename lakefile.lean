@@ -7,7 +7,15 @@ import Lake
 open Lake DSL
 
 package «lnsym» where
-  -- add package configuration options here
+  -- (v4.30) v4.30 promotes the `unusedSimpArgs` linter from firing only inside
+  -- `#guard_msgs` (its v4.22 scope) to firing across ALL library code: ~264 sites in
+  -- 16 files, almost all in `simp only [...]` lists inside proofs the port keeps
+  -- byte-identical to upstream `main`. No `#guard_msgs` test expects an
+  -- `unusedSimpArgs` warning, so silencing the linter package-wide is test-safe and
+  -- keeps every proof body identical to `main` (the alternative — deleting 264
+  -- "redundant" args — would diverge LNSym from upstream for no behavioural gain).
+  -- Per-block silencers remain in CSE.lean/Sym.lean for their `#guard_msgs` captures.
+  leanOptions := #[⟨`linter.unusedSimpArgs, false⟩]
 
 lean_lib «Arm» where
   -- add library configuration options here

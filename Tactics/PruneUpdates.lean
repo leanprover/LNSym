@@ -63,7 +63,7 @@ def ArmUpdates.toExpr (us : ArmUpdates) : Lean.Expr :=
   match us with
   | [] => Lean.toExpr ([] : Updates)
   | u :: rest =>
-    mkAppN (mkConst ``List.cons [levelZero])
+    mkAppN (mkConst ``List.cons [Level.zero])
           #[mkConst ``Update, (Lean.toExpr u), (ArmUpdates.toExpr rest)]
 
 instance : ToExpr ArmUpdates where

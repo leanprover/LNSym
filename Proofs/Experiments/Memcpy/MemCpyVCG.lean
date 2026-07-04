@@ -225,7 +225,7 @@ structure Stepped (s sn : ArmState) where
 def Stepped.of_next {s sn : ArmState} (h : Sys.next s = sn) : Stepped s sn := ⟨h.symm⟩
 
 
-structure Step_8e0_8f0 (scur snext : ArmState) extends WellFormedAtPc snext 0x8f0 : Prop where
+structure Step_8e0_8f0 (scur snext : ArmState) : Prop extends WellFormedAtPc snext 0x8f0 where
   h_mem : snext.mem = scur.mem
   h_cut : cut snext = false
   h_x1 : snext.x1 = scur.x1
@@ -246,7 +246,7 @@ theorem program.step_8e0_8f0_of_wellformed (s sn : ArmState)
   · constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
   -- v4.15: `constructor <;> simp only […]` above now closes this goal; `· decide` removed.
 
-structure Step_8e4_8e8 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8e8 : Prop where
+structure Step_8e4_8e8 (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8e8 where
   h_x1 : snext.x1 = scur.x1 + 0x10#64
   h_mem : snext.mem = scur.mem
   h_q4 : snext.q4 = scur[scur.x1, 16]
@@ -276,7 +276,7 @@ theorem program.step_8e4_8e8_of_wellformed_of_stepped (scur snext : ArmState)
   · constructor <;> simp [*, state_simp_rules, minimal_theory, memory_rules]
 
 -- 3/7 (0x8e8#64, 0x3c810444#32),  /- str q4, [x2], #16        -/
-structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8ec : Prop where
+structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8ec where
   h_x2 : snext.x2 = scur.x2 + 0x10#64
   h_mem : snext.mem = scur.mem.write_bytes 16 scur.x2 scur.q4
   h_x0 : snext.x0 = scur.x0
@@ -314,7 +314,7 @@ theorem program.step_8e8_8ec_of_wellformed (scur snext : ArmState)
 
 
 -- 4/7 (0x8ec#64, 0xd1000400#32),  /- sub x0, x0, #0x1         -/
-structure Step_8ec_8f0 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f0 : Prop where
+structure Step_8ec_8f0 (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8f0 where
   h_x0 : snext.x0 = scur.x0 - 0x1#64
   h_mem : snext.mem = scur.mem
   h_x1 : snext.x1 = scur.x1
@@ -342,7 +342,7 @@ theorem program.step_8ec_8f0_of_wellformed (scur snext : ArmState)
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
 
 -- 5/7 (0x8f0#64, 0xf100001f#32),  /- cmp x0, #0x0             -/
-structure Step_8f0_8f4 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f4 : Prop where
+structure Step_8f0_8f4 (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8f4 where
   h_mem : snext.mem = scur.mem
   h_v : snext.V = (AddWithCarry scur.x0 0xffffffffffffffff#64 0x1#1).snd.v
   h_c : snext.C = (AddWithCarry scur.x0 0xffffffffffffffff#64 0x1#1).snd.c
@@ -373,7 +373,7 @@ theorem program.step_8f0_8f4_of_wellformed (scur snext : ArmState)
 
 
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
-structure Step_8f4_8e4 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8e4 : Prop where
+structure Step_8f4_8e4 (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8e4 where
   h_mem : snext.mem = scur.mem
   h_x0 : snext.x0 = scur.x0
   h_x1 : snext.x1 = scur.x1
@@ -407,7 +407,7 @@ theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules]
 
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
-structure Step_8f4_8f8 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f8 : Prop where
+structure Step_8f4_8f8 (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8f8 where
   h_mem : snext.mem = scur.mem
   h_q4 : snext.q4 = scur.q4
 

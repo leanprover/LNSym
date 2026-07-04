@@ -6,7 +6,19 @@ Author(s): Shilpi Goel, Siddharth Bhat
 import «Proofs».MultiInsts
 import «Proofs».«SHA512».SHA512
 import Proofs.«AES-GCM».GCM
-import Proofs.Popcount32
+-- (v4.30) PARKED — EXCLUDED from the aggregator: `Popcount32`. Its
+-- `popcount32_sym_meets_spec` is the scalar `sym_n 27` with a functional value
+-- postcondition (`w0 sf = popcount32_spec (w0 s0)`) — the canonical scalar control
+-- for the `sym_n`/`sym_aggregate` term-sharing memory regression. It was FLAT at
+-- ~1.8 GB through v4.29 (the regression was SIMD-specific from v4.27), but at v4.30
+-- the regression WIDENS to scalar proofs: this file OOM-kills at ~42 GB (exit 137,
+-- 129 s, isolated single-threaded 40 G cap) — a pure toolchain regression (proof body
+-- byte-identical to v4.29). This is the release the reference branch attributed to
+-- v4.31; it arrives one version EARLY at v4.30. The real fix is tactic-level (let-bind
+-- field values in `AxEffects.update_w` so the value conjuncts share one bound write
+-- tower). See memory note `v431-symn-oom-widespread`. Full body at tag `port-v4.29.0`.
+-- Re-enable once the sym sharing regression is fixed at the tactic level.
+-- import Proofs.Popcount32
 
 -- /- Experiments we use to test proof strategies and automation ideas. -/
 import Proofs.Experiments.Summary1
