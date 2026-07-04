@@ -656,9 +656,9 @@ protected theorem by_the_method [Sys σ] [Spec' σ] (rank : σ → Nat)
    simp only [h1, h2, and_self]
    done
 
+-- v4.29: `#print axioms` pretty-printer drops the `Classical.` prefix (`Classical.choice`→`choice`).
 /--
-info: 'Correctness.by_the_method' depends on axioms: [propext, Classical.choice,
-Quot.sound]
+info: 'Correctness.by_the_method' depends on axioms: [propext, choice, Quot.sound]
 -/
 #guard_msgs in #print axioms Correctness.by_the_method
 

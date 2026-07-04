@@ -49,7 +49,11 @@ theorem correct
   split <;> bv_decide
 
 /--
-info: 'Abs.correct' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Lean.trustCompiler, Quot.sound]
+info: 'Abs.correct' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ correct._native.bv_decide.ax_1_21,
+ correct._native.bv_decide.ax_1_26]
 -/
 #guard_msgs in #print axioms correct
 

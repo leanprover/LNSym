@@ -89,19 +89,19 @@ theorem rev_elems_64_8_append_eq_rev_elems_128_8 (x y : BitVec 64) :
   rev_elems 128 8 (y ++ x) _p5 _p6 := by
   sorry
 
+-- v4.29: the old `rw [extractLsb'_append]; simp_all (ground) [bitvec_rules]; congr`
+-- recipe broke — v4.29's `congr` over-decomposes and leaves impossible residual
+-- goals (`64 = 0`). These are concrete BitVec identities, so close them directly
+-- with `bv_decide`. (Only consumed by the parked `gcm_gmult_v8_program_run_27`.)
 private theorem lsb_from_extractLsb'_of_append_self (x : BitVec 128) :
   BitVec.extractLsb' 64 64 (BitVec.extractLsb' 64 128 (x ++ x)) =
   BitVec.extractLsb' 0 64 x := by
-  rw [BitVec.extractLsb'_append]
-  simp_all (config := {ground := true}) only [bitvec_rules]
-  congr
+  bv_decide
 
 private theorem msb_from_extractLsb'_of_append_self (x : BitVec 128) :
   BitVec.extractLsb' 0 64 (BitVec.extractLsb' 64 128 (x ++ x)) =
   BitVec.extractLsb' 64 64 x := by
-  rw [BitVec.extractLsb'_append]
-  simp_all (config := {ground := true}) only [bitvec_rules]
-  congr
+  bv_decide
 
 private theorem zeroExtend_allOnes_lsh_64 :
   ~~~(BitVec.zeroExtend 128 (BitVec.allOnes 64) <<< 64)

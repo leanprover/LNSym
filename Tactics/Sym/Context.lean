@@ -137,8 +137,11 @@ hidden behind a def. For some reason this is fast to elaborate.
 /-- This def may seem pointless, but it is in-fact load-bearing.
 
 Furthermore, making it an `instance` will cause `logWarning` below to be
-very slow to elaborate. Why? No clue. -/
-protected def instMonadLog : MonadLog SymM := inferInstance
+very slow to elaborate. Why? No clue.
+
+v4.29: a `def` of a class type must be `@[reducible]` (or an instance) or it
+warns; `@[reducible]` (distinct from `instance`) keeps the fast elaboration. -/
+@[reducible] protected def instMonadLog : MonadLog SymM := inferInstance
 
 @[inherit_doc Lean.logWarning]
 def logWarning (msg : MessageData) : SymM Unit :=

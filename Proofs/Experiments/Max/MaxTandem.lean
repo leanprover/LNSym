@@ -170,9 +170,8 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
 /--
 info: 'MaxTandem.program.stepi_0x894_cut' depends on axioms: [propext,
  Classical.choice,
- Lean.ofReduceBool,
- Lean.trustCompiler,
- Quot.sound]
+ Quot.sound,
+ Aligned_BitVecSub_64_4._native.bv_decide.ax_1_5]
 -/
 #guard_msgs in #print axioms program.stepi_0x894_cut
 
@@ -243,9 +242,10 @@ theorem program.stepi_0x89c_cut (s sn : ArmState)
 /--
 info: 'MaxTandem.program.stepi_0x89c_cut' depends on axioms: [propext,
  Classical.choice,
- Lean.ofReduceBool,
- Lean.trustCompiler,
- Quot.sound]
+ Quot.sound,
+ mem_separate_contiguous_regions._native.bv_decide.ax_1_5,
+ mem_separate_starting_addresses_neq._native.bv_decide.ax_1_5,
+ Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms program.stepi_0x89c_cut
 
@@ -335,6 +335,7 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
+  refine ⟨?_, ?_, ?_, ?_⟩ <;> bv_decide
 
 /--
 info: 'MaxTandem.program.stepi_0x8a8_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -450,9 +451,10 @@ theorem program.stepi_0x8b4_cut (s sn : ArmState)
 /--
 info: 'MaxTandem.program.stepi_0x8b4_cut' depends on axioms: [propext,
  Classical.choice,
- Lean.ofReduceBool,
- Lean.trustCompiler,
- Quot.sound]
+ Quot.sound,
+ mem_separate_contiguous_regions._native.bv_decide.ax_1_5,
+ mem_separate_starting_addresses_neq._native.bv_decide.ax_1_5,
+ Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms program.stepi_0x8b4_cut
 
@@ -534,9 +536,10 @@ theorem program.stepi_0x8c0_cut (s sn : ArmState)
   /--
 info: 'MaxTandem.program.stepi_0x8c0_cut' depends on axioms: [propext,
  Classical.choice,
- Lean.ofReduceBool,
- Lean.trustCompiler,
- Quot.sound]
+ Quot.sound,
+ mem_separate_contiguous_regions._native.bv_decide.ax_1_5,
+ mem_separate_starting_addresses_neq._native.bv_decide.ax_1_5,
+ Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms program.stepi_0x8c0_cut
 
@@ -593,9 +596,8 @@ theorem program.stepi_0x8c8_cut (s sn : ArmState)
 /--
 info: 'MaxTandem.program.stepi_0x8c8_cut' depends on axioms: [propext,
  Classical.choice,
- Lean.ofReduceBool,
- Lean.trustCompiler,
- Quot.sound]
+ Quot.sound,
+ Aligned_BitVecAdd_64_4._native.bv_decide.ax_1_5]
 -/
 #guard_msgs in #print axioms program.stepi_0x8c8_cut
 
@@ -892,9 +894,19 @@ theorem partial_correctness :
 /--
 info: 'MaxTandem.partial_correctness' depends on axioms: [propext,
  Classical.choice,
- Lean.ofReduceBool,
- Lean.trustCompiler,
- Quot.sound]
+ Quot.sound,
+ Aligned_BitVecAdd_64_4._native.bv_decide.ax_1_5,
+ Aligned_BitVecSub_64_4._native.bv_decide.ax_1_5,
+ mem_separate_contiguous_regions._native.bv_decide.ax_1_5,
+ mem_separate_starting_addresses_neq._native.bv_decide.ax_1_5,
+ sgt_iff_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_11,
+ sgt_iff_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_6,
+ sle_iff_not_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_11,
+ sle_iff_not_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_6,
+ partial_correctness._native.bv_decide.ax_1_22,
+ partial_correctness._native.bv_decide.ax_1_28,
+ partial_correctness._native.bv_decide.ax_1_34,
+ Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms partial_correctness
 

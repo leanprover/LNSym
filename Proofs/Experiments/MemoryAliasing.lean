@@ -214,9 +214,9 @@ set_option trace.simp_mem.info true in
 trace: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
 [simp_mem.info] ⚙️ Processing 'h'' : 'a ≤ 100'
 [simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
-[simp_mem.info] Adding omega facts from hypotheses
-[simp_mem.info] Reducion to omega
-  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+[simp_mem.info] ✅️ Adding omega facts from hypotheses
+[simp_mem.info] ✅️ Reducion to omega
+  [simp_mem.info] ✅️ goal (Note: can be large) (NOTE: can be large)
     [simp_mem.info] a : Nat
         h' : a ≤ 100
         hab : a ≤ a + 1
@@ -234,9 +234,9 @@ trace: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
 /--
 trace: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
 [simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
-[simp_mem.info] Adding omega facts from hypotheses
-[simp_mem.info] Reducion to omega
-  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+[simp_mem.info] ✅️ Adding omega facts from hypotheses
+[simp_mem.info] ✅️ Reducion to omega
+  [simp_mem.info] ✅️ goal (Note: can be large) (NOTE: can be large)
     [simp_mem.info] a : Nat
         h' : a ≤ 100
         hab : a ≤ a + 1
@@ -258,9 +258,9 @@ example (h' : a ≤ 100) (hab : a ≤ a + 1) : a ≤ a + 1 := by
 /--
 trace: [simp_mem.info] ⚙️ Processing 'hab' : 'a ≤ a + 1'
 [simp_mem.info] ⚙️ Matching on ⊢ a ≤ a + 1
-[simp_mem.info] Adding omega facts from hypotheses
-[simp_mem.info] Reducion to omega
-  [simp_mem.info] goal (Note: can be large) (NOTE: can be large)
+[simp_mem.info] ✅️ Adding omega facts from hypotheses
+[simp_mem.info] ✅️ Reducion to omega
+  [simp_mem.info] ✅️ goal (Note: can be large) (NOTE: can be large)
     [simp_mem.info] a : Nat
         h' : a ≤ 100
         hab : a ≤ a + 1
@@ -734,10 +734,10 @@ set_option trace.simp_mem.info true in
 error: unsolved goals
 ⊢ False
 ---
-trace: [simp_mem.info] Searching for Hypotheses
-[simp_mem.info] Summary: Found 0 hypotheses
-[simp_mem.info] Performing Rewrite At Main Goal
-  [simp_mem.info] Simplifying goal.
+trace: [simp_mem.info] ✅️ Searching for Hypotheses
+[simp_mem.info] ✅️ Summary: Found 0 hypotheses
+[simp_mem.info] ✅️ Performing Rewrite At Main Goal
+  [simp_mem.info] ✅️ Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
 ---
 trace: ⊢ False
@@ -754,10 +754,10 @@ set_option trace.simp_mem.info true in
 /--
 error: ❌️ simp_mem failed to make any progress.
 ---
-trace: [simp_mem.info] Searching for Hypotheses
-[simp_mem.info] Summary: Found 0 hypotheses
-[simp_mem.info] Performing Rewrite At Main Goal
-  [simp_mem.info] Simplifying goal.
+trace: [simp_mem.info] ✅️ Searching for Hypotheses
+[simp_mem.info] ✅️ Summary: Found 0 hypotheses
+[simp_mem.info] ✅️ Performing Rewrite At Main Goal
+  [simp_mem.info] ✅️ Simplifying goal.
 [simp_mem.info] ❌️ No progress made in this iteration. halting.
 -/
 #guard_msgs in theorem test_fail_if_unchanged : False := by

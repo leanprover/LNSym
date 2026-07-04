@@ -120,6 +120,31 @@ def reduceDecodeInst (rawInst : BitVec 32) : CacheM Expr :=
 
 open ProgramInfoT InstInfoT
 
+/-- v4.29: collapse ground `ite`-widths that `simp` leaves in instance-implicit
+positions. A vector `MOV` (`ORR vd, vn, vn`) reduces to `r .. ||| r ..`, but as of
+v4.29 the `|||` instance momentarily carries `BitVec.instOrOp (ite (inst.Q = 1#1) 128 64)`
+whose `ite` sits in an instance-implicit argument that `simp` will not reduce, blocking
+`BitVec.or_self`. Walking the term and forcing such ground `ite`s (via the `Decidable`
+instance's `whnfD`) collapses the width so `bitvec_rules` (e.g. `x ||| x = x`) can fire.
+For non-SIMD instructions (no such residual) this is a no-op. -/
+partial def reduceGroundIteWidths (e : Expr) : MetaM Expr :=
+  Meta.transform e (post := fun node => do
+    match_expr node with
+    | ite _ c inst _ _ =>
+      if c.hasFVar || c.hasMVar then return .continue
+      -- Only touch ground conditions; `whnfD` forces the `Decidable` instance.
+      match_expr ← whnfD inst with
+      | Decidable.isTrue _ _  => return .visit (← whnf node)
+      | Decidable.isFalse _ _ => return .visit (← whnf node)
+      | _ => return .continue
+    | dite _ c inst _ _ =>
+      if c.hasFVar || c.hasMVar then return .continue
+      match_expr ← whnfD inst with
+      | Decidable.isTrue _ _  => return .visit (← whnf node)
+      | Decidable.isFalse _ _ => return .visit (← whnf node)
+      | _ => return .continue
+    | _ => return .continue)
+
 /-! ## reduceStepiToExecInst -/
 
 /-- Given a program and an address, and optionally the corresponding
@@ -174,6 +199,22 @@ def reduceStepi (addr : BitVec 64) : StepThmsM (Expr × Expr) := do
           (decls_to_unfold := #[``exec_inst])
 
       let ⟨simpRes, _⟩ ← simp type ctx simprocs
+
+      -- v4.29: collapse any ground `ite`-widths `simp` left in instance-implicit
+      -- positions (e.g. `BitVec.instOrOp (ite (inst.Q = 1#1) 128 64)`) so that
+      -- `bitvec_rules` lemmas like `BitVec.or_self` can fire. No-op for non-SIMD
+      -- instructions (no such residual), so their theorems stay byte-identical.
+      let reducedExpr ← reduceGroundIteWidths simpRes.expr
+      let simpRes ← do
+        if reducedExpr == simpRes.expr then
+          pure simpRes
+        else
+          -- The reduction is definitional, so chain it as a `proof? := none`
+          -- (def-eq) step, then re-run `simp` so the now-concrete instance lets
+          -- `bitvec_rules` simplify (e.g. `x ||| x = x`).
+          let simpRes ← simpRes.mkEqTrans { expr := reducedExpr, proof? := none }
+          let ⟨simpRes2, _⟩ ← simp simpRes.expr ctx simprocs
+          simpRes.mkEqTrans simpRes2
 
       let_expr Eq _ _ sem := simpRes.expr
         | let eq ← mkEq (← mkFreshExprMVar none) (← mkFreshExprMVar none)
