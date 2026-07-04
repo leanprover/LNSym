@@ -682,7 +682,15 @@ theorem extractLsb'_append_left (x : BitVec n) (y : BitVec m) :
     (x ++ y).extractLsb' m n = x := by
   rw [extractLsb'_append_left_of_le (by omega), Nat.sub_self, extractLsb'_eq]
 
-theorem extractLsb'_extractLsb'_of_le {w : Nat} (start₁ len₁ start₂ len₂)
+-- v4.28: core upstreamed `BitVec.extractLsb'_extractLsb'_of_le` (Init.Data.BitVec.Lemmas),
+-- so the old local name now clashes ("has already been declared"). BUT core's version is
+-- only the `start₁ = 0` specialization `(x.extractLsb' 0 len').extractLsb' start len =
+-- x.extractLsb' start len`; SHA512_block_armv8_rules needs the GENERAL `start₁` form to
+-- collapse a nested `extractLsb' 64 64 (extractLsb' 0 128 …)` (else an un-reduced `64-128`
+-- residual breaks the following `rw`). So we keep the general lemma under a primed name and
+-- point those simp lists at it. (The reference branch instead added a bespoke
+-- `extractLsb'_64_128_append_self` helper at v4.31; the primed general lemma is the smaller change.)
+theorem extractLsb'_extractLsb'_of_le' {w : Nat} (start₁ len₁ start₂ len₂)
     (h : start₂ + len₂ ≤ len₁)
     (x : BitVec w) :
     (x.extractLsb' start₁ len₁).extractLsb' start₂ len₂

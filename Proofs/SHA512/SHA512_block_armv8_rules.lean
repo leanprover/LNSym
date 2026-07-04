@@ -229,7 +229,7 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   )
   simp only [zero_eq, Nat.reduceAdd, add_eq, Nat.zero_add]
   simp only [elem_set, Nat.one_mul, elem_get, Nat.zero_mul, Nat.reduceAdd,
-    Nat.le_refl, BitVec.extractLsb'_extractLsb'_of_le, Nat.zero_add, Nat.reduceLeDiff,
+    Nat.le_refl, BitVec.extractLsb'_extractLsb'_of_le', Nat.zero_add, Nat.reduceLeDiff,
     Nat.add_zero]
   rw [BitVec.extractLsb'_append_left_of_le (by omega), Nat.sub_self,
     partInstall_partInstall, partInstall_partInstall]
@@ -238,7 +238,7 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   simp only [sha512h, compression_update_t1, elem_set, elem_get, partInstall, sigma_big_1, ch, ror]
   simp only [Nat.reduceAdd, Nat.zero_add, zero_eq, reduceAllOnes, truncate_eq_setWidth,
     reduceSetWidth, Nat.zero_mul, shiftLeft_zero, reduceNot, zero_and, Nat.reduceLeDiff,
-    BitVec.extractLsb'_extractLsb'_of_le, Nat.add_zero, add_eq, zero_or, Nat.one_mul, reduceHShiftLeft,
+    BitVec.extractLsb'_extractLsb'_of_le', Nat.add_zero, add_eq, zero_or, Nat.one_mul, reduceHShiftLeft,
     Nat.le_refl]
 
   generalize extractLsb'  0 64 a = a_lo

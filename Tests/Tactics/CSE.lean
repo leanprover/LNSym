@@ -26,7 +26,7 @@ hx2 : y + y = x2
 hx1 : x2 + x2 = x1
 ⊢ x + x + x1 = x1 + x1 + x1
 ---
-warning: declaration uses 'sorry'
+warning: declaration uses `sorry`
 -/
 #guard_msgs in theorem many_subexpr (x y z : Nat) : (x + x) + ((y + y) + (y + y)) =
   (((y + y) + (y + y)) + ((y + y) + (y + y))) + (((y + y) + (y + y))) := by
@@ -46,7 +46,7 @@ trace: y : Nat
 x : BitVec (y + (y + 0))
 ⊢ BitVec.ofNat (y + y) (y + y) = x
 ---
-warning: declaration uses 'sorry'
+warning: declaration uses `sorry`
 -/
 #guard_msgs in theorem generalize_failure (x : BitVec (y + (y + 0))) :
     (BitVec.ofNat (y + y) (y + y)) = x := by
@@ -58,7 +58,7 @@ warning: declaration uses 'sorry'
 
 open BitVec in
 /--
-warning: declaration uses 'sorry'
+warning: declaration uses `sorry`
 -/
 
 -- NOTE: On Lean v4.19 the `cse` tactic emits a *recovered* runtime panic
@@ -168,7 +168,7 @@ hx28 : x44 + x40 = x28
       (x44 + (x5.rotateRight 14 ^^^ x5.rotateRight 18 ^^^ x5.rotateRight 41) + (x5 &&& x41 ^^^ ~~~x5 &&& x36) + x40 +
         x42)
 ---
-warning: declaration uses 'sorry'
+warning: declaration uses `sorry`
 -/
 #guard_msgs in theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   let elements := 2
@@ -295,7 +295,7 @@ hx28 : x39 + x44 = x28
       (x41 + (x6.rotateRight 14 ^^^ x6.rotateRight 18 ^^^ x6.rotateRight 41) + (x6 &&& x40 ^^^ ~~~x6 &&& x35) + x43 +
         x37)
 ---
-warning: declaration uses 'sorry'
+warning: declaration uses `sorry`
 -/
 #guard_msgs in theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   let a0 := extractLsb'  0 64 a
