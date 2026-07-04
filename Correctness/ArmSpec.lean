@@ -35,8 +35,10 @@ theorem arm_run (n : Nat) (s : ArmState) :
       let i' := i.getNat
       let n' := n.getNat
       let trimmed_hex := -- Remove leading zeroes...
-        String.dropWhile (BitVec.ofNat n' i').toHex
-                         (fun c => c = '0')
+        -- v4.27: `String.dropWhile` now returns a `String.Slice` → `.toString`
+        -- back to a `String` so the `if … else trimmed_hex` below stays `String`.
+        (String.dropWhile (BitVec.ofNat n' i').toHex
+                         (fun c => c = '0')).toString
                          -- ... but keep one if the literal is all zeros.
       let trimmed_hex := if trimmed_hex.isEmpty then "0" else trimmed_hex
       let bv := Lean.Syntax.mkNumLit s!"0x{trimmed_hex}#{n'}"

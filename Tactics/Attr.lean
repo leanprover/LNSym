@@ -16,12 +16,15 @@ initialize
   -- theorem's conclusion
   registerTraceClass `Tactic.prune_updates.answer
 
+  -- v4.27: `OptionDecl` gained a required `name` field (fixmap dated v4.31).
   registerOption `Tactic.prune_updates.only_answer {
+  name := `Tactic.prune_updates.only_answer
   defValue := false
   descr := "Print the pruned updates and exit"
   }
 
   registerOption `Tactic.prune_updates.validate {
+    name := `Tactic.prune_updates.validate
     defValue := false
     descr := "enable/disable type-checking of internal state during execution \
       of the `prune_updates` tactic.
@@ -42,6 +45,7 @@ initialize
   -- enable extra checks for debugging `sym_n`,
   -- see `AxEffects.validate` for more detail on what is being type-checked
   registerOption `Tactic.sym.debug {
+    name := `Tactic.sym.debug
     defValue := true
     descr := "enable/disable type-checking of internal state during execution \
       of the `sym_n` tactic, throwing an error if mal-formed expressions were \

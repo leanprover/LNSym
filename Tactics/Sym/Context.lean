@@ -274,7 +274,9 @@ otherwise ignore `state`, log a warning, and start counting from `s1` -/
 def inferStatePrefixAndNumber : SymM Unit := do
   let state ← AxEffects.getCurrentStateName
   let state := state.toString
-  let tail := state.toSubstring.drop 1
+  -- v4.27: `String.toSubstring` deprecated → `String.toRawSubstring` (both yield
+  -- `Substring.Raw`, which has `.drop`/`.toNat?`).
+  let tail := state.toRawSubstring.drop 1
 
   if let some currentStateNumber := tail.toNat? then
     modifyThe SymContext ({ · with
