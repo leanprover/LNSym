@@ -569,9 +569,9 @@ theorem read_mem_bytes_of_write_mem_bytes_subset_same_first_address
         rw [n_ih (by omega) (by omega) (by omega) _]
         · rw [BitVec.extractLsb'_of_setWidth (v >>> 8)]
           · have l1 := @BitVec.append_of_extract_general ((n1_1 + 1) * 8) (n*8) 8 v
-            simp (config := { decide := true }) only [Nat.zero_lt_succ,
-              Nat.mul_pos_iff_of_pos_left, Nat.succ_sub_succ_eq_sub,
-              Nat.sub_zero, Nat.reduceAdd, Nat.succ.injEq, forall_const] at l1
+            -- (v4.31) dropped a now-no-progress `simp (config := {decide := true}) only [...] at l1`
+            -- (v4.31 elaborates `l1` to reduced form already, so `rw [l1]` matches directly;
+            -- v4.31 makes a no-progress simp a hard error).
             rw [l1]
             · apply @cast_of_extract_eq ((n1_1 + 1) * 8) (n * 8 + 8) ((n + 1) * 8) 0 0 <;>
               omega

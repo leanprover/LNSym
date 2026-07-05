@@ -428,11 +428,12 @@ theorem mem_subset'.of_omega
   b.toNat + bn ≤ 2^64 ∧
   b.toNat ≤ a.toNat ∧
   a.toNat + an ≤ b.toNat + bn) : mem_subset' a an b bn :=  by
-constructor
-· unfold mem_legal'; omega
-· unfold mem_legal'; omega
-· rw [BitVec.le_def]; omega
-· omega
+  -- (v4.31) re-indented the flush-left tactic body under `:= by`.
+  constructor
+  · unfold mem_legal'; omega
+  · unfold mem_legal'; omega
+  · rw [BitVec.le_def]; omega
+  · omega
 
 /-- The linear constraint is equivalent to `mem_subset'`. -/
 theorem mem_subset'.iff_omega (a : BitVec 64) (an : Nat) (b : BitVec 64) (bn : Nat) :

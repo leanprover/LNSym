@@ -149,8 +149,8 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
   CheckSPAlignment sn := by
   subst h_step
   have := Max.program.stepi_eq_0x894 h_program h_pc h_err
-  -- clear Decidable.rec (...)
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`
+  -- (v4.31 elaborates `this` reduced already; no-progress simp is a hard error).
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory, pcs]
   simp only [List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
@@ -194,7 +194,7 @@ theorem program.stepi_0x898_cut (s sn : ArmState)
   (sn.sp) = (s.sp) ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x898 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self,
@@ -231,7 +231,7 @@ theorem program.stepi_0x89c_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x89c h_program h_pc h_err
-  simp only [minimal_theory, bitvec_rules] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory, bitvec_rules] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
@@ -267,7 +267,7 @@ theorem program.stepi_0x8a0_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x8a0 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
@@ -297,7 +297,7 @@ theorem program.stepi_0x8a4_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x8a4 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
@@ -331,7 +331,7 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
   CheckSPAlignment sn ∧
   sn.mem = s.mem := by
   have := program.stepi_eq_0x8a8 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
@@ -365,7 +365,7 @@ theorem program.stepi_0x8ac_cut (s sn : ArmState)
   sn.mem = s.mem
   := by
   have := program.stepi_eq_0x8ac h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp only [← not_and] at *
   simp only [cut, read_pc, pcs, List.mem_cons, List.mem_singleton, Bool.decide_or, Bool.or_eq_true,
     decide_eq_true_eq, state_value]
@@ -413,7 +413,7 @@ theorem program.stepi_0x8b0_cut (s sn : ArmState)
   sn.mem = s.mem ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8b0 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true]
   simp only [List.not_mem_nil, or_self, not_false_eq_true]
@@ -440,7 +440,7 @@ theorem program.stepi_0x8b4_cut (s sn : ArmState)
   sn.sp = s.sp ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8b4 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
@@ -474,7 +474,7 @@ theorem program.stepi_0x8b8_cut (s sn : ArmState)
   sn.sp = s.sp ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8b8 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_false, or_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
@@ -500,7 +500,7 @@ theorem program.stepi_0x8bc_cut (s sn : ArmState)
   sn.sp = s.sp ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8bc h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, or_false, or_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
@@ -527,7 +527,7 @@ theorem program.stepi_0x8c0_cut (s sn : ArmState)
   sn.sp = s.sp ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8c0 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [Memory.write_mem_bytes_eq_mem_write_bytes]
   rw [Memory.read_bytes_write_bytes_same (by omega)]
@@ -560,7 +560,7 @@ theorem program.stepi_0x8c4_cut (s sn : ArmState)
   sn.x0 = BitVec.zeroExtend 64 (sn[sn.sp + 28#64, 4])  ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8c4 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
   simp [pcs]
@@ -585,7 +585,7 @@ theorem program.stepi_0x8c8_cut (s sn : ArmState)
   sn.sp = s.sp + 0x20#64 ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8c8 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_true, true_and, false_or,
     true_or]

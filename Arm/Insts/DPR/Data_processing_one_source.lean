@@ -21,7 +21,8 @@ private theorem shiftLeft_ge (x : Nat) (y : Nat) : x ≤ x <<< y := by
   have h₁ : x ≤ x * 2 ^ y := by
     apply Nat.le_mul_of_pos_right
     simp only [h₀]
-  simp only [Nat.mul_one] at h₁
+  -- (v4.31) dropped a now-no-progress `simp only [Nat.mul_one] at h₁`
+  -- (h₁ is already in reduced form; v4.31 makes a no-progress simp a hard error).
   simp only [Nat.shiftLeft_eq]
   exact h₁
 

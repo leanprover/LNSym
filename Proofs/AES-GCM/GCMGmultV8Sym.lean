@@ -38,13 +38,14 @@ DPSFP.vrev128_64_8 x =
 -- rev_elems 64 8 (BitVec.setWidth 64 x) _p3 _p4  := by
 rev_elems 64 8 (BitVec.extractLsb' 64 64 x) _p1 _p2 ++
 rev_elems 64 8 (BitVec.extractLsb' 0 64 x) _p3 _p4  := by
-simp only [DPSFP.vrev128_64_8]
-unfold rev_vector
-simp (config := {decide := true}) only [bitvec_rules, minimal_theory]
-unfold rev_vector
-simp (config := {decide := true}) only [bitvec_rules, minimal_theory]
-exact rfl
-done
+  -- (v4.31) re-indented the flush-left tactic body under `:= by`.
+  simp only [DPSFP.vrev128_64_8]
+  unfold rev_vector
+  simp (config := {decide := true}) only [bitvec_rules, minimal_theory]
+  unfold rev_vector
+  simp (config := {decide := true}) only [bitvec_rules, minimal_theory]
+  exact rfl
+  done
 
 -- (TODO) Should we simply replace one function by the other here?
 theorem gcm_polyval_mul_eq_polynomial_mult {x y : BitVec 128} :

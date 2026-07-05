@@ -1081,7 +1081,8 @@ theorem extractLsByte_setWidth_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i >
     · simp only [hj, decide_true, Bool.true_and]
       by_cases hi' : i * 8 + j < n * 8
       · simp only [hi', decide_true, Bool.true_and]
-        simp only at hi' ⊢
+        -- (v4.31) dropped a now-no-progress `simp only at hi' ⊢` (hi'/goal already reduced;
+        -- v4.31 makes a no-progress simp a hard error).
         congr 1
         omega
       · by_cases hi' : i * 8 + j < n * 8
@@ -1164,13 +1165,15 @@ theorem getLsbD_write_bytes (hoverflow : base.toNat + n ≤ 2 ^ 64) :
   then (mem ix).getLsbD i
   else if ix.toNat ≥ base.toNat + n then (mem ix).getLsbD i
   else (data.extractLsByte (ix - base).toNat).getLsbD i := by
-rw [write_bytes_eq hoverflow]
-by_cases h : ix < base
-· simp only [h, ↓reduceIte]
-· simp only [h, ↓reduceIte, ge_iff_le, BitVec.toNat_sub, Nat.reducePow, BitVec.getLsbD_extractLsByte]
-  by_cases h₂ : base.toNat + n ≤ ix.toNat
-  · simp only [h₂, ↓reduceIte]
-  · simp only [h₂, ↓reduceIte, BitVec.getLsbD_extractLsByte]
+  -- (v4.31) re-indented the flush-left tactic body under `:= by` (v4.31 rejects the
+  -- previous flush-left layout).
+  rw [write_bytes_eq hoverflow]
+  by_cases h : ix < base
+  · simp only [h, ↓reduceIte]
+  · simp only [h, ↓reduceIte, ge_iff_le, BitVec.toNat_sub, Nat.reducePow, BitVec.getLsbD_extractLsByte]
+    by_cases h₂ : base.toNat + n ≤ ix.toNat
+    · simp only [h₂, ↓reduceIte]
+    · simp only [h₂, ↓reduceIte, BitVec.getLsbD_extractLsByte]
 
 end Memory
 

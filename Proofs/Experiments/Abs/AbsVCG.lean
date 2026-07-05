@@ -108,7 +108,6 @@ theorem program.stepi_0x4005d0_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005d0 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -125,7 +124,6 @@ theorem program.stepi_0x4005d4_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005d4 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -142,7 +140,6 @@ theorem program.stepi_0x4005d8_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005d8 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
                 state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -159,7 +156,6 @@ theorem program.stepi_0x4005dc_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005dc h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, abs_cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
   done
