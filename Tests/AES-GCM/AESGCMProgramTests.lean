@@ -216,9 +216,9 @@ def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_hash = revflat Xi_res := by native_decide
-example : final_ciphertext = revflat ciphertext := by native_decide
-example : final_ivec = revflat ivec_res := by native_decide
+example : final_hash = revflat Xi_res := by apply eq_of_beq; native_decide
+example : final_ciphertext = revflat ciphertext := by apply eq_of_beq; native_decide
+example : final_ivec = revflat ivec_res := by apply eq_of_beq; native_decide
 
 end enc
 
@@ -234,10 +234,10 @@ def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_hash = revflat Xi_res := by native_decide
+example : final_hash = revflat Xi_res := by apply eq_of_beq; native_decide
 set_option maxRecDepth 2100 in
-example : final_ciphertext = revflat in_blocks := by native_decide
-example : final_ivec = revflat ivec_res := by native_decide
+example : final_ciphertext = revflat in_blocks := by apply eq_of_beq; native_decide
+example : final_ivec = revflat ivec_res := by apply eq_of_beq; native_decide
 
 end dec
 
@@ -317,9 +317,9 @@ def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_hash = revflat Xi_res := by native_decide
-example : final_ciphertext = (revflat ciphertext) := by native_decide
-example : final_ivec = (revflat ivec_res) := by native_decide
+example : final_hash = revflat Xi_res := by apply eq_of_beq; native_decide
+example : final_ciphertext = (revflat ciphertext) := by apply eq_of_beq; native_decide
+example : final_ivec = (revflat ivec_res) := by apply eq_of_beq; native_decide
 
 end enc
 
@@ -335,10 +335,10 @@ def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_hash = revflat Xi_res := by native_decide
+example : final_hash = revflat Xi_res := by apply eq_of_beq; native_decide
 set_option maxRecDepth 2100 in
-example : final_ciphertext = revflat in_blocks := by native_decide
-example : final_ivec = revflat ivec_res := by native_decide
+example : final_ciphertext = revflat in_blocks := by apply eq_of_beq; native_decide
+example : final_ivec = revflat ivec_res := by apply eq_of_beq; native_decide
 
 end dec
 
@@ -421,9 +421,9 @@ def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_hash = revflat Xi_res := by native_decide
-example : final_ciphertext = revflat ciphertext := by native_decide
-example : final_ivec = (revflat ivec_res) := by native_decide
+example : final_hash = revflat Xi_res := by apply eq_of_beq; native_decide
+example : final_ciphertext = revflat ciphertext := by apply eq_of_beq; native_decide
+example : final_ivec = (revflat ivec_res) := by apply eq_of_beq; native_decide
 
 end enc
 
@@ -439,10 +439,10 @@ def final_hash : BitVec 128 := read_mem_bytes 16 Xi_address final_state
 def final_ivec : BitVec 128 := read_mem_bytes 16 ivec_address final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_hash = revflat Xi_res := by native_decide
+example : final_hash = revflat Xi_res := by apply eq_of_beq; native_decide
 set_option maxRecDepth 2100 in
-example : final_ciphertext = revflat in_blocks := by native_decide
-example : final_ivec = revflat ivec_res := by native_decide
+example : final_ciphertext = revflat in_blocks := by apply eq_of_beq; native_decide
+example : final_ivec = revflat ivec_res := by apply eq_of_beq; native_decide
 
 end dec
 

@@ -37,7 +37,7 @@ theorem correct
   (h_s0_pc : read_pc s0 = 0x4005d0#64)
   (h_s0_program : s0.program = program)
   (h_s0_err : read_err s0 = StateError.None)
-  (h_s0_sp : CheckSPAlignment s0)
+  (_h_s0_sp : CheckSPAlignment s0)
   (h_run : sf = run (program.length) s0) :
   read_gpr 32 0 sf = spec (read_gpr 32 0 s0) ∧
   read_err sf = StateError.None := by
@@ -52,8 +52,8 @@ theorem correct
 info: 'Abs.correct' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- correct._native.bv_decide.ax_1_21,
- correct._native.bv_decide.ax_1_26]
+ correct._native.bv_decide.ax_1_23,
+ correct._native.bv_decide.ax_1_28]
 -/
 #guard_msgs in #print axioms correct
 

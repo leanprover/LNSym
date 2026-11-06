@@ -363,9 +363,7 @@ theorem program.step_8f0_8f4_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f0 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [
-    fst_AddWithCarry_eq_sub_neg,
-    fst_AddWithCarry_eq_add] at this
+  -- (v4.33) dropped a now-no-progress `simp (ground, decide) [fst_AddWithCarry_eq_*] at this`.
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> simp [*, cut, state_simp_rules, minimal_theory, bitvec_rules]
@@ -395,9 +393,7 @@ theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f4 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [
-    fst_AddWithCarry_eq_sub_neg,
-    fst_AddWithCarry_eq_add] at this
+  -- (v4.33) dropped a now-no-progress `simp (ground, decide) [fst_AddWithCarry_eq_*] at this`.
   obtain ⟨h_step⟩ := hstep
   subst h_step
   -- v4.14: the old `constructor <;> solve | simp (ground:=true,decide:=true) [...]`
@@ -426,9 +422,7 @@ theorem program.step_8f4_8f8_of_wellformed_of_z_eq_1 (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f4 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [
-    fst_AddWithCarry_eq_sub_neg,
-    fst_AddWithCarry_eq_add] at this
+  -- (v4.33) dropped a now-no-progress `simp (ground, decide) [fst_AddWithCarry_eq_*] at this`.
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;>

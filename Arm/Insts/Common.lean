@@ -367,8 +367,8 @@ open Lean Meta Simp in
 @[inline] def reduceFindSetBit (declName : Name) (arity : Nat)
     (op : {n : Nat} → BitVec n → Nat) (e : Expr) : Lean.Meta.Simp.SimpM DStep := do
   unless e.isAppOfArity declName arity do return .continue
-  let some v ← fromExpr? e.appArg! | return .continue
-  return .done <| toExpr (op v.value)
+  let some ⟨_, v⟩ ← getBitVecValue? e.appArg! | return .continue
+  return .done <| toExpr (op v)
 
 dsimproc [state_simp_rules] reduce_highest_set_bit (highest_set_bit _) :=
   reduceFindSetBit ``highest_set_bit 2 highest_set_bit

@@ -268,7 +268,6 @@ attribute [bitvec_rules] Nat.reduceBNe
 attribute [bitvec_rules] Nat.reduceEqDiff
 attribute [bitvec_rules] Nat.reduceBeqDiff
 attribute [bitvec_rules] Nat.reduceBneDiff
-attribute [bitvec_rules] Nat.reduceLTLE
 attribute [bitvec_rules] Nat.reduceLeDiff
 attribute [bitvec_rules] Nat.reduceSubDiff
 

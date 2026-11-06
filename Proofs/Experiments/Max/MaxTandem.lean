@@ -335,7 +335,7 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
-  refine ⟨?_, ?_, ?_, ?_⟩ <;> bv_decide
+  all_goals (refine ⟨?_, ?_, ?_, ?_⟩ <;> bv_decide)
 
 /--
 info: 'MaxTandem.program.stepi_0x8a8_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -366,8 +366,8 @@ theorem program.stepi_0x8ac_cut (s sn : ArmState)
   := by
   have := program.stepi_eq_0x8ac h_program h_pc h_err
   -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
-  simp only [← not_and] at *
-  simp only [cut, read_pc, pcs, List.mem_cons, List.mem_singleton, Bool.decide_or, Bool.or_eq_true,
+  -- (v4.33) dropped a now-no-progress `simp only [← not_and] at *`.
+  simp only [cut, read_pc, pcs, List.mem_cons, Bool.decide_or, Bool.or_eq_true,
     decide_eq_true_eq, state_value]
   split
   case isTrue h =>
@@ -382,7 +382,7 @@ theorem program.stepi_0x8ac_cut (s sn : ArmState)
     /- TODO: we have too many layers of abstraction. We need to choose a simp normal form
     between `run` and `step`. -/
     have : sn = w StateField.PC (2224#64) s := by
-      simp only [state_simp_rules] at h
+      simp only [state_simp_rules, Classical.not_not] at h
       rw [h_step]
       simp [h] at this
       rw [← this]
@@ -903,9 +903,9 @@ info: 'MaxTandem.partial_correctness' depends on axioms: [propext,
  sgt_iff_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_6,
  sle_iff_not_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_11,
  sle_iff_not_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_6,
- partial_correctness._native.bv_decide.ax_1_22,
- partial_correctness._native.bv_decide.ax_1_28,
- partial_correctness._native.bv_decide.ax_1_34,
+ partial_correctness._native.bv_decide.ax_1_24,
+ partial_correctness._native.bv_decide.ax_1_30,
+ partial_correctness._native.bv_decide.ax_1_36,
  Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms partial_correctness

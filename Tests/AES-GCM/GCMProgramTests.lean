@@ -132,7 +132,7 @@ def init_gcm_init_test : ArmState :=
 def final_state : ArmState := run GCMInitV8Program.gcm_init_v8_program.length init_gcm_init_test
 def final_pc : BitVec 64 := read_pc final_state
 def final_table : BitVec 2048 := read_mem_bytes 256 Htable_address final_state
-example : final_table = revflat Htable := by native_decide
+example : final_table = revflat Htable := by apply eq_of_beq; native_decide
 example : read_err final_state = StateError.None := by native_decide
 
 end GCMInitV8ProgramTest
@@ -176,7 +176,7 @@ example : (read_mem_bytes 16 Htable_address gcm_gmult_init_state)
           = (extractLsb' 0 128 (BitVec.revflat Htable)) := by
           native_decide
 
-example : final_hash = revflat X_after := by native_decide
+example : final_hash = revflat X_after := by apply eq_of_beq; native_decide
 
 example : rev_elems 128 8
             (GCMV8.GCMGmultV8_alt
@@ -233,7 +233,7 @@ def X_after : List (BitVec 8) := X[3]!
 def final_state : ArmState :=
   gcm_ghash_test 70 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
-example : final_hash = revflat X_after := by native_decide
+example : final_hash = revflat X_after := by apply eq_of_beq; native_decide
 example : read_err final_state = StateError.None := by native_decide
 
 end block2
@@ -249,7 +249,7 @@ def final_state : ArmState :=
   gcm_ghash_test 67 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
-example : final_hash = revflat X_after := by native_decide
+example : final_hash = revflat X_after := by apply eq_of_beq; native_decide
 example : read_err final_state = StateError.None := by native_decide
 
 end block4
@@ -265,7 +265,7 @@ def final_state : ArmState :=
   gcm_ghash_test 90 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
-example : final_hash = revflat X_after := by native_decide
+example : final_hash = revflat X_after := by apply eq_of_beq; native_decide
 example : read_err final_state = StateError.None := by native_decide
 
 end block5
@@ -281,7 +281,7 @@ def final_state : ArmState :=
   gcm_ghash_test 101 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
-example : final_hash = revflat X_after := by native_decide
+example : final_hash = revflat X_after := by apply eq_of_beq; native_decide
 example : read_err final_state = StateError.None := by native_decide
 
 end block6
@@ -297,7 +297,7 @@ def final_state : ArmState :=
   gcm_ghash_test 110 len (revflat buf) (revflat X_before)
 def final_hash : BitVec 128 := read_mem_bytes 16 x_address final_state
 
-example : final_hash = revflat X_after := by native_decide
+example : final_hash = revflat X_after := by apply eq_of_beq; native_decide
 example : read_err final_state = StateError.None := by native_decide
 
 end block7

@@ -37,6 +37,6 @@ protected def output : BitVec 128 :=
       0xdc#8, 0x11#8, 0x85#8, 0x97#8,
       0x19#8, 0x6a#8, 0x0b#8, 0x32#8 ].reverse
 
-example : AESArm.AES_encrypt (Param := AESArm.AES128KBR) AESSpecTest.input AESSpecTest.key = AESSpecTest.output := by native_decide
+example : AESArm.AES_encrypt (Param := AESArm.AES128KBR) AESSpecTest.input AESSpecTest.key = AESSpecTest.output := by apply eq_of_beq; native_decide
 
 end AESSpecTest
