@@ -136,7 +136,7 @@ def exec_smov_umov (inst : Advanced_simd_copy_cls) (s : ArmState) (signed : Bool
     let result := if signed then signExtend datasize element else zeroExtend datasize element
     -- State Updates
     let s := write_pc ((read_pc s) + 4#64) s
-    let s := write_gpr datasize inst.Rd result s
+    let s := write_gpr_zr datasize inst.Rd result s
     s
 
 @[state_simp_rules]

@@ -190,11 +190,12 @@ def DPSFP.isGPRdest (inst : ArmInst) : Bool :=
   open DataProcSFPInst in
   match inst with
   | DPSFP (Advanced_simd_copy i) =>
-  -- SMOV and UMOV write to a GPR.
+  -- SMOV and UMOV write to a GPR, for both values of `Q` (`Q = 0` gives the
+  -- 32-bit `W` destination forms).
   -- Ref. the following in `exec_advanced_simd_copy`:
   -- | [_Q:1, 0, _imm5:5, 0101] => exec_smov_umov inst s true
   -- | [_Q:1, 0, _imm5:5, 0111] => exec_smov_umov inst s false
-    (i.Q = 1#1 ∧ i.op = 0#1 ∧ (i.imm4 = 0b0101#4 ∨ i.imm4 = 0b0111#4))
+    (i.op = 0#1 ∧ (i.imm4 = 0b0101#4 ∨ i.imm4 = 0b0111#4))
   | DPSFP (Conversion_between_FP_and_Int i) =>
   -- FPConvOp.FPConvOp_MOV_FtoI writes to a GPR.
   -- Ref. `exec_fmov_general`.

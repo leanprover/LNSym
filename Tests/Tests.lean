@@ -24,3 +24,4 @@ import «Tests».Tactics.CSE
 import «Tests».Tactics.Sym
 import «Tests».Tactics.ReduceFetchInst
 import «Tests».Tactics.AddressNormalization
+import «Tests».SMovUMovTest
