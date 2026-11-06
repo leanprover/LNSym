@@ -5,6 +5,11 @@ Author(s): Shilpi Goel
 -/
 import Tests.ELFParser.SymbolContents
 
+-- The expected `#eval` outputs below are `Repr` renderings (hex `BitVec`s). Since
+-- Lean v4.2x, `#eval` prefers `ToExpr` + the pretty printer (decimal literals);
+-- keep the `Repr` rendering.
+set_option eval.pp false
+
 def CryptoELF :=
   (getELFFile (System.mkFilePath
     ["Tests", "ELFParser", "Data",

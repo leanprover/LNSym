@@ -5,6 +5,11 @@ Author(s): Yan Peng
 -/
 import Tests.ELFParser.AWSLCCrypto
 
+-- The expected `#eval` outputs below are `Repr` renderings (hex `BitVec`s). Since
+-- Lean v4.2x, `#eval` prefers `ToExpr` + the pretty printer (decimal literals);
+-- keep the `Repr` rendering.
+set_option eval.pp false
+
 -- Importing just the aesv8-armx.S.o file to avoid relying on the
 -- linker-generated addresses.
 -- Details: PC-relative addressing is often used for locating constants.
