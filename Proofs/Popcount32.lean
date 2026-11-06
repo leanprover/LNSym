@@ -115,7 +115,6 @@ theorem popcount32_sym_meets_spec (s0 sf : ArmState)
 info: 'popcount32_sym_meets_spec' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- Aligned_BitVecAdd_64_4._native.bv_decide.ax_1_5,
  Aligned_BitVecSub_64_4._native.bv_decide.ax_1_5,
  mem_separate_contiguous_regions._native.bv_decide.ax_1_5,
  mem_separate_starting_addresses_neq._native.bv_decide.ax_1_5,

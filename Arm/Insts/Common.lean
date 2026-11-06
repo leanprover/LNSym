@@ -592,6 +592,18 @@ theorem rev_elems_base :
   rev_elems esize esize x h₀ h₁ = x := by
   unfold rev_elems; simp only [Nat.le_refl, ↓reduceDIte]; done
 
+/-- One unfolding step of `rev_elems`, for use with a deciding discharger, e.g.
+`simp (disch := decide) only [rev_elems_step, rev_elems_base, Nat.reduceSub]`,
+which unfolds `rev_elems` at concrete widths without ground-evaluating it. -/
+theorem rev_elems_step {n esize : Nat} (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < esize)
+    (h : ¬ n ≤ esize) :
+    rev_elems n esize x h₀ h₁ =
+      BitVec.cast (by omega)
+        (BitVec.setWidth esize x ++
+          rev_elems (n - esize) esize (BitVec.setWidth (n - esize) (x >>> esize))
+            (Nat.dvd_sub h₀ (Nat.dvd_refl esize)) h₁) := by
+  rw [rev_elems]; simp [h]
+
 /-- Divide a bv of width `datasize` into containers, each of size
 `container_size`, and within a container, reverse the order of `esize`-bit
 elements. -/

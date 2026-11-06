@@ -165,7 +165,6 @@ theorem program.stepi_0x4005a4_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program := by
   have := program.stepi_eq_0x4005a4 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -182,7 +181,6 @@ theorem program.stepi_0x4005a8_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program := by
   have := program.stepi_eq_0x4005a8 h_program h_pc h_err
-  simp only [minimal_theory, bitvec_rules] at this
   simp_all (config := {ground := true}) only
             [run, cut, this, AddWithCarry.add_one_64,
              state_simp_rules, bitvec_rules, minimal_theory]
@@ -200,7 +198,6 @@ theorem program.stepi_0x4005ac_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program := by
   have := program.stepi_eq_0x4005ac h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all (config := {ground := true}) only
                  [run, cut, this, AddWithCarry.sub_one_64,
                   state_simp_rules, bitvec_rules, minimal_theory]
@@ -221,7 +218,6 @@ theorem program.stepi_0x4005b0_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program := by
   have := program.stepi_eq_0x4005b0 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all (config := {ground := true}) only
                 [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
@@ -279,7 +275,6 @@ theorem program.stepi_0x4005b8_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program := by
   have := program.stepi_eq_0x4005b8 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
 

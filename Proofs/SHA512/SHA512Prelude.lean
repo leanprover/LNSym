@@ -133,6 +133,8 @@ set_option linter.unusedVariables false in
   -- is preserved in git history (tag port-v4.18.0, where it still type-checked).
   -- The reference branch parked it identically at v4.21 (commit a0cdc07).
   -- TODO: restore once the kernel handles the term size (revisit v4.26/v4.31).
+  -- (v4.35) still `(kernel) deep recursion detected` (22 GB peak) with main's body
+  -- and maxRecDepth 100000; candidate for a rewrite (e.g. Lean's `vcgen`) instead.
   sorry
 
 /--

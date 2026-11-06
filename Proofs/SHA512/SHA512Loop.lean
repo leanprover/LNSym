@@ -72,6 +72,9 @@ theorem sha512_block_armv8_loop_1 (si sf : ArmState)
   sym_n 8
   -- Epilogue
   simp only [h_si_ktbl, h_si_separate, minimal_theory]
+  -- (v4.35) the `KtblAddr` conjunct now reduces to `flatten k_512 = flatten k_512`
+  -- at differently-written widths, which `simp only` no longer closes.
+  all_goals rfl
   done
 
 -------------------------------------------------------------------------------
@@ -203,7 +206,7 @@ theorem sha512_block_armv8_loop_2 (sprev si sf : ArmState)
   -- Symbolic Simulation
   sym_n 12
   -- Epilogue
-  simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *
+  -- (v4.35) dropped a now-no-progress `simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *`.
   simp only [memory_rules] at *
   simp at keep_h_si_separate
   simp only [h_si_ktbl, keep_h_si_separate, minimal_theory]
@@ -235,6 +238,8 @@ theorem sha512_block_armv8_loop_2 (sprev si sf : ArmState)
   simp only [h_si_input_1, h_si_input_2, h_si_input_3,
              h_si_input_4, h_si_input_5,
              minimal_theory]
+  -- (v4.35) see `sha512_block_armv8_loop_1`: close the residual `flatten k_512` goal.
+  all_goals rfl
   done
 
 -------------------------------------------------------------------------------
