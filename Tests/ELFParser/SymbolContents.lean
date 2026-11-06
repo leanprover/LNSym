@@ -39,7 +39,7 @@ def ByteArray.toUInt32s (xs : ByteArray) (isBigendian : Bool := false) : IO (Lis
   UInt8s.toUInt32s xs.toList isBigendian
 
 instance : ToString UInt32 where
-  toString a := List.asString ('0' :: 'x' :: (Nat.toDigits 16 a.toNat))
+  toString a := String.ofList ('0' :: 'x' :: (Nat.toDigits 16 a.toNat))
 
 /- `BitVec.enumFrom` is like `List.enumFrom`, but it lets you specify a
 `BitVec n` index instead of a `Nat`. -/
