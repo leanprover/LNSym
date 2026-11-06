@@ -10,6 +10,7 @@ import «Tests».SHA2.SHA512SpecTest
 import «Tests».SHA2.SHA512ProgramTest
 import «Tests».LDSTTest
 import «Tests».BranchTest
+import «Tests».XZRTest
 import «Tests».«AES-GCM».AESSpecTest
 import «Tests».«AES-GCM».AESGCMSpecTest
 import «Tests».«AES-GCM».GCMProgramTests
