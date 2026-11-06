@@ -63,7 +63,7 @@ lean_exe «lnsym» where
   -- supportInterpreter := true
 
 -- ELFSage (used only by `Tests/ELFParser/*`) has no upstream revision that builds on
--- modern Lean; pin a port of it to the same toolchain as LNSym.
--- TODO(ELFSage fork): replace the local path with the pushed fork branch.
-require ELFSage from "../ELFSage"
+-- modern Lean (draperlaboratory/ELFSage `main` is on nightly-2024-10-07); use a port
+-- to the same toolchain as LNSym until that lands upstream.
+require ELFSage from git "https://github.com/shigoel/ELFSage.git" @ "lean-v4.35.0"
 require «doc-gen4» from git "https://github.com/leanprover/doc-gen4" @ "v4.35.0"
