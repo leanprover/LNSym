@@ -177,8 +177,8 @@ theorem extractLsBytes_of_read_bytes_le (n m : Nat)
     done
 
 /--
-info: #[RegType.SFP 0x03#5, RegType.SFP 0x04#5, RegType.SFP 0x05#5, RegType.SFP 0x06#5, RegType.SFP 0x07#5,
-  RegType.SFP 0x10#5, RegType.SFP 0x18#5, RegType.SFP 0x19#5]
+info: #[RegType.GPR 0x03#5, RegType.SFP 0x03#5, RegType.SFP 0x04#5, RegType.SFP 0x05#5, RegType.SFP 0x06#5,
+  RegType.SFP 0x07#5, RegType.SFP 0x10#5, RegType.SFP 0x18#5, RegType.SFP 0x19#5]
 -/
 #guard_msgs in
 #eval ((Cfg.create' (0x126500#64 + 8*4) (0x126500#64 + 8*4 + 12*4) SHA512.program).toOption.get!).maybe_modified_regs

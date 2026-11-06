@@ -251,61 +251,51 @@ def LDST.multiple_struct_rpt_selem (opcode : BitVec 4) : Nat × Nat :=
 
 /--
 Return the indices of all the GPR/SFP registers that may be modified by the LDST
-instruction `i`.
+instruction `i`: the data register(s) of a load, and the base register `Rn` of
+any form with writeback (pre-indexed or post-indexed). Stores without writeback modify no
+registers. This is an overapproximation; e.g., a load into register 31 is
+reported even though writes to XZR are discarded.
 -/
 def LDST.mayModifiedRegs (i : BitVec 32) : Except Format (List RegType) :=
   if let some arm_inst := decode_ldst_inst i then
     open ArmInst LDSTInst in
+    -- A data register: SIMD&FP if `V = 1`, general-purpose otherwise.
+    let dataReg (V : BitVec 1) (r : BitVec 5) : RegType :=
+      if V = 1#1 then .SFP r else .GPR r
+    -- The consecutive (modulo 32) SIMD&FP registers `Rt, Rt+1, ...` written by
+    -- a multiple-structure load: `rpt * selem` of them.
+    let structRegs (opcode : BitVec 4) (Rt : BitVec 5) : List RegType :=
+      let (rpt, selem) := LDST.multiple_struct_rpt_selem opcode
+      (List.range (rpt * selem)).map fun k => .SFP (Rt + BitVec.ofNat 5 k)
     match arm_inst with
     | LDST (Reg_imm_post_indexed x) =>
-      if (getLsbD x.opc 0) then .ok [] -- Load
-      else if x.V = 1#1 then -- Store and SIMD
-        .ok [(.SFP x.Rt), (.GPR x.Rn)]
-      else .ok [(.GPR x.Rt), (.GPR x.Rn)] -- Store and non-SIMD
+      -- Writeback: `x.Rn` is updated for both loads and stores.
+      if getLsbD x.opc 0 then .ok [dataReg x.V x.Rt, .GPR x.Rn] -- Load
+      else .ok [.GPR x.Rn] -- Store
     | LDST (Reg_unsigned_imm x) =>
-      -- Similar to `Reg_imm_post_indexed`, except that `wback` is `false`,
-      -- which means that `x.Rn` isn't updated.
-      if (getLsbD x.opc 0) then .ok [] -- Load
-      else if x.V = 1#1 then -- Store and SIMD
-        .ok [(.SFP x.Rt)]
-      else .ok [(.GPR x.Rt)] -- Store and non-SIMD
+      -- No writeback.
+      if getLsbD x.opc 0 then .ok [dataReg x.V x.Rt] -- Load
+      else .ok [] -- Store
     | LDST (Reg_unscaled_imm x) =>
-      if getLsbD x.opc 0 then .ok [] -- Load
-      else .ok [(.SFP x.Rt)] -- Store
+      -- No writeback.
+      if getLsbD x.opc 0 then .ok [dataReg x.VR x.Rt] -- Load
+      else .ok [] -- Store
     | LDST (Reg_pair_pre_indexed x) | LDST (Reg_pair_post_indexed x) =>
-      if x.L = 0#1 then -- Store
-        if x.V = 1#1 then
-          .ok [(.SFP x.Rt), (.SFP x.Rt2), (.GPR x.Rn)] -- SIMD
-        else .ok [(.GPR x.Rt), (.GPR x.Rt2), (.GPR x.Rn)] -- non-SIMD
-      else .ok [] -- Load
+      -- Writeback: `x.Rn` is updated for both loads and stores.
+      if x.L = 1#1 then .ok [dataReg x.V x.Rt, dataReg x.V x.Rt2, .GPR x.Rn] -- Load
+      else .ok [.GPR x.Rn] -- Store
     | LDST (Reg_pair_signed_offset x) =>
-      -- Similar to `Reg_pair_pre_indexed` and `Reg_pair_post_indexed`, except
-      -- `wback` is `false`, which means that `x.Rn` isn't updated.
-      if x.L = 0#1 then -- Store
-        if x.V = 1#1 then
-          .ok [(.SFP x.Rt), (.SFP x.Rt2)] -- SIMD
-        else .ok [(.GPR x.Rt), (.GPR x.Rt2)] -- non-SIMD
-      else .ok [] -- Load
+      -- No writeback.
+      if x.L = 1#1 then .ok [dataReg x.V x.Rt, dataReg x.V x.Rt2] -- Load
+      else .ok [] -- Store
     | LDST (Advanced_simd_multiple_struct_post_indexed x) =>
-      if x.L = 0#1 then -- Store
-        let (rpt, _) := LDST.multiple_struct_rpt_selem x.opcode
-        match rpt with
-        | 1 => .ok [(.SFP x.Rt), (.GPR x.Rn)]
-        | 2 => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1)), (.GPR x.Rn)]
-        | 3 => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1)), (.SFP (x.Rt + 2)), (.GPR x.Rn)]
-        | _ => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1)), (.SFP (x.Rt + 2)), (.SFP (x.Rt + 3)), (.GPR x.Rn)]
-      else .ok [] -- Load
+      -- Writeback: `x.Rn` is updated for both loads and stores.
+      if x.L = 1#1 then .ok (structRegs x.opcode x.Rt ++ [.GPR x.Rn]) -- Load
+      else .ok [.GPR x.Rn] -- Store
     | LDST (Advanced_simd_multiple_struct x) =>
-      -- Similar to `Advanced_simd_multiple_struct_post_indexed`, except
-      -- `wback` is `false`, which means that `x.Rn` isn't updated.
-      if x.L = 0#1 then -- Store
-        let (rpt, _) := LDST.multiple_struct_rpt_selem x.opcode
-        match rpt with
-        | 1 => .ok [(.SFP x.Rt)]
-        | 2 => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1))]
-        | 3 => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1)), (.SFP (x.Rt + 2))]
-        | _ => .ok [(.SFP x.Rt), (.SFP (x.Rt + 1)), (.SFP (x.Rt + 2)), (.SFP (x.Rt + 3))]
-      else .ok [] -- Load
+      -- No writeback.
+      if x.L = 1#1 then .ok (structRegs x.opcode x.Rt) -- Load
+      else .ok [] -- Store
     | _ => .ok []
   else
     .error
