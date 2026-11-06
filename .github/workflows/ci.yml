@@ -52,8 +52,12 @@ jobs:
     - name: AWS-LC ELF tests
       run: lake build AWSLCELFTests
 
-    - name: Build docs module
-      run: lake build Doc
+    # `Doc` imports `Main`, the root of the `lnsym` executable (not part of any
+    # library), so build the executable first.
+    - name: Build the lnsym executable and the docs module
+      run: |
+        lake build lnsym
+        lake build Doc
 
   cosim:
     name: Cosimulation (macOS, aarch64)
