@@ -18,6 +18,7 @@ import «Tests».«AES-GCM».AESV8ProgramTests
 import «Tests».«AES-GCM».AESV8SpecTests
 import «Tests».«AES-GCM».AESGCMProgramTests
 import «Tests».«ELFParser».MiscTests
+import «Tests».MayModifiedRegsTest
 import «Tests».Tactics.CSE
 import «Tests».Tactics.Sym
 import «Tests».Tactics.ReduceFetchInst
