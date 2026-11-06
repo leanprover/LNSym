@@ -68,8 +68,8 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
         let data1 := extractLsb' 0 datasize full_data
         let data2 := extractLsb' datasize datasize full_data
         if not inst.SIMD? ∧ signed then
-          let s := write_gpr 64 inst.Rt (signExtend 64 data1) s
-          write_gpr 64 inst.Rt2 (signExtend 64 data2) s
+          let s := write_gpr_zr 64 inst.Rt (signExtend 64 data1) s
+          write_gpr_zr 64 inst.Rt2 (signExtend 64 data2) s
         else
           let s:= ldst_write inst.SIMD? datasize inst.Rt data1 s
           ldst_write inst.SIMD? datasize inst.Rt2 data2 s

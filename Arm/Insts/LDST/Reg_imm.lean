@@ -52,7 +52,7 @@ def reg_imm_operation (inst_str : String) (op : BitVec 1)
       | _ => -- LOAD
         let data := read_mem_bytes (datasize / 8) address s
         if SIMD? then write_sfp datasize Rt (BitVec.cast h data) s
-        else write_gpr regsize.get! Rt (zeroExtend regsize.get! data) s
+        else write_gpr_zr regsize.get! Rt (zeroExtend regsize.get! data) s
     if wback then
       let address := if postindex then address + offset else address
       write_gpr 64 Rn address s

@@ -526,15 +526,18 @@ def Vpart_write (n : BitVec 5) (part width : Nat) (val : BitVec width) (s : ArmS
 
 ----------------------------------------------------------------------
 
+-- Data-register access for loads and stores. For general-purpose data registers,
+-- register 31 is the zero register (`X[t]` in the Arm pseudocode), not SP; only
+-- the base register `Rn` denotes SP, and that is accessed separately.
 @[state_simp_rules]
 def ldst_read (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (s : ArmState)
   : BitVec width :=
-  if SIMD? then read_sfp width idx s else read_gpr width idx s
+  if SIMD? then read_sfp width idx s else read_gpr_zr width idx s
 
 @[state_simp_rules]
 def ldst_write (SIMD? : Bool) (width : Nat) (idx : BitVec 5) (val : BitVec width) (s : ArmState)
   : ArmState :=
-  if SIMD? then write_sfp width idx val s else write_gpr width idx val s
+  if SIMD? then write_sfp width idx val s else write_gpr_zr width idx val s
 
 ----------------------------------------------------------------------
 

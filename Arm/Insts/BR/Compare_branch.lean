@@ -28,7 +28,7 @@ def Compare_branch_inst.branch_taken_pc (inst : Compare_branch_cls) (pc : BitVec
 @[state_simp_rules]
 def Compare_branch_inst.condition_holds (inst : Compare_branch_cls) (s : ArmState) : Bool :=
   let datasize := if inst.sf = 1#1 then 64 else 32
-  let operand1 := read_gpr datasize inst.Rt s
+  let operand1 := read_gpr_zr datasize inst.Rt s
   let operand1_is_zero := operand1 = BitVec.zero datasize
   if inst.op = 0#1 then
     -- CBZ
