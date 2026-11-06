@@ -175,7 +175,7 @@ def loop_inv (s0 si : ArmState) : Prop :=
   si.program = program ∧
   CheckSPAlignment si
 
-def loop_inv.r_z_eq_zero_iff_x_eq_0 (h : loop_inv s0 si) : r (StateField.FLAG PFlag.Z) si = 1#1 ↔ ArmState.x0 si = 0#64 := by
+theorem loop_inv.r_z_eq_zero_iff_x_eq_0 (h : loop_inv s0 si) : r (StateField.FLAG PFlag.Z) si = 1#1 ↔ ArmState.x0 si = 0#64 := by
   simp only [loop_inv] at h
   simp [h]
 
@@ -222,7 +222,7 @@ section CutTheorems
 structure Stepped (s sn : ArmState) where
   h_step : sn = stepi s
 
-def Stepped.of_next {s sn : ArmState} (h : Sys.next s = sn) : Stepped s sn := ⟨h.symm⟩
+theorem Stepped.of_next {s sn : ArmState} (h : Sys.next s = sn) : Stepped s sn := ⟨h.symm⟩
 
 
 structure Step_8e0_8f0 (scur snext : ArmState) : Prop extends WellFormedAtPc snext 0x8f0 where
@@ -253,7 +253,7 @@ structure Step_8e4_8e8 (scur : ArmState) (snext : ArmState) : Prop extends WellF
   h_x0 : snext.x0 = scur.x0
   h_x2 : snext.x2 = scur.x2
 
-def Step_8e4_8e8.h_cut (h : Step_8e4_8e8 scur snext) : cut snext = false := by
+theorem Step_8e4_8e8.h_cut (h : Step_8e4_8e8 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
   -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
@@ -283,7 +283,7 @@ structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) : Prop extends WellF
   h_x1 : snext.x1 = scur.x1
   h_q4 : snext.q4 = scur.q4
 
-def Step_8e8_8ec.h_cut (h : Step_8e8_8ec scur snext) : cut snext = false := by
+theorem Step_8e8_8ec.h_cut (h : Step_8e8_8ec scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
   -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
@@ -321,7 +321,7 @@ structure Step_8ec_8f0 (scur : ArmState) (snext : ArmState) : Prop extends WellF
   h_x2 : snext.x2 = scur.x2
   h_q4 : snext.q4 = scur.q4
 
-def Step_8ec_8f0.h_cut (h : Step_8ec_8f0 scur snext) : cut snext = false := by
+theorem Step_8ec_8f0.h_cut (h : Step_8ec_8f0 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
   -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
@@ -380,7 +380,7 @@ structure Step_8f4_8e4 (scur : ArmState) (snext : ArmState) : Prop extends WellF
   h_x2 : snext.x2 = scur.x2
   h_q4 : snext.q4 = scur.q4
 
-def Step_8f4_8e4.h_cut (h : Step_8f4_8e4 scur snext) : cut snext = false := by
+theorem Step_8f4_8e4.h_cut (h : Step_8f4_8e4 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
   -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
@@ -411,7 +411,7 @@ structure Step_8f4_8f8 (scur : ArmState) (snext : ArmState) : Prop extends WellF
   h_mem : snext.mem = scur.mem
   h_q4 : snext.q4 = scur.q4
 
-def Step_8f4_8f8.h_cut (h : Step_8f4_8f8 scur snext) : cut snext = true := by
+theorem Step_8f4_8f8.h_cut (h : Step_8f4_8f8 scur snext) : cut snext = true := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
 

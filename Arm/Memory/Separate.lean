@@ -227,7 +227,7 @@ def mem_legal' (a : BitVec 64) (n : Nat) : Prop :=
   a.toNat + n ≤ 2^64
 
 /-- Build a `mem_legal'` from a proof obligation that can be closed by `omega`. -/
-def mem_legal'.of_omega (h : a.toNat + n ≤ 2^64) : mem_legal' a n := h
+theorem mem_legal'.of_omega (h : a.toNat + n ≤ 2^64) : mem_legal' a n := h
 
 theorem mem_legal'.omega_def (h : mem_legal' a n) : a.toNat + n ≤ 2^64 := h
 
@@ -290,7 +290,7 @@ theorem mem_legal'_of_mem_legal (h: mem_legal a b) : mem_legal' a (b.toNat - a.t
   rw [mem_legal']
   bv_omega_bench
 
-def mem_legal'_of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n) :
+theorem mem_legal'_of_mem_legal'_of_lt (h : mem_legal' a n) (m : Nat) (hm : m ≤ n) :
     mem_legal' a m := by
   simp only [mem_legal', Nat.reducePow] at h ⊢
   omega
@@ -675,7 +675,7 @@ def Memory.Region.pairwiseSeparate (mems : List Memory.Region) : Prop :=
 /-- If `i ≠ j`, then prove that `mems[i] ⟂ mems[j]`.
 The theorem is stated in mildly awkward fashion for ease of use during proof automation.
 -/
-def Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
+theorem Memory.Region.separate'_of_pairwiseSeprate_of_mem_of_mem
   (h : Memory.Region.pairwiseSeparate mems)
   (i j : Nat)
   (hij : i ≠ j)
@@ -715,7 +715,7 @@ Proof obligations are given by `decide` to allow the API to be used as follows:
 let h := mem.pairwiseSeparate [(a, na), (b, nb), (c, nc)]
 let h01 := h.get 0 1
 -/
-def Memory.Region.pairwiseSeparate.get
+theorem Memory.Region.pairwiseSeparate.get
     (h : Memory.Region.pairwiseSeparate mems)
     (i j : Nat)
     (hi : i < mems.length := by simp)

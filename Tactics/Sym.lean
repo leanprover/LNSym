@@ -319,7 +319,6 @@ def ensureAtMostRunSteps (n : Nat) : SymM Nat := do
             logWarning m!"Symbolic simulation is limited to at most {runSteps} \
               steps, because {hRun.toExpr} is of type:\n  {hRun.type}"
             pure runSteps
-    return n
 
 /-- Check that the step-thoerem corresponding to the current PC value exists,
 and throw a user-friendly error, pointing to `#genStepEqTheorems`,
