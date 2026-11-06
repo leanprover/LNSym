@@ -72,6 +72,9 @@ theorem sha512_block_armv8_loop_1 (si sf : ArmState)
   sym_n 8
   -- Epilogue
   simp only [h_si_ktbl, h_si_separate, minimal_theory]
+  -- (v4.35) the `KtblAddr` conjunct now reduces to `flatten k_512 = flatten k_512`
+  -- at differently-written widths, which `simp only` no longer closes.
+  all_goals rfl
   done
 
 -------------------------------------------------------------------------------
@@ -145,9 +148,10 @@ def loop_post_2 (PC N SP CtxBase InputBase : BitVec 64)
 theorem extractLsBytes_ge (h : a ≥ n) (x : BitVec n) :
   x.extractLsBytes a n = 0#(n*8) := by
   apply BitVec.eq_of_getLsbD_eq
-  intros i
-  simp only [getLsbD_extractLsBytes, Fin.is_lt, decide_True, Bool.true_and, getLsbD_zero]
-  apply BitVec.getLsbD_ge
+  -- v4.16: ext lemma now gives a Nat index + bound `hi`; introduce both, drop `Fin.is_lt`.
+  intro i hi
+  simp only [getLsbD_extractLsBytes, hi, decide_true, Bool.true_and, getLsbD_zero]
+  apply BitVec.getLsbD_of_ge
   omega
 
 theorem extractLsBytes_of_read_bytes_le (n m : Nat)
@@ -155,18 +159,21 @@ theorem extractLsBytes_of_read_bytes_le (n m : Nat)
     (h_m_le_n : m ≤ n) :
     (Memory.read_bytes n addr mem).extractLsBytes 0 m =
     Memory.read_bytes m addr mem := by
-    apply BitVec.eq_of_getLsbD_eq; intro i
+    -- v4.16: ext lemma gives Nat index + bound `hi`; introduce both, drop `Fin.isLt`.
+    apply BitVec.eq_of_getLsbD_eq; intro i hi
     simp only [extractLsBytes, bitvec_rules]
-    simp only [getLsbD_extractLsb', minimal_theory, Fin.isLt]
+    simp only [getLsbD_extractLsb', minimal_theory]
     have h_n_upper : n ≤ 2^64 := by
       simp only [mem_legal', Nat.reducePow] at h_legal; omega
     have h_m_upper : m ≤ 2^64 := by
       simp [mem_legal'] at h_legal; omega
-    have h_i_upper : i < m * 8 := Fin.isLt i
+    have h_i_upper : i < m * 8 := hi
     have h_i_upper2 : i < n * 8 := by omega
     have h_lhs := @Memory.getLsbD_read_bytes n i addr mem h_n_upper
     have h_rhs := @Memory.getLsbD_read_bytes m i addr mem h_m_upper
-    simp_all only
+    -- v4.16: residual nested `decide True && …` no longer collapses under empty
+    -- `simp_all only`; add the boolean reductions to close the tautology.
+    simp_all only [decide_true, Bool.true_and]
     done
 
 /--
@@ -199,7 +206,7 @@ theorem sha512_block_armv8_loop_2 (sprev si sf : ArmState)
   -- Symbolic Simulation
   sym_n 12
   -- Epilogue
-  simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *
+  -- (v4.35) dropped a now-no-progress `simp only [←Memory.mem_eq_iff_read_mem_bytes_eq] at *`.
   simp only [memory_rules] at *
   simp at keep_h_si_separate
   simp only [h_si_ktbl, keep_h_si_separate, minimal_theory]
@@ -231,6 +238,8 @@ theorem sha512_block_armv8_loop_2 (sprev si sf : ArmState)
   simp only [h_si_input_1, h_si_input_2, h_si_input_3,
              h_si_input_4, h_si_input_5,
              minimal_theory]
+  -- (v4.35) see `sha512_block_armv8_loop_1`: close the residual `flatten k_512` goal.
+  all_goals rfl
   done
 
 -------------------------------------------------------------------------------

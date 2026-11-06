@@ -41,7 +41,7 @@ def exec_conditional_select (inst : Conditional_select_cls) (s : ArmState) : Arm
 
 /-- Generate random instructions of the DPR.Conditional_select class. -/
 def Conditional_select_cls.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Conditional_select_cls) :=
+  let inst : Conditional_select_cls :=
     { sf    := ← BitVec.rand 1,
       op    := ← pure 0#1,
       S     := ← pure 0#1,

@@ -82,7 +82,9 @@ def init (cfg : Config) (userHyps? : Option (Array UserHyp)) : MetaM Context := 
       -- Also use `mem_{legal', subset', separate'}.iff_omega to unfold definitions that
       -- occur inside compound expressions, such as (mem_subset' .. ∨ mem_subset' ..)
       -- (thms := #[``mem_legal'.iff_omega, ``mem_subset'.iff_omega, ``mem_separate'.iff_omega])
-      (simp_attrs := #[`bv_toNat])
+      -- v4.18: `bv_toNat` attribute renamed to `bitvec_to_nat` in core (this backs the
+      -- plain `mem_omega` tactic; see the re-tag note in SeparateAutomation.lean).
+      (simp_attrs := #[`bitvec_to_nat])
       (useDefaultSimprocs := false)
   return {cfg, bvToNatSimpCtx, bvToNatSimprocs, userHyps? }
 end Context

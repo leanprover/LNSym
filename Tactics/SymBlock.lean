@@ -44,7 +44,7 @@ to add a new local hypothesis in terms of `w` and `write_mem`
 def blockiTac (blockiEq : Expr) (hBlock : Name) : SymReaderM Unit := fun ctx =>
   withMainContext' <|
   withInfoTraceNode m!"blockiTac: {blockiEq}\n {ctx.runSteps?} {ctx.effects}" (tag := "blockiTac") <| do
-    let pc := (Nat.toDigits 16 ctx.pc.toNat).asString
+    let pc := String.ofList (Nat.toDigits 16 ctx.pc.toNat)
     --  ^^ The PC in hex
     let blockiLemma := Name.str ctx.program s!"blocki_eq_0x{pc}"
     let eff := ctx.effects

@@ -33,7 +33,7 @@ def exec_shift_right_vector
     let l := highest_set_bit inst.immh
     let esize := 8 <<< l
     let datasize := 64 <<< inst.Q.toNat
-    let (info : ShiftInfo) :=
+    let info : ShiftInfo :=
       { esize := esize,
         elements := datasize / esize,
         shift := (2 * esize) - (inst.immh ++ inst.immb).toNat,
@@ -55,7 +55,7 @@ def exec_shl_vector
     let l := highest_set_bit inst.immh
     let esize := 8 <<< l
     let datasize := 64 <<< inst.Q.toNat
-    let (info : ShiftInfo) :=
+    let info : ShiftInfo :=
       { esize := esize,
         elements := datasize / esize,
         shift := (inst.immh ++ inst.immb).toNat - esize }
@@ -93,7 +93,7 @@ partial def Advanced_simd_shift_by_immediate_cls.shr_all.rand
   if immh = 0b0000#4 || (lsb immh 3) ++ Q == 0b10#2 then
     Advanced_simd_shift_by_immediate_cls.shr_all.rand opcode
   else
-    let (inst : Advanced_simd_shift_by_immediate_cls) :=
+    let inst : Advanced_simd_shift_by_immediate_cls :=
       { Q := Q,
         U := ← BitVec.rand 1,
         immh := immh,
@@ -111,7 +111,7 @@ partial def Advanced_simd_shift_by_immediate_cls.shl.rand
   if immh == 0b0000#4 || (lsb immh 3) ++ Q == 0b10#2 then
     Advanced_simd_shift_by_immediate_cls.shl.rand
   else
-    let (inst : Advanced_simd_shift_by_immediate_cls) :=
+    let inst : Advanced_simd_shift_by_immediate_cls :=
       { Q := Q,
         U := 0b0#1,
         immh := immh,

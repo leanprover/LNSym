@@ -206,7 +206,7 @@ theorem partial_correctness_from_verification_conditions [Sys σ] [Spec' σ]
             simp only [hck, ↓reduceIte] at this
             assumption
           have : n - (i + 1 + k) < n - i := by
-            apply Nat.sub_lt_sub_left; assumption; simp_arith
+            apply Nat.sub_lt_sub_left; assumption; simp +arith
           find (i + 1 + k) h' hle'
       else
         have := Nat.ge_of_not_lt hn
@@ -421,7 +421,7 @@ theorem partial_correctness_from_assertions [Sys σ] [Spec' σ]
             simp_all only [Nat.succ_eq_add_one, eq_iff_iff, true_iff]
             done
           have : n - (i + 1 + k) < n - i := by
-            apply Nat.sub_lt_sub_left; assumption; simp_arith
+            apply Nat.sub_lt_sub_left; assumption; simp +arith
           find (i + 1 + k) h' hle'
       else
         have := Nat.ge_of_not_lt hn
@@ -656,9 +656,9 @@ protected theorem by_the_method [Sys σ] [Spec' σ] (rank : σ → Nat)
    simp only [h1, h2, and_self]
    done
 
+-- v4.29: `#print axioms` pretty-printer drops the `Classical.` prefix (`Classical.choice`→`choice`).
 /--
-info: 'Correctness.by_the_method' depends on axioms: [propext, Classical.choice,
-Quot.sound]
+info: 'Correctness.by_the_method' depends on axioms: [propext, choice, Quot.sound]
 -/
 #guard_msgs in #print axioms Correctness.by_the_method
 

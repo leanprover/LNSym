@@ -155,7 +155,6 @@ theorem program.stepi_0x4005a4_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005a4 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -172,7 +171,6 @@ theorem program.stepi_0x4005a8_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005a8 h_program h_pc h_err
-  simp only [minimal_theory, bitvec_rules] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
 
@@ -188,7 +186,6 @@ theorem program.stepi_0x4005ac_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005ac h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
 
@@ -204,7 +201,6 @@ theorem program.stepi_0x4005b0_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005b0 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
 
@@ -224,14 +220,11 @@ theorem program.stepi_0x4005b4_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005b4 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
-  split
-  · rename_i h
-    simp_all only [state_simp_rules, bitvec_rules, minimal_theory]
-  · rename_i h; simp only [minimal_theory] at h
-    simp_all only [state_simp_rules, minimal_theory]
-    done
+  -- (v4.35) `split` on the decoded branch leaves `decide (Z = 1) = b` hypotheses
+  -- that no longer simplify against the goal's `if`; case on the flag instead.
+  by_cases hz : r (StateField.FLAG PFlag.Z) s = 1#1 <;>
+    simp_all [state_simp_rules, minimal_theory]
 
 theorem program.stepi_eq_0x4005b8_cut (s sn : ArmState)
   (h_program : s.program = program)
@@ -245,7 +238,6 @@ theorem program.stepi_eq_0x4005b8_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x4005b8 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
 
@@ -327,10 +319,12 @@ theorem nextc_to_run_from_0x4005b4_cond_holds_true (_h_pre : pre s0)
 
   rw [AddLoop.csteps_eq]
   have h_step_1 := program.stepi_0x4005b4_cut si (run 1 si)
-  simp_all only [minimal_theory, bitvec_rules]
-  -- (FIXME) Why do we need this decide?
-  simp (config := {decide := true}) only [*, minimal_theory] at h_inv_z
-  simp_all only [h_inv_z, minimal_theory]
+  -- v4.15: no-progress simp is a hard error. The original three-step normalization
+  -- (`simp_all [minimal_theory,bitvec_rules]`; `simp [decide] at h_inv_z`;
+  -- `simp_all [h_inv_z,minimal_theory]`) now over-simplifies: after the first
+  -- `simp_all` the follow-ups make no progress. Fold into a single `simp_all` that
+  -- includes `h_inv_z`.
+  simp_all only [h_inv_z, minimal_theory, bitvec_rules]
   --
   generalize h_s1 : run 1 si = s1 at h_step_1
 
@@ -518,24 +512,27 @@ theorem effects_of_nextc_from_0x4005b8 (_h_pre : pre s0)
 @[bitvec_rules]
 theorem BitVec.le_refl (x : BitVec n) :
   x <= x := by
-  exact BitVec.le_of_eq x x rfl
+  exact BitVec.le_of_eq rfl
 
 private theorem loop_inv_x0_le (x y : BitVec 64)
   (h_assert_x0 : x ≤ y)
   (h_assert_x0_nz : ¬x = 0x0#64) :
   x - 0x1#64 ≤ y := by
-  bv_omega_bench
+  -- v4.18: `bv_omega_bench` shim replaced by plain `bv_omega`.
+  bv_omega
 
 private theorem AddWithCarry.add_one_64 (x : BitVec 64) :
   (AddWithCarry x 0x1#64 0x0#1).fst = x + 0x1#64 := by
   simp only [AddWithCarry, bitvec_rules]
-  bv_omega_bench
+  -- v4.18: `bv_omega_bench` shim replaced by plain `bv_omega`.
+  bv_omega
 
 private theorem crock_lemma (x y z : BitVec 64) :
   x + (y - z) + 1#64 = x + (y - (z - 1#64)) := by
-  -- (FIXME) Without this apply below, bv_omega_bench crashes my editor.
+  -- (FIXME) Without this apply below, bv_omega crashes my editor.
+  -- v4.18: `bv_omega_bench` shim replaced by plain `bv_omega`.
   apply BitVec.eq_sub_iff_add_eq.mp
-  bv_omega_bench
+  bv_omega
 
 theorem partial_correctness :
   PartialCorrectness ArmState := by

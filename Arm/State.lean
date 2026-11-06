@@ -116,6 +116,13 @@ instance : ToString PFlag :=
     | PFlag.C => "C"
     | PFlag.V => "V"⟩
 
+-- Realize `bv_decide`'s enum auxiliaries for `PFlag` here, in its defining
+-- module, so that modules using `bv_decide` on `PFlag` share one copy instead of
+-- each realizing its own (which clash on import; see `Arm/BVDecideEnums.lean`).
+private theorem bv_decide_realize_PFlag_enum (x y : PFlag) (a : BitVec 1) (_h : x = y) :
+    a &&& a = a := by
+  bv_decide
+
 @[ext]
 structure PState where
   n : BitVec 1
@@ -378,19 +385,19 @@ These mnemonics make it much easier to read and write theorems about assembly pr
 
 @[state_simp_rules] abbrev ArmState.N (s : ArmState) : BitVec 1 := r (StateField.FLAG PFlag.N) s
 
-def ArmState.r_GPR_0_eq_x0 (s : ArmState) : r (StateField.GPR 0) s = s.x0 := rfl
+theorem ArmState.r_GPR_0_eq_x0 (s : ArmState) : r (StateField.GPR 0) s = s.x0 := rfl
 
-def ArmState.r_GPR_1_eq_x1 (s : ArmState) : r (StateField.GPR 1) s = s.x1 := rfl
+theorem ArmState.r_GPR_1_eq_x1 (s : ArmState) : r (StateField.GPR 1) s = s.x1 := rfl
 
-def ArmState.r_GPR_31_eq_sp (s : ArmState) : r (StateField.GPR 31) s = s.sp := rfl
+theorem ArmState.r_GPR_31_eq_sp (s : ArmState) : r (StateField.GPR 31) s = s.sp := rfl
 
-def ArmState.r_FLAG_V_eq_V (s : ArmState) : r (StateField.FLAG PFlag.V) s = s.V := rfl
+theorem ArmState.r_FLAG_V_eq_V (s : ArmState) : r (StateField.FLAG PFlag.V) s = s.V := rfl
 
-def ArmState.r_FLAG_C_eq_C (s : ArmState) : r (StateField.FLAG PFlag.C) s = s.C := rfl
+theorem ArmState.r_FLAG_C_eq_C (s : ArmState) : r (StateField.FLAG PFlag.C) s = s.C := rfl
 
-def ArmState.r_FLAG_Z_eq_Z (s : ArmState) : r (StateField.FLAG PFlag.Z) s = s.Z := rfl
+theorem ArmState.r_FLAG_Z_eq_Z (s : ArmState) : r (StateField.FLAG PFlag.Z) s = s.Z := rfl
 
-def ArmState.r_FLAG_N_eq_N (s : ArmState) : r (StateField.FLAG PFlag.N) s = s.N := rfl
+theorem ArmState.r_FLAG_N_eq_N (s : ArmState) : r (StateField.FLAG PFlag.N) s = s.N := rfl
 
 
 @[irreducible]
@@ -863,7 +870,7 @@ def read_bytes (n : Nat) (addr : BitVec 64) (m : Memory) : BitVec (n * 8) :=
   | n' + 1 =>
     let byte := m.read addr
     let rest := m.read_bytes n' (addr + 1#64)
-    have h : n' * 8 + 8 = (n' + 1) * 8 := by simp_arith
+    have h : n' * 8 + 8 = (n' + 1) * 8 := by simp +arith
     BitVec.cast h (rest ++ byte)
 
 -- TODO (@bollu): we should drop the `State` namespace here, given that
@@ -885,9 +892,11 @@ theorem read_bytes_zero_eq (m : Memory) : m.read_bytes 0 addr = 0#0 :=
 theorem read_bytes_one_eq (m : Memory) : m.read_bytes 1 addr = m.read addr := by
   simp [read_bytes, read, bitvec_rules]
   apply BitVec.eq_of_getLsbD_eq
-  intros i
+  -- v4.16: ext lemma now yields `∀ i, i < w → …`; introduce the bound `hi`
+  intro i hi
   rw [BitVec.getLsbD_append]
-  simp only [show (i : Nat) < 8 by omega, decide_True, Nat.zero_le, BitVec.getLsbD_ge, cond_true]
+  simp only [show i < 8 by omega, decide_true, Nat.zero_le, BitVec.getLsbD_of_ge, Bool.cond_true,
+    ite_true, ↓reduceIte]
 
 theorem read_bytes_succ_eq (m : Memory) :
   m.read_bytes (n' + 1) addr = (m.read_bytes n' (addr + 1) ++ m.read addr).cast (by omega) := rfl
@@ -897,24 +906,25 @@ theorem getLsbD_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
     (decide (i < n * 8) && (m (addr + BitVec.ofNat 64 (i / 8))).getLsbD (i % 8)) := by
   induction n generalizing i addr m
   case zero =>
-    simp only [Nat.reduceMul, Nat.zero_le, BitVec.getLsbD_ge, Nat.zero_mul, Nat.not_lt_zero,
-      decide_False, Bool.false_and]
+    simp only [Nat.reduceMul, Nat.zero_le, BitVec.getLsbD_of_ge, Nat.zero_mul, Nat.not_lt_zero,
+      decide_false, Bool.false_and]
   case succ n' ih =>
     simp only [read_bytes_succ_eq, BitVec.ofNat_eq_ofNat,
       BitVec.getLsbD_cast, BitVec.getLsbD_append, memory_rules,
       getLsbD_read]
     rw [Nat.succ_mul]
     by_cases h₁ : (i < 8)
-    · simp only [h₁, decide_True, cond_true, show i < n' * 8 + 8 by omega, Bool.true_and]
+    · simp only [h₁, decide_true, Bool.cond_true, show i < n' * 8 + 8 by omega, Bool.true_and]
       have hdiv : i / 8 = 0 :=  Nat.div_eq_of_lt h₁
       rw [hdiv]
       simp only [BitVec.add_zero]
       have hmod : i % 8 = i := Nat.mod_eq_of_lt h₁
       simp [hmod]
-    · simp only [h₁, decide_False, cond_false]
+    · -- v4.16: `getLsbD_append` now emits `if … then … else …` (ite); reduce it
+      simp only [h₁, decide_false, Bool.cond_false, ite_false, Bool.false_eq_true, ↓reduceIte]
       rw [ih]
       by_cases h₂ : i - 8 < n' * 8
-      · simp only [h₂, decide_True, Bool.true_and, show (i < n' * 8 + 8) by omega]
+      · simp only [h₂, decide_true, Bool.true_and, show (i < n' * 8 + 8) by omega]
         have hi' : ∃ i', i = i' + 8 := by
           apply Classical.byContradiction
           intros h
@@ -926,7 +936,7 @@ theorem getLsbD_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
         simp only [Nat.add_sub_cancel, Nat.zero_lt_succ, Nat.add_div_right, Nat.add_mod_right]
         congr 2
         bv_omega
-      · simp only [h₂, decide_False, Bool.false_and, Bool.false_eq, Bool.and_eq_false_imp,
+      · simp only [h₂, decide_false, Bool.false_and, Bool.false_eq, Bool.and_eq_false_imp,
           decide_eq_true_eq]
         bv_omega
       · omega
@@ -940,16 +950,17 @@ theorem extractLsByte_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (h 
       if i < n then m.read (addr + (BitVec.ofNat 64 i)) else 0#8 := by
   apply BitVec.eq_of_getLsbD_eq
   simp only [BitVec.getLsbD_extractLsByte]
-  intros j
-  simp only [show (j : Nat) ≤ 7 by omega, decide_True, Bool.true_and]
+  -- v4.16: ext lemma now yields `∀ j, j < w → …`; introduce the bound `hj`, drop `↑j`
+  intro j hj
+  simp only [show j ≤ 7 by omega, decide_true, Bool.true_and]
   rw [getLsbD_read_bytes]
-  by_cases h₁ : i * 8 + ↑j < n * 8
-  · simp only [h₁, decide_True, Bool.true_and]
+  by_cases h₁ : i * 8 + j < n * 8
+  · simp only [h₁, decide_true, Bool.true_and]
     simp only [show (i < n) by omega, ↓reduceIte]
-    simp only [show (i * 8 + ↑j) / 8 = i by omega]
-    simp only [show (i * 8 + ↑j) % 8 = j by omega]
+    simp only [show (i * 8 + j) / 8 = i by omega]
+    simp only [show (i * 8 + j) % 8 = j by omega]
     rfl
-  · simp only [h₁, decide_False, Bool.false_and, Bool.false_eq]
+  · simp only [h₁, decide_false, Bool.false_and, Bool.false_eq]
     simp only [show ¬(i < n) by omega, ↓reduceIte, BitVec.getLsbD_zero]
   · omega
 
@@ -1069,26 +1080,28 @@ theorem extractLsByte_setWidth_shiftLeft (data : BitVec ((n + 1) * 8)) (hi : i >
   rcases i with rfl | i
   · simp at hi
   · apply BitVec.eq_of_getLsbD_eq
-    intros j
+    -- v4.16: ext lemma now yields `∀ j, j < w → …`; introduce the bound `hjb`, drop `↑j`
+    intro j hjb
     simp only [Nat.add_one_sub_one, BitVec.getLsbD_extractLsByte, BitVec.getLsbD_setWidth,
       BitVec.getLsbD_ushiftRight]
-    by_cases hj : (j : Nat) ≤ 7
-    · simp only [hj, decide_True, Bool.true_and]
-      by_cases hi' : i * 8 + ↑j < n * 8
-      · simp only [hi', decide_True, Bool.true_and]
-        simp only at hi' ⊢
+    by_cases hj : j ≤ 7
+    · simp only [hj, decide_true, Bool.true_and]
+      by_cases hi' : i * 8 + j < n * 8
+      · simp only [hi', decide_true, Bool.true_and]
+        -- (v4.31) dropped a now-no-progress `simp only at hi' ⊢` (hi'/goal already reduced;
+        -- v4.31 makes a no-progress simp a hard error).
         congr 1
         omega
-      · by_cases hi' : i * 8 + ↑j < n * 8
-        · simp only [hi', decide_True, Bool.true_and]
+      · by_cases hi' : i * 8 + j < n * 8
+        · simp only [hi', decide_true, Bool.true_and]
           congr 1
           rw [Nat.add_mul]
           omega
-        · simp only [hi', decide_False, Bool.false_and, Bool.false_eq]
-          apply BitVec.getLsbD_ge
+        · simp only [hi', decide_false, Bool.false_and, Bool.false_eq]
+          apply BitVec.getLsbD_of_ge
           rw [Nat.add_mul, Nat.add_mul]
           omega
-    · simp only [hj, decide_False, Bool.false_and]
+    · simp only [hj, decide_false, Bool.false_and]
 
 /--
 The byte at location `ix` in memory, such that `base ≤ ix ≤ base + ix` will be the `ix - base` byte of `data`.
@@ -1159,13 +1172,15 @@ theorem getLsbD_write_bytes (hoverflow : base.toNat + n ≤ 2 ^ 64) :
   then (mem ix).getLsbD i
   else if ix.toNat ≥ base.toNat + n then (mem ix).getLsbD i
   else (data.extractLsByte (ix - base).toNat).getLsbD i := by
-rw [write_bytes_eq hoverflow]
-by_cases h : ix < base
-· simp only [h, ↓reduceIte]
-· simp only [h, ↓reduceIte, ge_iff_le, BitVec.toNat_sub, Nat.reducePow, BitVec.getLsbD_extractLsByte]
-  by_cases h₂ : base.toNat + n ≤ ix.toNat
-  · simp only [h₂, ↓reduceIte]
-  · simp only [h₂, ↓reduceIte, BitVec.getLsbD_extractLsByte]
+  -- (v4.31) re-indented the flush-left tactic body under `:= by` (v4.31 rejects the
+  -- previous flush-left layout).
+  rw [write_bytes_eq hoverflow]
+  by_cases h : ix < base
+  · simp only [h, ↓reduceIte]
+  · simp only [h, ↓reduceIte, ge_iff_le, BitVec.toNat_sub, Nat.reducePow, BitVec.getLsbD_extractLsByte]
+    by_cases h₂ : base.toNat + n ≤ ix.toNat
+    · simp only [h₂, ↓reduceIte]
+    · simp only [h₂, ↓reduceIte, BitVec.getLsbD_extractLsByte]
 
 end Memory
 

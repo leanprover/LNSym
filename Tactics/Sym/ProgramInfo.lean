@@ -122,15 +122,10 @@ def getRawInstAt? (pi : ProgramInfo) (addr : BitVec 64) :
     Option (BitVec 32) :=
   (·.rawInst) <$> pi.getInstInfoAt? addr
 
--- TODO: this instance could be upstreamed (after cleaning it up)
-instance [BEq α] [Hashable α] : ForIn m (Std.HashMap α β) (α × β) where
-  forIn map acc f := do
-    let f := fun (acc : ForInStep _) key val => do
-      match acc with
-        | .yield acc  => f ⟨key, val⟩ acc
-        | .done _     => return acc
-    match ← map.foldM f (ForInStep.yield acc) with
-     | .done x | .yield x => return x
+-- v4.27: core now provides `instance : ForIn m (Std.HashMap α β) (α × β)`
+-- (`Std.Data.HashMap.Basic`), exactly the upstreaming this local instance's
+-- TODO anticipated. The local one now clashes AND its `foldM`-based body no
+-- longer elaborates (`invalid 'do' notation`), so we drop it and use core's.
 
 /-! ## ProgramInfo Generation -/
 
@@ -186,7 +181,7 @@ initialize programInfoExt : PersistentEnvExtension (ProgramInfo) (ProgramInfo) (
     addEntryFn      := fun s p => s.insert p.name p
     exportEntriesFn := fun m =>
       let r : Array (ProgramInfo) :=
-        m.fold (fun a name p => a.push {p with name}) #[]
+        m.foldl (fun a name p => a.push {p with name}) #[]
       r.qsort (fun a b => Name.quickLt a.name b.name)
     statsFn         := fun s =>
       "program info extension" ++ Format.line

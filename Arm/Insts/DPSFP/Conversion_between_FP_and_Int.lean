@@ -89,7 +89,7 @@ partial def Conversion_between_FP_and_Int_cls.fmov_general.rand : Cosim.CosimM (
      intsize != 64 || ftype != 0b10#2 then
     Conversion_between_FP_and_Int_cls.fmov_general.rand
   else
-    let (inst : Conversion_between_FP_and_Int_cls) :=
+    let inst : Conversion_between_FP_and_Int_cls :=
       let gpr_idx := ←GPRIndex.rand
       let sfp_idx := ←BitVec.rand 5
       let (src_idx, dst_idx) :=

@@ -39,7 +39,7 @@ def exec_advanced_simd_extract
 ----------------------------------------------------------------------
 
 def Advanced_simd_extract_cls.ext.rand_128 : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Advanced_simd_extract_cls) :=
+  let inst : Advanced_simd_extract_cls :=
     -- When Q is 1, there are no restrictions on imm4.
     { Q     := ← pure 0b1#1,
       op2   := ← pure 0b00#2, -- Picks EXT.
@@ -50,7 +50,7 @@ def Advanced_simd_extract_cls.ext.rand_128 : Cosim.CosimM (Option (BitVec 32)) :
   pure (some (inst.toBitVec32))
 
 def Advanced_simd_extract_cls.ext.rand_64 : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Advanced_simd_extract_cls) :=
+  let inst : Advanced_simd_extract_cls :=
     -- When Q is 0, imm4<3> must not be 1.
     { Q     := ← pure 0b0#1,
       op2   := ← pure 0b00#2, -- Picks EXT.

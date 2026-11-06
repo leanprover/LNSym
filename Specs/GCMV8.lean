@@ -189,7 +189,7 @@ def GCMInitV8 (H : BitVec 128) : (List (BitVec 128)) :=
   [H0_rev, H1, H2_rev, H3_rev, H4, H5_rev, H6_rev,
    H7, H8_rev, H9_rev, H10, H11_rev]
 
-set_option maxRecDepth 8000 in
+set_option maxRecDepth 100000 in
 example :  GCMInitV8 0x66e94bd4ef8a2c3b884cfa59ca342b2e#128 ==
   [ 0x1099f4b39468565ccdd297a9df145877#128,
     0x62d81a7fe5da3296dd4b631a4b7c0e2b#128,
@@ -223,7 +223,7 @@ def GCMGmultV8_alt (H : BitVec 128) (Xi : BitVec 128) : BitVec 128 :=
   let H := (lo H) ++ (hi H)
   gcm_polyval H Xi
 
-set_option maxRecDepth 8000 in
+set_option maxRecDepth 100000 in
 example : GCMGmultV8 0x1099f4b39468565ccdd297a9df145877#128
   [ 0x10#8, 0x54#8, 0x43#8, 0xb0#8, 0x2c#8, 0x4b#8, 0x1f#8, 0x24#8,
     0x3b#8, 0xcd#8, 0xd4#8, 0x87#8, 0x16#8, 0x65#8, 0xb3#8, 0x2b#8 ] (by decide) =
@@ -260,7 +260,7 @@ def GCMGhashV8 (H : BitVec 128) (Xi : List (BitVec 8))
   let flat_inp := BitVec.flatten inp
   split (GCMGhashV8TR H flat_Xi flat_inp (8 * inp.length / 128) h3) 8 (by omega)
 
-set_option maxRecDepth 8000 in
+set_option maxRecDepth 100000 in
 example : GCMGhashV8 0x1099f4b39468565ccdd297a9df145877#128
   [ 0xa2#8, 0xc9#8, 0x9c#8, 0x56#8, 0xeb#8, 0xa7#8, 0x91#8, 0xf6#8,
     0x9e#8, 0x15#8, 0xa6#8, 0x00#8, 0x67#8, 0x29#8, 0x7e#8, 0x0f#8 ]

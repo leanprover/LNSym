@@ -78,7 +78,7 @@ partial def Logical_shifted_reg_cls.rand : Cosim.CosimM (Option (BitVec 32)) := 
   if sf = 0#1 ∧ imm6 &&& 32 ≠ 0 then
     Logical_shifted_reg_cls.rand
   else
-    let (inst : Logical_shifted_reg_cls) :=
+    let inst : Logical_shifted_reg_cls :=
       { sf    := sf,
         opc   := ← BitVec.rand 2,
         shift := ← BitVec.rand 2,

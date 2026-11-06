@@ -23,7 +23,7 @@ def exec_shift_right_scalar
   else
     let esize := 8 <<< 3
     let datasize := esize
-    let (info : ShiftInfo) :=
+    let info : ShiftInfo :=
       { esize := esize,
         elements := 1,
         shift := (esize * 2) - (inst.immh ++ inst.immb).toNat,
@@ -44,7 +44,7 @@ def exec_shl_scalar
   else
     let esize := 8 <<< 3
     let datasize := esize
-    let (info : ShiftInfo) :=
+    let info : ShiftInfo :=
       { esize := esize,
         elements := 1,
         shift := (inst.immh ++ inst.immb).toNat - esize }
@@ -78,7 +78,7 @@ partial def Advanced_simd_scalar_shift_by_immediate_cls.shr_all.rand
   if lsb immh 3 ≠ 0b1#1 then
     Advanced_simd_scalar_shift_by_immediate_cls.shr_all.rand opcode
   else
-    let (inst : Advanced_simd_scalar_shift_by_immediate_cls) :=
+    let inst : Advanced_simd_scalar_shift_by_immediate_cls :=
       { U := ← BitVec.rand 1,
         immh := immh,
         immb := ← BitVec.rand 3,
@@ -94,7 +94,7 @@ partial def Advanced_simd_scalar_shift_by_immediate_cls.shl.rand
   if lsb immh 3 ≠ 0b1#1 then
     Advanced_simd_scalar_shift_by_immediate_cls.shl.rand
   else
-    let (inst : Advanced_simd_scalar_shift_by_immediate_cls) :=
+    let inst : Advanced_simd_scalar_shift_by_immediate_cls :=
       { U := 0b0#1,
         immh := immh,
         immb := ← BitVec.rand 3,

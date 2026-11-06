@@ -137,8 +137,11 @@ hidden behind a def. For some reason this is fast to elaborate.
 /-- This def may seem pointless, but it is in-fact load-bearing.
 
 Furthermore, making it an `instance` will cause `logWarning` below to be
-very slow to elaborate. Why? No clue. -/
-protected def instMonadLog : MonadLog SymM := inferInstance
+very slow to elaborate. Why? No clue.
+
+v4.29: a `def` of a class type must be `@[reducible]` (or an instance) or it
+warns; `@[reducible]` (distinct from `instance`) keeps the fast elaboration. -/
+@[reducible] protected def instMonadLog : MonadLog SymM := inferInstance
 
 @[inherit_doc Lean.logWarning]
 def logWarning (msg : MessageData) : SymM Unit :=
@@ -217,7 +220,8 @@ def traceSymContext : SymM Unit :=
 /-- Add a set of new simp-theorems to the simp-theorems used
 for effect aggregation -/
 def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext :=
-  let addSimpThms := simpThms.foldl addSimpTheoremEntry
+  -- v4.25: `addSimpTheoremEntry` deprecated (removed by v4.31) → `SimpTheorems.addSimpTheorem`.
+  let addSimpThms := simpThms.foldl SimpTheorems.addSimpTheorem
 
   let oldSimpTheorems := c.aggregateSimpCtx.simpTheorems
   let simpTheorems :=
@@ -226,7 +230,9 @@ def addSimpTheorems (c : SymContext) (simpThms : Array SimpTheorem) : SymContext
     else
       oldSimpTheorems.modify (oldSimpTheorems.size - 1) addSimpThms
 
-  { c with aggregateSimpCtx.simpTheorems := simpTheorems }
+  -- v4.15: the `Simp.Context` constructor is private, so the nested record-update
+  -- `aggregateSimpCtx.simpTheorems := …` no longer elaborates; use the public setter.
+  { c with aggregateSimpCtx := c.aggregateSimpCtx.setSimpTheorems simpTheorems }
 
 /-! ## Creating initial contexts -/
 
@@ -243,13 +249,13 @@ private def initial (state : Expr) : MetaM SymContext := do
     LNSymSimpContext
       (config := {decide := true, failIfUnchanged := false})
       (simp_attrs := #[`minimal_theory, `bitvec_rules, `state_simp_rules, `memory_rules])
-  let aggregateSimpCtx := { aggregateSimpCtx with
-    -- Create a new discrtree for effect hypotheses to be added to.
-    -- TODO(@alexkeizer): I put this here, since the previous version kept
-    -- a seperate discrtree for lemmas. I should run benchmarks to see what
-    -- happens if we keep everything in one simpset.
-    simpTheorems := aggregateSimpCtx.simpTheorems.push {}
-  }
+  -- Create a new discrtree for effect hypotheses to be added to.
+  -- TODO(@alexkeizer): I put this here, since the previous version kept
+  -- a seperate discrtree for lemmas. I should run benchmarks to see what
+  -- happens if we keep everything in one simpset.
+  -- v4.15: `Simp.Context` constructor is private → use the public `setSimpTheorems`.
+  let aggregateSimpCtx :=
+    aggregateSimpCtx.setSimpTheorems (aggregateSimpCtx.simpTheorems.push {})
   return {
     finalState
     runSteps? := none
@@ -271,11 +277,15 @@ otherwise ignore `state`, log a warning, and start counting from `s1` -/
 def inferStatePrefixAndNumber : SymM Unit := do
   let state ← AxEffects.getCurrentStateName
   let state := state.toString
-  let tail := state.toSubstring.drop 1
+  -- v4.27: `String.toSubstring` deprecated → `String.toRawSubstring` (both yield
+  -- `Substring.Raw`, which has `.drop`/`.toNat?`).
+  let tail := state.toRawSubstring.drop 1
 
   if let some currentStateNumber := tail.toNat? then
     modifyThe SymContext ({ · with
-      state_prefix := (state.get? 0).getD 's' |>.toString,
+      -- v4.25: `String.get?` deprecated → `String.Pos.Raw.get?` (now namespaced
+      -- under `Pos.Raw`, so dot-on-String no longer resolves it; same signature).
+      state_prefix := (String.Pos.Raw.get? state 0).getD 's' |>.toString,
       currentStateNumber })
   else
     SymM.logWarning m!"\

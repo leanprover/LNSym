@@ -155,7 +155,8 @@ private def addEntry (from_inst : InstType) (to_insts : List InstType)
   -- We crawl through the program in a linear manner, so by
   -- construction, we should not add a previously-added InstType to
   -- the graph.
-  let maybe_entry := Array.find? cfg.graph (fun (e, _) => InstType.pc_equal e from_inst)
+  -- v4.15: `Array.find?` is predicate-first now; use dot notation on the array.
+  let maybe_entry := cfg.graph.find? (fun (e, _) => InstType.pc_equal e from_inst)
   if Option.isNone maybe_entry then
     let maybe_loop_info ← loop_detected from_inst to_insts
     let new_loops_info := addToLoopsInfo maybe_loop_info cfg.loops_info
@@ -207,7 +208,7 @@ protected def addArmInstToCfg (pc : BitVec 64) (raw_inst : BitVec 32)
      match i with
       | Compare_branch inst => -- CBZ, CBNZ
         let branch_taken_pc := BR.Compare_branch_inst.branch_taken_pc inst pc
-        let (condition_holds : CondHoldsFn) :=
+        let condition_holds : CondHoldsFn :=
             (fun state => BR.Compare_branch_inst.condition_holds inst state)
         (false, BrOrg pc condition_holds,
                 [Seq default_to_pc, BrTgt branch_taken_pc condition_holds])
@@ -226,7 +227,7 @@ protected def addArmInstToCfg (pc : BitVec 64) (raw_inst : BitVec 32)
         (true, Ret pc, [Ret pc])
       | Cond_branch_imm inst =>
         let branch_taken_pc := BR.Cond_branch_imm_inst.branch_taken_pc inst pc
-        let (condition_holds : CondHoldsFn) :=
+        let condition_holds : CondHoldsFn :=
             (fun state => BR.Cond_branch_imm_inst.condition_holds inst state)
         (false, BrOrg pc condition_holds,
           [Seq default_to_pc, BrTgt branch_taken_pc condition_holds])
@@ -258,7 +259,7 @@ will map this theorem to `BitVecs` (using lemmas like
 -/
 private theorem termination_lemma (i j max : Fin n) (h : n > 0)
   (h0 : i < max) (h1 : j <= max - i)
-  (h2 : ((@Fin.ofNat' n ⟨by omega⟩ 0) : Fin n) < j) :
+  (h2 : ((@Fin.ofNat n ⟨by omega⟩ 0) : Fin n) < j) :
   (max - (i + j)) < (max - i) := by
   -- Our strategy is to convert this proof obligation in terms of Nat,
   -- which is made possible by h0 and h1 hypotheses above.
@@ -324,7 +325,7 @@ protected def create' (start_address end_address : BitVec 64)
                                        not_false_eq_true,
                                        BitVec.lt_of_le_ne, h₁])
                    (by rw [← BitVec.toFin_sub]; exact h₂)
-                   (by simp_arith [Fin.ofNat'])
+                   (by simp +arith [Fin.ofNat])
            simp [BitVec.fin_bitvec_le, BitVec.fin_bitvec_lt] at *
            exact this
          go (address + 4#64) max_address program cfg

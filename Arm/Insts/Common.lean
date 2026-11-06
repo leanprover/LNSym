@@ -333,15 +333,17 @@ This function differs from the Arm's HighestSetBit
 because it returns `n` when no set bit is found, instead of returning `-1`.
 -/
 def highest_set_bit (bv : BitVec n) : Nat :=
-  go (n - 1) bv where
-  go (i : Nat) (bv : BitVec n) :=
+  go n (n - 1) bv where
+  go : Nat → Nat → BitVec n → Nat
+  | 0,            _, _  => n
+  | Nat.succ fuel, i, bv =>
     if lsb bv i = 1#1 then
       i
     else
       if i = 0 then
         n
       else
-        go (i - 1) bv
+        go fuel (i - 1) bv
 
 /- Find the index of the least significant set bit, if any, in `bv`.
 This function matches Arm's LowestSetBit
@@ -349,23 +351,24 @@ This function matches Arm's LowestSetBit
 -- it returns `n` when no set bit is found.
 -/
 def lowest_set_bit (bv : BitVec n) : Nat :=
-  go 0 bv where
-  go (i : Nat) (bv : BitVec n) :=
+  go n 0 bv where
+  go : Nat → Nat → BitVec n → Nat
+  | 0,            _, _  => n
+  | Nat.succ fuel, i, bv =>
     if i >= n then
       n
     else
       if lsb bv i = 1#1 then
         i
       else
-        go (i + 1) bv
-  termination_by (n - i)
+        go fuel (i + 1) bv
 
 open Lean Meta Simp in
 @[inline] def reduceFindSetBit (declName : Name) (arity : Nat)
     (op : {n : Nat} → BitVec n → Nat) (e : Expr) : Lean.Meta.Simp.SimpM DStep := do
   unless e.isAppOfArity declName arity do return .continue
-  let some v ← fromExpr? e.appArg! | return .continue
-  return .done <| toExpr (op v.value)
+  let some ⟨_, v⟩ ← getBitVecValue? e.appArg! | return .continue
+  return .done <| toExpr (op v)
 
 dsimproc [state_simp_rules] reduce_highest_set_bit (highest_set_bit _) :=
   reduceFindSetBit ``highest_set_bit 2 highest_set_bit
@@ -560,21 +563,24 @@ def rev_elems (n esize : Nat) (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < es
   if h0 : n <= esize then
     x
   else
-    let element := BitVec.setWidth esize x
-    let rest_x := BitVec.setWidth (n - esize) (x >>> esize)
     have h1 : esize <= n := by
       simp at h0; exact Nat.le_of_lt h0; done
-    have h2 : esize ∣ (n - esize) := by
-      refine Nat.dvd_sub ?H h₀ ?h₂
-      · exact h1
-      · simp only [Nat.dvd_refl]
-      done
-    have ?term_lemma : n - esize < n := by exact Nat.sub_lt_self h₁ h1
-    let rest_ans := rev_elems (n - esize) esize rest_x h2 h₁
+    have h2 : esize ∣ (n - esize) := Nat.dvd_sub h₀ (Nat.dvd_refl esize)
     have h3 : (esize + (n - esize)) = n := by
       simp_all only [ge_iff_le, Nat.add_sub_cancel', h1]
-    BitVec.cast h3 (element ++ rest_ans)
+    -- v4.18: inline the `element`, `rest_x`, and recursive-result `let` bindings
+    -- rather than naming them. The WF equation-lemma generator on v4.18 produces
+    -- an ill-typed `let_congr` motive for any value-`let` whose type mentions
+    -- `n - esize` and which feeds the recursive call (the `wfParam` markers wrap
+    -- `n - esize` inconsistently: `wfParam n - wfParam esize` vs
+    -- `wfParam (wfParam n - esize)`). Inlining removes those `let` layers and
+    -- discharging termination via `decreasing_by` avoids the bad motive.
+    -- Semantically identical: same value, same recursion.
+    BitVec.cast h3
+      (BitVec.setWidth esize x ++
+        rev_elems (n - esize) esize (BitVec.setWidth (n - esize) (x >>> esize)) h2 h₁)
    termination_by n
+   decreasing_by exact Nat.sub_lt_self h₁ (by simp at h0; exact Nat.le_of_lt h0)
 
 example : rev_elems 4 4 0xA#4 (by decide) (by decide) = 0xA#4 := by
   native_decide
@@ -585,6 +591,18 @@ example : rev_elems 8 4 (rev_elems 8 4 0xAB#8 (by decide) (by decide))
 theorem rev_elems_base :
   rev_elems esize esize x h₀ h₁ = x := by
   unfold rev_elems; simp only [Nat.le_refl, ↓reduceDIte]; done
+
+/-- One unfolding step of `rev_elems`, for use with a deciding discharger, e.g.
+`simp (disch := decide) only [rev_elems_step, rev_elems_base, Nat.reduceSub]`,
+which unfolds `rev_elems` at concrete widths without ground-evaluating it. -/
+theorem rev_elems_step {n esize : Nat} (x : BitVec n) (h₀ : esize ∣ n) (h₁ : 0 < esize)
+    (h : ¬ n ≤ esize) :
+    rev_elems n esize x h₀ h₁ =
+      BitVec.cast (by omega)
+        (BitVec.setWidth esize x ++
+          rev_elems (n - esize) esize (BitVec.setWidth (n - esize) (x >>> esize))
+            (Nat.dvd_sub h₀ (Nat.dvd_refl esize)) h₁) := by
+  rw [rev_elems]; simp [h]
 
 /-- Divide a bv of width `datasize` into containers, each of size
 `container_size`, and within a container, reverse the order of `esize`-bit
@@ -602,7 +620,7 @@ def rev_vector (datasize container_size esize : Nat) (x : BitVec datasize)
     let rest_x := BitVec.setWidth new_datasize (x >>> container_size)
     have h₄' : container_size ∣ new_datasize := by
       have h : container_size ∣ container_size := Nat.dvd_refl _
-      exact Nat.dvd_sub h₂ h₄ h
+      exact Nat.dvd_sub h₄ h
     have h₂' : container_size <= new_datasize := by
       refine Nat.le_of_dvd ?h h₄'
       omega
@@ -689,7 +707,9 @@ theorem shift_le (x : Nat) (shift :Nat) :
   simp only [Nat.shiftRight_eq_div_pow]
   exact Nat.div_le_self x (2 ^ shift)
 
-set_option bv.ac_nf false
+-- v4.15: `bv.ac_nf` is no longer a global option; it is now the `acNf` field of
+-- the `bv_decide` config and already defaults to `false` (AC-normalization off),
+-- which is exactly what this `set_option` requested — so it is dropped.
 
 @[state_simp_rules]
 theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
@@ -720,13 +740,13 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
              reduceAllOnes,
              reduceZeroExtend,
              Nat.zero_mul,
-             shiftLeft_zero_eq,
+             shiftLeft_zero,
              reduceNot,
              BitVec.extractLsb_ofNat,
              Nat.reducePow,
              Nat.zero_mod,
-             Int.ofNat_emod,
-             Int.Nat.cast_ofNat_Int,
+             Int.natCast_emod,
+             Int.cast_ofNat_Int,
              BitVec.zero_add,
              Nat.reduceSub,
              Nat.one_mul,
@@ -734,7 +754,7 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
              -- FIXME: should partInstall be state_simp_rules?
              partInstall,
              -- Eliminating casting functions
-             Int.ofNat_eq_coe, ofInt_natCast, ofNat_toNat
+             Int.ofNat_eq_natCast, ofInt_natCast, ofNat_toNat
     ]
   generalize (extractLsb' 64 64 operand) = x
   generalize (extractLsb' 0 64 operand) = y
@@ -744,7 +764,7 @@ theorem shift_right_common_aux_64_2_tff (operand : BitVec 128)
     simp only [ushiftRight, toNat_setWidth]
     have h1: z.toNat % 2 ^ 65 = z.toNat := by omega
     simp only [h1]
-    simp only [Std.Tactic.BVDecide.Normalize.BitVec.ofNatLt_reduce]
+    simp only [Std.Tactic.BVDecide.Normalize.BitVec.ofNatLT_reduce]
     simp only [Nat.sub_zero, Nat.reduceAdd, BitVec.extractLsb'_ofNat, Nat.shiftRight_zero]
     have h2 : z.toNat >>> shift % 2 ^ 65 = z.toNat >>> shift := by
       refine Nat.mod_eq_of_lt ?h3
@@ -770,10 +790,10 @@ theorem msb_signExtend (x : BitVec n) (hw: n < n'):
   rcases n' with rfl | n'
   · simp only [show n = 0 by omega,
                msb_eq_getLsbD_last, Nat.zero_sub, Nat.le_refl,
-               getLsbD_ge]
+               getLsbD_of_ge]
   · simp only [msb_eq_getLsbD_last, Nat.add_one_sub_one,
                getLsbD_signExtend, Nat.lt_add_one,
-               decide_True, Bool.true_and, ite_eq_right_iff]
+               decide_true, Bool.true_and, ite_eq_right_iff]
     by_cases h : n' < n
     · rcases n with rfl | n
       · simp
@@ -815,13 +835,13 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
              reduceAllOnes,
              reduceZeroExtend,
              Nat.zero_mul,
-             shiftLeft_zero_eq,
+             shiftLeft_zero,
              reduceNot,
              BitVec.extractLsb_ofNat,
              Nat.reducePow,
              Nat.zero_mod,
-             Int.ofNat_emod,
-             Int.Nat.cast_ofNat_Int,
+             Int.natCast_emod,
+             Int.cast_ofNat_Int,
              BitVec.zero_add,
              Nat.reduceSub,
              Nat.one_mul,
@@ -838,26 +858,28 @@ theorem shift_right_common_aux_32_4_fff (operand : BitVec 128)
     extractLsb' 0 32 ((signExtend 33 x).sshiftRight shift)
     = x.sshiftRight shift := by
     intros x
-    apply eq_of_getLsbD_eq; intros i; simp at i
+    -- v4.16: ext lemma now yields Nat index + separate bound `hi`; drop `simp at i`
+    apply eq_of_getLsbD_eq; intro i hi
     simp only [getLsbD_sshiftRight]
     simp only [Nat.sub_zero, Nat.reduceAdd, getLsbD_extractLsb', Nat.zero_add,
                getLsbD_sshiftRight, getLsbD_signExtend]
-    simp only [show (i : Nat) < 32 by omega,
-               decide_True, Bool.true_and]
-    simp only [show ¬33 ≤ (i : Nat) by omega,
-               decide_False, Bool.not_false, Bool.true_and]
-    simp only [show ¬32 ≤ (i : Nat) by omega,
-               decide_False, Bool.not_false, Bool.true_and]
-    by_cases h : shift + (i : Nat) < 32
+    simp only [show i < 32 by omega,
+               decide_true, Bool.true_and]
+    simp only [show ¬33 ≤ i by omega,
+               decide_false, Bool.not_false, Bool.true_and]
+    simp only [show ¬32 ≤ i by omega,
+               decide_false, Bool.not_false, Bool.true_and]
+    by_cases h : shift + i < 32
     · simp only [h, reduceIte]
-      simp only [show shift + (i : Nat) < 33 by omega,
-                 ↓reduceIte, decide_True, Bool.true_and]
+      simp only [show shift + i < 33 by omega,
+                 ↓reduceIte, decide_true, Bool.true_and]
     · simp only [h, reduceIte]
-      have icases : shift + (i : Nat) = 32 ∨ 32 < shift + (i : Nat) := by omega
+      have icases : shift + i = 32 ∨ 32 < shift + i := by omega
       rcases icases with (h' | h')
-      · simp only [h', Nat.lt_add_one, ↓reduceIte, decide_True, Bool.true_and]
-      · simp only [show ¬(shift + (i : Nat) < 33) by omega, ↓reduceIte]
-        apply msb_signExtend; trivial
+      · simp only [h', Nat.lt_add_one, ↓reduceIte, decide_true, Bool.true_and]
+      · simp only [show ¬(shift + i < 33) by omega, ↓reduceIte]
+        -- v4.16: `BitVec.msb_signExtend` now also exists; disambiguate to the local lemma
+        apply _root_.msb_signExtend; trivial
   simp only [h]
   clear h
   generalize a.sshiftRight shift = a
@@ -906,6 +928,7 @@ theorem shift_left_common_aux_64_2 (operand : BitVec 128)
   unfold shift_left_common_aux
   simp only [minimal_theory, bitvec_rules]
   simp only [state_simp_rules, minimal_theory, bitvec_rules, partInstall]
+  dsimp (config := { instances := true }) only
   bv_decide
 
 @[state_simp_rules]

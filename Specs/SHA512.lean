@@ -66,7 +66,7 @@ theorem msg_schd_termination_lemma {t x : Nat}
 
 def message_schedule_word (t : Nat) (m : List (BitVec 64)) : BitVec 64 :=
   if h0 : t <= 15 then
-    (List.get! m t)
+    (m[t]!)
   else
     have h1: t -  2 < t := by
       apply msg_schd_termination_lemma <;> simp only [Nat.not_le] at *; exact h0; (repeat decide)
@@ -96,12 +96,12 @@ def message_schedule (i max : Nat) (m : List (BitVec 64)) : List (BitVec 64) :=
 -- This version of message_schedule_word employs memoization for speed
 def message_schedule_mem_word (t : Nat) (m : List (BitVec 64)) (acc : List (BitVec 64)): BitVec 64 :=
   if t <= 15 then
-    (List.get! m t)
+    (m[t]!)
   else
-    let w1 := List.get! acc (t - 2)
-    let w2 := List.get! acc (t - 7)
-    let w3 := List.get! acc (t - 15)
-    let w4 := List.get! acc (t - 16)
+    let w1 := acc[t - 2]!
+    let w2 := acc[t - 7]!
+    let w3 := acc[t - 15]!
+    let w4 := acc[t - 16]!
     message_schedule_word_aux w1 w2 w3 w4
 
 -- This version of message_schedule employs memoization for speed
@@ -121,10 +121,10 @@ partial def message_schedule_inf (m : List (BitVec 64)) : List (BitVec 64) :=
   match m with
   | [] => []
   | hd :: tl =>
-    let w1 := List.get! m 14
-    let w2 := List.get! m 9
-    let w3 := List.get! m 1
-    let w4 := List.get! m 0
+    let w1 := m[14]!
+    let w2 := m[9]!
+    let w3 := m[1]!
+    let w4 := m[0]!
     let next := message_schedule_word_aux w1 w2 w3 w4
     hd :: (message_schedule_inf $ tl ++ [next])
 
@@ -147,8 +147,8 @@ def compression_update (wv : Hash) (kt wt : BitVec 64) : Hash :=
 
 def compression (i max : Nat) (wv : Hash) (k w : List (BitVec 64)) : Hash :=
   if i < max then
-    let ki := List.get! k i
-    let wi := List.get! w i
+    let ki := k[i]!
+    let wi := w[i]!
     let wv' := compression_update wv ki wi
     compression (i + 1) max wv' k w
   else
@@ -167,7 +167,7 @@ def processBlocks (message_schedule : List (BitVec 64) → List (BitVec 64))
 
 def compression_alt (i max : Nat) (wv : Hash) (k m : List (BitVec 64)) : Hash :=
   if i < max then
-    let ki := List.get! k i
+    let ki := k[i]!
     let wi := message_schedule_word i m
     let wv' := compression_update wv ki wi
     compression_alt (i + 1) max wv' k m

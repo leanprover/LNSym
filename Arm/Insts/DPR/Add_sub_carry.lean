@@ -35,7 +35,7 @@ def exec_add_sub_carry (inst : Add_sub_carry_cls) (s : ArmState) : ArmState :=
 
 /-- Generate random instructions of the DPR.Add_sub_carry class. -/
 def Add_sub_carry_cls.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Add_sub_carry_cls) :=
+  let inst : Add_sub_carry_cls :=
     { sf    := ← BitVec.rand 1,
       op    := ← BitVec.rand 1,
       S     := ← BitVec.rand 1,

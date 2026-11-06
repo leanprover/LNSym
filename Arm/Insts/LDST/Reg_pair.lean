@@ -55,7 +55,7 @@ def reg_pair_operation (inst : Reg_pair_cls) (inst_str : String) (signed : Bool)
         have h1 : datasize / 8 * 8 = datasize := by
           exact Nat.div_mul_cancel H1
         have h2 : datasize + datasize = 2 * datasize := by
-          simp_arith
+          simp +arith
         have h3 : datasize + datasize = 2 * (datasize / 8) * 8 := by
           rw [Nat.mul_assoc, h1, h2]
         let data1 := ldst_read inst.SIMD? datasize inst.Rt s
@@ -107,7 +107,7 @@ def exec_reg_pair_common (inst : Reg_pair_cls) (inst_str : String) (s : ArmState
 @[state_simp_rules]
 def exec_reg_pair_pre_indexed
   (inst : Reg_pair_pre_indexed_cls) (s : ArmState) : ArmState :=
-  let (extracted_inst : Reg_pair_cls) :=
+  let extracted_inst : Reg_pair_cls :=
     { opc := inst.opc,
       SIMD? := inst.V = 1#1,
       L? := inst.L = 1#1,
@@ -122,7 +122,7 @@ def exec_reg_pair_pre_indexed
 @[state_simp_rules]
 def exec_reg_pair_post_indexed
   (inst : Reg_pair_post_indexed_cls) (s : ArmState) : ArmState :=
-  let (extracted_inst : Reg_pair_cls) :=
+  let extracted_inst : Reg_pair_cls :=
     { opc := inst.opc,
       SIMD? := inst.V = 1#1,
       L? := inst.L = 1#1,
@@ -137,7 +137,7 @@ def exec_reg_pair_post_indexed
 @[state_simp_rules]
 def exec_reg_pair_signed_offset
   (inst : Reg_pair_signed_offset_cls) (s : ArmState) : ArmState :=
-  let (extracted_inst : Reg_pair_cls) :=
+  let extracted_inst : Reg_pair_cls :=
     { opc := inst.opc,
       SIMD? := inst.V = 1#1,
       L? := inst.L = 1#1,

@@ -36,20 +36,22 @@ import Tactics.Common
 open Lean Meta Elab Simp
 
 
-theorem Nat.mod_eq_sub {x y : Nat} (h : x ≥ y) (h' : x - y < y) :
+-- v4.15: core now defines `Nat.mod_eq_sub` (with a different statement), so the
+-- LNSym-local lemma is renamed to `Nat.mod_eq_sub'` to avoid the clash.
+theorem Nat.mod_eq_sub' {x y : Nat} (h : x ≥ y) (h' : x - y < y) :
     x % y = x - y := by
   rw [Nat.mod_eq_sub_mod h, Nat.mod_eq_of_lt h']
 
 private def mkLTNat (x y : Expr) : Expr :=
-  mkAppN (.const ``LT.lt [levelZero]) #[mkConst ``Nat, mkConst ``instLTNat, x, y]
+  mkAppN (.const ``LT.lt [Level.zero]) #[mkConst ``Nat, mkConst ``instLTNat, x, y]
 
 private def mkLENat (x y : Expr) : Expr :=
-  mkAppN (.const ``LE.le [levelZero]) #[mkConst ``Nat, mkConst ``instLENat, x, y]
+  mkAppN (.const ``LE.le [Level.zero]) #[mkConst ``Nat, mkConst ``instLENat, x, y]
 
 private def mkGENat (x y : Expr) : Expr := mkLENat y x
 
 private def mkSubNat (x y : Expr) : Expr :=
-  let lz := levelZero
+  let lz := Level.zero
   let nat := mkConst ``Nat
   let instSub := mkConst ``instSubNat
   let instHSub := mkAppN (mkConst ``instHSub [lz]) #[nat, instSub]
@@ -106,11 +108,11 @@ more `omega` facts.
   let ltTy := mkLTNat subTy n
   let some ltProof ← dischargeByOmega ltTy
     | return .continue
-  let eqProof ← mkAppM ``Nat.mod_eq_sub #[geProof, ltProof]
+  let eqProof ← mkAppM ``Nat.mod_eq_sub' #[geProof, ltProof]
   trace[Tactic.address_normalization] "{checkEmoji} reduceModSub '{x} % {n}'"
   return .done { expr := subTy, proof? := eqProof : Result }
 
-@[inline, bv_toNat] def reduceMod (e : Expr) : SimpM Step := do
+@[inline, bitvec_to_nat] def reduceMod (e : Expr) : SimpM Step := do
   match_expr e with
   | HMod.hMod xTy nTy outTy _inst x n =>
     let natTy := mkConst ``Nat
@@ -131,7 +133,7 @@ simproc↑ [address_normalization] reduce_mod_omega (_ % _) := fun e => reduceMo
 1. If both arguments are constants, we perform constant folding.
 2. If only one of the arguments is a constant, we move the constant to the left.
 -/
-@[inline, bv_toNat] def canonicalizeBinConst (declName : Name) -- operator to constant fold, such as `HAdd.hAdd`.
+@[inline, bitvec_to_nat] def canonicalizeBinConst (declName : Name) -- operator to constant fold, such as `HAdd.hAdd`.
     (arity : Nat)
     (commProofDecl : Name) -- commProof: `∀ (x y : Bitvec w), x op y = y op x`.
     (reduceProofDecl : Name) -- reduce proof: `∀ (w : Nat), (n m : Nat) (BitVec.ofNat w n) op (BitVec.ofNat w m) = BitVec.ofNat w (n op' m)`.

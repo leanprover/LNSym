@@ -25,7 +25,9 @@ def dup_aux (e : Nat) (elements : Nat) (esize : Nat)
     dup_aux (e + 1) elements esize element result
   termination_by (elements - e)
 
-set_option bv.ac_nf false
+-- v4.15: `bv.ac_nf` is no longer a global option; it is now the `acNf` field of
+-- the `bv_decide` config and already defaults to `false` (AC-normalization off),
+-- which is exactly what this `set_option` requested — so it is dropped.
 
 theorem dup_aux_0_4_32 (element : BitVec 32) (result : BitVec 128) :
   dup_aux 0 4 32 element result
@@ -158,7 +160,7 @@ partial def Advanced_simd_copy_cls.dup_element.rand : Cosim.CosimM (Option (BitV
   if size > 3 ∨ (size = 3 ∧ Q = 0) then
     Advanced_simd_copy_cls.dup_element.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := Q,
         op := 0b0#1,
         imm5 := imm5,
@@ -175,7 +177,7 @@ partial def Advanced_simd_copy_cls.dup_general.rand : Cosim.CosimM (Option (BitV
   if size > 3 ∨ (size = 3 ∧ Q = 0) then
     Advanced_simd_copy_cls.dup_general.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := Q,
         op := 0b0#1,
         imm5 := imm5,
@@ -192,7 +194,7 @@ partial def Advanced_simd_copy_cls.ins_element.rand : Cosim.CosimM (Option (BitV
   if size > 3 then
     Advanced_simd_copy_cls.ins_element.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := 0b1#1,
         op := 0b1#1,
         imm5 := imm5,
@@ -208,7 +210,7 @@ partial def Advanced_simd_copy_cls.ins_general.rand : Cosim.CosimM (Option (BitV
   if size > 3 then
     Advanced_simd_copy_cls.ins_general.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := 0b1#1,
         op := 0b0#1,
         imm5 := imm5,
@@ -228,7 +230,7 @@ partial def Advanced_simd_copy_cls.smov.rand : Cosim.CosimM (Option (BitVec 32))
   if size > 2 ∨ datasize <= esize then
     Advanced_simd_copy_cls.smov.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := Q,
         op := 0b0#1,
         imm5 := imm5,
@@ -248,7 +250,7 @@ partial def Advanced_simd_copy_cls.umov.rand : Cosim.CosimM (Option (BitVec 32))
   if size > 3 || datasize == 64 && esize < 64 || datasize == 32 && esize >= 64 then
     Advanced_simd_copy_cls.umov.rand
   else
-    let (inst : Advanced_simd_copy_cls) :=
+    let inst : Advanced_simd_copy_cls :=
       { Q := Q,
         op := 0b0#1,
         imm5 := imm5,

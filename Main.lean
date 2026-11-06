@@ -30,7 +30,8 @@ def numTests_option (args : List String) : IO Nat :=
      let n_idx := idx + 1
      -- We expect the number of tests to immmediately follow
      -- "--num-tests".
-     let n_str := args.get! n_idx
+     -- v4.18: `List.get!` deprecated (removed by v4.26) → getElem-bang `a[i]!`.
+     let n_str := args[n_idx]!
      let maybe_n := n_str.toNat?
      match maybe_n with
      | some n => pure n

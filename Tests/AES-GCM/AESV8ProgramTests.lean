@@ -113,7 +113,7 @@ def final_rd_key : BitVec 1408 := read_mem_bytes 176 key_address final_state
 def final_rounds : BitVec 64 := read_mem_bytes 8 (key_address + 240) final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_rd_key = revflat rd_key := by native_decide
+example : final_rd_key = revflat rd_key := by apply eq_of_beq; native_decide
 example : final_rounds = rounds := by native_decide
 
 end AES128
@@ -143,7 +143,7 @@ def final_rd_key : BitVec 1664 := read_mem_bytes 208 key_address final_state
 def final_rounds : BitVec 64 := read_mem_bytes 8 (key_address + 240) final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_rd_key = revflat rd_key := by native_decide
+example : final_rd_key = revflat rd_key := by apply eq_of_beq; native_decide
 example : final_rounds = rounds := by native_decide
 
 end AES192
@@ -175,7 +175,7 @@ def final_rd_key : BitVec 1920 := read_mem_bytes 240 key_address final_state
 def final_rounds : BitVec 64 := read_mem_bytes 8 (key_address + 240) final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_rd_key = revflat rd_key := by native_decide
+example : final_rd_key = revflat rd_key := by apply eq_of_beq; native_decide
 example : final_rounds = rounds := by native_decide
 
 end AES256
@@ -231,7 +231,7 @@ def final_state : ArmState :=
 def final_ciphertext : BitVec 128 := read_mem_bytes 16 out_address final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_ciphertext = revflat out_block := by native_decide
+example : final_ciphertext = revflat out_block := by apply eq_of_beq; native_decide
 
 end AES128
 
@@ -254,7 +254,7 @@ def final_state : ArmState :=
 def final_ciphertext : BitVec 128 := read_mem_bytes 16 out_address final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_ciphertext = revflat out_block := by native_decide
+example : final_ciphertext = revflat out_block := by apply eq_of_beq; native_decide
 
 
 end AES192
@@ -276,7 +276,7 @@ def final_state : ArmState :=
 def final_ciphertext : BitVec 128 := read_mem_bytes 16 out_address final_state
 
 example : read_err final_state = StateError.None := by native_decide
-example : final_ciphertext = revflat out_block := by native_decide
+example : final_ciphertext = revflat out_block := by apply eq_of_beq; native_decide
 
 
 end AES256
@@ -388,7 +388,7 @@ def final_state5 : ArmState :=
   aes_hw_ctr32_encrypt_blocks_test 191 5 in_block rounds key_schedule ivec
 def final_buf5 : BitVec 640 := read_mem_bytes 80 out_address final_state5
 example : read_err final_state5 = StateError.None := by native_decide
-example: final_buf5 = revflat buf_res_128 := by native_decide
+example: final_buf5 = revflat buf_res_128 := by apply eq_of_beq; native_decide
 
 end AES128Ctr32
 
@@ -414,7 +414,7 @@ def final_state : ArmState :=
   aes_hw_ctr32_encrypt_blocks_test 223 5 in_block rounds key_schedule ivec
 def final_buf : BitVec 640 := read_mem_bytes 80 out_address final_state
 example : read_err final_state = StateError.None := by native_decide
-example: final_buf = revflat buf_res_192 := by native_decide
+example: final_buf = revflat buf_res_192 := by apply eq_of_beq; native_decide
 
 end AES192Ctr32
 
@@ -440,7 +440,7 @@ def final_state : ArmState :=
   aes_hw_ctr32_encrypt_blocks_test 255 5 in_block rounds key_schedule ivec
 def final_buf : BitVec 640 := read_mem_bytes 80 out_address final_state
 example : read_err final_state = StateError.None := by native_decide
-example: final_buf = revflat buf_res_256 := by native_decide
+example: final_buf = revflat buf_res_256 := by apply eq_of_beq; native_decide
 
 end AES256Ctr32
 

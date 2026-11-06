@@ -149,8 +149,8 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
   CheckSPAlignment sn := by
   subst h_step
   have := Max.program.stepi_eq_0x894 h_program h_pc h_err
-  -- clear Decidable.rec (...)
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`
+  -- (v4.31 elaborates `this` reduced already; no-progress simp is a hard error).
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory, pcs]
   simp only [List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
@@ -168,7 +168,10 @@ theorem program.stepi_0x894_cut (s sn : ArmState)
   | assumption
 
 /--
-info: 'MaxTandem.program.stepi_0x894_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x894_cut' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ Aligned_BitVecSub_64_4._native.bv_decide.ax_1_5]
 -/
 #guard_msgs in #print axioms program.stepi_0x894_cut
 
@@ -191,7 +194,7 @@ theorem program.stepi_0x898_cut (s sn : ArmState)
   (sn.sp) = (s.sp) ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x898 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self,
@@ -228,7 +231,7 @@ theorem program.stepi_0x89c_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x89c h_program h_pc h_err
-  simp only [minimal_theory, bitvec_rules] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory, bitvec_rules] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
@@ -237,7 +240,12 @@ theorem program.stepi_0x89c_cut (s sn : ArmState)
   rfl
 
 /--
-info: 'MaxTandem.program.stepi_0x89c_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x89c_cut' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ mem_separate_contiguous_regions._native.bv_decide.ax_1_5,
+ mem_separate_starting_addresses_neq._native.bv_decide.ax_1_5,
+ Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms program.stepi_0x89c_cut
 
@@ -259,7 +267,7 @@ theorem program.stepi_0x8a0_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x8a0 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
@@ -289,7 +297,7 @@ theorem program.stepi_0x8a4_cut (s sn : ArmState)
   sn.program = program ∧
   CheckSPAlignment sn := by
   have := program.stepi_eq_0x8a4 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
@@ -323,10 +331,11 @@ theorem program.stepi_0x8a8_cut (s sn : ArmState)
   CheckSPAlignment sn ∧
   sn.mem = s.mem := by
   have := program.stepi_eq_0x8a8 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true,
     true_and, List.not_mem_nil, or_self, not_false_eq_true, true_and]
+  all_goals (refine ⟨?_, ?_, ?_, ?_⟩ <;> bv_decide)
 
 /--
 info: 'MaxTandem.program.stepi_0x8a8_cut' depends on axioms: [propext, Classical.choice, Quot.sound]
@@ -356,9 +365,9 @@ theorem program.stepi_0x8ac_cut (s sn : ArmState)
   sn.mem = s.mem
   := by
   have := program.stepi_eq_0x8ac h_program h_pc h_err
-  simp only [minimal_theory] at this
-  simp only [← not_and] at *
-  simp only [cut, read_pc, pcs, List.mem_cons, List.mem_singleton, Bool.decide_or, Bool.or_eq_true,
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
+  -- (v4.33) dropped a now-no-progress `simp only [← not_and] at *`.
+  simp only [cut, read_pc, pcs, List.mem_cons, Bool.decide_or, Bool.or_eq_true,
     decide_eq_true_eq, state_value]
   split
   case isTrue h =>
@@ -373,7 +382,7 @@ theorem program.stepi_0x8ac_cut (s sn : ArmState)
     /- TODO: we have too many layers of abstraction. We need to choose a simp normal form
     between `run` and `step`. -/
     have : sn = w StateField.PC (2224#64) s := by
-      simp only [state_simp_rules] at h
+      simp only [state_simp_rules, Classical.not_not] at h
       rw [h_step]
       simp [h] at this
       rw [← this]
@@ -404,7 +413,7 @@ theorem program.stepi_0x8b0_cut (s sn : ArmState)
   sn.mem = s.mem ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8b0 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true]
   simp only [List.not_mem_nil, or_self, not_false_eq_true]
@@ -431,7 +440,7 @@ theorem program.stepi_0x8b4_cut (s sn : ArmState)
   sn.sp = s.sp ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8b4 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, not_false_eq_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
@@ -440,7 +449,12 @@ theorem program.stepi_0x8b4_cut (s sn : ArmState)
   rw [Memory.read_bytes_write_bytes_same (by omega)]
 
 /--
-info: 'MaxTandem.program.stepi_0x8b4_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x8b4_cut' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ mem_separate_contiguous_regions._native.bv_decide.ax_1_5,
+ mem_separate_starting_addresses_neq._native.bv_decide.ax_1_5,
+ Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms program.stepi_0x8b4_cut
 
@@ -460,7 +474,7 @@ theorem program.stepi_0x8b8_cut (s sn : ArmState)
   sn.sp = s.sp ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8b8 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_false, or_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
@@ -486,7 +500,7 @@ theorem program.stepi_0x8bc_cut (s sn : ArmState)
   sn.sp = s.sp ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8bc h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_self, or_false, or_true]
   simp only [List.not_mem_nil, or_self, or_false, or_true]
@@ -513,14 +527,19 @@ theorem program.stepi_0x8c0_cut (s sn : ArmState)
   sn.sp = s.sp ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8c0 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [Memory.write_mem_bytes_eq_mem_write_bytes]
   rw [Memory.read_bytes_write_bytes_same (by omega)]
   simp [pcs]
 
   /--
-info: 'MaxTandem.program.stepi_0x8c0_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x8c0_cut' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ mem_separate_contiguous_regions._native.bv_decide.ax_1_5,
+ mem_separate_starting_addresses_neq._native.bv_decide.ax_1_5,
+ Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms program.stepi_0x8c0_cut
 
@@ -541,7 +560,7 @@ theorem program.stepi_0x8c4_cut (s sn : ArmState)
   sn.x0 = BitVec.zeroExtend 64 (sn[sn.sp + 28#64, 4])  ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8c4 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
   simp [pcs]
@@ -566,7 +585,7 @@ theorem program.stepi_0x8c8_cut (s sn : ArmState)
   sn.sp = s.sp + 0x20#64 ∧
   CheckSPAlignment sn :=  by
   have := program.stepi_eq_0x8c8 h_program h_pc h_err
-  simp only [minimal_theory] at this
+  -- (v4.31) dropped a now-no-progress `simp only [minimal_theory] at this`.
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   simp only [pcs, List.mem_cons, BitVec.reduceEq, List.mem_singleton, or_true, true_and, false_or,
     true_or]
@@ -575,7 +594,10 @@ theorem program.stepi_0x8c8_cut (s sn : ArmState)
   · decide
 
 /--
-info: 'MaxTandem.program.stepi_0x8c8_cut' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.program.stepi_0x8c8_cut' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ Aligned_BitVecAdd_64_4._native.bv_decide.ax_1_5]
 -/
 #guard_msgs in #print axioms program.stepi_0x8c8_cut
 
@@ -638,7 +660,10 @@ theorem partial_correctness :
       -- 2/15
       name h_s1_run : s2 := run 1 s1
       obtain ⟨h_s2_cut, h_s2_pc, h_s2_err, h_s2_program, _h_s2_read_sp_8, h_s2_read_sp_12, h_s2_x0, h_s2_x1, h_s2_sp, h_s2_sp_aligned⟩ :=
-        program.stepi_0x898_cut s1 s2 h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned (by mem_omega) h_s1_run.symm
+        program.stepi_0x898_cut s1 s2 h_s1_program h_s1_pc h_s1_err h_s1_sp_aligned
+          (by -- v4.18: `mem_omega` no longer relates `s1.sp` and `s0.sp`; do it by hand.
+              rw [mem_legal'.iff_omega]; have := h_mem_legal.omega_def; rw [h_s1_sp]; bv_omega)
+          h_s1_run.symm
       rw [Correctness.snd_cassert_of_not_cut h_s2_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s2 = run 1 s2 by rfl]
       replace h_s2_sp : s2.sp = (s0.sp - 32#64) := by simp_all
@@ -650,7 +675,10 @@ theorem partial_correctness :
 
       -- 3/15
       name h_run : s3 := run 1 s2
-      obtain h := program.stepi_0x89c_cut s2 s3 h_s2_program h_s2_pc h_s2_err h_s2_sp_aligned (by mem_omega) h_run.symm
+      obtain h := program.stepi_0x89c_cut s2 s3 h_s2_program h_s2_pc h_s2_err h_s2_sp_aligned
+        (by -- v4.18: relate `s2.sp` back to `s0.sp` by hand for `mem_legal'`.
+            rw [mem_legal'.iff_omega]; have := h_mem_legal.omega_def; rw [h_s2_sp]; bv_omega)
+        h_run.symm
       obtain ⟨h_s3_cut, h_s3_read_sp_8, h_s3_read_sp_12, h_s3_x0, h_s3_x1, h_s3_sp, h_s3_pc, h_s3_err, h_s3_program, h_s3_sp_aligned⟩ := h
       rw [Correctness.snd_cassert_of_not_cut h_s3_cut]; -- try rw [Correctness.snd_cassert_of_cut h_cut];
       simp [show Sys.next s3 = run 1 s3 by rfl]
@@ -764,7 +792,9 @@ theorem partial_correctness :
         simp_all
       replace h_s2_x0 : s2.x0 = spec s0.x0 s0.x1 := by
         simp [spec, h_s2_x0]
-        split  <;> bv_decide
+        -- (v4.21) `simp [spec]` now leaves an implication (not an `if`), so there
+        -- is nothing for `split` to act on; `bv_decide` closes it directly.
+        bv_decide
       clear_named [h_s0]
 
       -- 3/15
@@ -827,7 +857,9 @@ theorem partial_correctness :
       replace h_s2_x0 : s2.x0 = BitVec.zeroExtend 64 (BitVec.zeroExtend 32 s0.x1) := by simp_all
       replace h_s2_x0 : s2.x0 = spec s0.x0 s0.x1 := by
         simp [spec, h_s2_x0]
-        split  <;> bv_decide
+        -- (v4.21) `simp [spec]` now leaves an implication (not an `if`), so there
+        -- is nothing for `split` to act on; `bv_decide` closes it directly.
+        bv_decide
       clear_named [h_s0]
 
       -- 3/15
@@ -860,7 +892,21 @@ theorem partial_correctness :
     · apply False.elim h_assert
 
 /--
-info: 'MaxTandem.partial_correctness' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'MaxTandem.partial_correctness' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ Aligned_BitVecAdd_64_4._native.bv_decide.ax_1_5,
+ Aligned_BitVecSub_64_4._native.bv_decide.ax_1_5,
+ mem_separate_contiguous_regions._native.bv_decide.ax_1_5,
+ mem_separate_starting_addresses_neq._native.bv_decide.ax_1_5,
+ sgt_iff_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_11,
+ sgt_iff_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_6,
+ sle_iff_not_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_11,
+ sle_iff_not_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_6,
+ partial_correctness._native.bv_decide.ax_1_22,
+ partial_correctness._native.bv_decide.ax_1_28,
+ partial_correctness._native.bv_decide.ax_1_34,
+ Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms partial_correctness
 

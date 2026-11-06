@@ -121,8 +121,8 @@ attribute [minimal_theory] beq_self_eq_true
 attribute [minimal_theory] beq_self_eq_true'
 attribute [minimal_theory] bne_self_eq_false
 attribute [minimal_theory] bne_self_eq_false'
-attribute [minimal_theory high] decide_False
-attribute [minimal_theory high] decide_True
+attribute [minimal_theory high] decide_false
+attribute [minimal_theory high] decide_true
 attribute [minimal_theory high] decide_eq_false_iff_not
 attribute [minimal_theory high] decide_eq_true_iff
 attribute [minimal_theory high] bne_iff_ne

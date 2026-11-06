@@ -121,16 +121,20 @@ protected def KeyExpansion_helper {Param : KBR} (i : Nat) (ks : KeySchedule)
   match i with
   | 0 => ks
   | i' + 1 =>
+    -- v4.18: `List.get!` is deprecated (removed by v4.26) → getElem-bang `xs[i]!`.
+    -- `KeySchedule` is a type alias so bind an explicit `List (BitVec WordSize)` for
+    -- the `GetElem` instance to resolve.
+    let ksl : List (BitVec WordSize) := ks
     let i := 4 * Param.Nr + 4 - i
-    let tmp := List.get! ks (i - 1)
+    let tmp := ksl[i - 1]!
     let tmp :=
       if i % Param.Nk == 0 then
-        (SubWord (RotWord tmp)) ^^^ (List.get! Rcon $ (i / Param.Nk) - 1)
+        (SubWord (RotWord tmp)) ^^^ (Rcon[(i / Param.Nk) - 1]!)
       else if Param.Nk > 6 && i % Param.Nk == 4 then
         SubWord tmp
       else
         tmp
-    let res := (List.get! ks (i - Param.Nk)) ^^^ tmp
+    let res := ksl[i - Param.Nk]! ^^^ tmp
     let ks := List.append ks [ res ]
     AESArm.KeyExpansion_helper (Param := Param) i' ks
 
@@ -166,7 +170,8 @@ theorem P_of_bv_to_of_nat {n : Nat} {P : BitVec n -> Prop}:
   ∀(p : BitVec n), P p := by
   intro H p
   let x := p.toNat
-  have p_eq : p = (BitVec.ofNat n x) := by simp only [x, BitVec.ofNat_toNat, truncate_eq]
+  -- v4.16: `BitVec.truncate_eq` deprecated → `BitVec.setWidth_eq`.
+  have p_eq : p = (BitVec.ofNat n x) := by simp only [x, BitVec.ofNat_toNat, setWidth_eq]
   simp only [p_eq]
   apply H
   apply BitVec.isLt
@@ -201,11 +206,13 @@ def AddRoundKey {Param : KBR} (state : BitVec Param.block_size)
 
 protected def getKey {Param : KBR} (n : Nat) (w : KeySchedule) : BitVec Param.block_size :=
   let ind := 4 * n
+  -- v4.18: `List.get!` deprecated → getElem-bang; bind an explicit `List` for `GetElem`.
+  let wl : List (BitVec WordSize) := w
   have h : WordSize + WordSize + WordSize + WordSize = Param.block_size := by
     simp only [WordSize, BlockSize, Param.h]
   BitVec.cast h
-    ((List.get! w (ind + 3)) ++ (List.get! w (ind + 2)) ++
-     (List.get! w (ind + 1)) ++ (List.get! w ind))
+    ((wl[ind + 3]!) ++ (wl[ind + 2]!) ++
+     (wl[ind + 1]!) ++ (wl[ind]!))
 
 protected def AES_encrypt_with_ks_loop {Param : KBR} (round : Nat)
   (state : BitVec Param.block_size) (w : KeySchedule)

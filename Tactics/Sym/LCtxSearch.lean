@@ -206,7 +206,9 @@ def searchLCtx (k : SearchLCtxForM m Unit) : m Unit := do
       let pat := patterns.val[i]
       if let some (pat, res) ← pat.match? decl then
         patterns := ⟨
-          patterns.val.set ⟨i, hi⟩ pat,
+          -- v4.15: `Array.set` takes a `Nat` index plus a separate bounds proof,
+          -- rather than a `Fin`.
+          patterns.val.set i pat hi,
           by simp[patterns.property]
         ⟩
         if res = .done || res = .continu then

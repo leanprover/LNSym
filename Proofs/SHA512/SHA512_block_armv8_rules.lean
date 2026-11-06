@@ -7,10 +7,12 @@ import Arm.Insts.DPSFP.Insts
 import Specs.SHA512
 import Std.Tactic.BVDecide
 
-set_option sat.timeout 60
 -- See https://github.com/leanprover/lean4/issues/5664
 -- for context on why `ac_nf` is off for these proofs.
-set_option bv.ac_nf false
+-- v4.15: `sat.timeout` and `bv.ac_nf` are no longer global options; they are now
+-- the `timeout` and `acNf` fields of the `bv_decide` config. `acNf` already defaults
+-- to `false` (AC-normalization off — what #5664 needs). The default `timeout` is 10s;
+-- if any bare `bv_decide` here needs longer it gets a per-call `(config := {timeout})`.
 
 section sha512_block_armv8_rules
 
@@ -31,7 +33,7 @@ theorem sha512_message_schedule_rule (a b c d : BitVec 128) :
   message_schedule_word_aux a1 b1 c0 d1 ++
   message_schedule_word_aux a0 b0 d1 d0 := by
   simp only [sha512su1, Nat.reduceAdd, sha512su0, message_schedule_word_aux]
-  bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512_message_schedule_rule-31-2.lrat"
+  bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512_message_schedule_rule-36-2.lrat"
 
 theorem sha512h2_rule (a b c : BitVec 128) :
   sha512h2 a b c =
@@ -43,7 +45,7 @@ theorem sha512h2_rule (a b c : BitVec 128) :
   ((compression_update_t2 b0 a0 b1) + c1) ++
   ((compression_update_t2 ((compression_update_t2 b0 a0 b1) + c1) b0 b1) + c0) := by
   simp only [sha512h2, Nat.reduceAdd, maj, sigma_big_0, ror, compression_update_t2]
-  bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512h2_rule-43-2.lrat"
+  bv_check "lrat_files/SHA512_block_armv8_rules.lean-sha512h2_rule-48-2.lrat"
 
 
 private theorem and_nop_lemma (x : BitVec 64) :
@@ -100,7 +102,7 @@ theorem sha512h_rule_1 (a b c d e : BitVec 128) :
   unfold BitVec.partInstall
   unfold sha512h compression_update_t1 sigma_big_1 ch allOnes ror
   simp only [Nat.reduceAdd, Nat.reduceSub, Nat.sub_zero, Nat.reducePow, reduceSetWidth,
-    reduceHShiftLeft, reduceNot, reduceAnd, BitVec.zero_or, shiftLeft_zero_eq]
+    reduceHShiftLeft, reduceNot, reduceAnd, BitVec.zero_or, shiftLeft_zero]
   generalize extractLsb'  0 64 a = a_lo
   generalize extractLsb' 64 64 a = a_hi
   generalize extractLsb'  0 64 b = b_lo
@@ -227,7 +229,7 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
   )
   simp only [zero_eq, Nat.reduceAdd, add_eq, Nat.zero_add]
   simp only [elem_set, Nat.one_mul, elem_get, Nat.zero_mul, Nat.reduceAdd,
-    Nat.le_refl, BitVec.extractLsb'_extractLsb'_of_le, Nat.zero_add, Nat.reduceLeDiff,
+    Nat.le_refl, BitVec.extractLsb'_extractLsb'_of_le', Nat.zero_add, Nat.reduceLeDiff,
     Nat.add_zero]
   rw [BitVec.extractLsb'_append_left_of_le (by omega), Nat.sub_self,
     partInstall_partInstall, partInstall_partInstall]
@@ -235,8 +237,8 @@ theorem sha512h_rule_2 (a b c d e : BitVec 128) :
 
   simp only [sha512h, compression_update_t1, elem_set, elem_get, partInstall, sigma_big_1, ch, ror]
   simp only [Nat.reduceAdd, Nat.zero_add, zero_eq, reduceAllOnes, truncate_eq_setWidth,
-    reduceSetWidth, Nat.zero_mul, shiftLeft_zero_eq, reduceNot, zero_and, Nat.reduceLeDiff,
-    BitVec.extractLsb'_extractLsb'_of_le, Nat.add_zero, add_eq, zero_or, Nat.one_mul, reduceHShiftLeft,
+    reduceSetWidth, Nat.zero_mul, shiftLeft_zero, reduceNot, zero_and, Nat.reduceLeDiff,
+    BitVec.extractLsb'_extractLsb'_of_le', Nat.add_zero, add_eq, zero_or, Nat.one_mul, reduceHShiftLeft,
     Nat.le_refl]
 
   generalize extractLsb'  0 64 a = a_lo

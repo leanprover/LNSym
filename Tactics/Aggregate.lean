@@ -66,8 +66,10 @@ non-effect theorems no longer apply automatically
 elab "sym_aggregate" simpConfig?:(config)? loc?:(location)? : tactic => withMainContext do
   let msg := m!"aggregating local (non-)effect hypotheses"
   withTraceNode `Tactic.sym (fun _ => pure msg) <| do
+    -- (v4.31) `elabSimpConfig` now returns `Simp.ConfigWithOptions`; take `.config`
+    -- so `sym_aggregate` keeps an `Option Simp.Config`.
     let simpConfig? ← simpConfig?.mapM fun cfg =>
-      elabSimpConfig (mkNullNode #[cfg]) (kind := .simp)
+      return (← elabSimpConfig (mkNullNode #[cfg]) (kind := .simp)).config
 
     /-
     We construct `axHyps` by running a `State` monad, which is

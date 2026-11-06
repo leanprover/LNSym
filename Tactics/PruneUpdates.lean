@@ -63,7 +63,7 @@ def ArmUpdates.toExpr (us : ArmUpdates) : Lean.Expr :=
   match us with
   | [] => Lean.toExpr ([] : Updates)
   | u :: rest =>
-    mkAppN (mkConst ``List.cons [levelZero])
+    mkAppN (mkConst ``List.cons [Level.zero])
           #[mkConst ``Update, (Lean.toExpr u), (ArmUpdates.toExpr rest)]
 
 instance : ToExpr ArmUpdates where
@@ -282,7 +282,20 @@ def toContextExpr (s : ToArmExpr.Context) : MetaM Lean.Expr :=
   trace[Tactic.prune_updates] m!"ArmConstr.Context: {ans}"
   return ans
 
-abbrev mkAuxDecl := Lean.Elab.Tactic.BVDecide.Frontend.mkAuxDecl
+/--
+Add an auxiliary declaration. Only used to create constants that appear in our
+reflection proof. Inlined from `Lean.Elab.Tactic.BVDecide.Frontend` (where it is
+now a private `where`-bound helper of `LratCert.toReflectionProof`).
+-/
+def mkAuxDecl (name : Name) (value type : Lean.Expr) : CoreM Unit :=
+  addAndCompile <| .defnDecl {
+    name := name,
+    levelParams := [],
+    type := type,
+    value := value,
+    hints := .abbrev,
+    safety := .safe
+  }
 
 -- (FIXME) Better formatting; change into code action, etc.!
 def toArmMessageData (prev_state : StateVar) (updates : Updates) (s : ToArmExpr.Context) : MessageData :=
@@ -293,7 +306,7 @@ def toArmMessageData (prev_state : StateVar) (updates : Updates) (s : ToArmExpr.
            (s : ToArmExpr.Context) (paren_count : Nat) :=
     match us with
     | [] =>
-        let closing_parens := List.asString (List.replicate paren_count ')')
+        let closing_parens := String.ofList (List.replicate paren_count ')')
         m!"{prev_state}{closing_parens}"
     | u :: rest =>
       let m :=
@@ -306,17 +319,16 @@ def toArmMessageData (prev_state : StateVar) (updates : Updates) (s : ToArmExpr.
       m!"{m} {go rest prev_state s (1 + paren_count)}"
 
 def ArmExprBuildProofTerm (state : ToArmExpr.Context) (lhs_writes rhs_writes : Updates)
-  (refl_proof_name : Name) (validate : Bool) (s0 : ArmStateVar): MetaM Lean.Expr := do
+  (_refl_proof_name : Name) (validate : Bool) (s0 : ArmStateVar): MetaM Lean.Expr := do
   let ctx_expr ← toContextExpr state
   let prune_eq := mkApp2 (mkConst ``ArmConstr.Updates.prune_eq)
                   (toExpr lhs_writes) (toExpr rhs_writes)
-  mkAuxDecl refl_proof_name prune_eq (mkConst ``Bool)
-  let refl_proof :=
-    mkApp3
-    (mkConst ``Lean.ofReduceBool)
-    (mkConst refl_proof_name)
-    (toExpr true)
-    (← mkEqRefl (toExpr true))
+  -- (v4.35) `Lean.ofReduceBool` is gone; native evaluation now goes through
+  -- `Lean.Meta.nativeEqTrue`, which asserts a per-use `_native` axiom
+  -- `prune_eq lhs rhs = true` after compiling and running the check.
+  let .success refl_proof ← nativeEqTrue `prune_updates prune_eq
+    | throwError "prune_updates: the reflected update lists are not equal \
+        (prune_eq evaluated to false)"
 
   if validate then
     check refl_proof
@@ -455,17 +467,18 @@ elab "prune_updates" : tactic =>
   trace[Tactic.prune_updates] "Proof after ArmExprPruned?: {p}"
   let proof_type ← inferType p
   trace[Tactic.prune_updates] "Proof Type: {proof_type}"
-  Lean.setReducibilityStatus `List.getD .reducible
-  Lean.setReducibilityStatus `List.get? .reducible
-  Lean.setReducibilityStatus `Option.getD .reducible
-  Lean.setReducibilityStatus `Option.getD.match_1 .reducible
-  -- Lean.setIrreducibleAttribute `Nat.casesOn
+  -- Note (v4.31 port): the context lookups in `denote` go through `List.getD`,
+  -- which is now `as[i]?.getD` (i.e. `GetElem?.getElem?` + `List.get?`). `List.get?`
+  -- is compiled with `brecOn`, so it no longer reduces under `.reducible`
+  -- transparency. We therefore unify at `.default` transparency, which reduces the
+  -- (concrete, literal) list lookups while still matching the symbolic `w`/`r`
+  -- structure of the goal. This also lets us drop the previous global
+  -- `setReducibilityStatus` hacks (which mutated core decls' reducibility and, as a
+  -- `mainOnly` env-extension write, panicked under async elaboration).
   trace[Tactic.prune_updates] "Reduced proof_type: \
-                                {← withTransparency .reducible (reduceAll proof_type)}"
-  if (← withTransparency .reducible (isDefEq goal_type proof_type)) then
+                                {← withTransparency .default (reduceAll proof_type)}"
+  if (← withTransparency .default (isDefEq goal_type proof_type)) then
     trace[Tactic.prune_updates] "goal_type and proof_type are DefEq!"
-    -- if (← withTransparency .reducible
-    --       (isDefEq (mkMVar goal) (← mkExpectedTypeHint p goal_type))) then
     closeMainGoal `prune_updates (← mkExpectedTypeHint p goal_type)
   else
     -- If the proof_type does not unify with goal_type, throw an error.
@@ -499,7 +512,7 @@ fun {s1} {x0} {x1} {s0} h_s1 =>
           (fun x_1 x_2 =>
               eq_of_denote_writes { state := [x], err := [], pc := [], gpr := [x_1, x_2], sfp := [], flag := [] }
                 [Update.gpr (0#5) 0, Update.gpr (1#5) 1, Update.gpr (0#5) 1] [Update.gpr (0#5) 0, Update.gpr (1#5) 1] 0
-                (ofReduceBool ArmConstr.ArmConstr.example1._armexpr_reflection_def_1 true (Eq.refl true)))
+                example1._native.prune_updates.ax_1_1)
             x0 x1)
         s0))
 -/

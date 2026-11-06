@@ -71,6 +71,8 @@ def popcount32_program : Program :=
 #genStepEqTheorems popcount32_program
 
 -- set_option trace.simp_mem.info true in
+-- v4.15: this proof now exceeds the default 200000 heartbeats at `isDefEq`; bump.
+set_option maxHeartbeats 1000000 in
 theorem popcount32_sym_meets_spec (s0 sf : ArmState)
   (h_s0_pc         : read_pc s0 = 0x4005b4#64)
   (h_s0_program    : s0.program = popcount32_program)
@@ -100,7 +102,7 @@ theorem popcount32_sym_meets_spec (s0 sf : ArmState)
     simp only [popcount32_spec, popcount32_spec_rec]
     bv_decide
   · -- Register Frame Condition
-    simp only [List.mem_cons, List.mem_singleton, not_or, and_imp,
+    simp only [List.mem_cons, List.mem_singleton, _root_.not_or, and_imp,
       List.not_mem_nil, not_false_eq_true, true_implies] at *
     sym_aggregate
   · -- Memory Frame Condition
@@ -110,8 +112,14 @@ theorem popcount32_sym_meets_spec (s0 sf : ArmState)
   done
 
 /--
-info: 'popcount32_sym_meets_spec' depends on axioms:
-[propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'popcount32_sym_meets_spec' depends on axioms: [propext,
+ Classical.choice,
+ Quot.sound,
+ Aligned_BitVecSub_64_4._native.bv_decide.ax_1_5,
+ mem_separate_contiguous_regions._native.bv_decide.ax_1_5,
+ mem_separate_starting_addresses_neq._native.bv_decide.ax_1_5,
+ popcount32_sym_meets_spec._native.bv_decide.ax_1_63,
+ Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms popcount32_sym_meets_spec
 

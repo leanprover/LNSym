@@ -31,21 +31,20 @@ def introLNSymHyp (goal : MVarId)
                           substVar? mvar_expr.mvarId! st_var.fvarId!
                         else
                           pure (some mvar_expr.mvarId!)
-  let term_mvarid ←
-    match subst_mvar_expr with
-    | none =>
-      -- subst_mvar_expr is none only when substVar? could not perform the
-      -- substitution.
-      logInfo m!"[introLNSymHyp] Could not substitute {st_var} in \
-                  goal {mvar_expr.mvarId!}"
-      return (goal, none)
-    | some mvarid =>
-      let new_goal ← if simp_new_goal? then
-                      LNSymSimp mvarid ctx simprocs
-                     else
-                      pure mvarid
-      let (_, goal') ← MVarId.intro1P $ ← Lean.MVarId.assert goal name term mvar_expr
-      return (goal', new_goal)
+  match subst_mvar_expr with
+  | none =>
+    -- subst_mvar_expr is none only when substVar? could not perform the
+    -- substitution.
+    logInfo m!"[introLNSymHyp] Could not substitute {st_var} in \
+                goal {mvar_expr.mvarId!}"
+    return (goal, none)
+  | some mvarid =>
+    let new_goal ← if simp_new_goal? then
+                    LNSymSimp mvarid ctx simprocs
+                   else
+                    pure mvarid
+    let (_, goal') ← MVarId.intro1P $ ← Lean.MVarId.assert goal name term mvar_expr
+    return (goal', new_goal)
 
 
 def gen_hyp_name (st_name : String) (suffix : String) : Name :=

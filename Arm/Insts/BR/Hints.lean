@@ -23,7 +23,7 @@ def exec_hints (inst : Hints_cls) (s : ArmState) : ArmState :=
     write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
 
 def Hints_cls.nop.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Hints_cls) :=
+  let inst : Hints_cls :=
     { CRm := 0b0000#4,
       op2 := 0b000#3
     }

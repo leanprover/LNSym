@@ -5,6 +5,11 @@ Author(s): Shilpi Goel
 -/
 import Tests.ELFParser.SymbolContents
 
+-- The expected `#eval` outputs below are `Repr` renderings (hex `BitVec`s). Since
+-- Lean v4.2x, `#eval` prefers `ToExpr` + the pretty printer (decimal literals);
+-- keep the `Repr` rendering.
+set_option eval.pp false
+
 private def RELTestELF := (getELFFile (System.mkFilePath ["Tests", "ELFParser", "Data", "test.o"]))
 /--
 info: [(0x0000000000000000#64, 0xa9be7bfd#32),
@@ -21,7 +26,7 @@ info: [(0x0000000000000000#64, 0xa9be7bfd#32),
  (0x000000000000000b#64, 0xd65f03c0#32)]
 -/
 #guard_msgs in
-#eval do (pure (getSymbolMap "main" (← RELTestELF)))
+#eval do getSymbolMap "main" (← RELTestELF)
 
 private def DYNTestELF := (getELFFile (System.mkFilePath ["Tests", "ELFParser", "Data", "libtest.so"]))
 /--
@@ -39,4 +44,4 @@ info: [(0x0000000000000770#64, 0xa9be7bfd#32),
  (0x000000000000077b#64, 0xd65f03c0#32)]
 -/
 #guard_msgs in
-#eval do (pure (getSymbolMap "main" (← DYNTestELF)))
+#eval do getSymbolMap "main" (← DYNTestELF)

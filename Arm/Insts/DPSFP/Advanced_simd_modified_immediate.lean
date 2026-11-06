@@ -154,7 +154,7 @@ partial def Advanced_simd_modified_immediate_cls.all.rand : Cosim.CosimM (Option
   if (cmode == 0b1111#4 && op == 0b1#1 && Q = 0b0#1) || (o2 == 0b1#1 && cmode ++ op != 0b11110#5) then
     Advanced_simd_modified_immediate_cls.all.rand
   else
-    let (inst : Advanced_simd_modified_immediate_cls) :=
+    let inst : Advanced_simd_modified_immediate_cls :=
       { Q     := Q,
         op    := op,
         a     := ← BitVec.rand 1,

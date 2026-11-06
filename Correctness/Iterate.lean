@@ -54,7 +54,7 @@ theorem iterate'_succ_eq [Inhabited β] (f : α → Sum β α) (a : α) (fuel : 
 variable [Inhabited β] {f : α → Sum β α}
 
 theorem fuel_ne_zero (h : iterate' f a fuel ≠ none) : fuel ≠ 0 := by
-  intro hn; simp [hn] at h; unfold iterate' at h; simp_arith at h
+  intro hn; simp [hn] at h; unfold iterate' at h; simp +arith at h
 
 theorem iterate'_next_ne_none (h : iterate' f a fuel ≠ none) (ht : ¬ test f a) : iterate' f (next f a ht) (fuel - 1) ≠ none := by
   have : fuel ≠ 0 := fuel_ne_zero h
@@ -80,7 +80,7 @@ theorem fuel_extra' (h : iterate' f a fuel ≠ none) :  iterate' f a (fuel + 1) 
   have := iterate'_eq f a this
   have := iterate'_succ_eq f a fuel
   by_cases test f a
-  next => simp_arith [*]
+  next => simp +arith [*]
   next ht =>
     have := iterate'_next_ne_none h ht
     have ih := fuel_extra' this
@@ -89,7 +89,7 @@ theorem fuel_extra' (h : iterate' f a fuel ≠ none) :  iterate' f a (fuel + 1) 
     have : fuel + 1 - 1 = fuel := Nat.pred_succ _
     simp [hf₁] at ih
     unfold iterate'
-    have : fuel + 1 ≠ 0 := by simp_arith
+    have : fuel + 1 ≠ 0 := by simp +arith
     simp [*]
 
 theorem fuel_extra_ge (h₁ : fuel₁ ≤ fuel₂) (h₂ : iterate' f a fuel₁ ≠ none) : iterate' f a fuel₂ = iterate' f a fuel₁ :=
@@ -143,7 +143,7 @@ theorem fuel_ex (ht : ¬ test f a) : (∃ fuel, iterate' f (next f a ht) fuel �
   intro ⟨fuel, h⟩
   exists fuel+1
   unfold iterate'
-  have : fuel + 1 ≠ 0 := by simp_arith
+  have : fuel + 1 ≠ 0 := by simp +arith
   have : fuel + 1 - 1 = fuel := Nat.pred_succ _
   simp [*]
 
@@ -166,7 +166,7 @@ theorem fuel_ex₂ (h₁ : ¬ test f a) (h₂ : ∃ fuel, iterate' f a fuel ≠ 
 theorem ex_fuel_of_test (h : test f a = true) : ∃ fuel, iterate' f a fuel ≠ none := by
   exists 1
   unfold iterate'
-  simp_arith [*]
+  simp +arith [*]
 
 open Classical in
 theorem iterate_eq' (a : α) : iterate f a = if ht : test f a then base f a else iterate f (next f a ht) := by

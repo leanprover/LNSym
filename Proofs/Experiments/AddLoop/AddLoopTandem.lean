@@ -124,7 +124,8 @@ instance : Spec' ArmState where
 private theorem AddWithCarry.add_one_64 (x : BitVec 64) :
   (AddWithCarry x 0x1#64 0x0#1).fst = x + 0x1#64 := by
   simp only [AddWithCarry, bitvec_rules]
-  bv_omega_bench
+  -- v4.18: `bv_omega_bench` shim replaced by plain `bv_omega`.
+  bv_omega
 
 private theorem AddWithCarry.sub_one_64 (x : BitVec 64) :
   (AddWithCarry x 0xfffffffffffffffe#64 0x1#1).fst = x - 1#64 := by
@@ -164,7 +165,6 @@ theorem program.stepi_0x4005a4_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program := by
   have := program.stepi_eq_0x4005a4 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
   done
@@ -181,7 +181,6 @@ theorem program.stepi_0x4005a8_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program := by
   have := program.stepi_eq_0x4005a8 h_program h_pc h_err
-  simp only [minimal_theory, bitvec_rules] at this
   simp_all (config := {ground := true}) only
             [run, cut, this, AddWithCarry.add_one_64,
              state_simp_rules, bitvec_rules, minimal_theory]
@@ -199,7 +198,6 @@ theorem program.stepi_0x4005ac_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program := by
   have := program.stepi_eq_0x4005ac h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all (config := {ground := true}) only
                  [run, cut, this, AddWithCarry.sub_one_64,
                   state_simp_rules, bitvec_rules, minimal_theory]
@@ -220,7 +218,6 @@ theorem program.stepi_0x4005b0_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program := by
   have := program.stepi_eq_0x4005b0 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all (config := {ground := true}) only
                 [run, cut, this,
                  state_simp_rules, bitvec_rules, minimal_theory]
@@ -278,7 +275,6 @@ theorem program.stepi_0x4005b8_cut (s sn : ArmState)
   r StateField.ERR sn = .None ∧
   sn.program = program := by
   have := program.stepi_eq_0x4005b8 h_program h_pc h_err
-  simp only [minimal_theory] at this
   simp_all only [run, cut, this, state_simp_rules, bitvec_rules, minimal_theory]
   done
 
@@ -304,7 +300,7 @@ theorem program.stepi_0x4005b8_cut (s sn : ArmState)
 @[bitvec_rules]
 theorem BitVec.le_refl (x : BitVec n) :
   x <= x := by
-  exact BitVec.le_of_eq x x rfl
+  exact BitVec.le_of_eq rfl
 
 private theorem non_zero_one_bit_is_one {x : BitVec 1}
   (h : ¬ x = 0#1) :
@@ -318,14 +314,16 @@ private theorem non_one_bit_is_zero {x : BitVec 1}
 
 private theorem crock_lemma (x y z : BitVec 64) :
   x + (y - z) + 1#64 = x + (y - (z - 1#64)) := by
-  -- (FIXME) Without this apply below, bv_omega_bench crashes my editor.
+  -- (FIXME) Without this apply below, bv_omega crashes my editor.
+  -- v4.18: `bv_omega_bench` shim replaced by plain `bv_omega`.
   apply BitVec.eq_sub_iff_add_eq.mp
-  bv_omega_bench
+  bv_omega
 
 private theorem loop_inv_x0_helper_lemma {x y : BitVec 64} (h1 : x ≤ y)
   (h2 : ¬(x = 0#64)) :
   x - 0x1#64 ≤ y := by
-  bv_omega_bench
+  -- v4.18: `bv_omega_bench` shim replaced by plain `bv_omega`.
+  bv_omega
 
 -------------------------------------------------------------------------------
 
@@ -341,17 +339,19 @@ def loop_clock (x0 : BitVec 64) : Nat :=
     1
   else
     have : x0 - 0x1#64 < x0 := by
-     bv_omega_bench
+     -- v4.18: `bv_omega_bench` shim replaced by plain `bv_omega`.
+     bv_omega
     4 + loop_clock (x0 - 1)
   termination_by x0.toNat
 
 theorem loop_clock_inv_lemma (h : ¬x = 0x0#64) :
   loop_clock (x - 0x1#64) < loop_clock x := by
   generalize h_xn : x.toNat = xn
-  have h_xn_ge_1 : 1 ≤ xn := by bv_omega_bench
+  -- v4.18: `bv_omega_bench` shim replaced by plain `bv_omega`.
+  have h_xn_ge_1 : 1 ≤ xn := by bv_omega
   induction xn, h_xn_ge_1 using Nat.le_induction generalizing x
   case base =>
-    have h_x_eq_1 : x = 1#64 := by bv_omega_bench
+    have h_x_eq_1 : x = 1#64 := by bv_omega
     unfold loop_clock
     simp only [h_x_eq_1, BitVec.sub_self, BitVec.ofNat_eq_ofNat,
                reduceDIte, gt_iff_lt, BitVec.reduceEq]
@@ -360,8 +360,11 @@ theorem loop_clock_inv_lemma (h : ¬x = 0x0#64) :
     rename_i xn' h_xn' h_inv
     unfold loop_clock
     simp only [BitVec.ofNat_eq_ofNat, dite_eq_ite, gt_iff_lt]
-    have h1 : ¬ x - 0x1#64 = 0x0#64 := by bv_omega_bench
-    have h2 : (x - 0x1#64).toNat = xn' := by bv_omega_bench
+    -- v4.18: `bv_omega` needs the `x.toNat` lower bound made explicit first,
+    -- and the `bv_omega_bench` shim is replaced by plain `bv_omega`.
+    have hx : 2 ≤ x.toNat := by omega
+    have h1 : ¬ x - 0x1#64 = 0x0#64 := by bv_omega
+    have h2 : (x - 0x1#64).toNat = xn' := by bv_omega
     simp only [h, h1, h2, h_inv,
                reduceIte, Nat.add_lt_add_iff_left, not_false_eq_true]
   done

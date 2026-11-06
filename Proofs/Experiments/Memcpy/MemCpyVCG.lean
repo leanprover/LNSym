@@ -175,7 +175,7 @@ def loop_inv (s0 si : ArmState) : Prop :=
   si.program = program ∧
   CheckSPAlignment si
 
-def loop_inv.r_z_eq_zero_iff_x_eq_0 (h : loop_inv s0 si) : r (StateField.FLAG PFlag.Z) si = 1#1 ↔ ArmState.x0 si = 0#64 := by
+theorem loop_inv.r_z_eq_zero_iff_x_eq_0 (h : loop_inv s0 si) : r (StateField.FLAG PFlag.Z) si = 1#1 ↔ ArmState.x0 si = 0#64 := by
   simp only [loop_inv] at h
   simp [h]
 
@@ -222,10 +222,10 @@ section CutTheorems
 structure Stepped (s sn : ArmState) where
   h_step : sn = stepi s
 
-def Stepped.of_next {s sn : ArmState} (h : Sys.next s = sn) : Stepped s sn := ⟨h.symm⟩
+theorem Stepped.of_next {s sn : ArmState} (h : Sys.next s = sn) : Stepped s sn := ⟨h.symm⟩
 
 
-structure Step_8e0_8f0 (scur snext : ArmState) extends WellFormedAtPc snext 0x8f0 : Prop where
+structure Step_8e0_8f0 (scur snext : ArmState) : Prop extends WellFormedAtPc snext 0x8f0 where
   h_mem : snext.mem = scur.mem
   h_cut : cut snext = false
   h_x1 : snext.x1 = scur.x1
@@ -244,19 +244,19 @@ theorem program.step_8e0_8f0_of_wellformed (s sn : ArmState)
   subst h_step
   constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
   · constructor <;> simp only [*, cut, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
-  · decide
+  -- v4.15: `constructor <;> simp only […]` above now closes this goal; `· decide` removed.
 
-structure Step_8e4_8e8 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8e8 : Prop where
+structure Step_8e4_8e8 (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8e8 where
   h_x1 : snext.x1 = scur.x1 + 0x10#64
   h_mem : snext.mem = scur.mem
   h_q4 : snext.q4 = scur[scur.x1, 16]
   h_x0 : snext.x0 = scur.x0
   h_x2 : snext.x2 = scur.x2
 
-def Step_8e4_8e8.h_cut (h : Step_8e4_8e8 scur snext) : cut snext = false := by
+theorem Step_8e4_8e8.h_cut (h : Step_8e4_8e8 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
-  decide
+  -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
 
 -- 2/7 (0x8e4#64, 0x3cc10424#32),  /- ldr q4, [x1], #16        -/
 theorem program.step_8e4_8e8_of_wellformed_of_stepped (scur snext : ArmState)
@@ -276,17 +276,17 @@ theorem program.step_8e4_8e8_of_wellformed_of_stepped (scur snext : ArmState)
   · constructor <;> simp [*, state_simp_rules, minimal_theory, memory_rules]
 
 -- 3/7 (0x8e8#64, 0x3c810444#32),  /- str q4, [x2], #16        -/
-structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8ec : Prop where
+structure Step_8e8_8ec (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8ec where
   h_x2 : snext.x2 = scur.x2 + 0x10#64
   h_mem : snext.mem = scur.mem.write_bytes 16 scur.x2 scur.q4
   h_x0 : snext.x0 = scur.x0
   h_x1 : snext.x1 = scur.x1
   h_q4 : snext.q4 = scur.q4
 
-def Step_8e8_8ec.h_cut (h : Step_8e8_8ec scur snext) : cut snext = false := by
+theorem Step_8e8_8ec.h_cut (h : Step_8e8_8ec scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
-  decide
+  -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
 
 theorem program.step_8e8_8ec_of_wellformed (scur snext : ArmState)
     (hscur : WellFormedAtPc scur 0x8e8)
@@ -314,17 +314,17 @@ theorem program.step_8e8_8ec_of_wellformed (scur snext : ArmState)
 
 
 -- 4/7 (0x8ec#64, 0xd1000400#32),  /- sub x0, x0, #0x1         -/
-structure Step_8ec_8f0 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f0 : Prop where
+structure Step_8ec_8f0 (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8f0 where
   h_x0 : snext.x0 = scur.x0 - 0x1#64
   h_mem : snext.mem = scur.mem
   h_x1 : snext.x1 = scur.x1
   h_x2 : snext.x2 = scur.x2
   h_q4 : snext.q4 = scur.q4
 
-def Step_8ec_8f0.h_cut (h : Step_8ec_8f0 scur snext) : cut snext = false := by
+theorem Step_8ec_8f0.h_cut (h : Step_8ec_8f0 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
-  decide
+  -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
 
 theorem program.step_8ec_8f0_of_wellformed (scur snext : ArmState)
     (hs : WellFormedAtPc scur 0x8ec#64)
@@ -342,7 +342,7 @@ theorem program.step_8ec_8f0_of_wellformed (scur snext : ArmState)
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules, memory_rules]
 
 -- 5/7 (0x8f0#64, 0xf100001f#32),  /- cmp x0, #0x0             -/
-structure Step_8f0_8f4 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f4 : Prop where
+structure Step_8f0_8f4 (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8f4 where
   h_mem : snext.mem = scur.mem
   h_v : snext.V = (AddWithCarry scur.x0 0xffffffffffffffff#64 0x1#1).snd.v
   h_c : snext.C = (AddWithCarry scur.x0 0xffffffffffffffff#64 0x1#1).snd.c
@@ -363,9 +363,7 @@ theorem program.step_8f0_8f4_of_wellformed (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f0 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [
-    fst_AddWithCarry_eq_sub_neg,
-    fst_AddWithCarry_eq_add] at this
+  -- (v4.33) dropped a now-no-progress `simp (ground, decide) [fst_AddWithCarry_eq_*] at this`.
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;> simp [*, cut, state_simp_rules, minimal_theory, bitvec_rules]
@@ -373,17 +371,17 @@ theorem program.step_8f0_8f4_of_wellformed (scur snext : ArmState)
 
 
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
-structure Step_8f4_8e4 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8e4 : Prop where
+structure Step_8f4_8e4 (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8e4 where
   h_mem : snext.mem = scur.mem
   h_x0 : snext.x0 = scur.x0
   h_x1 : snext.x1 = scur.x1
   h_x2 : snext.x2 = scur.x2
   h_q4 : snext.q4 = scur.q4
 
-def Step_8f4_8e4.h_cut (h : Step_8f4_8e4 scur snext) : cut snext = false := by
+theorem Step_8f4_8e4.h_cut (h : Step_8f4_8e4 scur snext) : cut snext = false := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
-  decide
+  -- v4.15: `simp [h_pc, cut]` now closes this goal; trailing `decide` removed.
 
 theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
     (hs : WellFormedAtPc scur 0x8f4)
@@ -395,22 +393,21 @@ theorem program.step_8f4_8e4_of_wellformed_of_z_eq_0 (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f4 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [
-    fst_AddWithCarry_eq_sub_neg,
-    fst_AddWithCarry_eq_add] at this
+  -- (v4.33) dropped a now-no-progress `simp (ground, decide) [fst_AddWithCarry_eq_*] at this`.
   obtain ⟨h_step⟩ := hstep
   subst h_step
-  constructor <;> solve
-    | simp (config := { ground := true, decide := true}) [*,
-      state_simp_rules, minimal_theory, fst_AddWithCarry_eq_sub_neg]
+  -- v4.14: the old `constructor <;> solve | simp (ground:=true,decide:=true) [...]`
+  -- no longer closes this goal and, worse, left it open in a way that cascaded a
+  -- spurious `sorryAx` into `partial_correctness`. Match the working sibling below.
+  constructor <;> simp [*, cut, state_simp_rules, minimal_theory, bitvec_rules]
   · constructor <;> simp [*, state_simp_rules, minimal_theory, bitvec_rules]
 
 -- 6/7 (0x8f4#64, 0x54ffff81#32),  /- b.ne 8e4 <mem_copy_loop> -/
-structure Step_8f4_8f8 (scur : ArmState) (snext : ArmState) extends WellFormedAtPc snext 0x8f8 : Prop where
+structure Step_8f4_8f8 (scur : ArmState) (snext : ArmState) : Prop extends WellFormedAtPc snext 0x8f8 where
   h_mem : snext.mem = scur.mem
   h_q4 : snext.q4 = scur.q4
 
-def Step_8f4_8f8.h_cut (h : Step_8f4_8f8 scur snext) : cut snext = true := by
+theorem Step_8f4_8f8.h_cut (h : Step_8f4_8f8 scur snext) : cut snext = true := by
   have h_pc := h.toWellFormedAtPc.h_pc
   simp [h_pc, cut]
 
@@ -425,9 +422,7 @@ theorem program.step_8f4_8f8_of_wellformed_of_z_eq_1 (scur snext : ArmState)
   obtain h_sp_aligned := hs.h_sp_aligned
 
   have := program.stepi_eq_0x8f4 h_program h_pc h_err
-  simp (config := { ground := true, decide := true}) [
-    fst_AddWithCarry_eq_sub_neg,
-    fst_AddWithCarry_eq_add] at this
+  -- (v4.33) dropped a now-no-progress `simp (ground, decide) [fst_AddWithCarry_eq_*] at this`.
   obtain ⟨h_step⟩ := hstep
   subst h_step
   constructor <;>
@@ -555,7 +550,7 @@ theorem partial_correctness :
   case v2 =>
     intro sf h_exit
     simp only [Spec.exit, Spec'.cut, cut, exit] at h_exit ⊢
-    simp only [h_exit, BitVec.reduceEq, decide_False, Bool.or_self, decide_True, Bool.or_true]
+    simp only [h_exit, BitVec.reduceEq, decide_false, Bool.or_self, decide_true, Bool.or_true]
   case v3 =>
     intro s0 sf h_assert h_exit
     simp [Spec'.assert, Spec.exit, Spec.post, post, exit,
@@ -616,9 +611,10 @@ theorem partial_correctness :
       constructor
       · intro i hi
         rw [step_8f0_8f4.h_x0, step_8e0_8f0.h_x0] at hi
+        -- v4.17: `simp at hi` now derives `False` from `i < 0` and closes the goal
+        -- directly; the erstwhile trailing `exfalso; simp [BitVec.lt_def] at hi` is
+        -- now "no goals to be solved".
         simp at hi
-        exfalso
-        simp [BitVec.lt_def] at hi -- i < 0
       · intros n addr h_mem_sep
         simp only [Memory.State.read_mem_bytes_eq_mem_read_bytes]
         rw [step_8f0_8f4.h_mem]
@@ -733,14 +729,14 @@ theorem partial_correctness :
         rw [h_s5_x0, h_s5_x1, h_si_x1]
         have h_s0_x1 : s0.x1 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x1 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
           rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega_bench,
-            BitVec.BitVec.mul_add,
+            BitVec.mul_add,
             BitVec.add_assoc, BitVec.mul_one]
         simp only [h_s0_x1, true_and]
 
         rw [h_s5_x2, h_si_x2]
         have h_s0_x2 : s0.x2 + 0x10#64 * (s0.x0 - si.x0) + 0x10#64 = s0.x2 + 0x10#64 * (s0.x0 - (si.x0 - 0x1#64)) := by
           rw [show s0.x0 - (si.x0 - 0x1#64) = (s0.x0 - si.x0) + 0x1#64 by skip_proof bv_omega_bench,
-            BitVec.BitVec.mul_add]
+            BitVec.mul_add]
           skip_proof bv_omega_bench
         simp only [h_s0_x2, true_and]
         simp only [step_8f0_8f4.h_err,
@@ -771,7 +767,7 @@ theorem partial_correctness :
     case h_4 pc h_si =>
       apply False.elim h_assert
 /--
-info: 'Memcpy.partial_correctness' depends on axioms: [propext, Classical.choice, Lean.ofReduceBool, Quot.sound]
+info: 'Memcpy.partial_correctness' depends on axioms: [propext, Classical.choice, Quot.sound]
 -/
 #guard_msgs in #print axioms partial_correctness
 

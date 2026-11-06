@@ -127,7 +127,11 @@ def bitvec_to_hex_list (xs : List (BitVec n)) : List String :=
 /-- Populate regState with the parsed output from the `armsimulate`
 script. -/
 def machine_to_regState (inst : BitVec 32) (str : String) : regState :=
-  let strs := String.split (String.trim str) (fun c => c = ' ')
+  -- v4.27: `String.trim` deprecated → `String.trimAscii` (returns a `String.Slice`
+  -- now, so `.copy` back to a `String` — exactly how core's deprecated `trim` is
+  -- defined: `s.trimAscii.copy`). ASCII trim is correct here: cosim output is
+  -- space-delimited ASCII decimal numbers.
+  let strs := String.splitToList (String.trimAscii str).copy (fun c => c = ' ')
   -- Important: the assumption here, because of the use of
   -- String.toNat!, is that the machine output will be in base
   -- 10. This is consistent with simulator.c.
@@ -337,7 +341,9 @@ def run_all_tests_go (verbose : Bool) (n : Nat) : Cosim.CosimM UInt32 := do
     -- We are on an Aarch64 machine.
     -- Insts.rand is a list of functions of each class of instructions
     -- that generate legal, random 32-bit instructions.
-    for (i, inst_fn) in Insts.rand.enum do
+    -- v4.17: `List.enum` is deprecated (removed by v4.26); `List.zipIdx` yields
+    -- `(elem, idx)` pairs — note the swapped binding order.
+    for (inst_fn, i) in Insts.rand.zipIdx do
       let logPrefix := s!"Instruction Class ({i + 1}/{Insts.rand.length})"
       tasks ← run_n_tests verbose logPrefix n inst_fn tasks
 

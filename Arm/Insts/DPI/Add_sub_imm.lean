@@ -48,18 +48,21 @@ def exec_add_sub_imm (inst : Add_sub_imm_cls) (s : ArmState) : ArmState :=
 
 /-- Generate random instructions of the DPI.Add_sub_imm class. -/
 def Add_sub_imm_cls.inst.rand : Cosim.CosimM (Option (BitVec 32)) := do
-  let (inst : Add_sub_imm_cls) :=
-    { sf    := ← BitVec.rand 1,
-      op    := ← BitVec.rand 1,
-      S     := ← BitVec.rand 1,
-      sh    := ← BitVec.rand 1,
-      imm12 := ← BitVec.rand 12,
-       -- (FIXME) We want to avoid any use of SP (i.e., register index
-       -- 31) since our simulation framework doesn't work in such
-       -- cases. For now, we do sacrifice a little bit of the state
-       -- space.
-      Rn    := ← GPRIndex.rand (lo := 0) (hi := 30),
-      Rd    := ← GPRIndex.rand (lo := 0) (hi := 30) }
+  -- (v4.22 port) `←` no longer auto-lifts inside a structure literal (a binder
+  -- context); bind each random field first.
+  let sf    ← BitVec.rand 1
+  let op    ← BitVec.rand 1
+  let S     ← BitVec.rand 1
+  let sh    ← BitVec.rand 1
+  let imm12 ← BitVec.rand 12
+  -- (FIXME) We want to avoid any use of SP (i.e., register index
+  -- 31) since our simulation framework doesn't work in such
+  -- cases. For now, we do sacrifice a little bit of the state
+  -- space.
+  let Rn    ← GPRIndex.rand (lo := 0) (hi := 30)
+  let Rd    ← GPRIndex.rand (lo := 0) (hi := 30)
+  let inst : Add_sub_imm_cls :=
+    { sf, op, S, sh, imm12, Rn, Rd }
   pure (some (inst.toBitVec32))
 
 def Add_sub_imm_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=

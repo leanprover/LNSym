@@ -40,7 +40,7 @@ partial def Advanced_simd_scalar_copy_cls.dup.rand : Cosim.CosimM (Option (BitVe
   if (lowest_set_bit imm5) > 3 then
     Advanced_simd_scalar_copy_cls.dup.rand
   else
-    let (inst : Advanced_simd_scalar_copy_cls) :=
+    let inst : Advanced_simd_scalar_copy_cls :=
       { op := 0b0#1,
         imm5 := imm5,
         imm4 := 0b0000#4,

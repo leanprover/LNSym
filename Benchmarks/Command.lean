@@ -8,11 +8,14 @@ import Lean
 open Lean Parser.Command Elab.Command
 
 initialize
+  -- v4.27: `OptionDecl` gained a required `name` field.
   registerOption `benchmark {
+    name := `benchmark
     defValue := false
     descr := "enables/disables benchmarking in `withBenchmark` combinator"
   }
   registerOption `benchmark.runs {
+    name := `benchmark.runs
     defValue := (5 : Nat)
     descr := "controls how many runs the `benchmark` command does. \
     NOTE: Benchmarks are run only once when the `profiler` option is true, \
@@ -49,7 +52,9 @@ If the `profiler` option is set true, we run the benchmark only once,
 with `trace.profiler` to true. -/
 elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
   let originalOpts ← getOptions
-  let mut n := originalOpts.getNat `benchmark.runs 5
+  -- v4.31: `Options.getNat`/`setNat` were removed; `Options` is now a struct
+  -- wrapping a `KVMap`, use the generic `Options.get`/`set` (typed via defVal).
+  let mut n := originalOpts.get `benchmark.runs (5 : Nat)
   let mut opts := originalOpts
   opts := opts.setBool `benchmark true
   let stx ← `(command|
@@ -58,7 +63,7 @@ elab "benchmark" id:ident declSig:optDeclSig val:declVal : command => do
 
   if (← getBoolOption `profiler) then
     opts := opts.setBool `trace.profiler true
-    opts := opts.setNat `trace.profiler.threshold 1
+    opts := opts.set `trace.profiler.threshold (1 : Nat)
     n := 1 -- only run once, if `profiler` is set to true
   else
     opts := opts.setBool `trace.benchmark true
@@ -184,7 +189,7 @@ structure BenchmarkState.Stats where
 
 structure BenchmarkState where
   insertionOrder : List String := []
-  stats : Std.HashMap String BenchmarkState.Stats := .empty
+  stats : Std.HashMap String BenchmarkState.Stats := .emptyWithCapacity
 
 variable {m} [Monad m] [MonadStateOf BenchmarkState m] [MonadLiftT BaseIO m]
   [MonadOptions m]

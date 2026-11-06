@@ -115,7 +115,7 @@ def exec_reg_imm_common
 @[state_simp_rules]
 def exec_reg_imm_unsigned_offset
   (inst : Reg_unsigned_imm_cls) (s : ArmState) : ArmState :=
-  let (extracted_inst : Reg_imm_cls) :=
+  let extracted_inst : Reg_imm_cls :=
     { size      := inst.size,
       opc       := inst.opc,
       Rn        := inst.Rn,
@@ -129,7 +129,7 @@ def exec_reg_imm_unsigned_offset
 @[state_simp_rules]
 def exec_reg_imm_post_indexed
   (inst : Reg_imm_post_indexed_cls) (s : ArmState) : ArmState :=
-  let (extracted_inst : Reg_imm_cls) :=
+  let extracted_inst : Reg_imm_cls :=
     { size      := inst.size,
       opc       := inst.opc,
       Rn        := inst.Rn,

@@ -21,7 +21,8 @@ private theorem shiftLeft_ge (x : Nat) (y : Nat) : x ≤ x <<< y := by
   have h₁ : x ≤ x * 2 ^ y := by
     apply Nat.le_mul_of_pos_right
     simp only [h₀]
-  simp only [Nat.mul_one] at h₁
+  -- (v4.31) dropped a now-no-progress `simp only [Nat.mul_one] at h₁`
+  -- (h₁ is already in reduced form; v4.31 makes a no-progress simp a hard error).
   simp only [Nat.shiftLeft_eq]
   exact h₁
 
@@ -50,7 +51,7 @@ private theorem opc_and_sf_constraint (x : BitVec 2) (y : BitVec 1)
   revert h
   simp only [BitVec.toNat_eq_nat]
   have h₁ : 3 < 2 ^ 2 := by decide
-  simp only [not_and, Nat.reducePow, h₁, true_and, Nat.pow_one, Nat.zero_lt_succ, imp_self]
+  simp only [_root_.not_and, Nat.reducePow, h₁, true_and, Nat.pow_one, Nat.zero_lt_succ, imp_self]
 
 @[state_simp_rules]
 def exec_data_processing_rev
@@ -107,7 +108,7 @@ partial def Data_processing_one_source_cls.rev_all.rand : Cosim.CosimM (Option (
   if opc == 0b00#2 || opc == 0b11#2 && sf == 0b0#1 then
     Data_processing_one_source_cls.rev_all.rand
   else
-    let (inst : Data_processing_one_source_cls) :=
+    let inst : Data_processing_one_source_cls :=
       { sf := sf,
         S := 0b0#1,
         opcode2 := 0b00000#5,

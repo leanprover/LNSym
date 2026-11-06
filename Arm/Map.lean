@@ -10,7 +10,7 @@ import Lean
 A simple Map-like type based on lists
 -/
 
-def Map (α : Type u) (β : Type v) := List (α × β)
+abbrev Map (α : Type u) (β : Type v) := List (α × β)
 
 instance [x : Repr (List (α × β))] : Repr (Map α β) where
   reprPrec := x.reprPrec
@@ -114,7 +114,7 @@ def Map.size (m : Map α β) : Nat :=
     next he => simp [contains, find?, he] at h
     next he =>
      simp [contains, find?, he] at h
-     simp [contains, find?, he, h] at ih
+     simp [contains, h] at ih
      simp [erase, ih, he]
 
 @[simp] theorem Map.size_erase_le [DecidableEq α] (m : Map α β) (a : α) : (m.erase a).size ≤ m.size := by
@@ -155,10 +155,15 @@ abbrev Program := Map (BitVec 64) (BitVec 32)
 
 open Lean.ToExpr Lean Meta Simp
 
-deriving instance DecidableEq for BitVec.Literal
+/-- A bitvector literal: its width together with its value. -/
+abbrev BitVecLit := (n : Nat) × BitVec n
 
-partial def Map.findBitVecLiteral? (find_key_lit : BitVec.Literal) (map_expr : Expr)
-  : SimpM (Option BitVec.Literal) := do
+/-- Literal equality: same width and same value. -/
+def BitVecLit.beq (x y : BitVecLit) : Bool :=
+  x.1 == y.1 && x.2.toNat == y.2.toNat
+
+partial def Map.findBitVecLiteral? (find_key_lit : BitVecLit) (map_expr : Expr)
+  : SimpM (Option BitVecLit) := do
   -- `whnfD e` reduces `e` to its weak-head-normal form. This is an efficient operation for
   -- functions defined by structural recursion such as `Map.find?`
   -- It will reveal the `List.cons`-application.
@@ -168,27 +173,32 @@ partial def Map.findBitVecLiteral? (find_key_lit : BitVec.Literal) (map_expr : E
   | List.cons _ hd tl =>
     let hd ← whnfD hd
     let_expr Prod.mk _ _ key_expr val_expr ← hd | return none
-    let some key_lit ← BitVec.fromExpr? key_expr | return none
-    if find_key_lit = key_lit then
-      let some val_lit ← BitVec.fromExpr? val_expr | return none
+    let some key_lit ← getBitVecValue? key_expr | return none
+    if find_key_lit.beq key_lit then
+      let some val_lit ← getBitVecValue? val_expr | return none
       return some val_lit
     else
       return (← Map.findBitVecLiteral? find_key_lit tl)
   | _ => return none
 
 simproc reduceMapFind? ((Map.find? _ _ : Option _)) := fun e => do
-  let_expr Map.find? _ _ _ map key ← e | return .continue
+  let_expr Map.find? _ β _ map key ← e | return .continue
+  -- Only programs, i.e., maps whose values are 32-bit instructions.
+  let_expr BitVec w ← β | return .continue
+  unless (← getNatValue? w) == some 32 do return .continue
   -- "Abort" if `map` is not ground, that is, it contains
   -- metavariables or free variables.
   if map.hasExprMVar || map.hasFVar then return .continue
-  let some find_key_lit ← BitVec.fromExpr? key | return .continue
+  let some find_key_lit ← getBitVecValue? key | return .continue
   let maybe_val_lit ← Map.findBitVecLiteral? find_key_lit map
   match maybe_val_lit with
   | none =>
       let new_expr := toExpr (Option.none : Option (BitVec 32))
       return .done { expr := new_expr } -- We don't need to return `rfl` proofs.
-  | some val_lit =>
-      let new_expr := toExpr (some val_lit.value)
+  | some ⟨w, val⟩ =>
+      -- `Program`s map to 32-bit instructions; leave other maps alone.
+      if w ≠ 32 then return .continue
+      let new_expr := toExpr (some (BitVec.ofNat 32 val.toNat))
       return .done { expr := new_expr }
 
 example : Map.find? [(3#64, 1#32)] 3#64 = some 1#32 := by
