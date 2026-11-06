@@ -1074,7 +1074,7 @@ theorem not_slt {w} (a b : BitVec w) : ¬ (a.slt b) ↔ (b.sle a) := by
 /-- If subtraction does not overflow,
 then `(x - y).toNat` equals `x.toNat - y.toNat` -/
 -- v4.15: the `deprecated` attribute now requires a `(since := …)` version tag.
-@[deprecated toNat_sub_of_le (since := "2024-05")]
+@[deprecated toNat_sub_of_le +typeChanged (since := "2024-05")]
 theorem toNat_sub_of_lt' {w} {x y : BitVec w} (h : x.toNat < y.toNat) :
     (y - x).toNat = y.toNat - x.toNat := by
   apply toNat_sub_of_le
