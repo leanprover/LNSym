@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+# A newer push to the same branch/PR supersedes a running build.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test (Ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Check copyright headers
+      run: |
+        FILES=$(find . -type d \( -path "./.lake" \) -prune -o -type f -name "*.lean" -exec perl -ne 'BEGIN { $/ = undef; } print "$ARGV\n" if !m{\A/-\nCopyright}; exit;' {} \;)
+        if [ -n "$FILES" ]; then
+          echo "Found .lean files which do not have a copyright header:"
+          echo "$FILES"
+          exit 1
+        fi
+
+    - uses: leanprover/lean-action@v1
+      with:
+        auto-config: false
+        use-mathlib-cache: false
+        use-github-cache: true
+
+    # The AWS-LC objects parsed by the ELFParser tests depend only on the pinned
+    # AWS-LC version and the build scripts, so cache them across runs.
+    - name: Restore AWS-LC build
+      id: awslc-cache
+      uses: actions/cache@v4
+      with:
+        path: Tests/ELFParser/Data/aws-lc-build
+        key: awslc-${{ hashFiles('scripts/build_awslc.sh', 'scripts/build_awslc.cmake', 'scripts/Dockerfile') }}
+
+    - name: Build AWS-LC
+      if: steps.awslc-cache.outputs.cache-hit != 'true'
+      run: ./scripts/ci_ubuntu_build_awslc.sh
+
+    - name: Build specs, correctness, proofs and tests
+      run: make specs correctness proofs tests
+
+    - name: AWS-LC ELF tests
+      run: lake build AWSLCELFTests
+
+    - name: Build docs module
+      run: lake build Doc
+
+  cosim:
+    name: Cosimulation (macOS, aarch64)
+    runs-on: macos-15
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: leanprover/lean-action@v1
+      with:
+        auto-config: false
+        use-mathlib-cache: false
+        use-github-cache: true
+
+    - name: Run cosimulation
+      run: make cosim NUM_TESTS=100
