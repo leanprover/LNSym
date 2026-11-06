@@ -21,7 +21,7 @@ open BitVec
 
 @[state_simp_rules]
 def Compare_branch_inst.branch_taken_pc (inst : Compare_branch_cls) (pc : BitVec 64) : BitVec 64 :=
-  let offset := signExtend 64 (inst.imm19 <<< 2)
+  let offset := signExtend 64 (inst.imm19 ++ 0b00#2)
   let branch_taken_pc := pc + offset
   branch_taken_pc
 
