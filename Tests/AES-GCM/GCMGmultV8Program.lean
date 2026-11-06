@@ -53,7 +53,7 @@ def gcm_gmult_v8_program : Program :=
 -- Statically obtain all the GPR/SFP registers that may be affected by this program.
 /--
 info: #[RegType.SFP 0x00#5, RegType.SFP 0x01#5, RegType.SFP 0x02#5, RegType.SFP 0x03#5, RegType.SFP 0x11#5,
-  RegType.SFP 0x12#5, RegType.SFP 0x13#5, RegType.SFP 0x14#5]
+  RegType.SFP 0x12#5, RegType.SFP 0x13#5, RegType.SFP 0x14#5, RegType.SFP 0x15#5]
 -/
 #guard_msgs in
 #eval ((Cfg.create gcm_gmult_v8_program).toOption).get!.maybe_modified_regs
