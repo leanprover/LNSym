@@ -16,7 +16,7 @@ jobs:
     name: Build and test (Ubuntu)
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - name: Check copyright headers
       run: |
@@ -37,7 +37,7 @@ jobs:
     # AWS-LC version and the build scripts, so cache them across runs.
     - name: Restore AWS-LC build
       id: awslc-cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: Tests/ELFParser/Data/aws-lc-build
         key: awslc-${{ hashFiles('scripts/build_awslc.sh', 'scripts/build_awslc.cmake', 'scripts/Dockerfile') }}
@@ -63,7 +63,7 @@ jobs:
     name: Cosimulation (macOS, aarch64)
     runs-on: macos-15
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
 
     - uses: leanprover/lean-action@v1
       with:
