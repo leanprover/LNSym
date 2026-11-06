@@ -9,6 +9,7 @@ Author(s): Shilpi Goel, Siddharth Bhat, Alex Keizer
 ----------------------------------------------------------------------
 
 import Arm.Attr
+import Arm.BVDecideEnums
 
 namespace BitVec
 

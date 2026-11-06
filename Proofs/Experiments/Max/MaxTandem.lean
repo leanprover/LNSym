@@ -903,9 +903,9 @@ info: 'MaxTandem.partial_correctness' depends on axioms: [propext,
  sgt_iff_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_6,
  sle_iff_not_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_11,
  sle_iff_not_n_eq_v_and_z_eq_0_32._native.bv_decide.ax_1_6,
- partial_correctness._native.bv_decide.ax_1_24,
- partial_correctness._native.bv_decide.ax_1_30,
- partial_correctness._native.bv_decide.ax_1_36,
+ partial_correctness._native.bv_decide.ax_1_22,
+ partial_correctness._native.bv_decide.ax_1_28,
+ partial_correctness._native.bv_decide.ax_1_34,
  Memory.read_write_bytes_different._native.bv_decide.ax_1_9]
 -/
 #guard_msgs in #print axioms partial_correctness

@@ -52,8 +52,8 @@ theorem correct
 info: 'Abs.correct' depends on axioms: [propext,
  Classical.choice,
  Quot.sound,
- correct._native.bv_decide.ax_1_23,
- correct._native.bv_decide.ax_1_28]
+ correct._native.bv_decide.ax_1_21,
+ correct._native.bv_decide.ax_1_26]
 -/
 #guard_msgs in #print axioms correct
 

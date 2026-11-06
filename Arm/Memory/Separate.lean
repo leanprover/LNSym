@@ -610,11 +610,11 @@ theorem Memory.read_bytes_write_bytes_eq_of_mem_subset'
         exfalso
         rw [BitVec.le_def] at hstart
         omega
-      · simp only [h₂, if_false]
+      · simp only [h₂, ite_false]
         by_cases h₃ : x.toNat + i / 8 ≥ y.toNat + yn
         · rw [BitVec.le_def] at hstart
           omega
-        · simp only [h₃, if_false]
+        · simp only [h₃, ite_false]
           simp only [show i % 8 ≤ 7 by omega]
           simp only [decide_true, Bool.true_and]
           -- ⊢ val.getLsbD ((x + BitVec.ofNat 64 (i / 8) - y).toNat * 8 + i % 8) = val.getLsbD ((y.toNat - x.toNat) * 8 + i)
@@ -653,7 +653,7 @@ theorem Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
       intros j hj
       rw [← hread]
       rw [extractLsByte_read_bytes (by bv_omega_bench)]
-      simp only [show a.toNat - b.toNat + i < bn by bv_omega_bench, if_true]
+      simp only [show a.toNat - b.toNat + i < bn by bv_omega_bench, ite_true]
       congr 2
       -- v4.18: toNat-arithmetic regression; bv_omega closes this directly.
       bv_omega

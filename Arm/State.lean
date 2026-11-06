@@ -116,6 +116,13 @@ instance : ToString PFlag :=
     | PFlag.C => "C"
     | PFlag.V => "V"⟩
 
+-- Realize `bv_decide`'s enum auxiliaries for `PFlag` here, in its defining
+-- module, so that modules using `bv_decide` on `PFlag` share one copy instead of
+-- each realizing its own (which clash on import; see `Arm/BVDecideEnums.lean`).
+private theorem bv_decide_realize_PFlag_enum (x y : PFlag) (a : BitVec 1) (_h : x = y) :
+    a &&& a = a := by
+  bv_decide
+
 @[ext]
 structure PState where
   n : BitVec 1
@@ -888,8 +895,8 @@ theorem read_bytes_one_eq (m : Memory) : m.read_bytes 1 addr = m.read addr := by
   -- v4.16: ext lemma now yields `∀ i, i < w → …`; introduce the bound `hi`
   intro i hi
   rw [BitVec.getLsbD_append]
-  simp only [show i < 8 by omega, decide_true, Nat.zero_le, BitVec.getLsbD_of_ge, cond_true,
-    if_true, ↓reduceIte]
+  simp only [show i < 8 by omega, decide_true, Nat.zero_le, BitVec.getLsbD_of_ge, Bool.cond_true,
+    ite_true, ↓reduceIte]
 
 theorem read_bytes_succ_eq (m : Memory) :
   m.read_bytes (n' + 1) addr = (m.read_bytes n' (addr + 1) ++ m.read addr).cast (by omega) := rfl
@@ -907,14 +914,14 @@ theorem getLsbD_read_bytes {n i : Nat} {addr : BitVec 64} {m : Memory} (hn : n �
       getLsbD_read]
     rw [Nat.succ_mul]
     by_cases h₁ : (i < 8)
-    · simp only [h₁, decide_true, cond_true, show i < n' * 8 + 8 by omega, Bool.true_and]
+    · simp only [h₁, decide_true, Bool.cond_true, show i < n' * 8 + 8 by omega, Bool.true_and]
       have hdiv : i / 8 = 0 :=  Nat.div_eq_of_lt h₁
       rw [hdiv]
       simp only [BitVec.add_zero]
       have hmod : i % 8 = i := Nat.mod_eq_of_lt h₁
       simp [hmod]
     · -- v4.16: `getLsbD_append` now emits `if … then … else …` (ite); reduce it
-      simp only [h₁, decide_false, cond_false, if_false, Bool.false_eq_true, ↓reduceIte]
+      simp only [h₁, decide_false, Bool.cond_false, ite_false, Bool.false_eq_true, ↓reduceIte]
       rw [ih]
       by_cases h₂ : i - 8 < n' * 8
       · simp only [h₂, decide_true, Bool.true_and, show (i < n' * 8 + 8) by omega]

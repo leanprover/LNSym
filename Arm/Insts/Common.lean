@@ -916,6 +916,7 @@ theorem shift_left_common_aux_64_2 (operand : BitVec 128)
   unfold shift_left_common_aux
   simp only [minimal_theory, bitvec_rules]
   simp only [state_simp_rules, minimal_theory, bitvec_rules, partInstall]
+  dsimp (config := { instances := true }) only
   bv_decide
 
 @[state_simp_rules]
