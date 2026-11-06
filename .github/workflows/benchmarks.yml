@@ -1,0 +1,21 @@
+name: Benchmarks
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 6 * * 1"  # Mondays 06:00 UTC
+
+jobs:
+  benchmarks:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: leanprover/lean-action@v1
+      with:
+        auto-config: false
+        use-mathlib-cache: false
+        use-github-cache: true
+
+    - name: Run benchmarks
+      run: make benchmarks
