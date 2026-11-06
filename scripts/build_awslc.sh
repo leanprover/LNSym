@@ -21,8 +21,11 @@ MICRO_ARCH="neoverse-n1"
 TARGET="aarch64-unknown-linux-gnu"
 export LDFLAGS="-fuse-ld=lld"
 
-# Fetching AWS-LC
-git clone https://github.com/aws/aws-lc.git $HOME/aws-lc --depth 1
+# Fetching AWS-LC, pinned: AWS-LC HEAD moves under us (e.g. v5.x needs Go >= 1.20,
+# newer than ubuntu:22.04's golang), and the ELFParser tests check the built
+# objects. v1.65.0 was the latest release when CI last passed (2025-11-21).
+AWSLC_VERSION="v1.65.0"
+git clone https://github.com/aws/aws-lc.git $HOME/aws-lc --depth 1 --branch ${AWSLC_VERSION}
 cd $HOME/aws-lc
 
 # Build AWS-LC
