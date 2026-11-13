@@ -9,6 +9,7 @@ import Arm.Decode
 import Tactics.Common
 import Tactics.Simp
 import Tactics.Sym.ProgramInfo
+import Tactics.VCGen
 
 open Lean Lean.Expr Lean.Meta Lean.Elab Lean.Elab.Command
 open SymContext (h_pc_type h_program_type h_err_type)
@@ -260,6 +261,8 @@ elab "#genStepEqTheorems" program:term : command => liftTermElabM do
 
   StepThmsM.run name (persist := true) <|
     genStepEqTheorems
+  if genStepEqTheorems.vcgenSpecs.get (← getOptions) then
+    ArmVCGen.addVCGenSpecsFor name
 
 -----------------------------------------------------------------------------
 
