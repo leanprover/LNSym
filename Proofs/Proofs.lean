@@ -19,3 +19,6 @@ import Proofs.Experiments.Abs.AbsVCGTandem
 import Proofs.Experiments.AddLoop.AddLoop
 import Proofs.Experiments.AddLoop.AddLoopTandem
 import Proofs.Experiments.Memcpy.MemCpyVCG
+import Proofs.Experiments.VCGen.Popcount32VCGen
+import Proofs.Experiments.VCGen.AddLoopVCGen
+import Proofs.Experiments.VCGen.SHA512VCGen

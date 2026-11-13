@@ -27,7 +27,7 @@ def loop_post_1 (PC N SP CtxBase InputBase : BitVec 64)
   input_addr sf = InputBase ∧
   ctx_addr sf = CtxBase ∧
   stack_ptr sf = SP - 16#64 ∧
-  sf[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+  sf[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512.reverse ∧
   sf[InputBase, (N.toNat * 128)] = si[InputBase, (N.toNat * 128)] ∧
    Memory.Region.pairwiseSeparate
                    [(SP - 16#64,  16),
@@ -72,7 +72,7 @@ theorem sha512_block_armv8_loop_1 (si sf : ArmState)
   sym_n 8
   -- Epilogue
   simp only [h_si_ktbl, h_si_separate, minimal_theory]
-  -- (v4.35) the `KtblAddr` conjunct now reduces to `flatten k_512 = flatten k_512`
+  -- (v4.35) the `KtblAddr` conjunct now reduces to `flatten k_512.reverse = flatten k_512.reverse`
   -- at differently-written widths, which `simp only` no longer closes.
   all_goals rfl
   done
@@ -90,7 +90,7 @@ def loop_post_2 (PC N SP CtxBase InputBase : BitVec 64)
   input_addr sf = InputBase ∧
   ctx_addr sf = CtxBase ∧
   stack_ptr sf = SP - 16#64 ∧
-  sf[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+  sf[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512.reverse ∧
   sf[InputBase, (N.toNat * 128)] = si[InputBase, (N.toNat * 128)] ∧
   Memory.Region.pairwiseSeparate
                    [(SP - 16#64,  16),
@@ -238,7 +238,7 @@ theorem sha512_block_armv8_loop_2 (sprev si sf : ArmState)
   simp only [h_si_input_1, h_si_input_2, h_si_input_3,
              h_si_input_4, h_si_input_5,
              minimal_theory]
-  -- (v4.35) see `sha512_block_armv8_loop_1`: close the residual `flatten k_512` goal.
+  -- (v4.35) see `sha512_block_armv8_loop_1`: close the residual `flatten k_512.reverse` goal.
   all_goals rfl
   done
 
@@ -261,7 +261,7 @@ theorem sha512_block_armv8_loop_2 (sprev si sf : ArmState)
 --  -- CheckSPAlignment si ∧
 --  -- ctx_addr si = CtxBase ∧
 --  -- stack_ptr si = SP - 16#64 ∧
---  -- si[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+--  -- si[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512.reverse ∧
 --  (TODO @alex @bollu Uncomment, please, for stress-testing)
 -- Memory.Region.pairwiseSeparate
 --                 [(SP - 16#64,   16),

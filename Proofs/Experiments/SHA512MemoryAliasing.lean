@@ -70,7 +70,7 @@ theorem sha512_block_armv8_prelude_sym_ctx_access (s0 : ArmState)
   (_h_s0_x3 : r (StateField.GPR 3#5) s0 = ktbl_addr)
   (hlegal : mem_legal' (ctx_addr s0) 64)
   (h_s0_ctx : read_mem_bytes 64 (ctx_addr s0) s0 = SHA2.h0_512.toBitVec)
-  (h_s0_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s0 = BitVec.flatten SHA2.k_512)
+  (h_s0_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s0 = BitVec.flatten SHA2.k_512.reverse)
   -- (FIXME) Add separateness invariants for the stack's memory region.
   -- @bollu: can we assume that `h_s1_ctx_input_separate`
   -- will be given as ((num_blocks s1).toNat * 128)?
@@ -130,7 +130,7 @@ work for `16#64 + ktbl_addr`?
   (h_s1_num_blocks : num_blocks s1 = 1)
   (_h_s1_x3 : r (StateField.GPR 3#5) s1 = ktbl_addr)
   (h_s1_ctx : read_mem_bytes 64 (ctx_addr s1) s1 = SHA2.h0_512.toBitVec)
-  (h_s1_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s1 = BitVec.flatten SHA2.k_512)
+  (h_s1_ktbl : read_mem_bytes (SHA2.k_512.length * 8) ktbl_addr s1 = BitVec.flatten SHA2.k_512.reverse)
   -- (FIXME) Add separateness invariants for the stack's memory region.
   -- @bollu: can we assume that `h_s1_ctx_input_separate`
   -- will be given as ((num_blocks s1).toNat * 128)?
@@ -145,7 +145,7 @@ work for `16#64 + ktbl_addr`?
     mem_separate' (input_addr s1) ((num_blocks s1).toNat * 128)
                   ktbl_addr      (SHA2.k_512.length * 8)) :
   read_mem_bytes 16 ktbl_addr s1 =
-  (BitVec.flatten SHA2.k_512).extractLsBytes 0 16 := by
+  (BitVec.flatten SHA2.k_512.reverse).extractLsBytes 0 16 := by
   simp_all only [memory_rules]
   -- @bollu: we need 'hSHA2_k512_length' to allow omega to reason about
   -- SHA2.k_512.length, which is otherwise treated as an unintepreted constant.

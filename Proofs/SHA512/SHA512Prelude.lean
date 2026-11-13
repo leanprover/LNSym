@@ -57,7 +57,7 @@ def precondition
   ctx_addr s0 = CtxBase ∧
   input_addr s0 = InputBase ∧
   s0[ctx_addr s0, 64] = SHA2.h0_512.toBitVec ∧
-  s0[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+  s0[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512.reverse ∧
   Memory.Region.pairwiseSeparate
    [((SP - 16#64), 16),
     (CtxBase,      64),
@@ -80,7 +80,7 @@ def prelude (PC N SP CtxBase InputBase : BitVec 64)
   input_addr si = InputBase + 128#64 ∧
   r (.GPR 3#5) si = KtblAddr ∧
   si[CtxBase, 64] = SHA2.h0_512.toBitVec ∧
-  si[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512 ∧
+  si[KtblAddr, (SHA2.k_512.length * 8)] = BitVec.flatten SHA2.k_512.reverse ∧
   Memory.Region.pairwiseSeparate
    [(SP - 16#64,   16),
     (CtxBase,     64),
