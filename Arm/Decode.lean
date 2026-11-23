@@ -66,6 +66,8 @@ def decode_data_proc_imm (i : BitVec 32) : Option ArmInst :=
     DPI (Bitfield {sf, opc, N, immr, imms, Rn, Rd})
   | [sf:1, opc:2, 100101, hw:2, imm16:16, Rd:5] =>
     DPI (Move_wide_imm {sf, opc, hw, imm16, Rd})
+  | [sf:1, op21:2, 100111, N:1, o0:1, Rm:5, imms:6, Rn:5, Rd:5] =>
+    DPI (Extract {sf, op21, N, o0, Rm, imms, Rn, Rd})
   | _ => none
 
 /--
@@ -628,6 +630,20 @@ example : decode_raw_inst 0xdac00f20 =
               opcode2 := 0x00#5,
               opcode := 0x03#6,
               Rn := 0x19#5,
+              Rd := 0x00#5 })) := rfl
+
+-- extr x0, x1, x2, #52
+example : decode_raw_inst 0x93c2d020 =
+          (ArmInst.DPI
+            (DataProcImmInst.Extract
+            { sf := 0x1#1,
+              op21 := 0x0#2,
+              _fixed := 0x27#6,
+              N := 0x1#1,
+              o0 := 0x0#1,
+              Rm := 0x02#5,
+              imms := 0x34#6,
+              Rn := 0x01#5,
               Rd := 0x00#5 })) := rfl
 
 -- Unimplemented

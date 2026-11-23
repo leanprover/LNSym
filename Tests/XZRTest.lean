@@ -70,4 +70,16 @@ example : r (.GPR 0#5) (afterUmulh 0x9bdf7c20#32) = 0#64 := by native_decide    
 example : r (.GPR 0#5) (afterUmulh 0x9bc27fe0#32) = 0#64 := by native_decide       -- umulh x0, xzr, x2
 example : r (.GPR 31#5) (afterUmulh 0x9bc27c3f#32) = 0x1000#64 := by native_decide -- umulh xzr, x1, x2
 
+-- (6) EXTR with x1 = 0x0123456789abcdef, x2 = 0xfedcba9876543210: register 31
+-- is zero in either source (reading SP would give 0x1000fedcba987654 and
+-- 0xef00000000000010), and a result for Rd = 31 is discarded.
+private def afterExtr (word : BitVec 32) : ArmState :=
+  run 1 (set_program
+    (w (.GPR 2#5) 0xfedcba9876543210#64 (w (.GPR 1#5) 0x0123456789abcdef#64 (entry 0#32)))
+    [(0#64, word)])
+
+example : r (.GPR 0#5) (afterExtr 0x93c243e0#32) = 0x0000fedcba987654#64 := by native_decide -- extr x0, xzr, x2, #16
+example : r (.GPR 0#5) (afterExtr 0x93df2020#32) = 0xef00000000000000#64 := by native_decide -- extr x0, x1, xzr, #8
+example : r (.GPR 31#5) (afterExtr 0x93c2d03f#32) = 0x1000#64 := by native_decide            -- extr xzr, x1, x2, #52
+
 end XZRTest
