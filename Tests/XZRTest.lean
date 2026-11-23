@@ -60,4 +60,14 @@ example : r (.GPR 0#5) (after 0xf240fbe0#32) = 0#64 := by native_decide  -- ands
 -- Destination 31 of non-flag-setting AND/ORR/EOR immediate is still SP.
 example : r (.GPR 31#5) (after 0xb240001f#32) = 1#64 := by native_decide  -- orr sp, x0, #1
 
+-- (5) UMULH with x1 = x2 = 2^64 - 1: a source register 31 is zero (reading SP
+-- would give 0xfff), and a result for Rd = 31 is discarded.
+private def afterUmulh (word : BitVec 32) : ArmState :=
+  run 1 (set_program (w (.GPR 2#5) (allOnes 64) (w (.GPR 1#5) (allOnes 64) (entry 0#32)))
+    [(0#64, word)])
+
+example : r (.GPR 0#5) (afterUmulh 0x9bdf7c20#32) = 0#64 := by native_decide       -- umulh x0, x1, xzr
+example : r (.GPR 0#5) (afterUmulh 0x9bc27fe0#32) = 0#64 := by native_decide       -- umulh x0, xzr, x2
+example : r (.GPR 31#5) (afterUmulh 0x9bc27c3f#32) = 0x1000#64 := by native_decide -- umulh xzr, x1, x2
+
 end XZRTest

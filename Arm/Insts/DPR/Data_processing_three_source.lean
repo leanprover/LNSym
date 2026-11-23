@@ -29,6 +29,19 @@ def exec_data_processing_madd
   let s := write_pc ((read_pc s) + 4#64) s
   s
 
+/-- UMULH (Arm ARM C6.2.393): `Rd = (UInt(Rn) * UInt(Rm))<127:64>`. -/
+@[state_simp_rules]
+def exec_data_processing_umulh
+  (inst : Data_processing_three_source_cls) (s : ArmState) : ArmState :=
+  let operand1 := read_gpr_zr 64 inst.Rn s
+  let operand2 := read_gpr_zr 64 inst.Rm s
+  let result : BitVec 64 :=
+    ((operand1.setWidth 128) * (operand2.setWidth 128)).extractLsb' 64 64
+  -- State Update
+  let s := write_gpr_zr 64 inst.Rd result s
+  let s := write_pc ((read_pc s) + 4#64) s
+  s
+
 @[state_simp_rules]
 def exec_data_processing_three_source
   (inst : Data_processing_three_source_cls) (s : ArmState) : ArmState :=
@@ -59,7 +72,7 @@ def exec_data_processing_three_source
     | 0b1#1, 0b00#2, 0b010#3, 0b0#1 => (false, true)  -- SMULH
     | 0b1#1, 0b00#2, 0b101#3, 0b0#1 => (false, true)  -- UMADDL
     | 0b1#1, 0b00#2, 0b101#3, 0b1#1 => (false, true)  -- UMSUBL
-    | 0b1#1, 0b00#2, 0b110#3, 0b0#1 => (false, true)  -- UMULH
+    | 0b1#1, 0b00#2, 0b110#3, 0b0#1 => (false, false) -- UMULH
     | _, _, _, _ => (true, false)
   if illegal then
     write_err (StateError.Illegal s!"Illegal {inst} encountered!") s
@@ -69,6 +82,7 @@ def exec_data_processing_three_source
     match inst.sf, inst.op54, inst.op31, inst.o0 with
     | 0b0#1, 0b00#2, 0b000#3, 0b0#1 => exec_data_processing_madd inst s -- MADD (32-bit)
     | 0b1#1, 0b00#2, 0b000#3, 0b0#1 => exec_data_processing_madd inst s -- MADD (64-bit)
+    | 0b1#1, 0b00#2, 0b110#3, 0b0#1 => exec_data_processing_umulh inst s -- UMULH
     | _, _, _, _ => write_err (StateError.Unimplemented s!"Unsupported {inst} encountered!") s
 
 ----------------------------------------------------------------------
@@ -88,10 +102,25 @@ def Data_processing_three_source_cls.shift.rand
     }
   pure (some inst.toBitVec32)
 
+/-- Generate random UMULH instructions (Ra = 31, as the encoding requires). -/
+def Data_processing_three_source_cls.umulh.rand : Cosim.CosimM (Option (BitVec 32)) := do
+  let inst : Data_processing_three_source_cls :=
+    { sf := 0b1#1,
+      op54 := 0b00#2,
+      op31 := 0b110#3,
+      Rm := ← GPRIndex.rand,
+      o0 := 0b0#1,
+      Ra := 0b11111#5,
+      Rn := ← GPRIndex.rand,
+      Rd := ← GPRIndex.rand
+    }
+  pure (some inst.toBitVec32)
+
 /-- Generate random instructions of Data_processing_three_source_cls class. -/
 def Data_processing_three_source_cls.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   [ Data_processing_three_source_cls.shift.rand 0b0#1 0b00#2 0b000#3 0b0#1, -- MADD (32-bit)
     Data_processing_three_source_cls.shift.rand 0b1#1 0b00#2 0b000#3 0b0#1, -- MADD (64-bit)
+    Data_processing_three_source_cls.umulh.rand, -- UMULH
   ]
 
 end DPR
