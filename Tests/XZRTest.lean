@@ -82,4 +82,17 @@ example : r (.GPR 0#5) (afterExtr 0x93c243e0#32) = 0x0000fedcba987654#64 := by n
 example : r (.GPR 0#5) (afterExtr 0x93df2020#32) = 0xef00000000000000#64 := by native_decide -- extr x0, x1, xzr, #8
 example : r (.GPR 31#5) (afterExtr 0x93c2d03f#32) = 0x1000#64 := by native_decide            -- extr xzr, x1, x2, #52
 
+-- (7) Conditional select with register 31 as both sources (as in the aliases
+-- CSET and CSETM), and Z = 1. When the condition holds, the result is Rn = 0;
+-- otherwise Rm = 0 incremented, inverted or negated (reading SP would give
+-- 0x1000, 0x1001, ~0x1000 or -0x1000). A result for Rd = 31 is discarded.
+private def afterCsel (word : BitVec 32) : ArmState :=
+  run 1 (set_program (w (.FLAG .Z) 1#1 (entry 0#32)) [(0#64, word)])
+
+example : r (.GPR 0#5) (afterCsel 0x9a9f07e0#32) = 0#64 := by native_decide        -- cset x0, ne (csinc x0, xzr, xzr, eq)
+example : r (.GPR 0#5) (afterCsel 0x9a9f17e0#32) = 1#64 := by native_decide        -- cset x0, eq (csinc x0, xzr, xzr, ne)
+example : r (.GPR 0#5) (afterCsel 0xda9f13e0#32) = allOnes 64 := by native_decide  -- csetm x0, eq (csinv x0, xzr, xzr, ne)
+example : r (.GPR 0#5) (afterCsel 0xda9f17e0#32) = 0#64 := by native_decide        -- csneg x0, xzr, xzr, ne
+example : r (.GPR 31#5) (afterCsel 0x9a9f17ff#32) = 0x1000#64 := by native_decide  -- cset xzr, eq
+
 end XZRTest
