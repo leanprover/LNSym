@@ -8,6 +8,7 @@ import Arm.Insts.DPI.PC_rel_addressing
 import Arm.Insts.DPI.Logical_imm
 import Arm.Insts.DPI.Bitfield
 import Arm.Insts.DPI.Move_wide_imm
+import Arm.Insts.DPI.Extract
 import Arm.Insts.CosimM
 
 /-- List of functions to generate random instructions of the
@@ -16,4 +17,5 @@ def DPI.rand : List (Cosim.CosimM (Option (BitVec 32))) :=
   DPI.Add_sub_imm_cls.rand ++
   DPI.Logical_imm_cls.rand ++
   DPI.Bitfield_cls.rand ++
-  DPI.Move_wide_imm_cls.rand
+  DPI.Move_wide_imm_cls.rand ++
+  DPI.Extract_cls.rand

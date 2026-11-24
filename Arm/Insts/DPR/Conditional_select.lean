@@ -26,6 +26,24 @@ def exec_conditional_select (inst : Conditional_select_cls) (s : ArmState) : Arm
               read_gpr_zr datasize inst.Rn s
             else
               read_gpr_zr datasize inst.Rm s)
+        | 0b0#1, 0b0#1, 0b01#2 => -- CSINC
+          (false,
+            if ConditionHolds inst.cond s then
+              read_gpr_zr datasize inst.Rn s
+            else
+              read_gpr_zr datasize inst.Rm s + 1)
+        | 0b1#1, 0b0#1, 0b00#2 => -- CSINV
+          (false,
+            if ConditionHolds inst.cond s then
+              read_gpr_zr datasize inst.Rn s
+            else
+              ~~~(read_gpr_zr datasize inst.Rm s))
+        | 0b1#1, 0b0#1, 0b01#2 => -- CSNEG
+          (false,
+            if ConditionHolds inst.cond s then
+              read_gpr_zr datasize inst.Rn s
+            else
+              ~~~(read_gpr_zr datasize inst.Rm s) + 1)
         | _, _, _ =>
           (true, BitVec.ofNat datasize 0)
     -- State Updates
@@ -43,11 +61,11 @@ def exec_conditional_select (inst : Conditional_select_cls) (s : ArmState) : Arm
 def Conditional_select_cls.rand : Cosim.CosimM (Option (BitVec 32)) := do
   let inst : Conditional_select_cls :=
     { sf    := ← BitVec.rand 1,
-      op    := ← pure 0#1,
+      op    := ← BitVec.rand 1,
       S     := ← pure 0#1,
       Rm    := ← GPRIndex.rand,
       cond  := ← BitVec.rand 4,
-      op2   := ← pure 0b00#2,
+      op2   := 0b0#1 ++ (← BitVec.rand 1),
       Rn    := ← GPRIndex.rand,
       Rd    := ← GPRIndex.rand }
   pure (some (inst.toBitVec32))

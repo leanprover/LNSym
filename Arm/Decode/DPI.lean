@@ -85,6 +85,23 @@ instance : ToString Move_wide_imm_cls where toString a := toString (repr a)
 def Move_wide_imm_cls.toBitVec32 (x : Move_wide_imm_cls) : BitVec 32 :=
   x.sf ++ x.opc ++ x._fixed ++ x.hw ++ x.imm16 ++ x.Rd
 
+structure Extract_cls where
+  sf     : BitVec 1                -- [31:31]
+  op21   : BitVec 2                -- [30:29]
+  _fixed : BitVec 6 := 0b100111#6  -- [28:23]
+  N      : BitVec 1                -- [22:22]
+  o0     : BitVec 1                -- [21:21]
+  Rm     : BitVec 5                -- [20:16]
+  imms   : BitVec 6                -- [15:10]
+  Rn     : BitVec 5                --  [9:5]
+  Rd     : BitVec 5                --  [4:0]
+deriving DecidableEq, Repr
+
+instance : ToString Extract_cls where toString a := toString (repr a)
+
+def Extract_cls.toBitVec32 (x : Extract_cls) : BitVec 32 :=
+  x.sf ++ x.op21 ++ x._fixed ++ x.N ++ x.o0 ++ x.Rm ++ x.imms ++ x.Rn ++ x.Rd
+
 inductive DataProcImmInst where
   | Add_sub_imm :
     Add_sub_imm_cls → DataProcImmInst
@@ -96,6 +113,8 @@ inductive DataProcImmInst where
     Bitfield_cls → DataProcImmInst
   | Move_wide_imm :
     Move_wide_imm_cls → DataProcImmInst
+  | Extract :
+    Extract_cls → DataProcImmInst
 deriving DecidableEq, Repr
 
 instance : ToString DataProcImmInst where toString a := toString (repr a)

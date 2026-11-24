@@ -20,6 +20,8 @@ def exec_inst (ai : ArmInst) (s : ArmState) : ArmState :=
     DPI.exec_bitfield i s
   | DPI (DataProcImmInst.Move_wide_imm i) =>
     DPI.exec_move_wide_imm i s
+  | DPI (DataProcImmInst.Extract i) =>
+    DPI.exec_extract i s
 
   | BR (BranchInst.Compare_branch i) =>
     BR.exec_compare_branch i s
