@@ -38,17 +38,21 @@ theorem aes_gcm_enc_kernel_program_run_xx (s0 sf : ArmState)
     simp (config := {ground := true}) only at h_s0_pc
     sym_n 138
     case h_s1_sp_aligned =>
-      apply Aligned_BitVecAdd_64_4
+      have aligned_add {x y : BitVec 64} (hx : Aligned x 4) (hy : Aligned y 4) :
+          Aligned (x + y) 4 := by
+        unfold Aligned at *
+        rw [BitVec.extractLsb'_add (by decide), hx, hy]
+        rfl
+      apply aligned_add
       · assumption
       · simp (config := {ground := true}) only []
     init_next_step h_run h_step_139 s139
     replace h_step_139 := h_step_139.symm
     rw [aes_gcm_enc_kernel_program.stepi_eq_0x7cf838] at h_step_139<;> try assumption
-    -- Instruction at pc 0x7cf79c#64 : cmp x17, #0xc, compares rounds
-    -- against 12 and branch out to AES-128 if rounds is less than 12 (equals 10)
-    -- We need accumulated (non)effects from this instruction to get branch condition
-    -- It would be tedious to list all the (non)effects out in a simp tactic
-    -- simp [state_simp_rules, bitvec_rules, minimal_theory] at h_step_139
-    sorry
+    -- The final branch writes only the program counter in either direction.
+    change sf = s139 at h_run
+    rw [h_run, h_step_139]
+    split <;> rw [r_of_w_different (by decide : StateField.ERR ≠ StateField.PC)] <;>
+      exact h_s138_err
 
 end AESGCMEncKernelProgram
