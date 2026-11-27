@@ -177,6 +177,18 @@ theorem extractLsBytes_of_read_bytes_le (n m : Nat)
     done
 
 /--
+If two memories agree on a region `[b..bn)`, then they agree on any subregion
+`[a..an)` of it.
+-/
+theorem Memory.read_bytes_eq_of_read_bytes_eq_of_mem_subset'
+    {mem1 mem2 : Memory}
+    (hread : mem1.read_bytes bn b = mem2.read_bytes bn b)
+    (hsubset : mem_subset' a an b bn) :
+    mem1.read_bytes an a = mem2.read_bytes an a := by
+  rw [Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' hread hsubset,
+      Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset' (mem := mem2) rfl hsubset]
+
+/--
 info: #[RegType.GPR 0x03#5, RegType.SFP 0x03#5, RegType.SFP 0x04#5, RegType.SFP 0x05#5, RegType.SFP 0x06#5,
   RegType.SFP 0x07#5, RegType.SFP 0x10#5, RegType.SFP 0x18#5, RegType.SFP 0x19#5]
 -/
@@ -213,28 +225,28 @@ theorem sha512_block_armv8_loop_2 (sprev si sf : ArmState)
   have h_si_input_1 : (Memory.read_bytes 16 InputBase sprev.mem) =
                       (Memory.read_bytes 16 InputBase si.mem) := by
     clear_named [h_s, h_run, step, _h]
-    -- simp_mem (config := {useOmegaToClose := true})
-    rw [@Memory.read_bytes_eq_extractLsBytes_sub_of_mem_subset'
-        128 InputBase (Memory.read_bytes 128 InputBase sprev.mem)]
-    · simp only [Nat.reduceMul, Nat.sub_self, bitvec_rules]
-      -- (FIXME) Need a theorem about `extractLsBytes_of_read_bytes` to simplify
-      -- terms like
-      -- `(Memory.read_bytes 128 InputBase sprev.mem).extractLsBytes 0 16`
-      sorry
-    · rfl
-    · mem_omega!
+    exact (Memory.read_bytes_eq_of_read_bytes_eq_of_mem_subset' keep_h_si_input
+            (by mem_omega!)).symm
   have h_si_input_2 : Memory.read_bytes 16 (InputBase + 0x10#64) sprev.mem =
                       Memory.read_bytes 16 (InputBase + 0x10#64) si.mem := by
-    sorry
+    clear_named [h_s, h_run, step, _h]
+    exact (Memory.read_bytes_eq_of_read_bytes_eq_of_mem_subset' keep_h_si_input
+            (by mem_omega!)).symm
   have h_si_input_3 : Memory.read_bytes 16 (InputBase + 0x40#64) sprev.mem =
                       Memory.read_bytes 16 (InputBase + 0x40#64) si.mem := by
-    sorry
+    clear_named [h_s, h_run, step, _h]
+    exact (Memory.read_bytes_eq_of_read_bytes_eq_of_mem_subset' keep_h_si_input
+            (by mem_omega!)).symm
   have h_si_input_4 : Memory.read_bytes 16 (InputBase + 0x50#64) sprev.mem =
                       Memory.read_bytes 16 (InputBase + 0x50#64) si.mem := by
-    sorry
+    clear_named [h_s, h_run, step, _h]
+    exact (Memory.read_bytes_eq_of_read_bytes_eq_of_mem_subset' keep_h_si_input
+            (by mem_omega!)).symm
   have h_si_input_5 : Memory.read_bytes 16 (InputBase + 0x70#64) sprev.mem =
                       Memory.read_bytes 16 (InputBase + 0x70#64) si.mem := by
-    sorry
+    clear_named [h_s, h_run, step, _h]
+    exact (Memory.read_bytes_eq_of_read_bytes_eq_of_mem_subset' keep_h_si_input
+            (by mem_omega!)).symm
   simp only [h_si_input_1, h_si_input_2, h_si_input_3,
              h_si_input_4, h_si_input_5,
              minimal_theory]
